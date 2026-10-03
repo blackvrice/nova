@@ -1,0 +1,11 @@
+[package]
+name = "nova-lexer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+nova-source.workspace = true
+nova-syntax.workspace = true
+nova-diagnostics.workspace = true
+unicode-ident.workspace = true

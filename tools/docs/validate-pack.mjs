@@ -60,7 +60,7 @@ for (const file of files.filter(f => f.endsWith('.md'))) {
 checks.push(`${linkCount}개 로컬 Markdown 링크/코드 fence/D·T 참조`);
 assert(knownD.size === 30 && knownT.size === 60, 'Decision/case registry counts mismatch');
 assert(knownCodes.size === codes.length && codes.every(c => /^N[1-589]\d{3}$/.test(c[0])), 'Invalid/duplicate diagnostic codes');
-checks.push(`30개 Draft 결정, 60개 수용 묶음, ${codes.length}개 진단 코드 유일성/영역`);
+checks.push(`30개 결정 (Accepted 5 / Draft 25), 60개 수용 묶음, ${codes.length}개 진단 코드 유일성/영역`);
 
 const grammar = fs.readFileSync(path.join(pack, 'GRAMMAR.ebnf'), 'utf8');
 const stripped = grammar.replace(/\(\*[\s\S]*?\*\)/g, '').replace(/"[^"\n]*"/g, '').replace(/\?[^?]*\?/g, '');
@@ -104,7 +104,10 @@ for (const fixture of fixtureManifest.fixtures) {
 }
 checks.push(`${fixtureManifest.fixtures.length}개 예제 sidecar/UTF-8 byte Span/등록 code 검사 (컴파일 실행 아님)`);
 
-const report = '# 문서 기계 검증 결과\n\n검사일: 2026-10-03. 명령: node tools/docs/validate-pack.mjs\n\n' +
+const validationDate = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
+const report = `# 문서 기계 검증 결과\n\n검사일: ${validationDate}. 명령: node tools/docs/validate-pack.mjs\n\n` +
   `결과: **${failures.length ? 'FAIL' : 'PASS'}**\n\n` + checks.map(c => `- ${c}`).join('\n') + '\n\n' +
   '## 검증의 범위\n\n이 검사는 문서 구조/링크/ID/hash/grammar 참조와 fixture 데이터 유효성을 확인한다. ' +
   '언어 사양 승인, EBNF 무모호성/완전성 증명, parser/semantic 구현 검증, 예제 Native 실행, ' +

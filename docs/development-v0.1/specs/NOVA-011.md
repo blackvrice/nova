@@ -8,7 +8,7 @@
 | 적용 Stage | A~B |
 | 근거 | [원본 NOVA-011](../../01_Source_Syntax/NOVA-011_문자열_보간_Lexer_Mode_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Mode stack
 Normal → StringText → InterpolationExpr → 중첩 StringText 전이를 stack으로 보존한다. 표현식의 { } 깊이는 문자열의 닫힘과 구분한다. 정상 string의 {{와 }}는 문자 중괄호이며 단일 {는 보간 시작이다.

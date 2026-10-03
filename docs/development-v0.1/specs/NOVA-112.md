@@ -8,7 +8,7 @@
 | 적용 Stage | 제외/후속 |
 | 근거 | [원본 NOVA-112](../../10_FFI/NOVA-112_JVM_Hosted_Adapter_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## JVM Hosted Adapter 범위
 JVM adapter는 C FFI와 다른 후속 runtime feature이며 D27 승인 없이는 Nova 0.1 구현 범위에 넣지 않는다.

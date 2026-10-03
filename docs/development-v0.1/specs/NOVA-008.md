@@ -8,7 +8,7 @@
 | 적용 Stage | A~B |
 | 근거 | [원본 NOVA-008](../../01_Source_Syntax/NOVA-008_소스_인코딩_Unicode_줄바꿈_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## 소스 계약
 UTF-8 파일과 반열린 바이트 위치를 사용한다. 잘못된 UTF-8은 교체 문자로 조용히 바꾸지 않고 입력 오류로 보고한다. 디스크 원문과 진단 byte offset은 동일해야 한다.

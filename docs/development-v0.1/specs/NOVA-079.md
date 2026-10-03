@@ -8,7 +8,7 @@
 | 적용 Stage | A~E |
 | 근거 | [원본 NOVA-079](../../07_Compiler_Frontend/NOVA-079_Compiler_Query_의존성_Cache_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Query 계약
 key/value/dependency fingerprint/diagnostics를 분리한다. query identity는 compiler/schema/options/Target과 관련 input을 포함한다. LLVM backend 결과만 Target key가 필요하다고 가정하지 않는다; layout/const도 Target 의존이다.

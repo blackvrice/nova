@@ -8,7 +8,7 @@
 | 적용 Stage | B~E |
 | 근거 | [원본 NOVA-032](../../03_Types_Declarations/NOVA-032_상수_표현식_const_평가_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## const 초안 — D09
 const는 compile-time에 평가 가능한 불변 binding이다. literal, approved primitive operation, tuple/enum/struct construction을 허용하고 I/O, heap allocation, foreign call, mutable global access는 첫 승인안에서 금지한다.

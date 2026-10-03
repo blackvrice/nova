@@ -8,7 +8,7 @@
 | 적용 Stage | A~E |
 | 근거 | [원본 NOVA-104](../../09_Backend_Runtime/NOVA-104_Platform_Abstraction_Layer_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Platform layer
 file/console/env/clock/random/thread/allocator/dynamic library의 최소 OS 경계를 모듈화한다. 언어 의미와 API error category는 플랫폼에 독립, 구체 OS error code는 note/source error payload다.

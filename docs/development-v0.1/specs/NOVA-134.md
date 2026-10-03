@@ -8,7 +8,7 @@
 | 적용 Stage | E |
 | 근거 | [원본 NOVA-134](../../12_Tooling_Packaging/NOVA-134_API_문서_생성기_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## API docs
 public definitions/signatures/modes/effects/visibility/doc comments를 export table에서 추출한다. private/internal 노출은 explicit option만 허용한다. generated example은 grammar/language version을 표시한다.

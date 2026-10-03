@@ -8,7 +8,7 @@
 | 적용 Stage | A~E |
 | 근거 | [원본 NOVA-125](../../12_Tooling_Packaging/NOVA-125_Compiler_CLI_명령_옵션_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## CLI 확정 표
 check/build/run/test/fmt/clean/doc/version; common --manifest-path/--target/--profile/--color/--message-format/--jobs/-v; emit=tokens/ast/hir/typed-hir/mir/llvm/obj/asm를 따른다.

@@ -21,13 +21,13 @@ Generic/Closure 기반 std API 완성은 D에 의존한다. 특정 라이브러�
 
 ## 첫 구현 재개 조건
 
-1. Rust frontend toolchain 설치/접근 경로 확보 및 현재 Cargo fmt/clippy/test/check 실제 실행.
-2. D01~D05 핵심 lexical/grammar/END 승인. D07/D08의 Stage A 필요한 numeric/condition 의미 승인.
+1. Rust frontend toolchain 및 기존 Cargo fmt/clippy/test/check 실행 완료.
+2. D01~D05 승인과 Token/Lexer/Stage A END 구현 완료. D07/D08의 Stage A numeric/condition 의미는 승인 필요.
 3. Stage A parser fixtures의 source+expected diagnostic Span 구체화.
 4. SourceInfo/Diagnostic API에 승인된 변화만 적용, Lexer부터 순서대로 구현.
 
-현재 3개 Rust crate의 실제 동작은 Rust 도구 부재로 검증되지 않았다. 문서 검증 스크립트
-결과와 compiler tests 통과를 혼동하지 않는다. compiler 코드는 이번 문서 작업에서 변경하지 않았다.
+현재 Source/Diagnostic과 Token/Lexer/END 기반을 구현했다. 문서 검증 스크립트 결과와
+compiler tests 통과를 구분한다. 다음은 미승인 Parser 관련 결정 확인과 AST/Parser 구현이다.
 
 ## Backlog 경계
 

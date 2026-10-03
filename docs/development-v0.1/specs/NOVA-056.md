@@ -8,7 +8,7 @@
 | 적용 Stage | C |
 | 근거 | [원본 NOVA-056](../../05_Ownership_Safety/NOVA-056_사용자_drop_Drop_Glue_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## 사용자 drop 초안 — D10/D12
 drop { ... } 또는 drop receiver 문법은 D12에서 최종 선정한다. 초안 grammar는 drop { ... }를 제안한다. body는 자기 객체의 제한된 change 접근을 갖지만 owner를 외부로 이동하거나 부활시키지 못한다.

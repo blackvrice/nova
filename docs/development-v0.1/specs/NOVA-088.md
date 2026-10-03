@@ -8,7 +8,7 @@
 | 적용 Stage | B~E |
 | 근거 | [원본 NOVA-088](../../08_MIR_Middleend/NOVA-088_Match_Lowering_구현서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Match pass
 Pattern matrix에서 coverage와 decision tree를 만들되 NOVA-047 분석과 동일 constructor set을 사용한다. payload projection은 verified tag branch 아래에만 놓는다.

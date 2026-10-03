@@ -8,7 +8,7 @@
 | 적용 Stage | 전 Stage |
 | 근거 | [원본 NOVA-004](../../00_Governance/NOVA-004_Nova_용어_키워드_Canonical_표.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## 확정 어휘
 공식 키워드와 Primitive 이름은 원본 NOVA-004 및 canonical_decisions.json을 그대로 따른다. func, foreign, interface, change, take 표기를 일관되게 쓴다. Read는 modifier 부재의 의미이며 별도 소스 키워드가 아니다.

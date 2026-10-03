@@ -8,7 +8,7 @@
 | 적용 Stage | 제외/후속 |
 | 근거 | [원본 NOVA-066](../../06_Interfaces_Generics/NOVA-066_Associated_Type_Dynamic_Interface_Object_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## 비지원 경계
 Associated Type과 dynamic interface object는 0.1 제외다. interface 자체를 runtime field/parameter/return 값 타입으로 쓰거나 type-erased vtable handle을 암묵 생성하지 않는다.

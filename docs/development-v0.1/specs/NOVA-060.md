@@ -8,7 +8,7 @@
 | 적용 Stage | C~E |
 | 근거 | [원본 NOVA-060](../../05_Ownership_Safety/NOVA-060_Thread_이동_공유_안전성_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Thread safety 초안 — D20
 타입의 thread 이동 가능과 shared read 가능을 별도 compiler predicate로 관리한다. 이름/소스 trait 문법은 추가하지 않고 internal Sendable/Shareable 판정을 제안한다.

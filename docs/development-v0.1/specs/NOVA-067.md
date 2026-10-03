@@ -8,7 +8,7 @@
 | 적용 Stage | 제외/후속 |
 | 근거 | [원본 NOVA-067](../../06_Interfaces_Generics/NOVA-067_VTable_Object_Safety_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## VTable/Object safety
 0.1에는 dynamic interface dispatch가 없으므로 vtable layout/object-safety 알고리즘은 납품 범위가 아니다. runtime Class handle에도 interface vtable을 자동 넣지 않는다.

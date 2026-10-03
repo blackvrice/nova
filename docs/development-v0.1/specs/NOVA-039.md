@@ -8,7 +8,7 @@
 | 적용 Stage | D |
 | 근거 | [원본 NOVA-039](../../04_Functions_Control/NOVA-039_Closure_Capture_호출_Receiver_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Capture 분석
 closure body의 free Place 사용을 모은 뒤 Read/change/take 필요도를 결정한다. 필요 모드가 충돌하면 가장 강한 의미로 조용히 바꾸지 않고 closure 선언에서 소유권 요구를 보여준다.

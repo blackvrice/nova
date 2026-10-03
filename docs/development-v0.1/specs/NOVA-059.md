@@ -8,7 +8,7 @@
 | 적용 Stage | 제외/후속 |
 | 근거 | [원본 NOVA-059](../../05_Ownership_Safety/NOVA-059_Pinning_자기_참조_타입_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## 0.1 제외 결정
 Pinning와 self-reference는 Canonical 비지원이다. stable address를 이유로 owner 내부를 가리키는 안전 self view를 허용하지 않는다. Class heap allocation도 self-reference 안전성의 자동 증명이 아니다.

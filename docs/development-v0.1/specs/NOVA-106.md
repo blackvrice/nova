@@ -8,7 +8,7 @@
 | 적용 Stage | A~E |
 | 근거 | [원본 NOVA-106](../../10_FFI/NOVA-106_C_ABI_Import_Export_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## C ABI 경계
 Nova 내부 ABI와 C ABI를 구분한다. scalar fixed-width, opaque pointer, explicit C representation aggregate만 허용하는 초안을 제안한다. Nova bool/char/string/Option/Result를 C int/string에 암묵 대응시키지 않는다.

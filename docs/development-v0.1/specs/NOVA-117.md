@@ -8,7 +8,7 @@
 | 적용 Stage | B~E (print: A) |
 | 근거 | [원본 NOVA-117](../../11_Standard_Library/NOVA-117_Array_T_API_메모리_모델_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Array<T> 메모리
 ptr/len/capacity와 initialized prefix를 관리한다. 0≤len≤cap, element size×cap overflow 없음, initialized 원소만 읽고 정확히 한 번 Drop한다.

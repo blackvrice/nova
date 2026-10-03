@@ -8,7 +8,7 @@
 | 적용 Stage | A~B |
 | 근거 | [원본 NOVA-010](../../01_Source_Syntax/NOVA-010_숫자_문자_문자열_Literal_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Literal 초안 — D04
 정수는 10진과 0x/0b/0o prefix, 자릿수 사이 _를 제안한다. 부호는 literal의 일부가 아니다. 실수는 decimal fractional 또는 exponent를 사용하고 suffix는 첫 승인안에서 제공하지 않는다. 문자 literal은 Unicode scalar 한 개, string은 UTF-8 sequence다.

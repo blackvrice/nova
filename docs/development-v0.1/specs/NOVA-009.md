@@ -8,7 +8,7 @@
 | 적용 Stage | A~B |
 | 근거 | [원본 NOVA-009](../../01_Source_Syntax/NOVA-009_Token_종류_예약어_연산자_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Token 모델
 Token은 kind, Span, 원문 slice를 가진다. Identifier/Keyword, Integer/Float/String/Char, 보간 경계, 구분자, Operator, NewLine, Trivia, Error, EOF를 분리한다. Trivia까지 포함한 원문 연결이 원본과 같아야 한다.

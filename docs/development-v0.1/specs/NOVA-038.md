@@ -8,7 +8,7 @@
 | 적용 Stage | D |
 | 근거 | [원본 NOVA-038](../../04_Functions_Control/NOVA-038_함수_타입_Lambda_Closure_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Lambda 초안 — D13
 lambda (parameters) => expression 또는 lambda (parameters) => { statements } 철자는 제안이며 원본 keyword 목록에 없으므로 승인 전 contextual syntax로도 구현하지 않는다. expected function signature에서 parameter type을 추론한다.

@@ -8,7 +8,7 @@
 | 적용 Stage | 제외/후속 |
 | 근거 | [원본 NOVA-148](../../13_Testing_Release/NOVA-148_Self-hosting_계획서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Self-hosting 제외
 0.1 compiler 구현은 Rust이며 Self-hosting은 비목표다. 개발 문서 전체를 작성했다는 이유로 Nova compiler rewrite를 시작하지 않는다.

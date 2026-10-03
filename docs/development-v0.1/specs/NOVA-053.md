@@ -8,7 +8,7 @@
 | 적용 Stage | C |
 | 근거 | [원본 NOVA-053](../../05_Ownership_Safety/NOVA-053_부분_이동_정책_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Canonical 금지
 사용자 partial move는 지원하지 않는다. aggregate의 field만 take하여 나머지를 다시 사용하는 표현은 거부한다. whole-value take와 Copy field read는 허용 범주다.

@@ -1,6 +1,13 @@
 [workspace]
-members = ["crates/nova-core-ids", "crates/nova-source", "crates/nova-diagnostics"]
+members = [
+    "crates/nova-core-ids",
+    "crates/nova-source",
+    "crates/nova-diagnostics",
+    "crates/nova-syntax",
+    "crates/nova-lexer",
+]
 resolver = "2"
+exclude = ["vendor/unicode-ident-1.0.26"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,3 +17,6 @@ rust-version = "1.80"
 [workspace.dependencies]
 nova-core-ids = { path = "crates/nova-core-ids" }
 nova-source = { path = "crates/nova-source" }
+nova-syntax = { path = "crates/nova-syntax" }
+nova-diagnostics = { path = "crates/nova-diagnostics" }
+unicode-ident = { version = "=1.0.26", path = "vendor/unicode-ident-1.0.26" }

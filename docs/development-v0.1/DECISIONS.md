@@ -1,6 +1,6 @@
-# Nova 0.1 사양 결정 기록 — 30개 Draft
+# Nova 0.1 사양 결정 기록 — Accepted 5 / Draft 25
 
-작성일 2026-10-03. **모든 항목은 Draft이며 사용자 승인 기록은 아직 없다.** 이 문서 작성 요청은 초안 작성의 권한이며 아래 선택안을 구현에 확정 적용한 승인으로 해석하지 않는다.
+작성일 2026-10-03. **D01~D05는 2026-10-03 사용자 승인으로 Accepted이며, D06~D30은 Draft다.** 승인 기록: 사용자 답변 “D01~D05 승인하고 Lexer 진행”. 적용 상세는 [승인 Lexer 기준](ACCEPTED_LEXER.md). Parser 전체/타입/소유권/Backend의 미승인 제안을 함께 승인한 것으로 해석하지 않는다.
 
 ## 공통 승인 계약
 
@@ -8,7 +8,7 @@
 
 ## D01 — 추가/문맥 키워드
 
-- 상태/승인: Draft / 미승인. Stage: A~E.
+- 상태/승인: Accepted / 2026-10-03 사용자 승인. Stage: A~E.
 - 관련 문서: NOVA-004/009/020/030/038/041/105.
 - 현재 사양과 발견된 문제: use는 Parser에 있으나 공식 목록에 없고 type/lambda/noPanic/library/self 분류가 없다.
 - 제안 변경: use/type/lambda를 추가 keyword 후보, self/c/library를 contextual, noPanic은 보류한다. 공식 제외 어휘를 alias로 재해석하지 않는다.
@@ -20,7 +20,7 @@
 
 ## D02 — Unicode와 줄바꿈
 
-- 상태/승인: Draft / 미승인. Stage: A.
+- 상태/승인: Accepted / 2026-10-03 사용자 승인. Stage: A.
 - 관련 문서: NOVA-008/070/133.
 - 현재 사양과 발견된 문제: UTF-8만 정해졌고 identifier Unicode/BOM/CR 정책이 없다.
 - 제안 변경: 고정 Unicode XID+_, NFC 변환 없음, initial BOM trivia, LF/CRLF/CR event, byte/scalar/UTF-16 위치 분리.
@@ -32,7 +32,7 @@
 
 ## D03 — 연산자와 결합성
 
-- 상태/승인: Draft / 미승인. Stage: A~B.
+- 상태/승인: Accepted / 2026-10-03 사용자 승인. Stage: A~B.
 - 관련 문서: NOVA-009/014/015.
 - 현재 사양과 발견된 문제: 우선순위 계층만 있고 정확한 철자/결합성/cast 층이 부족하다.
 - 제안 변경: GRAMMAR의 operator 집합, 산술 left, prefix right, compare/range nonassoc, cast postfix, assignment statement. ::와 @는 경로/attribute token.
@@ -44,7 +44,7 @@
 
 ## D04 — Literal/escape/comment
 
-- 상태/승인: Draft / 미승인. Stage: A~B.
+- 상태/승인: Accepted / 2026-10-03 사용자 승인. Stage: A~B.
 - 관련 문서: NOVA-010/011/012/071.
 - 현재 사양과 발견된 문제: nested comment/interpolation 방향은 있으나 literal 철자/escape/복구가 불완전하다.
 - 제안 변경: LEXICAL의 base/underscore/decimal float/Unicode escape, char 1 scalar, nested /* */, brace interpolation, raw/multiline 제외.
@@ -56,7 +56,7 @@
 
 ## D05 — END 상세
 
-- 상태/승인: Draft / 미승인. Stage: A.
+- 상태/승인: Accepted / 2026-10-03 사용자 승인. Stage: A.
 - 관련 문서: NOVA-013/014/071.
 - 현재 사양과 발견된 문제: operator/header/return/EOF 경계의 충돌 우선순위가 없다.
 - 제안 변경: END_RULES 우선순위와 header state, return newline bare return, boundary before }/EOF. generic type delimiter는 comparison과 구분한 type context에서 처리한다.

@@ -8,7 +8,7 @@
 | 적용 Stage | B~E |
 | 근거 | [원본 NOVA-033](../../03_Types_Declarations/NOVA-033_타입_레이아웃_정렬_Niche_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Target layout 계약
 Layout(TypeId,TargetSpec) → size, align, field offsets, variant layout, valid-bit-patterns/niche를 반환한다. pointer width/endian/aggregate ABI는 Target 입력이며 host에서 추정하지 않는다.

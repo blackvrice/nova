@@ -8,7 +8,7 @@
 | 적용 Stage | A~E |
 | 근거 | [원본 NOVA-069](../../07_Compiler_Frontend/NOVA-069_저장소_Crate_모듈_구조_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Workspace 책임
 core-ids/source/diagnostics/syntax/lexer/parser/ast/hir/resolve/types/typecheck/mir/analysis/codegen/codegen-llvm/package/cli가 각각 ID, source, errors, tokens, scanning, parsing, syntax tree, lowering, lookup, canonical types, semantics, CFG, safety, backend API, LLVM, packages, driver를 담당한다.

@@ -8,7 +8,7 @@
 | 적용 Stage | A~B |
 | 근거 | [원본 NOVA-050](../../04_Functions_Control/NOVA-050_using_Lowering_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## using 초안 — D08/D10
 using let resource = expression을 block scope의 owned binding sugar로 제안한다. initializer는 한 번 평가하며 정상/return/break/continue/try exit에서 resource Drop을 보장한다.

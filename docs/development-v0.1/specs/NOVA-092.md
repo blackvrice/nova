@@ -8,7 +8,7 @@
 | 적용 Stage | B~E |
 | 근거 | [원본 NOVA-092](../../08_MIR_Middleend/NOVA-092_Debug_MIR_출력_형식_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## MIR dump schema 초안
 header: schema/compiler/Target/pass/body ID. locals: _N:type,mode,scope,source. blocks: bbN { statements; terminator }. projections는 field/index/deref와 byte Span을 별도 필드로 출력한다.

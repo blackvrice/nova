@@ -8,7 +8,7 @@
 | 적용 Stage | 전 Stage |
 | 근거 | [원본 NOVA-140](../../13_Testing_Release/NOVA-140_Runtime_Test_Harness_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Runtime Harness
 임시 출력 디렉터리에서 build 후 child process를 실행한다. expected stdout/stderr/exit class/timeout/Drop trace를 분리한다. child process는 crash/timeout 시 종료하고 남은 process/resource를 정리한다.

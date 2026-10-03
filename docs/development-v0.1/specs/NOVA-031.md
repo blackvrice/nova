@@ -8,7 +8,7 @@
 | 적용 Stage | B~E |
 | 근거 | [원본 NOVA-031](../../03_Types_Declarations/NOVA-031_생성자_필드_초기화_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Constructor 초안 — D12
 init(parameter list) { ... }를 제안하고 각 let field는 정확히 한 번 초기화해야 한다. method receiver 철자/self binding은 D11과 함께 결정한다. 생성 완료 전에 self를 외부로 노출하거나 일반 method를 호출하지 않는다.

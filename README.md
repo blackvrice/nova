@@ -2,7 +2,7 @@
 
 개발 전에 읽을 [전체 개발 문서 보완팩](docs/development-v0.1/README.md)을 작성했습니다.
 148개 주제별 문서와 구체 EBNF, 30건 결정 초안, API/schema, 수용 테스트 계획을 포함합니다.
-새 상세는 Draft이며 기존 Canonical 결정을 변경하지 않았습니다.
+D01~D05 Lexer 상세는 사용자 승인으로 Accepted이며, 나머지 상세는 Draft입니다.
 
 Nova 컴파일러의 첫 Stage A 기반 구현입니다. 언어 사양은 `docs/`의 원본
 Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다.
@@ -15,9 +15,14 @@ Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다
   지연 계산되는 `LineIndex`, Unicode scalar 기준의 1-based 표시 위치.
 - `nova-diagnostics`: `DiagnosticCode`, Severity, Primary/Secondary Label,
   Note, Suggestion 및 Plain/ANSI/JSON/Snapshot Renderer.
+- `nova-syntax`: 공식/승인 키워드, token, END origin 등 단계 독립 자료형.
+- `nova-lexer`: UTF-8 lossless scanning, Unicode XID, Literal/Escape, 중첩 주석/보간,
+  오류 진단, 결정적 token dump, Stage A END 정규화.
 
 의존 방향은 `nova-diagnostics → nova-source → nova-core-ids`입니다.
-외부 Rust 라이브러리 의존성은 없습니다. Rust 1.80 이상이 필요합니다.
+Lexer의 의존 방향은 `nova-lexer → nova-syntax/nova-source/nova-diagnostics`입니다.
+Unicode 18.0.0의 XID 데이터는 고정된 unicode-ident 1.0.26을 vendor에 포함했습니다.
+Rust 1.80 이상이 필요하며 `cargo test --workspace --offline`으로 빌드할 수 있습니다.
 
 ```powershell
 cargo fmt --check
@@ -49,8 +54,8 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 
 ## 다음 단계
 
-1. Lexer/Token/END 정규화: NOVA-009~013, NOVA-071에 맞춰 구현.
-2. Parser/AST: 실제 EBNF Production 확인 후 구현.
+1. Lexer/Token/Stage A END 정규화 완료: [승인 기준](docs/development-v0.1/ACCEPTED_LEXER.md).
+2. Parser/AST: EBNF 초안의 나머지 관련 결정(D06 이후)을 확인·승인하고 구현.
 3. HIR, 최소 이름/타입 검사, Compile-pass/fail Harness.
 4. MIR와 LLVM Adapter, Hello Nova E2E.
 
@@ -58,7 +63,9 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 Parser 구현 전에 문법을 보완하거나 별도 공식 문법 자료를 받아야 하며, 구현으로
 언어 문법을 임의로 결정하지 않습니다.
 
-현재 Lexer, Parser, CLI 및 LLVM Backend는 구현하지 않았습니다.
+현재 Parser, CLI 및 LLVM Backend는 구현하지 않았습니다.
 따라서 `nova check`와 `nova run`은 아직 제공하지 않습니다. 이번 테스트는 Rust
 기반 계층의 UTF-8, 범위 오류, EOF, 혼합 줄바꿈, 대형 파일, 진단 Snapshot,
 JSON escaping 및 Suggestion 위치 검증을 다룹니다.
+Lexer lexical pass/fail fixture와 source reconstruction/중첩 mode/END/회귀 테스트도 포함합니다.
+lexical pass는 프로그램 전체 타입 검사나 실행 성공을 뜻하지 않습니다.

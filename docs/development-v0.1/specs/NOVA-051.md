@@ -8,7 +8,7 @@
 | 적용 Stage | C |
 | 근거 | [원본 NOVA-051](../../05_Ownership_Safety/NOVA-051_메모리_소유권_모델_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Ownership 기준
 Move 타입은 하나의 owner를 가지며 Read는 owner를 소비하지 않는다. take 이후 원본은 재초기화까지 사용할 수 없다. Copy/Move 판정과 local initialization/assignment의 암묵 이동 여부는 D10 초안으로 구분한다.

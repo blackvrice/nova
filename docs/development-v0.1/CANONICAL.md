@@ -44,3 +44,7 @@ Canonical → Governance/Freeze → Language → Architecture → Implementation
 이 문서의 기존 결정은 보존이다. 새 상세는 DECISIONS의 Draft다. 승인된 경우에만 관련
 원본과 grammar, 테스트 기준을 함께 갱신한다. 원본 파일의 '확정' 라벨은 자동으로 새
 보완 문서에 승계되지 않는다.
+
+2026-10-03 사용자가 D01~D05를 승인했다. Lexer 추가 기준은
+[ACCEPTED_LEXER](ACCEPTED_LEXER.md)을 따른다. 원본 Canonical 표기의 의미는 유지하고
+추가 keyword/Unicode/literal/operator/END 상세만 승인 범위에 적용한다.

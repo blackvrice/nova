@@ -8,7 +8,7 @@
 | 적용 Stage | C |
 | 근거 | [원본 NOVA-054](../../05_Ownership_Safety/NOVA-054_빌림_수명_Place_충돌_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Loan 의미
 Read loan은 동시 공유 가능, change loan은 독점이다. loan은 마지막 실제 사용까지 유지하며 owner의 Drop/Move/변경과 충돌을 검사한다. disjoint를 증명하지 못하면 충돌로 본다.

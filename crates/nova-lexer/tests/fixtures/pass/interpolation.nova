@@ -1,0 +1,2 @@
+let text = "outer {call("inner {value}")} end"
+/* comment /* nested */ comment */

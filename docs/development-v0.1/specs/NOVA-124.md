@@ -8,7 +8,7 @@
 | 적용 Stage | B~E (print: A) |
 | 근거 | [원본 NOVA-124](../../11_Standard_Library/NOVA-124_Thread_Lock_Atomic_API_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Thread API 초안 — D20/D23
 spawn(take closure)→Result<ThreadHandle,ThreadError>, join(take handle)→Result<Unit,ThreadError>, Mutex<T>.lock()→Guard<T>, Atomic<intN> 명시 operations를 제안한다. Thread/atomic payload-return generic 확장은 signature 설계와 함께 검토한다.

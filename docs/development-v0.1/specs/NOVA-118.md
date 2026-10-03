@@ -8,7 +8,7 @@
 | 적용 Stage | B~E (print: A) |
 | 근거 | [원본 NOVA-118](../../11_Standard_Library/NOVA-118_Span_T_ReadOnlySpan_T_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## View 의미
 ReadOnlySpan<T>는 read view, Span<T>는 change view다. owner보다 오래 살 수 없으며 ptr+length ABI와 region origin을 갖는다. Compiler source Span과 별개의 언어 타입이다.

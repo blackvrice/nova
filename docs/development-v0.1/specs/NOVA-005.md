@@ -8,7 +8,7 @@
 | 적용 Stage | 전 Stage |
 | 근거 | [원본 NOVA-005](../../00_Governance/NOVA-005_Nova_문서_인덱스_의존_관계도.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## 문서 의존 방향
 Governance → Source/Syntax → Names/Types → Functions/Control → Ownership/Abstraction → Compiler IR → Backend/Runtime → FFI/Library → Tooling → Release 순서로 읽는다. 구현 순서는 별도 ROADMAP을 따른다.

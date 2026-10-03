@@ -1,6 +1,6 @@
 # END 정규화 상세 초안
 
-근거: NOVA-013/071. D05 승인 대기. 원문 NewLine/semicolon 위치는 synthetic END의 origin으로 남긴다.
+근거: NOVA-013/071. D05 Accepted. [승인 기록](ACCEPTED_LEXER.md). 원문 NewLine/semicolon 위치는 END의 origin으로 남긴다.
 
 ## 규칙 우선순위
 

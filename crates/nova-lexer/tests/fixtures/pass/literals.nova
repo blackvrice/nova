@@ -1,0 +1,4 @@
+let integer = 0xff
+let real = 1.25e+3
+let 문자 = '\u{1F642}'
+let text = "{{brace}}\n\u{AC00}"

@@ -8,7 +8,7 @@
 | 적용 Stage | C |
 | 근거 | [원본 NOVA-086](../../08_MIR_Middleend/NOVA-086_Drop_Elaboration_구현서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Drop elaboration
 Move analysis의 initialized state를 읽어 Drop sites/flags를 삽입한다. 함수 lexical scopes와 edge exit scopes를 사용해 cleanup blocks를 공유하되 순서를 바꾸지 않는다.

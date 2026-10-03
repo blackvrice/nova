@@ -1,6 +1,6 @@
 # Lexical 상세 초안
 
-근거: NOVA-008~012/071. 추가 결정: D01~D04. 상태: Draft.
+근거: NOVA-008~012/071. 추가 결정: D01~D04 Accepted. [승인 기록](ACCEPTED_LEXER.md).
 
 ## 문자와 token
 
@@ -9,11 +9,11 @@
 없이 byte 철자를 비교한다. 언어의 identifier Unicode 버전은 build toolchain 정책에 고정한다.
 Primitive 이름은 type namespace의 builtin identifier이며 무조건 reserved keyword로 하지 않는다.
 
-공식 keyword는 원본 NOVA-004. 추가 use/type/lambda는 D01 승인 후보, self/c/library는
-contextual 후보, @symbol은 foreign attribute다. trait/external은 canonical alias로
+공식 keyword는 원본 NOVA-004와 승인된 D01의 use/type/lambda다. self/c/library는
+contextual Identifier, @symbol은 foreign attribute다. trait/external은 canonical alias로
 재해석하지 않는다. async/await 등 후속 예약 후보는 D01에서 reserved 여부를 결정한다.
 
-Operator 후보: + - * / % ! && || == != < <= > >= = -> => ? . , : :: ; @
+승인 Operator/구분자: + - * / % ! && || == != < <= > >= = -> => ? . , : :: ; @
 ( ) [ ] { }. < >는 generic type와 comparison에 공유한다. `&`, bitwise/shift/compound
 assignment는 최초 grammar에 없다. unsupported spelling은 명확히 거부한다.
 

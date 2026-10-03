@@ -8,7 +8,7 @@
 | 적용 Stage | D |
 | 근거 | [원본 NOVA-063](../../06_Interfaces_Generics/NOVA-063_Generic_타입_추론_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Inference
 타입 인수는 argument/receiver/expected type에서 추론한다. 명시 generic call arguments는 금지다. constraint solving은 type inference를 돕되 임의 구현 하나를 골라 type를 결정하지 않는다.

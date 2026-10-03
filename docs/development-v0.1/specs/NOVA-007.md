@@ -8,7 +8,7 @@
 | 적용 Stage | 전 Stage |
 | 근거 | [원본 NOVA-007](../../00_Governance/NOVA-007_Nova_버전_정책_호환성_원칙.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## 버전 경계
 언어 버전, compiler 버전, Runtime ABI 버전, Package schema, Artifact schema, Cache schema를 독립 필드로 관리한다. 언어 버전 0.1이라는 이유로 서로 다른 compiler artifact를 재사용하지 않는다.

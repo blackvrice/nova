@@ -1,6 +1,6 @@
 # Nova 0.1 개발 문서 전체 색인
 
-148개 원본 주제를 빠짐없이 보완했다. 모든 새 상세는 Draft이며 승인/구현/테스트 통과 상태와 구분한다.
+148개 원본 주제를 빠짐없이 보완했다. 문서 전체는 Draft이며 D01~D05 Lexer 상세만 Accepted다. 승인/구현/테스트 통과 상태를 구분한다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

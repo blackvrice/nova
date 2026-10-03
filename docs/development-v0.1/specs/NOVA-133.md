@@ -8,7 +8,7 @@
 | 적용 Stage | E |
 | 근거 | [원본 NOVA-133](../../12_Tooling_Packaging/NOVA-133_Language_Server_LSP_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## LSP 구현 계약 초안 — D24
 document URI/version/text snapshot, incremental edits, diagnostics, completion, hover, definition/references, rename, formatting을 단계적으로 제공한다. compiler byte Span과 protocol position을 변환하며 UTF-16를 기본 상호운용 제안으로 둔다.

@@ -8,7 +8,7 @@
 | 적용 Stage | A~B |
 | 근거 | [원본 NOVA-047](../../04_Functions_Control/NOVA-047_Match_완전성_도달_불가_Arm_분석서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Exhaustiveness
 bool/Enum/Option/Result/tuple 조합은 constructor coverage로 검사한다. integer/string의 임의 값 공간에는 wildcard가 필요하다. guard가 있는 arm은 exhaustive coverage 증명으로 사용하지 않는 초안을 제안한다.

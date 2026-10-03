@@ -2,3 +2,5 @@
 # Documentation manifest hashes refer to exact file bytes.
 docs/** -text
 docs/docs_manifest.csv whitespace=cr-at-eol
+# Keep the official vendored archive bytes unchanged.
+vendor/unicode-ident-1.0.26/** -text

@@ -8,7 +8,7 @@
 | 적용 Stage | E |
 | 근거 | [원본 NOVA-131](../../12_Tooling_Packaging/NOVA-131_Formatter_사양_구현서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Formatter
 AST+Trivia 기반 document model에서 단일 canonical output을 만든다. 원본 기본 줄 길이는 100이며 주석을 보존한다. roundtrip semantic equality와 idempotence를 요구한다.

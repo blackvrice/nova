@@ -8,7 +8,7 @@
 | 적용 Stage | B~E |
 | 근거 | [원본 NOVA-090](../../08_MIR_Middleend/NOVA-090_MIR_최적화_Pass_목록_순서_사양서.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## Optimization 초안 — D26
 Stage A는 검증 → 상수 folding(동일 숫자 의미) → unreachable block 제거 → 단순 CFG 정리 → 검증을 제안한다. C 이후에는 Drop elaboration 완료 뒤 dead temporary/copy propagation을 제한적으로 추가한다.

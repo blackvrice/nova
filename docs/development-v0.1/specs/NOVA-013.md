@@ -8,7 +8,7 @@
 | 적용 Stage | A~B |
 | 근거 | [원본 NOVA-013](../../01_Source_Syntax/NOVA-013_줄바꿈_문장_종료_연속_줄_규칙.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## END 입력/출력
 Raw token+trivia를 정규화하며 세미콜론과 문장을 끝내는 newline을 END로 표현한다. ()/[] 내부 newline은 억제하고 {} 내부에서는 문장 종료를 허용한다. else, dot, comma, 연산자 앞뒤 연속 줄은 억제한다.

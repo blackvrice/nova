@@ -73,7 +73,8 @@ for (const row of rows) {
     `| 문서 상태 | Draft — 기존 결정은 유지, 추가 상세는 승인 대기 |\n| 적용 Stage | ${stage(row.number)} |\n` +
     `| 근거 | [원본 ${id}](../../${row.original}) |\n\n` +
     `이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, ` +
-    `새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).\n\n` + body.trim() + '\n';
+    `새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. ` +
+    `D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).\n\n` + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -85,14 +86,14 @@ for (const row of rows) {
     original_sha256: hash(original), draft_sha256: hash(content) });
 }
 fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 색인\n\n` +
-  `148개 원본 주제를 빠짐없이 보완했다. 모든 새 상세는 Draft이며 승인/구현/테스트 통과 상태와 구분한다.\n\n` +
+  `148개 원본 주제를 빠짐없이 보완했다. 문서 전체는 Draft이며 D01~D05 Lexer 상세만 Accepted다. 승인/구현/테스트 통과 상태를 구분한다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
   `원본 148개 NOVA 문서를 기준으로 새 계약을 작성했다. '공통 양식 포함'은 자동 탐지한 구조 분류이며 ` +
   `그 문서 전체가 무효라는 판정은 아니다. 원본 파일은 수정하지 않았다.\n\n` +
   `## 구현 전 핵심 문제\n\n` +
-  `- NOVA-014: 실제 EBNF Production 부재 → GRAMMAR 초안 작성, D01~D15 승인 필요.\n` +
+  `- NOVA-014: 실제 EBNF Production 부재 → GRAMMAR 초안 작성, D01~D05 승인 완료; 이후 Parser 관련 결정은 승인 필요.\n` +
   `- NOVA-004 vs 072: use keyword 누락 → D01; alias/lambda/noPanic contextual 표기도 검토.\n` +
   `- NOVA-070: compiler source Span과 runtime Span<T> 항목 혼재 → 담당 문서 070/118 구분(D10).\n` +
   `- NOVA-026/037: numeric widening/default/overload 비용 불완전 → D07/D11.\n` +
@@ -102,7 +103,8 @@ fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보
   `- 사양 날짜는 원본 값 그대로; 새 작성일은 2026-10-03.\n\n` +
   `| 원본 | 조사 분류 | 보완 문서 |\n|---|---|---|\n${audit.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
-  schema_version: 1, language: 'Nova', language_version: '0.1', document_status: 'Draft',
+  schema_version: 1, language: 'Nova', language_version: '0.1', document_status: 'PartiallyAccepted',
+  accepted_decisions: ['D01', 'D02', 'D03', 'D04', 'D05'],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);

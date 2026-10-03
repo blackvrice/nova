@@ -8,7 +8,7 @@
 | 적용 Stage | 전 Stage |
 | 근거 | [원본 NOVA-001](../../00_Governance/NOVA-001_Nova_언어_설계_원칙_목표_비목표.md) |
 
-이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
 ## 목적과 판단 기준
 Nova는 정적 타입의 Native 범용 언어다. 읽기 쉬운 문법, 메모리 안전성, 예측 가능한 실행 의미를 함께 목표로 한다. 정확성 > 컴파일러 정확성 > 유지보수 > 성능 > 구현 편의 순서로 판단한다.
