@@ -339,8 +339,7 @@ mod tests {
     #[test]
     fn invalid_labels_and_suggestions_return_errors_in_all_formats() {
         let (sources, mut diagnostic) = fixture();
-        diagnostic.suggestions[0].span =
-            Span::new(diagnostic.primary.span.file(), 1, 2).unwrap();
+        diagnostic.suggestions[0].span = Span::new(diagnostic.primary.span.file(), 1, 2).unwrap();
         for format in [
             RenderFormat::Plain,
             RenderFormat::Ansi,

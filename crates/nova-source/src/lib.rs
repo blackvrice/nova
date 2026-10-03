@@ -197,14 +197,8 @@ mod tests {
         assert_eq!(sources.slice(Span::new(id, 3, 7).unwrap()).unwrap(), "🙂");
         let file = sources.file(id).unwrap();
         assert!(file.lines.get().is_none());
-        assert_eq!(
-            file.location(7).unwrap(),
-            Location { line: 1, column: 3 }
-        );
-        assert_eq!(
-            file.location(10).unwrap(),
-            Location { line: 2, column: 1 }
-        );
+        assert_eq!(file.location(7).unwrap(), Location { line: 1, column: 3 });
+        assert_eq!(file.location(10).unwrap(), Location { line: 2, column: 1 });
         assert_eq!(file.line_text(1), Some("가🙂x"));
         assert!(file.lines.get().is_some());
         assert_eq!(file.location(4), Err(SourceError::InvalidSpan));
