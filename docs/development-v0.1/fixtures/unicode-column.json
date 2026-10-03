@@ -1,0 +1,19 @@
+{
+  "status": "Draft",
+  "implementation_verified": false,
+  "case_id": "T035",
+  "stage": "A",
+  "phase": "resolve",
+  "decisions": [
+    "D02",
+    "D25"
+  ],
+  "outcome": "compile-fail",
+  "diagnostic_code": "N2001",
+  "primary": {
+    "start": 48,
+    "end": 60
+  },
+  "stdout": null,
+  "exit_class": "compiler-user-error"
+}

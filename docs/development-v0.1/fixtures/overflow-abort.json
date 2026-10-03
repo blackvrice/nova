@@ -1,0 +1,15 @@
+{
+  "status": "Draft",
+  "implementation_verified": false,
+  "case_id": "T010",
+  "stage": "A",
+  "phase": "runtime",
+  "decisions": [
+    "D07"
+  ],
+  "outcome": "runtime",
+  "diagnostic_code": null,
+  "primary": null,
+  "stdout": null,
+  "exit_class": "abort"
+}

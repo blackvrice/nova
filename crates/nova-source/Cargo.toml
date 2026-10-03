@@ -1,0 +1,8 @@
+[package]
+name = "nova-source"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+nova-core-ids.workspace = true

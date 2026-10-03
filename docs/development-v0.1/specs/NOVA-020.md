@@ -1,0 +1,23 @@
+# NOVA-020 — Module·Import 사양서
+
+| 항목 | 값 |
+|---|---|
+| 대상 | Nova 0.1 |
+| 작성일 | 2026-10-03 |
+| 문서 상태 | Draft — 기존 결정은 유지, 추가 상세는 승인 대기 |
+| 적용 Stage | B~E |
+| 근거 | [원본 NOVA-020](../../02_Names_Modules/NOVA-020_Module_Import_사양서.md) |
+
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+
+## Module 구조
+원본 기준은 파일 경로에서 module 경로 결정, 순환 참조 허용, 순환 초기화 금지다. package source root, segment normalization, import grammar는 D01/D06 초안이다.
+
+## 제안 계약
+src/a/b.nova → package::a::b, src/main.nova는 binary root. use path [as alias]를 제안하고 wildcard는 첫 승인안에서 제외한다. 동일 경로 대소문자 충돌은 Windows/Linux 공통에서 오류로 제안한다. public use의 재export는 visibility보다 넓어질 수 없다.
+
+## Graph 처리
+모든 파일의 선언을 먼저 수집하고 SCC 단위로 이름을 확정한다. top-level runtime initializer는 첫 승인안에서 금지하며 const dependency cycle은 NOVA-032 오류다.
+
+## 검증
+mutual function call pass, 순환 const fail, 경로 충돌 fail, alias와 reexport access 검사. Stage A는 단일 파일이며 module feature를 흉내 내지 않는다.

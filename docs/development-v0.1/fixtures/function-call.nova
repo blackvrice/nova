@@ -1,0 +1,6 @@
+func twice(value: int) -> int {
+    return value + value
+}
+func main() {
+    let answer = twice(21)
+}

@@ -1,0 +1,8 @@
+[package]
+name = "nova-diagnostics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+nova-source.workspace = true

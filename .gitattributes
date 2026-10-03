@@ -1,0 +1,4 @@
+* text=auto eol=lf
+# Documentation manifest hashes refer to exact file bytes.
+docs/** -text
+docs/docs_manifest.csv whitespace=cr-at-eol

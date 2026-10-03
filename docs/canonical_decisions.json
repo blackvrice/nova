@@ -1,0 +1,26 @@
+{
+  "language": "Nova",
+  "version": "0.1",
+  "implementation_language": "Rust",
+  "backend": "LLVM adapter",
+  "source_extension": ".nova",
+  "manifest": "nova.toml",
+  "lock_file": "nova.lock",
+  "foreign_keyword": "foreign",
+  "encoding": "UTF-8",
+  "statement_termination": "optional semicolon and normalized END token",
+  "ownership": [
+    "Read",
+    "change",
+    "take"
+  ],
+  "nullable": "T? = Option<T>",
+  "unit": "void/omitted return = Unit, value = ()",
+  "panic_strategy": "abort",
+  "generic_strategy": "monomorphization",
+  "interface_dispatch": "static",
+  "class_inheritance": false,
+  "partial_moves": false,
+  "dynamic_interface_objects": false,
+  "explicit_generic_call_arguments": false
+}

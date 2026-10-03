@@ -1,0 +1,123 @@
+(* Nova 0.1 grammar proposal. Status: Draft; D01-D17 approval required.
+   Input: normalized tokens; lexical spellings are defined in LEXICAL.md.
+   Uppercase quoted strings denote token kinds, not source spellings.
+   This is a parser grammar, not a lexer grammar. *)
+
+program = { "END" | item }, "EOF" ;
+item = { attribute }, [ visibility ], item_body ;
+item_body = function_decl | struct_decl | class_decl | enum_decl
+          | interface_decl | foreign_decl | import_decl | const_decl | alias_decl ;
+visibility = "public" | "internal" | "private" ;
+attribute = "@", "IDENT", "(", [ argument_list ], ")", { "END" } ;
+
+function_decl = [ "pure" ], [ "static" ], "func", "IDENT",
+                [ generic_parameters ], "(", [ parameters ], ")",
+                [ "->", type ], [ where_clause ], block ;
+function_signature = [ "pure" ], [ "static" ], "func", "IDENT",
+                     [ generic_parameters ], "(", [ parameters ], ")",
+                     [ "->", type ], [ where_clause ], end ;
+parameters = parameter, { ",", parameter }, [ "," ] ;
+parameter = receiver | [ mode ], "IDENT", ":", type, [ "=", expression ] ;
+receiver = [ mode ], "self" ;
+mode = "change" | "take" ;
+generic_parameters = "<", "IDENT", { ",", "IDENT" }, [ "," ], ">" ;
+where_clause = "where", constraint, { ",", constraint } ;
+constraint = type, "implements", type, { "+", type } ;
+
+struct_decl = "struct", "IDENT", [ generic_parameters ],
+              [ implements_clause ], "{", { "END" | member }, "}" ;
+class_decl = "class", "IDENT", [ generic_parameters ],
+             [ implements_clause ], "{", { "END" | member }, "}" ;
+implements_clause = "implements", type, { ",", type } ;
+member = { attribute }, [ visibility ], member_body ;
+member_body = field_decl | function_decl | constructor | destructor | const_decl ;
+field_decl = ( "let" | "var" ), "IDENT", ":", type,
+             [ "=", expression ], end ;
+constructor = "init", "(", [ parameters ], ")", block ;
+destructor = "drop", block ;
+enum_decl = "enum", "IDENT", [ generic_parameters ],
+            [ implements_clause ], "{", { "END" | variant }, "}" ;
+variant = "IDENT", [ "(", type_list, ")" ], variant_end ;
+variant_end = "," | end ;
+interface_decl = "interface", "IDENT", [ generic_parameters ],
+                 "{", { "END" | function_signature }, "}" ;
+
+import_decl = "use", qualified_name, [ "as", "IDENT" ], end ;
+alias_decl = "type", "IDENT", [ generic_parameters ], "=", type, end ;
+const_decl = "const", "IDENT", [ ":", type ], "=", expression, end ;
+foreign_decl = "foreign", "c", "IDENT", "{", { "END" | foreign_member }, "}" ;
+foreign_member = library_decl | foreign_function ;
+library_decl = "library", "STRING", end ;
+foreign_function = { attribute }, function_signature ;
+
+block = "{", { "END" | statement }, "}" ;
+statement = simple_statement | compound_statement ;
+simple_statement = ( binding | assignment | expression | return_stmt
+                   | break_stmt | continue_stmt | using_stmt ), end ;
+binding = ( "let" | "var" | "const" ), "IDENT", [ ":", type ],
+          [ "=", expression ] ;
+assignment = expression, "=", expression ;
+return_stmt = "return", [ expression ] ;
+break_stmt = "break" ;
+continue_stmt = "continue" ;
+using_stmt = "using", "let", "IDENT", [ ":", type ], "=", expression ;
+compound_statement = if_stmt | while_stmt | for_stmt | loop_stmt
+                   | match_stmt | unsafe_stmt ;
+if_stmt = "if", expression, block, [ "else", ( if_stmt | block ) ] ;
+while_stmt = "while", expression, block ;
+for_stmt = "for", pattern, "in", expression, block ;
+loop_stmt = "loop", block ;
+unsafe_stmt = "unsafe", block ;
+match_stmt = "match", [ mode ], expression, "{", { "END" | match_arm }, "}" ;
+match_arm = pattern, [ "if", expression ], "=>", block, [ "," ] ;
+pattern = "_" | "IDENT" | literal | tuple_pattern | variant_pattern ;
+tuple_pattern = "(", pattern, ",", [ pattern, { ",", pattern }, [ "," ] ], ")" ;
+variant_pattern = qualified_name, [ "(", pattern_list, ")" ] ;
+pattern_list = pattern, { ",", pattern }, [ "," ] ;
+
+expression = range_expr ;
+range_expr = or_expr, [ ( "until" | "through" ), or_expr ] ;
+or_expr = and_expr, { "||", and_expr } ;
+and_expr = compare_expr, { "&&", compare_expr } ;
+compare_expr = add_expr, [ compare_op, add_expr ] ;
+compare_op = "==" | "!=" | "<" | "<=" | ">" | ">=" ;
+add_expr = mul_expr, { ( "+" | "-" ), mul_expr } ;
+mul_expr = prefix_expr, { ( "*" | "/" | "%" ), prefix_expr } ;
+prefix_expr = ( "!" | "-" | "+" | "try" | "change" | "take" ), prefix_expr
+            | postfix_expr ;
+postfix_expr = primary_expr, { postfix } ;
+postfix = "(", [ argument_list ], ")" | ".", ( "IDENT" | "INT" )
+        | "[", expression, "]" | "as", type | "exists" ;
+argument_list = argument, { ",", argument }, [ "," ] ;
+argument = [ "IDENT", ":" ], expression ;
+primary_expr = literal | qualified_name | "self" | unit_expr
+             | grouped_expr | tuple_expr | array_expr | lambda_expr | interpolated_string ;
+literal = "INT" | "FLOAT" | "STRING" | "CHAR" | "true" | "false" | "none" ;
+unit_expr = "(", ")" ;
+grouped_expr = "(", expression, ")" ;
+tuple_expr = "(", expression, ",", [ expression, { ",", expression }, [ "," ] ], ")" ;
+array_expr = "[", [ expression_list ], "]" ;
+expression_list = expression, { ",", expression }, [ "," ] ;
+lambda_expr = "lambda", [ capture_list ], "(", [ lambda_parameters ], ")",
+              "=>", ( expression | block ) ;
+capture_list = "[", capture, { ",", capture }, [ "," ], "]" ;
+capture = [ mode ], "IDENT" ;
+lambda_parameters = lambda_parameter, { ",", lambda_parameter }, [ "," ] ;
+lambda_parameter = [ mode ], "IDENT", [ ":", type ] ;
+interpolated_string = "STRING_START", { "STRING_TEXT" | interpolation }, "STRING_END" ;
+interpolation = "INTERP_START", expression, "INTERP_END" ;
+
+type = [ ownership_wrapper ], type_atom, [ "?" ] ;
+ownership_wrapper = "shared" | "weak" | "view" ;
+type_atom = named_type | tuple_type | function_type | pointer_type ;
+named_type = qualified_name, [ type_arguments ] ;
+qualified_name = "IDENT", { "::", "IDENT" } ;
+type_arguments = "<", type_list, ">" ;
+type_list = type, { ",", type }, [ "," ] ;
+tuple_type = "(", [ type, ",", [ type_list ] ], ")" ;
+function_type = "func", "(", [ mode_type_list ], ")", "->", type ;
+mode_type_list = [ mode ], type, { ",", [ mode ], type }, [ "," ] ;
+pointer_type = "*", [ "change" ], type ;
+
+end = "END" | boundary ;
+boundary = ? zero-width only immediately before closing brace or EOF ? ;

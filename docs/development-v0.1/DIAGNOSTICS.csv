@@ -1,0 +1,42 @@
+code,category,trigger,primary,secondary,stage
+N1001,syntax,invalid character,character,source context,A
+N1002,syntax,malformed literal/escape,literal or escape,opening delimiter,A
+N1003,syntax,unterminated string/comment,opening token,EOF,A
+N1101,syntax,expected token,unexpected/zero-width location,opening delimiter,A
+N1102,syntax,unsupported syntax/feature,feature construct,scope/version note,A~E
+N1103,syntax,chained comparison/range,second operator,first operator,A~B
+N2001,name,undefined name,reference,nearby definition if useful,A
+N2002,name,duplicate definition,later definition,earlier definition,A~E
+N2003,name,ambiguous name,reference,all candidates,B~E
+N2004,name,inaccessible definition,use,private declaration,B~E
+N2101,type,type mismatch,expression,expected type source,A~E
+N2102,type,literal out of range,literal/prefix,expected type source,A~B
+N2103,type,unresolved inference,call/expression,generic parameter,B~D
+N2201,call,argument arity/label/mode,argument/call,parameter,A~D
+N2202,call,ambiguous overload,call,candidates,B~D
+N2301,interface,missing/incompatible impl,impl or call,constraint/method,D
+N2302,generic,specialization growth/overlap,instantiation,chain/other impl,D
+N3001,control,non-bool condition,condition,bool requirement,A~B
+N3002,control,invalid jump/return,jump,function/loop boundary,A~B
+N3003,control,missing return,fallthrough/closing block,return signature,A~B
+N3101,match,incomplete match,match,missing constructor note,B
+N3102,match,unreachable arm,arm,covering arm,B
+N3201,const,const evaluation failure,failing operation,const declaration,B
+N3202,const,const cycle/budget,reference,dependency chain,B
+N4101,ownership,use after move,use,move origin,C
+N4102,ownership,read before initialization,use,declaration/branch,C
+N4103,ownership,unsupported partial move,field take,aggregate owner,C
+N4201,borrow,conflicting loan/access,conflicting access,loan origin/last use,C
+N4202,lifetime,view escapes owner,return/store,owner/drop point,C
+N4301,drop,invalid Drop/constructor state,exit or destructor,uninitialized field,C
+N5101,ffi,ABI unsafe declaration,type or foreign function,ABI contract,E
+N5102,ffi,unsafe capability required,raw operation,wrapper contract,E
+N5201,runtime,runtime panic,operation source,panic cause,A~E
+N8001,source-input,source read/encoding error,path/byte offset event,I/O cause,A
+N8101,package,invalid manifest/lock,field/key,conflict/source,E
+N8102,package,dependency conflict/checksum,dependency/source,resolution chain,E
+N8201,toolchain,toolchain/link failure,tool/Target event,stderr/cause,A~E
+N8301,tooling,lint/config error,source/config,rule origin,E
+N8901,resource,resource budget exceeded,construct,budget/chain,A~E
+N9001,ICE,compiler invariant failure,SourceInfo if valid,query/reproduction,A~E
+N9002,ICE,LLVM verify failure,CodegenUnit SourceInfo,IR/reproduction,A~E

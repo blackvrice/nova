@@ -1,0 +1,3 @@
+func main() {
+    let bad: int8 = 128
+}

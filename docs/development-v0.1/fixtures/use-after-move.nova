@@ -1,0 +1,5 @@
+func main() {
+    let message = "owned"
+    let moved = message
+    print(message)
+}

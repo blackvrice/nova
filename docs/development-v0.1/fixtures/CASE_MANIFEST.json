@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "status": "Draft",
+  "fixtures": [
+    {
+      "name": "hello",
+      "source": "hello.nova",
+      "expectation": "hello.json",
+      "case_id": "T013"
+    },
+    {
+      "name": "function-call",
+      "source": "function-call.nova",
+      "expectation": "function-call.json",
+      "case_id": "T014"
+    },
+    {
+      "name": "semicolon-newline",
+      "source": "semicolon-newline.nova",
+      "expectation": "semicolon-newline.json",
+      "case_id": "T006"
+    },
+    {
+      "name": "operator-continuation",
+      "source": "operator-continuation.nova",
+      "expectation": "operator-continuation.json",
+      "case_id": "T006"
+    },
+    {
+      "name": "nested-comment",
+      "source": "nested-comment.nova",
+      "expectation": "nested-comment.json",
+      "case_id": "T005"
+    },
+    {
+      "name": "non-bool-if",
+      "source": "non-bool-if.nova",
+      "expectation": "non-bool-if.json",
+      "case_id": "T012"
+    },
+    {
+      "name": "undefined-name",
+      "source": "undefined-name.nova",
+      "expectation": "undefined-name.json",
+      "case_id": "T011"
+    },
+    {
+      "name": "type-mismatch",
+      "source": "type-mismatch.nova",
+      "expectation": "type-mismatch.json",
+      "case_id": "T008"
+    },
+    {
+      "name": "chained-compare",
+      "source": "chained-compare.nova",
+      "expectation": "chained-compare.json",
+      "case_id": "T007"
+    },
+    {
+      "name": "bad-literal",
+      "source": "bad-literal.nova",
+      "expectation": "bad-literal.json",
+      "case_id": "T003"
+    },
+    {
+      "name": "missing-return",
+      "source": "missing-return.nova",
+      "expectation": "missing-return.json",
+      "case_id": "T012"
+    },
+    {
+      "name": "literal-range",
+      "source": "literal-range.nova",
+      "expectation": "literal-range.json",
+      "case_id": "T008"
+    },
+    {
+      "name": "narrow-float",
+      "source": "narrow-float.nova",
+      "expectation": "narrow-float.json",
+      "case_id": "T009"
+    },
+    {
+      "name": "const-divzero",
+      "source": "const-divzero.nova",
+      "expectation": "const-divzero.json",
+      "case_id": "T018"
+    },
+    {
+      "name": "explicit-generic-call",
+      "source": "explicit-generic-call.nova",
+      "expectation": "explicit-generic-call.json",
+      "case_id": "T023"
+    },
+    {
+      "name": "use-after-move",
+      "source": "use-after-move.nova",
+      "expectation": "use-after-move.json",
+      "case_id": "T020"
+    },
+    {
+      "name": "range-max",
+      "source": "range-max.nova",
+      "expectation": "range-max.json",
+      "case_id": "T012"
+    },
+    {
+      "name": "short-circuit",
+      "source": "short-circuit.nova",
+      "expectation": "short-circuit.json",
+      "case_id": "T012"
+    },
+    {
+      "name": "unicode-column",
+      "source": "unicode-column.nova",
+      "expectation": "unicode-column.json",
+      "case_id": "T035"
+    },
+    {
+      "name": "overflow-abort",
+      "source": "overflow-abort.nova",
+      "expectation": "overflow-abort.json",
+      "case_id": "T010"
+    }
+  ]
+}

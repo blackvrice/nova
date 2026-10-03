@@ -1,0 +1,4 @@
+func main() {
+    let 이름 = "🙂"
+    print(없는이름)
+}

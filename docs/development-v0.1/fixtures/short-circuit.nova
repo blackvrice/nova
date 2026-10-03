@@ -1,0 +1,7 @@
+func fail() -> bool {
+    panic("must not execute")
+}
+func main() {
+    if false && fail() { print("bad") }
+    print("ok")
+}

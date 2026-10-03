@@ -1,0 +1,18 @@
+{
+  "status": "Draft",
+  "implementation_verified": false,
+  "case_id": "T003",
+  "stage": "A",
+  "phase": "lex",
+  "decisions": [
+    "D04"
+  ],
+  "outcome": "compile-fail",
+  "diagnostic_code": "N1002",
+  "primary": {
+    "start": 28,
+    "end": 32
+  },
+  "stdout": null,
+  "exit_class": "compiler-user-error"
+}

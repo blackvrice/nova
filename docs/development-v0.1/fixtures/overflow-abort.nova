@@ -1,0 +1,2 @@
+func add(value: int) -> int { return value + 1 }
+func main() { let result = add(2147483647) }

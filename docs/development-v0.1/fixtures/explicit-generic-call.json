@@ -1,0 +1,18 @@
+{
+  "status": "Draft",
+  "implementation_verified": false,
+  "case_id": "T023",
+  "stage": "D",
+  "phase": "parse",
+  "decisions": [
+    "D15"
+  ],
+  "outcome": "compile-fail",
+  "diagnostic_code": "N1102",
+  "primary": {
+    "start": 75,
+    "end": 88
+  },
+  "stdout": null,
+  "exit_class": "compiler-user-error"
+}

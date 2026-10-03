@@ -1,0 +1,18 @@
+{
+  "status": "Draft",
+  "implementation_verified": false,
+  "case_id": "T012",
+  "stage": "A",
+  "phase": "control",
+  "decisions": [
+    "D08"
+  ],
+  "outcome": "compile-fail",
+  "diagnostic_code": "N3003",
+  "primary": {
+    "start": 47,
+    "end": 48
+  },
+  "stdout": null,
+  "exit_class": "compiler-user-error"
+}

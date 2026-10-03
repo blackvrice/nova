@@ -1,0 +1,18 @@
+{
+  "status": "Draft",
+  "implementation_verified": false,
+  "case_id": "T008",
+  "stage": "A",
+  "phase": "typecheck",
+  "decisions": [
+    "D07"
+  ],
+  "outcome": "compile-fail",
+  "diagnostic_code": "N2101",
+  "primary": {
+    "start": 35,
+    "end": 42
+  },
+  "stdout": null,
+  "exit_class": "compiler-user-error"
+}

@@ -1,0 +1,4 @@
+func main() {
+    let value: int32 = 1
+    let narrowed: float = value
+}

@@ -1,0 +1,76 @@
+# Nova 0.1 수용 테스트 계획
+
+상태 Draft. 아래 60개 T번호는 수용 사례 묶음이며 각각 하나의 테스트만을 뜻하지 않는다. **현재 실행 통과 결과가 아니다.**
+
+예제 파일은 fixtures/의 설계 사례이며 README/CASE_MANIFEST.json에서 기대 phase와 decision을 표시한다. negative test는 syntax 오류로 desired type/move phase에 못 도달하면 실패다.
+
+| ID | Stage | NOVA | 결정 | 검사 계층 | 기대 계약 |
+|---|---|---|---|---|---|
+| T001 | A~E | 004/009/072 | D01 | keyword/namespace | func/foreign/interface 유지; use 분류와 primitive 이름 표 일치 |
+| T002 | A | 008/070 | D02 | source unit | 한글/emoji/CRLF/BOM/invalid bytes/EOF 위치 정확 |
+| T003 | A | 010/071 | D04 | lexer | 0x/underscore/decimal float 정상; 0x/1__2/1e+ 실패 |
+| T004 | A~B | 011/071 | D04 | lexer snapshot | brace escaping, nested interpolation mode, EOF opening Span |
+| T005 | A | 012/071 | D04 | lexer | 중첩 comment 정상, 미닫힘 오류, newline event 보존 |
+| T006 | A | 013/072 | D05 | parser snapshot | return newline, else 연결, operator/call continuation, EOF boundary |
+| T007 | A | 014/015 | D03 | parser | 1+2*3=7 AST; comparison chain/assignment expr 거부 |
+| T008 | A~B | 025/026 | D07 | type/runtime | literal 기본/기대 타입, 모든 int width MIN/MAX 및 범위±1 |
+| T009 | B | 025/037 | D07 | type fail | int32→float32 implicit 거부; int32→float64 수용 |
+| T010 | A~B | 026/101 | D07 | runtime | overflow/div0/MIN/-1 Abort; debug/release 동일 |
+| T011 | A~B | 019~024 | D06 | resolve | forward 함수 수용/local 거부, duplicate/shadow/import permutation |
+| T012 | A~B | 043~050 | D08 | control/runtime | bool-only if, short circuit, loop cleanup, MAX through MAX 종료 |
+| T013 | A | 040/099 | D19 | entry/E2E | Unit main/Hello stdout; missing/duplicate/generic main 거부 |
+| T014 | B | 035~037 | D11 | call/runtime | named args 소스 순서, default 마지막 평가, Pareto 동률 오류 |
+| T015 | B | 021/031 | D06 | visibility fail | private public signature 노출, 외부 private member 접근 거부 |
+| T016 | B~D | 027/029/031 | D12 | aggregate | tuple/Array, enum payload, direct recursive layout 거부 |
+| T017 | B | 028/049 | D08 | Result/runtime | Success/Some 정상, none inference/E mismatch 실패, try cleanup |
+| T018 | B | 032/087 | D09 | const | const arithmetic 정상; divide0/cycle/budget/I/O 거부 |
+| T019 | C | 052/084 | D10 | init dataflow | branch/loop maybe-state 거부, all-path reinit 수용 |
+| T020 | C | 051/053 | D10 | move fail | take 뒤 사용 거부; whole move 허용/field partial move 거부 |
+| T021 | C | 054/085 | D10 | borrow fail | live read/change conflict, NLL 마지막 사용 뒤 mutation 수용 |
+| T022 | C | 055/056/086 | D10 | Drop runtime | return/break/continue/try/replace/partial-init 정확한 역순 Drop |
+| T023 | D | 061~065 | D15 | generic/interface | constraint/receiver/coherence 오류; inference/mono dedup 정상 |
+| T024 | D | 038/039 | D13 | closure | borrowed closure escape 거부, owned closure Drop/once-call |
+| T025 | C~E | 057/102 | D20 | Shared runtime | strong0 payload Drop, weak final free, upgrade race |
+| T026 | E | 105~110 | D17 | C integration | import/export/opaque/callback roundtrip; null/length/exception |
+| T027 | A~E | 033/042/094~097 | D16 | layout/ABI | size/align/offset/sign-ext/return ABI 각 Target golden |
+| T028 | A~E | 100/101 | D18 | fault runtime | OOM injection/recursive panic; cleanup 없이 Abort |
+| T029 | C~E | 060/103/124 | D20 | thread | Send/Share predicate/guard cleanup/atomic order 검증 |
+| T030 | B~D | 041 | D14 | effect fail | pure에서 print 금지/noPanic unchecked operation 금지 후보 |
+| T031 | E | 126~130 | D21 | package | locked/offline/checksum/conflict/cache corruption/atomic write |
+| T032 | A~E | 125 | D22 | CLI | exit categories/check no object/run child argv/stream/clean 경계 |
+| T033 | A~E | 114~124 | D23 | std | API별 mode/error/cost; print UTF-8+newline; Array/List 역할 |
+| T034 | E | 018/131/133/134 | D24 | tooling | formatter idempotence/END 의미/LSP UTF16/stale docs/HTML escape |
+| T035 | A~E | 078/138 | D25 | diagnostic | code/byteSpan/secondary/JSON/control escaping/exact fail phase |
+| T036 | A~E | 090/128 | D26 | optimization | O0/O2 stdout/exit/Drop/order 동일; fast math 기본 off |
+| T037 | 후속 | 111~113 | D27 | scope | hosted adapter를 지원으로 광고/자동 생성하지 않음 |
+| T038 | A~E | 093/146 | D28 | toolchain | clean Windows/Linux build/link/run; AArch64 지원상태 구분 |
+| T039 | 전 Stage | 007/147 | D29 | compatibility | old/new compiler accepted corpus/schema/ABI migration |
+| T040 | 전 Stage | 017/065/141 | D30 | limits/fuzz | depth/count/budget 초과 user 진단; hang/ICE 구분 |
+| T041 | C | 118 | D10 | view | splitAt(0/len)/child nonoverlap/parent suspended/owner lifetime |
+| T042 | E | 116 | D23 | UTF8 API | bytes/scalar/grapheme 차이, boundary slicing/invalid UTF8 |
+| T043 | B~E | 115 | D07 | numeric API | wrapping/checked operation, parse overflow/NaN/-0 formatting |
+| T044 | 전 Stage | 070/078 | D25 | unit | unknown FileId/invalid UTF8 boundary panic 없음/EOF label |
+| T045 | 전 Stage | 079/130 | D21 | incremental | source/export/runtime/options/Target invalidation와 disable 동등 |
+| T046 | A~E | 081~083/092 | D26 | MIR | malformed CFG/type/Call/Drop ICE; dump serial/parallel stable |
+| T047 | B~C | 047/048/088 | D08 | pattern | exhaustive enum/bool/nested tuple; guard/wildcard reachability |
+| T048 | C | 031/052/086 | D10 | constructor | 누락/2회 let init/self escape 거부, partial init cleanup |
+| T049 | E | 122/104 | D23 | I/O | partial read/write/EOF/permission/close/Unicode path |
+| T050 | E | 123 | D23 | system | clock adjustment, seeded RNG, OS entropy failure, env missing/empty |
+| T051 | 전 Stage | 142 | D26 | property | format roundtrip/token reconstruction/O0 O2 observable equality |
+| T052 | 전 Stage | 143 | D26 | benchmark | cold/warm median/RSS/toolchain/hardware 기록 후 threshold |
+| T053 | C~E | 144/145 | D17 | safety | sanitizer/memory/FFI callback/provenance/alignment negative corpus |
+| T054 | 전 Stage | 080/136/141 | D30 | regression | crash/hang/wrong accept 최소 재현 저장 |
+| T055 | E | 134 | D24 | docs | public modes/effects 표시/private filtering/invalid example report |
+| T056 | E | 132 | D25 | lint | allow/warn/deny suppression, unsafe auto fix 거부 |
+| T057 | 후속 | 003/059/066/067/135/148 | D27 | non-goals | inheritance/dynamic/associated/pin/registry/self-host 명시 제외 |
+| T058 | E | 129/145 | D21 | untrusted data | metadata bounds/schema/path traversal/cache forgery 거부 |
+| T059 | E | 146 | D28 | release | checksums/install/uninstall/clean machine/known blockers 확인 |
+| T060 | 전 Stage | 001/005/006 | D29 | governance | 문서 ID/결정/근거/Stage/fixture 연결, 승인 없이 의미 적용 없음 |
+
+## Harness 계약
+
+Pass: phase/exit0/no errors. Fail: expected code+byte Span+secondary 및 exit1. Toolchain exit3은 fail fixture pass로 인정하지 않는다. Runtime: stdout/stderr/exit class/Drop order/timeout 별도. Target-dependent ABI는 target별 golden.
+
+## 확대 규칙
+
+각 topic 본문의 검증 항목을 해당 T묶음의 fixture로 세분화한다. Stage gate 전에 grammar production별 정상/오류 사례, 각 std API의 정상/오류/ownership 사례, 각 진단 trigger의 primary/secondary를 모두 추가한다. 생성 숫자 boundary corpus는 width별 MIN/MAX/±1을 포함한다. soundness proof나 전체 테스트 구현 완료로 표시하지 않는다.

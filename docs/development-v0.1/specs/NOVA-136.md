@@ -1,0 +1,23 @@
+# NOVA-136 — Compiler 테스트 전략서
+
+| 항목 | 값 |
+|---|---|
+| 대상 | Nova 0.1 |
+| 작성일 | 2026-10-03 |
+| 문서 상태 | Draft — 기존 결정은 유지, 추가 상세는 승인 대기 |
+| 적용 Stage | 전 Stage |
+| 근거 | [원본 NOVA-136](../../13_Testing_Release/NOVA-136_Compiler_테스트_전략서.md) |
+
+이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. [전체 색인](../INDEX.md).
+
+## 테스트 계층
+Unit → Lexer/Parser/HIR/MIR Snapshot → Compile-pass/fail → Runtime integration → E2E → Fuzz → Benchmark → Compatibility. 비용이 높은 계층은 해당 Stage에서 추가한다.
+
+## traceability
+CONFORMANCE의 T번호는 NOVA/D번호/Stage/fixture/기대 outcome를 연결한다. fail은 code+primary byte Span+필요 secondary를 확인하고 단순 nonzero exit만으로 통과시키지 않는다.
+
+## 회귀
+crash/잘못된 정상 허용/오진은 최소 재현을 추가한다. baseline을 바꾸기 전 implementation/spec/test/environment 원인을 분류한다.
+
+## 검증
+병렬 fixture 격리, Target annotation, timeout, stdout/stderr 구별, 실제 실행 command log. draft fixture는 current compiler pass 결과라는 뜻이 아니다.

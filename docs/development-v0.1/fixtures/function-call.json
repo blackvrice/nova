@@ -1,0 +1,16 @@
+{
+  "status": "Draft",
+  "implementation_verified": false,
+  "case_id": "T014",
+  "stage": "A",
+  "phase": "check",
+  "decisions": [
+    "D07",
+    "D11"
+  ],
+  "outcome": "compile-pass",
+  "diagnostic_code": null,
+  "primary": null,
+  "stdout": null,
+  "exit_class": "success"
+}
