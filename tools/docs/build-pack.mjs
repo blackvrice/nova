@@ -141,7 +141,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P08', approval_date: '2026-10-04', scope: 'Stage B Unicode scalar char literals type comparison const UTF-8 interpolation and private scalar ABI', document: 'CHAR_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_CHAR.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P09', approval_date: '2026-10-04', scope: 'Stage B binary32 binary64 contextual real literals lossless numeric promotion IEEE arithmetic canonical NaN const interpolation and private ABI', document: 'FLOAT_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_FLOAT.ebnf', grammar_change: true, implementation_verified: true },
   ],
-  draft_proposals: [],
+  draft_proposals: [
+    { id: 'P10', status: 'Draft', scope: 'Stage B explicit checked numeric postfix casts integer ranges float rounding truncation const and private Native failure behavior', document: 'CAST_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_CAST.ebnf', grammar_change: true, implementation_verified: false },
+  ],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);

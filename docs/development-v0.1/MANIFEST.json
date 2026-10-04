@@ -80,7 +80,17 @@
       "implementation_verified": true
     }
   ],
-  "draft_proposals": [],
+  "draft_proposals": [
+    {
+      "id": "P10",
+      "status": "Draft",
+      "scope": "Stage B explicit checked numeric postfix casts integer ranges float rounding truncation const and private Native failure behavior",
+      "document": "CAST_STAGE_B_PROPOSAL.md",
+      "grammar": "GRAMMAR_STAGE_B_CAST.ebnf",
+      "grammar_change": true,
+      "implementation_verified": false
+    }
+  ],
   "authored_date": "2026-10-03",
   "topics": [
     {

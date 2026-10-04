@@ -58,6 +58,10 @@ P06의 primary에 기존 CHAR terminal만 추가한 31-production grammar이며 
 P09은 사용자 승인 [float 계약](FLOAT_STAGE_B_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf)를 따른다.
 P08 primary에 기존 FLOAT terminal만 추가한 31-production subset이다. Lexer/END를 보존한다.
 
+P10 검토안은 [숫자 cast 계약](CAST_STAGE_B_PROPOSAL.md)과 [별도 Draft EBNF](GRAMMAR_STAGE_B_CAST.ebnf)다.
+P09 postfix에 `as type`만 추가한 31-production 제안이다. prefix보다 강하고 call과 source order로 결합한다.
+아직 승인되지 않았으므로 Parser/accepted grammar에는 적용하지 않는다.
+
 nonterminal 검사 통과는 grammar 무모호성 증명이나 실제 parser 테스트 통과가 아니다.
 문법 변경 시 Parser AST, formatter, fixtures, token 목록, 결정 기록을 함께 갱신한다.
 reserved candidate async/await/yield 등은 D01에 따른 diagnostic classification이며

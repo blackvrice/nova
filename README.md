@@ -95,7 +95,9 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 11. [P09 float·IEEE 결과·숫자 승격·보간](docs/development-v0.1/FLOAT_STAGE_B_PROPOSAL.md)과
     [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_FLOAT.ebnf) 구현 완료:
     [구현·검증 기록](docs/development-v0.1/FLOAT_IMPLEMENTATION.md), [예제](examples/floats.nova).
-12. 후속 source cast·float remainder·aggregate/module 상세와 Linux Native host 검증.
+12. 다음 검토 대상: [P10 명시적 숫자 cast](docs/development-v0.1/CAST_STAGE_B_PROPOSAL.md)와
+    [검토용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_CAST.ebnf). Draft/승인 대기이며 Compiler에는 미적용입니다.
+13. 후속 float remainder·aggregate/module 상세와 Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.

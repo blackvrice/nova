@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-05 — P10 명시적 숫자 cast 착수안 (Draft)
+
+- P07/P09 다음 최소 범위로 [숫자 as 계약](CAST_STAGE_B_PROPOSAL.md)을 작성.
+- postfix/prefix 우선순위·literal 문맥 격리·정수 범위·RN float 변환·truncation 후 정수 범위·finite narrowing 실패 제안.
+- const N3201/node budget·MIR CheckedCast·Runtime Abort reason 4/SourceInfo와 독립 oracle/Native 수용 계획 정리.
+- P09 postfix에 as type만 추가하는 [31-production 검토 EBNF](GRAMMAR_STAGE_B_CAST.ebnf), Draft ledger와 validator 검사 추가.
+- 승인 전 Compiler/accepted ledger/기존 accepted EBNF 보존. Bool/Char/unsafe cast·float remainder·전체 D07은 후속.
+
 ## 2026-10-05 — P09 float 구현
 
 - 사용자 “P09 승인하고 float 구현 진행”을 Accepted subset/전용 FLOAT primary EBNF로 기록.

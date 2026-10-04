@@ -55,6 +55,11 @@ float/cast·aggregate/module은 별도 후속 범위다.
 IEEE rounding·NaN/Infinity/±0·const·private formatter의 [구현·검증 기록](FLOAT_IMPLEMENTATION.md).
 source cast와 float remainder는 후속이다.
 
+다음 최소 범위는 [P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)와
+[검토용 31-production EBNF](GRAMMAR_STAGE_B_CAST.ebnf)다. Draft/승인 대기이며 미구현이다.
+정수 범위 검사·직접 float 반올림·float→int truncation·finite narrowing 실패·const/Runtime 경계를 제안한다.
+Bool/Char/String 변환·wrapping/saturating cast API와 전체 D07은 포함하지 않는다.
+
 ## 상태와 효력
 
 **작성 완료와 사양 승인, 구현 완료, 테스트 통과는 서로 다른 상태다.** 원본 Canonical

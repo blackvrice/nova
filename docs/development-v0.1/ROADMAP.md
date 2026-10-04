@@ -76,6 +76,12 @@ source cast·float remainder/math API·aggregate/module과 전체 D07은 별도 
 
 ## Backlog 경계
 
+다음 작업은 [P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)의 검토다.
+[검토 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)는 P09 postfix에 `as type`만 추가한다.
+정수 checked narrowing·직접 integer→float 반올림·float→int truncation 후 범위 검사,
+finite Float64→Float32 overflow 실패·const/Runtime 진단 및 Native 검증 경계를 동결한 뒤 구현한다.
+P10은 Draft/사용자 승인 대기이며 현재 Compiler와 accepted ledger는 유지한다.
+
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,
 hosted .NET/JVM/Python, self-hosting은 별도 버전/범위 검토. Stage A의 Advanced Optimization,
 borrow checker/generalized factory 등은 앞당겨 구현하지 않는다.
