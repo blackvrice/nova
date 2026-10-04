@@ -30,7 +30,8 @@ Generic/Closure 기반 std API 완성은 D에 의존한다. 특정 라이브러�
 2026-10-04 사용자 승인 [P01](PARSER_STAGE_A_PROPOSAL.md)은 구문·복구 subset에 적용한다.
 2026-10-04 사용자 승인 [P02](SEMANTICS_STAGE_A_PROPOSAL.md)에 따라 HIR lowering,
 단일 파일 이름·타입 검사와 frontend pass/fail harness를 구현했다.
-문서 검증과 compiler tests, Native 실행 완료는 구분한다. 다음은 MIR lowering/validation이다.
+원본 NOVA-081~083/091과 P02에 따른 Stage A [MIR lowering/validation](MIR_IMPLEMENTATION.md)도 구현했다.
+문서 검증과 compiler tests, Native 실행 완료는 구분한다. 다음은 Codegen Interface/LLVM Adapter다.
 Native 실행 전 arithmetic runtime, panic/print, entry/CLI/LLVM host 계약의 필요한 부분을 별도 동결한다.
 
 ## Backlog 경계

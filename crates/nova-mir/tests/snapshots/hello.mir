@@ -1,0 +1,10 @@
+nova-mir v1 (abstract-runtime)
+callee 0 Callee { definition: DefId(0), name: "print", parameters: [String], return_type: Unit, builtin_print: true }
+callee 1 Callee { definition: DefId(1), name: "main", parameters: [], return_type: Unit, builtin_print: false }
+body 1 entry 0 SourceInfo { hir: HirId(6), span: Span { file: FileId(0), start: 0, end: 36 }, origin: Source(AstNodeId(5)) }
+  local 0 Local { ty: Unit, definition: None, source: SourceInfo { hir: HirId(2), span: Span { file: FileId(0), start: 14, end: 34 }, origin: Source(AstNodeId(2)) } }
+  parameters []
+  bb0:
+    Some(Terminator { kind: Call { callee: CalleeId(0), arguments: [Constant(String("Hello, Nova"))], destination: Place(LocalId(0)), target: BlockId(1) }, source: SourceInfo { hir: HirId(2), span: Span { file: FileId(0), start: 14, end: 34 }, origin: Source(AstNodeId(2)) } })
+  bb1:
+    Some(Terminator { kind: Return(Constant(Unit)), source: SourceInfo { hir: HirId(6), span: Span { file: FileId(0), start: 0, end: 36 }, origin: Source(AstNodeId(5)) } })

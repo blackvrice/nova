@@ -27,6 +27,8 @@ Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다
 - `nova-resolve`: ScopeTree/DefId/DefinitionRegistry/ResolutionMap, 함수 forward reference와 지역 Scope.
 - `nova-types`: Stage A TypeInterner, Int32/Bool/String/Unit, internal Function 및 ErrorType.
 - `nova-typecheck`: expected type/TypeTable, Literal 범위·인수·return·Bool 조건 검사, 오류 진단.
+- `nova-mir`: 비SSA Place/Operand/Rvalue, BasicBlock CFG, source-order Call Terminator,
+  short-circuit/if/return Lowering과 타입·초기화·CFG 검증.
 
 의존 방향은 `nova-diagnostics → nova-source → nova-core-ids`입니다.
 Lexer의 의존 방향은 `nova-lexer → nova-syntax/nova-source/nova-diagnostics`입니다.
@@ -34,6 +36,7 @@ Parser의 production 의존 방향은 `nova-parser → nova-ast/nova-syntax/nova
 Lexer 연동은 Parser 테스트의 dev dependency로만 사용합니다.
 HIR은 AST/Source/Syntax에, Resolver는 HIR에, TypeChecker는 HIR/Resolver/Types에 의존합니다.
 HIR→TypeChecker, Types→LLVM 의존은 없습니다.
+MIR은 HIR/Resolve/Types/TypeCheck에 의존하고 LLVM을 포함하지 않습니다.
 Unicode 18.0.0의 XID 데이터는 고정된 unicode-ident 1.0.26을 vendor에 포함했습니다.
 Rust 1.80 이상이 필요하며 `cargo test --workspace --offline`으로 빌드할 수 있습니다.
 
@@ -70,13 +73,14 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 1. Lexer/Token/Stage A END 정규화 완료: [승인 기준](docs/development-v0.1/ACCEPTED_LEXER.md).
 2. Stage A Parser/AST 완료: [P01 승인 범위와 전용 EBNF](docs/development-v0.1/PARSER_STAGE_A_PROPOSAL.md).
 3. HIR·최소 이름/타입 검사와 frontend pass/fail harness 완료: [P02 승인 범위](docs/development-v0.1/SEMANTICS_STAGE_A_PROPOSAL.md).
-4. MIR lowering/validation, 이후 LLVM Adapter와 Hello Nova E2E. 필요한 runtime/entry/print 계약은 별도 동결.
+4. MIR lowering/validation 완료: [구현·검증 경계](docs/development-v0.1/MIR_IMPLEMENTATION.md).
+5. 최소 runtime/entry/print/host 계약 동결, Codegen Interface/LLVM Adapter와 Hello Nova E2E.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.
 전체 `GRAMMAR.ebnf`의 미래 Stage 구문은 여전히 Draft입니다.
 
-현재 MIR, CLI 및 LLVM Backend는 구현하지 않았습니다.
+현재 Stage A MIR까지 구현했습니다. CLI 및 LLVM Backend는 후속 단계입니다.
 따라서 `nova check`와 `nova run`은 아직 제공하지 않습니다. 이번 테스트는 Rust
 기반 계층의 UTF-8, 범위 오류, EOF, 혼합 줄바꿈, 대형 파일, 진단 Snapshot,
 JSON escaping 및 Suggestion 위치 검증을 다룹니다.
@@ -91,3 +95,5 @@ Parser 입력은 normalized tokens여야 하며, 잘못된 API 입력은 ParseIn
 의미 분석 API/구현 경계는 [P02 구현 계약](docs/development-v0.1/SEMANTICS_IMPLEMENTATION.md)에 있습니다.
 Stage A `print`는 `print(string) -> Unit`이며 Int32/Bool 출력은 보간 문자열을 사용합니다.
 main 존재/signature는 아직 fragment 검사에서 강제하지 않으며 Native entry 단계에서 구현합니다.
+MIR은 arithmetic과 interpolation을 abstract 연산으로 보존합니다. Runtime overflow/출력 형식/ABI는
+Native 전에 승인해야 하며 MIR 검증 성공은 Native 실행 성공을 뜻하지 않습니다.

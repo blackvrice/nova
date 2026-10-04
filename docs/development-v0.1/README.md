@@ -24,6 +24,8 @@
 현재 API와 검증 경계는 [Parser 구현 계약](PARSER_IMPLEMENTATION.md)에 기록했다.
 Stage A 의미 검사는 [사용자 승인 P02](SEMANTICS_STAGE_A_PROPOSAL.md)를 따른다.
 현재 API·검증 범위는 [의미 검사 구현 계약](SEMANTICS_IMPLEMENTATION.md)에 기록했다.
+Stage A MIR은 원본 NOVA-081~083/091과 P02 평가 순서에 따라 구현했다.
+현재 API·validator·runtime 미동결 경계는 [MIR 구현 기록](MIR_IMPLEMENTATION.md)에 있다.
 
 ## 상태와 효력
 
@@ -50,4 +52,5 @@ DECISIONS에 기록했다. 원본에 있는 '확정' 상태를 새 내용에 그
 자료구조/API/schema는 설계 계약 예시이며 실행 가능한 현재 compiler API 목록이 아니다.
 Nova 예제와 conformance fixture 역시 향후 수용 사례다. 현 compiler는 Source/Diagnostic
 기반과 Token/Lexer/END, P01 AST/Parser, P02 HIR/이름·타입 검사 및 frontend pass/fail harness를
-구현했다. MIR/CLI/Native 실행은 후속 단계다. frontend-pass는 Native 실행 성공이 아니다.
+구현했다. Stage A MIR lowering/validation도 구현했다. CLI/Native 실행은 후속 단계다.
+frontend/MIR pass는 Native 실행 성공이 아니다. Arithmetic/출력/ABI 정책은 Draft다.

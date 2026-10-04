@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-04 — Stage A MIR Lowering·검증
+
+- nova-mir 추가: non-SSA Place 기반 BasicBlock CFG와 typed operand/local/signature/source origin.
+- Call Terminator, source-order lowering, short-circuit 분기, if/return/Unit fallthrough.
+- 독립 MIR validator: ID/type/signature/source/terminator와 must-initialized CFG dataflow.
+- upstream 오류와 변조된 의미 table 성공 차단. MIR 18 tests, 총 91 Rust tests.
+- 원본 NOVA-081~083/091 및 P02 승인 평가 순서를 적용. 새 언어 의미 변경/추가 승인 없음.
+- Arithmetic/보간은 abstract 연산. Runtime/print/entry/ABI, LLVM/CLI/Native 실행은 후속.
+
 ## 2026-10-04 — P02 Stage A HIR/이름·타입 검사
 
 - 사용자 답변 “P02 승인하고 이름·타입 검사까지 진행”과 최소 의미 계약을 Accepted로 기록.

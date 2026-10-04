@@ -43,6 +43,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "nova-mir"
+version = "0.1.0"
+dependencies = [
+ "nova-hir",
+ "nova-lexer",
+ "nova-parser",
+ "nova-resolve",
+ "nova-source",
+ "nova-syntax",
+ "nova-typecheck",
+ "nova-types",
+]
+
+[[package]]
 name = "nova-parser"
 version = "0.1.0"
 dependencies = [

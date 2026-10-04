@@ -11,6 +11,7 @@ members = [
     "crates/nova-resolve",
     "crates/nova-types",
     "crates/nova-typecheck",
+    "crates/nova-mir",
 ]
 resolver = "2"
 exclude = ["vendor/unicode-ident-1.0.26"]
@@ -28,5 +29,6 @@ nova-ast = { path = "crates/nova-ast" }
 nova-hir = { path = "crates/nova-hir" }
 nova-resolve = { path = "crates/nova-resolve" }
 nova-types = { path = "crates/nova-types" }
+nova-typecheck = { path = "crates/nova-typecheck" }
 nova-diagnostics = { path = "crates/nova-diagnostics" }
 unicode-ident = { version = "=1.0.26", path = "vendor/unicode-ident-1.0.26" }
