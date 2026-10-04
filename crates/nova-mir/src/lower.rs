@@ -157,6 +157,7 @@ pub fn lower(
 enum Work {
     Statement(HirId),
     Expression(HirId),
+    Convert(HirId),
     FinishExpression(HirId),
     Binding(HirId),
     Assignment(HirId),
@@ -320,12 +321,31 @@ impl Builder<'_> {
                         _ => return Err(LoweringError::InvalidAnalysis),
                     }
                 }
+                Work::Convert(id) => {
+                    if let Some(dest) = self.checked.coercions[id.0] {
+                        let ty = self
+                            .checked
+                            .types
+                            .get(dest)
+                            .ok_or(LoweringError::InvalidAnalysis)?;
+                        let local = LocalId(self.body.locals.len());
+                        self.body.locals.push(Local {
+                            ty,
+                            definition: None,
+                            source: self.sources[id.0],
+                        });
+                        let destination = Place(local);
+                        self.assign(destination, Rvalue::Widen(self.value(id)?, ty), id)?;
+                        self.values[id.0] = Some(Operand::Place(destination));
+                    }
+                }
                 Work::Expression(id) => {
+                    work.push(Work::Convert(id));
                     let node = &self.hir.nodes()[id.0];
                     // Direct -2147483648 has a checked signed value on the prefix,
                     // while its magnitude child deliberately has no Int32 value.
-                    if let Some(value) = self.checked.integer_values[id.0] {
-                        self.values[id.0] = Some(Operand::Constant(Constant::Int32(value)));
+                    if let Some(value) = self.checked.integer_literals[id.0] {
+                        self.values[id.0] = Some(Operand::Constant(Constant::from_integer(value)));
                         continue;
                     }
                     match &node.kind {
@@ -355,6 +375,7 @@ impl Builder<'_> {
                                 };
                                 self.values[id.0] = Some(Operand::Constant(match value {
                                     ConstValue::Int32(value) => Constant::Int32(*value),
+                                    ConstValue::Integer(value) => Constant::from_integer(*value),
                                     ConstValue::Bool(value) => Constant::Bool(*value),
                                     ConstValue::String(value) => Constant::String(value.clone()),
                                     ConstValue::Unit => Constant::Unit,
@@ -457,6 +478,7 @@ impl Builder<'_> {
                     {
                         Operand::Constant(match value {
                             ConstValue::Int32(value) => Constant::Int32(*value),
+                            ConstValue::Integer(value) => Constant::from_integer(*value),
                             ConstValue::Bool(value) => Constant::Bool(*value),
                             ConstValue::String(value) => Constant::String(value.clone()),
                             ConstValue::Unit => Constant::Unit,

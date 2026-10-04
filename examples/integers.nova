@@ -1,0 +1,15 @@
+const MAX: uint64 = 18446744073709551615
+const MIN: int64 = -9223372036854775808
+
+func widen(x: int8) -> int64 {
+    return x
+}
+
+func main() {
+    let signed: int8 = -1
+    let unsigned: byte = 255
+    let mixed = signed + unsigned
+    var wide: int64 = widen(signed)
+    wide = wide + mixed
+    print("mixed={mixed}, wide={wide}, min={MIN}, max={MAX}")
+}

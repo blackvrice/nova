@@ -124,14 +124,14 @@ assert(globalConstText.includes('Accepted / 2026-10-04 사용자 승인')
   && globalConstText.includes('기존 함수 print 허용, 전역 const print만 거부'), 'Invalid P06 approval or clarification');
 assert(fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf'), 'utf8').includes('Accepted by the user on 2026-10-04'), 'Invalid P06 grammar status');
 checks.push('P06 global const 승인 subset/날짜/전용 EBNF·P02 print shadow 보존 정정');
-const integerProposal = manifest.draft_proposals?.find(p => p.id === 'P07');
-assert(integerProposal?.status === 'Draft' && integerProposal?.implementation_verified === false
+const integerProposal = manifest.accepted_proposals?.find(p => p.id === 'P07');
+assert(integerProposal?.approval_date === '2026-10-04' && integerProposal?.implementation_verified === true
   && integerProposal?.document === 'INTEGER_STAGE_B_PROPOSAL.md'
   && integerProposal?.grammar === 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf'
-  && integerProposal?.grammar_change === false, 'Missing P07 draft ledger or unchanged grammar boundary');
-assert(!manifest.accepted_proposals?.some(p => p.id === 'P07'), 'Unapproved P07 in accepted ledger');
-assert(fs.readFileSync(path.join(pack, 'INTEGER_STAGE_B_PROPOSAL.md'), 'utf8').includes('Draft / 사용자 승인 대기'), 'Invalid P07 draft status');
-checks.push('P07 integer Draft/미구현·accepted ledger 제외·P06 grammar 재사용 경계');
+  && integerProposal?.grammar_change === false, 'Missing P07 approved ledger or unchanged grammar boundary');
+assert(!manifest.draft_proposals?.some(p => p.id === 'P07'), 'Accepted P07 still in draft ledger');
+assert(fs.readFileSync(path.join(pack, 'INTEGER_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P07 approval status');
+checks.push('P07 integer 승인 subset/날짜·P06 grammar 재사용·전체 D07 Draft 경계');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

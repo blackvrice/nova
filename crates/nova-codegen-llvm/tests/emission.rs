@@ -18,6 +18,91 @@ fn unit(source: &str) -> CodegenUnit {
     assert!(!checked.has_errors(), "{:?}", checked.diagnostics);
     CodegenUnit::new(nova_mir::lower(&hir, &resolved, &checked, false).unwrap()).unwrap()
 }
+
+fn integer_corpus() -> String {
+    let mut source = include_str!("../../../examples/integers.nova").to_owned();
+    for (i, ty) in [
+        "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64",
+    ]
+    .iter()
+    .enumerate()
+    {
+        source.push_str(&format!("func calc{i}(a:{ty},b:{ty})->{ty}{{return a/b+a%b+a*b-a+b}} func compare{i}(a:{ty},b:{ty})->bool{{return a<b}}"));
+    }
+    source
+}
+
+#[test]
+fn p07_ir_selects_width_sign_extension_guards_and_formatters() {
+    let corpus = unit(&integer_corpus());
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&corpus, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&corpus, target, true).unwrap());
+        for width in [8, 16, 32, 64] {
+            for sign in ["s", "u"] {
+                for op in ["add", "sub", "mul"] {
+                    assert!(ir.text.contains(&format!(
+                        "call {{ i{width}, i1 }} @llvm.{sign}{op}.with.overflow.i{width}"
+                    )));
+                }
+                for op in ["div", "rem"] {
+                    assert!(ir.text.contains(&format!(" = {sign}{op} i{width}")));
+                }
+                assert!(ir.text.contains(&format!("icmp {sign}lt i{width}")));
+            }
+            assert!(ir.text.contains(&format!("icmp eq i{width}")));
+        }
+        assert!(ir.text.contains("sext i8") && ir.text.contains("zext i8"));
+        assert!(
+            ir.text.contains("call void @nova_format_i64")
+                && ir.text.contains("call void @nova_format_u64")
+        );
+        assert!(ir.text.contains("icmp eq i64") && ir.text.contains("-9223372036854775808"));
+        assert!(!ir.text.contains("nsw") && !ir.text.contains("nuw"));
+    }
+    let unit = unit("const X:uint64=18446744073709551615;func main(){print(\"{X}\")}");
+    assert!(emit_ir(&unit, TargetSpec::WindowsX64Msvc, true)
+        .unwrap()
+        .text
+        .contains("declare void @nova_format_u64"));
+}
+
+#[test]
+#[ignore = "requires real LLVM 21.1.8"]
+fn p07_real_llvm_verifies_all_integer_widths_for_coff_elf_o0_o2() {
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG")),
+    };
+    let unit = unit(&integer_corpus());
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-integer-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for (target, extension) in [
+        (TargetSpec::WindowsX64Msvc, "obj"),
+        (TargetSpec::LinuxX64Gnu, "o"),
+    ] {
+        for (optimization, name) in [
+            (OptimizationLevel::None, "o0"),
+            (OptimizationLevel::Default, "o2"),
+        ] {
+            let output = root.join(format!("{name}.{extension}"));
+            let options = CodegenOptions {
+                object_path: output.clone(),
+                optimization,
+                executable: true,
+            };
+            backend.codegen_unit(&unit, &target, &options).unwrap();
+            let bytes = std::fs::read(output).unwrap();
+            assert!(bytes.len() > 100);
+            if extension == "o" {
+                assert_eq!(&bytes[..4], b"\x7fELF");
+            } else {
+                assert_eq!(&bytes[..2], &[0x64, 0x86]);
+            }
+        }
+    }
+}
 #[test]
 fn deterministic_ir_has_private_calls_and_source_origins() {
     let unit = unit("func f(x:int)->int{return x+1} func main(){print(\"한글 {f(2)}\")}");

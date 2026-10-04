@@ -3,14 +3,10 @@
 상태 Draft, D07. Primitive alias 자체는 기존 Canonical이다. 아래 default/conversion/overflow는 제안이다.
 
 Stage A Int32 Literal 기본 타입·범위·직접 unary minus 처리는 사용자 승인 [P02](SEMANTICS_STAGE_A_PROPOSAL.md)를 따른다.
-그 외 widening/float/overflow/runtime 계약은 이 문서의 Draft 상태를 유지한다.
-후속 사용자 승인 [P03](NATIVE_STAGE_A_PROPOSAL.md)은 Stage A Int32 checked runtime 연산 부분에 적용한다.
-widening/float/cast/const 등 나머지는 Draft다.
-
-함수 내부/전역 const의 현재 Int32 subset은 사용자 승인 P05/P06을 따른다.
-다음 정수 확장 검토안은 [P07](INTEGER_STAGE_B_PROPOSAL.md)이다. 이 문서의 큰 숫자 모델 중
-fixed-width integer만 구체화하며 peer literal 문맥/공통 타입/변환·Runtime 상세도 제안했다.
-P07은 Draft/승인 대기이며 float/cast/전체 D07을 동결하거나 구현한 것이 아니다.
+Stage A Int32 checked runtime은 [P03](NATIVE_STAGE_A_PROPOSAL.md), 지역/전역 const는 P05/P06을 따른다.
+8종 정수·literal 문맥·whole-range widening·공통 타입·checked Runtime/const·MIR 변환·보간은
+사용자 승인 [P07](INTEGER_STAGE_B_PROPOSAL.md)이 우선한다. [현재 구현·검증 기록](INTEGER_IMPLEMENTATION.md).
+아래 큰 숫자 모델 중 float/char/cast/wrapping API와 전체 D07은 Draft다.
 
 ## 범위와 기본 타입
 

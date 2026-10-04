@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P06 Accepted / 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P07 Accepted / 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -41,8 +41,9 @@ Stage B 최소 범위는 [P04 가변 지역 변수·반복문 계약](CONTROL_ST
 [31-production 전용 EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf)는 2026-10-04 사용자 승인으로 Accepted다.
 print 충돌 정정도 사용자 승인했고 현재 API·진단·검증 증거는 [P06 구현 기록](GLOBAL_CONST_IMPLEMENTATION.md)에 있다.
 
-다음 검토 대상은 [P07 고정 폭 정수 타입·손실 없는 승격](INTEGER_STAGE_B_PROPOSAL.md)이다.
-8종 정수·literal 문맥·checked 산술·MIR 변환·보간의 Draft이며 Compiler에는 아직 적용하지 않았다.
+[P07 고정 폭 정수 타입·손실 없는 승격](INTEGER_STAGE_B_PROPOSAL.md)은 사용자 승인으로 Accepted다.
+8종 정수·literal 문맥·checked 산술·const·MIR 변환·보간의 [구현·검증 기록](INTEGER_IMPLEMENTATION.md).
+float/char/cast·aggregate/module은 별도 후속 범위다.
 Source grammar는 기존 P06 EBNF를 재사용한다.
 
 ## 상태와 효력

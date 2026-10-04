@@ -7,6 +7,248 @@ use nova_source::SourceDatabase;
 use nova_typecheck::{check, CheckError, Checked, ConstEvaluation, CONST_NODE_LIMIT};
 use nova_types::{ConstValue, Type};
 
+const INTEGER_CASES: [(&str, Type, i128, i128); 8] = [
+    ("int8", Type::Int8, -128, 127),
+    ("uint8", Type::UInt8, 0, 255),
+    ("int16", Type::Int16, -32768, 32767),
+    ("uint16", Type::UInt16, 0, 65535),
+    ("int32", Type::Int32, -2147483648, 2147483647),
+    ("uint32", Type::UInt32, 0, 4294967295),
+    (
+        "int64",
+        Type::Int64,
+        -9223372036854775808,
+        9223372036854775807,
+    ),
+    ("uint64", Type::UInt64, 0, 18446744073709551615),
+];
+
+#[test]
+fn p07_all_integer_literal_boundaries_aliases_and_exact_range_spans() {
+    for (name, ty, min, max) in INTEGER_CASES {
+        let f = pass(&format!(
+            "const MIN:{name}={min};const MAX:{name}={max};func f(x:{name})->{name}{{return x}}"
+        ));
+        let (_, resolved, checked) = f.semantic.unwrap();
+        for (constant, expected) in [("MIN", min), ("MAX", max)] {
+            let index = resolved
+                .definitions
+                .iter()
+                .position(|d| d.name == constant)
+                .unwrap();
+            let ConstEvaluation::Value { value, .. } = &checked.const_values[index] else {
+                panic!()
+            };
+            assert_eq!(value.ty(), ty);
+            assert_eq!(value.integer().unwrap().value(), expected);
+        }
+        for value in [min - 1, max + 1] {
+            let spelling = value.to_string();
+            let f = frontend(&format!("const BAD:{name}={spelling}"));
+            assert_eq!(codes(&f), ["N2102"], "{name}: {value}");
+            assert_eq!(
+                f.sources.slice(f.diagnostics()[0].primary.span).unwrap(),
+                spelling
+            );
+            assert!(!f.diagnostics()[0].secondary.is_empty());
+        }
+        if min < 0 {
+            assert_eq!(
+                codes(&frontend(&format!("const BAD:{name}=-({})", -min))),
+                ["N2102"]
+            );
+        } else {
+            assert_eq!(codes(&frontend(&format!("const BAD:{name}=-0"))), ["N2102"]);
+            assert_eq!(
+                codes(&frontend(&format!("func f(x:{name}){{let y=-x}}"))),
+                ["N2101"]
+            );
+        }
+    }
+    pass("const A:int=0x7fff_ffff;const B:uint=0xffff_ffff;const C:byte=0b1111_1111;const D:int64=-0x8000_0000_0000_0000;const E:uint64=0xffff_ffff_ffff_ffff;const F:uint16=0o177_777");
+    assert_eq!(codes(&frontend("func f(){let x=2147483648}")), ["N2102"]);
+    assert_eq!(
+        codes(&frontend(&format!("const A:uint64={}", "9".repeat(10000)))),
+        ["N2102"]
+    );
+}
+
+#[test]
+fn p07_all_typed_conversion_sites_and_binary_joins_follow_range_containment() {
+    for (source, source_ty, min, max) in INTEGER_CASES {
+        for (dest, dest_ty, dmin, dmax) in INTEGER_CASES {
+            let allowed = min >= dmin && max <= dmax;
+            for text in [
+                format!("func f(x:{source}){{let y:{dest}=x}}"),
+                format!("func f(x:{source})->{dest}{{return x}}"),
+                format!("func g(x:{dest}){{}} func f(x:{source}){{g(x)}}"),
+                format!("func f(x:{source}){{var y:{dest}=0;y=x}}"),
+                format!("const A:{source}=1;const B:{dest}=A"),
+            ] {
+                let f = frontend(&text);
+                assert_eq!(f.passed(), allowed, "{text}: {:?}", f.diagnostics());
+                if !allowed {
+                    assert_eq!(codes(&f), ["N2101"], "{text}");
+                }
+            }
+            let common = [1, 0, 3, 2, 5, 4, 7, 6]
+                .into_iter()
+                .find(|&k| {
+                    INTEGER_CASES[k].2 <= min.min(dmin) && INTEGER_CASES[k].3 >= max.max(dmax)
+                })
+                .map(|k| INTEGER_CASES[k].1);
+            for op in ["+", "<", "=="] {
+                let text = format!("func f(a:{source},b:{dest}){{let r=a{op}b}}");
+                let f = frontend(&text);
+                assert_eq!(f.passed(), common.is_some(), "{text}");
+                if let Some(common) = common {
+                    let (hir, _, checked) = f.semantic.unwrap();
+                    let id = hir
+                        .nodes()
+                        .iter()
+                        .position(|n| matches!(n.kind, HirKind::Binary(_)))
+                        .unwrap();
+                    assert_eq!(
+                        checked.types.get(checked.type_table[id]),
+                        Some(if op == "+" { common } else { Type::Bool })
+                    );
+                    for &child in &hir.nodes()[id].children {
+                        let raw = checked.types.get(checked.type_table[child.0]).unwrap();
+                        assert!(raw == source_ty || raw == dest_ty);
+                        assert_eq!(
+                            checked.types.get(
+                                checked.coercions[child.0].unwrap_or(checked.type_table[child.0])
+                            ),
+                            Some(common)
+                        );
+                    }
+                } else {
+                    assert_eq!(codes(&f), ["N2101"]);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn p07_expected_peer_literal_subtrees_keep_typed_arithmetic_width() {
+    pass(include_str!("../../../examples/integers.nova"));
+    pass("func f(x:uint64)->uint64{return (1+(2*3))+x} func g(x:uint64)->bool{return (1+2)<x} func h(x:uint64)->bool{return x==(0+1)}");
+    pass("func f(x:int8)->int64{return 2147483648+x} func g()->int64{return +(2147483648+1)}");
+    let f = pass("func f(a:int8,b:int8){let x=a+1;let y:int64=a+1;let z:int64=(a+b)}");
+    let (hir, _, checked) = f.semantic.unwrap();
+    let binary: Vec<_> = hir
+        .nodes()
+        .iter()
+        .enumerate()
+        .filter(|(_, n)| matches!(n.kind, HirKind::Binary(_)))
+        .map(|(i, _)| checked.types.get(checked.type_table[i]).unwrap())
+        .collect();
+    assert_eq!(binary, [Type::Int8, Type::Int64, Type::Int8]);
+    assert_eq!(codes(&frontend("func f(a:int8){let x=a+128}")), ["N2102"]);
+    assert_eq!(
+        codes(&frontend("func f(a:uint64){let x=a+(-1)}")),
+        ["N2102"]
+    );
+    assert_eq!(
+        codes(&frontend("func f(a:int8){let x:bool=a+1}")),
+        ["N2101"]
+    );
+    assert_eq!(codes(&frontend("func f(){let x:int64=1+true}")), ["N2101"]);
+}
+
+#[test]
+fn p07_const_checked_failures_normal_values_and_short_circuit() {
+    for (name, _, min, max) in INTEGER_CASES {
+        for expr in [
+            format!("{max}+1"),
+            format!("{max}*2"),
+            format!("{min}-1"),
+            "1/0".into(),
+            "1%0".into(),
+        ] {
+            let f = frontend(&format!("const X:{name}={expr}"));
+            assert_eq!(codes(&f), ["N3201"], "{name}:{expr}");
+            assert_eq!(
+                f.sources.slice(f.diagnostics()[0].primary.span).unwrap(),
+                expr
+            );
+        }
+        if min < 0 {
+            for op in ["/", "%"] {
+                assert_eq!(
+                    codes(&frontend(&format!("const X:{name}=({min}){op}-1"))),
+                    ["N3201"]
+                );
+            }
+        }
+        pass(&format!(
+            "const X:{name}=7/3;const Y:{name}=7%3;const W:int64=0;const SAFE=true||(X/0==0)"
+        ));
+    }
+    let f = pass(
+        "const B:int16=A;const A:byte=255;const C:int64=B+1;const D:uint64=18446744073709551615/3",
+    );
+    let (_, resolved, checked) = f.semantic.unwrap();
+    for (name, ty, expected) in [
+        ("B", Type::Int16, 255),
+        ("C", Type::Int64, 256),
+        ("D", Type::UInt64, 6148914691236517205),
+    ] {
+        let i = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == name)
+            .unwrap();
+        let ConstEvaluation::Value { value, .. } = &checked.const_values[i] else {
+            panic!()
+        };
+        assert_eq!(value.ty(), ty);
+        assert_eq!(value.integer().unwrap().value(), expected);
+    }
+    assert_eq!(
+        codes(&frontend("const A:uint64=B;const B:uint64=A")),
+        ["N3202"]
+    );
+    assert_eq!(
+        codes(&frontend("const A:byte=1;const BAD=false&&(A+256==0)")),
+        ["N2102"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "func f()->uint64{return 0} const BAD=true||(f()==0)"
+        )),
+        ["N3201"]
+    );
+}
+
+#[test]
+fn p07_coercions_do_not_charge_const_hir_budget() {
+    let chain = (0..5000)
+        .map(|i| if i % 2 == 0 { "A" } else { "B" })
+        .collect::<Vec<_>>()
+        .join("+");
+    let source = format!("const A:int8=0;const B:uint8=0;const C:int64=({chain})");
+    let (_, resolved, checked) = pass(&source).semantic.unwrap();
+    let i = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == "C")
+        .unwrap();
+    let ConstEvaluation::Value { value, nodes } = &checked.const_values[i] else {
+        panic!()
+    };
+    assert_eq!(*nodes, 10000);
+    assert_eq!(value.ty(), Type::Int64);
+    assert!(checked.coercions.iter().flatten().count() > 2000);
+    assert_eq!(
+        codes(&frontend(&format!(
+            "const A:int8=0;const B:uint8=0;const C:int64={chain}+A"
+        ))),
+        ["N3202"]
+    );
+}
+
 struct Frontend {
     sources: SourceDatabase,
     upstream: Vec<Diagnostic>,
@@ -172,9 +414,7 @@ fn parameter_and_return_expected_types_flow_into_expressions() {
 fn primitive_aliases_unknown_and_unsupported_types() {
     pass("func f(x: int32) -> int { return x } func main() -> void { let value: ()=(); return value }");
     assert_eq!(codes(&frontend("func f(x: Unknown) {}")), ["N2001"]);
-    for ty in [
-        "int8", "int16", "int64", "uint", "byte", "char", "float", "double", "never",
-    ] {
+    for ty in ["char", "float", "double", "never"] {
         assert_eq!(
             codes(&frontend(&format!("func f(x: {ty}) {{}}"))),
             ["N1102"],

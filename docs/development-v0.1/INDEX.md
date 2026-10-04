@@ -4,7 +4,7 @@
 
 [P06 단일 파일 전역 const](GLOBAL_CONST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf) subset도 Accepted이며 [구현·검증 기록](GLOBAL_CONST_IMPLEMENTATION.md)을 따른다.
 
-[P07 고정 폭 정수·승격](INTEGER_STAGE_B_PROPOSAL.md)은 Draft/승인 대기이며 미구현이다. 기존 P06 source grammar를 재사용한다.
+[P07 고정 폭 정수·승격](INTEGER_STAGE_B_PROPOSAL.md) subset도 Accepted이며 [구현·검증 기록](INTEGER_IMPLEMENTATION.md)을 따른다. 기존 P06 source grammar를 재사용한다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

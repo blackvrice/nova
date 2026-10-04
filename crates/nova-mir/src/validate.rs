@@ -168,7 +168,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
 }
 
 fn value_type(ty: Type) -> bool {
-    matches!(ty, Type::Unit | Type::Bool | Type::Int32 | Type::String)
+    ty.integer().is_some() || matches!(ty, Type::Unit | Type::Bool | Type::String)
 }
 fn successors(kind: &TerminatorKind) -> Vec<BlockId> {
     match kind {
@@ -231,53 +231,78 @@ impl Validator<'_> {
     fn rvalue_type(&mut self, body: &Body, value: &Rvalue) -> Option<Type> {
         match value {
             Rvalue::Use(operand) => self.operand_type(body, operand),
+            Rvalue::Widen(operand, dest) => {
+                let source = self.operand_type(body, operand);
+                if !source
+                    .and_then(Type::integer)
+                    .zip(dest.integer())
+                    .is_some_and(|(s, d)| s.widens_to(d))
+                {
+                    self.report(Violation::TypeMismatch);
+                }
+                Some(*dest)
+            }
             Rvalue::Unary(op, operand) => {
                 let ty = self.operand_type(body, operand);
-                let expected = match op {
-                    Symbol::Plus | Symbol::Minus => Type::Int32,
-                    Symbol::Bang => Type::Bool,
+                let valid = match op {
+                    Symbol::Plus => ty.and_then(Type::integer).is_some(),
+                    Symbol::Minus => ty.and_then(Type::integer).is_some_and(|k| k.signed()),
+                    Symbol::Bang => ty == Some(Type::Bool),
                     _ => {
                         self.report(Violation::InvalidOperator);
                         return None;
                     }
                 };
-                self.same_type(Some(expected), ty);
-                Some(expected)
+                if !valid {
+                    self.report(Violation::TypeMismatch);
+                }
+                ty
             }
             Rvalue::Binary(op, left, right) => {
                 let left = self.operand_type(body, left);
                 let right = self.operand_type(body, right);
-                let (expected, result) = match op {
+                let integer = left.and_then(Type::integer).is_some();
+                let comparison = matches!(
+                    op,
+                    Symbol::Less
+                        | Symbol::LessEqual
+                        | Symbol::Greater
+                        | Symbol::GreaterEqual
+                        | Symbol::EqualEqual
+                        | Symbol::BangEqual
+                );
+                let valid = match op {
                     Symbol::Plus
                     | Symbol::Minus
                     | Symbol::Star
                     | Symbol::Slash
-                    | Symbol::Percent => (Type::Int32, Type::Int32),
-                    Symbol::Less | Symbol::LessEqual | Symbol::Greater | Symbol::GreaterEqual => {
-                        (Type::Int32, Type::Bool)
-                    }
-                    Symbol::EqualEqual | Symbol::BangEqual => {
-                        if !matches!(left, Some(Type::Int32 | Type::Bool)) {
-                            self.report(Violation::TypeMismatch);
-                        }
-                        self.same_type(left, right);
-                        return Some(Type::Bool);
-                    }
+                    | Symbol::Percent
+                    | Symbol::Less
+                    | Symbol::LessEqual
+                    | Symbol::Greater
+                    | Symbol::GreaterEqual => integer,
+                    Symbol::EqualEqual | Symbol::BangEqual => integer || left == Some(Type::Bool),
                     _ => {
                         self.report(Violation::InvalidOperator);
                         return None;
                     }
                 };
-                self.same_type(Some(expected), left);
-                self.same_type(Some(expected), right);
-                Some(result)
+                if !valid {
+                    self.report(Violation::TypeMismatch);
+                }
+                self.same_type(left, right);
+                if comparison {
+                    Some(Type::Bool)
+                } else {
+                    left
+                }
             }
             Rvalue::Interpolate(parts) => {
                 for part in parts {
-                    if !matches!(
-                        self.operand_type(body, part),
-                        Some(Type::Int32 | Type::Bool | Type::String)
-                    ) {
+                    let ty = self.operand_type(body, part);
+                    if ty.and_then(Type::integer).is_none()
+                        && !matches!(ty, Some(Type::Bool | Type::String))
+                    {
                         self.report(Violation::TypeMismatch);
                     }
                 }
@@ -369,7 +394,9 @@ impl Validator<'_> {
                 self.source = Some(statement.source);
                 let StatementKind::Assign(place, value) = &statement.kind;
                 match value {
-                    Rvalue::Use(op) | Rvalue::Unary(_, op) => self.read(&state, op),
+                    Rvalue::Use(op) | Rvalue::Unary(_, op) | Rvalue::Widen(op, _) => {
+                        self.read(&state, op)
+                    }
                     Rvalue::Binary(_, left, right) => {
                         self.read(&state, left);
                         self.read(&state, right);

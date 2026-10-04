@@ -8,7 +8,7 @@ use nova_hir::{HirId, SourceOrigin};
 use nova_resolve::DefId;
 use nova_source::Span;
 use nova_syntax::Symbol;
-use nova_types::Type;
+use nova_types::{IntKind, IntegerValue, Type};
 use std::fmt::Write;
 pub use validate::{validate, ValidationError, Violation};
 
@@ -45,14 +45,23 @@ pub struct Place(pub LocalId);
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Constant {
     Int32(i32),
+    Integer(IntegerValue),
     Bool(bool),
     String(String),
     Unit,
 }
 impl Constant {
+    pub fn from_integer(value: IntegerValue) -> Self {
+        if value.kind() == IntKind::I32 {
+            Self::Int32(value.value() as i32)
+        } else {
+            Self::Integer(value)
+        }
+    }
     pub fn ty(&self) -> Type {
         match self {
             Self::Int32(_) => Type::Int32,
+            Self::Integer(value) => value.kind().ty(),
             Self::Bool(_) => Type::Bool,
             Self::String(_) => Type::String,
             Self::Unit => Type::Unit,
@@ -67,6 +76,8 @@ pub enum Operand {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Rvalue {
     Use(Operand),
+    /// P07 whole-range lossless sign/zero extension, never narrowing.
+    Widen(Operand, Type),
     Unary(Symbol, Operand),
     /// Never contains && or ||; those are CFG branches.
     Binary(Symbol, Operand, Operand),

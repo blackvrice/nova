@@ -1,5 +1,7 @@
 # P02 Stage A 의미 검사 구현 계약
 
+후속 8종 정수·literal 문맥·lossless 승격 및 현재 typed table 확장은 [P07 구현 기록](INTEGER_IMPLEMENTATION.md)을 따른다. 아래 Int32 설명과 검사 수는 P02 단계의 기록이다.
+
 후속 Stage A Native 상태는 [P03 승인](NATIVE_STAGE_A_PROPOSAL.md)과 [구현 기록](NATIVE_IMPLEMENTATION.md)을 따른다.
 아래는 P02 단계의 의미 검사 계약이며 check/fragment에는 여전히 main을 강제하지 않는다.
 

@@ -57,7 +57,9 @@ MIR Constant lowering을 구현했다. [구현·검증 기록](GLOBAL_CONST_IMPL
 
 다음 최소 범위를 [P07 고정 폭 정수·lossless 승격](INTEGER_STAGE_B_PROPOSAL.md)으로 구체화했다.
 8종 정수와 alias·literal 문맥·checked 산술·const·MIR 변환·보간/private Runtime 상세와 수용 계획은
-Draft/승인 대기다. 기존 P06 grammar를 사용하며 float/char/cast·aggregate/module은 별도 후속으로 남긴다.
+사용자 “P07 승인하고 정수 타입·승격 구현 진행” 답변으로 Accepted다.
+타입 검사·const·MIR·LLVM·Runtime과 Windows O0/O2 검증은 [P07 구현 기록](INTEGER_IMPLEMENTATION.md)에 있다.
+기존 P06 grammar를 사용하며 float/char/cast·aggregate/module은 별도 후속으로 남긴다.
 
 ## Backlog 경계
 

@@ -25,12 +25,27 @@ pub fn emit_ir(
         None
     };
     let mut emitter=Emitter {mir,output:format!("; Nova Stage A / P03 / LLVM 21.1.8\nsource_filename = \"nova-stage-a\"\ntarget triple = \"{}\"\n%String = type {{ ptr, i64 }}\n",target.triple()),strings:BTreeMap::new(),sequence:0};
-    emitter.output.push_str("declare void @nova_panic(i32, i32, i32, i32) noreturn\ndeclare void @nova_print(ptr, i64, i32, i32, i32)\ndeclare void @nova_format_int(ptr, i32, i32, i32, i32)\ndeclare void @nova_format_bool(ptr, i32)\ndeclare void @nova_concat(ptr, ptr, i64, i32, i32, i32)\n");
-    for op in ["sadd", "ssub", "smul"] {
-        let _ = writeln!(
-            emitter.output,
-            "declare {{ i32, i1 }} @llvm.{op}.with.overflow.i32(i32, i32)"
-        );
+    let expanded = mir.callees.iter().flat_map(|c| c.parameters.iter().copied().chain([c.return_type]))
+        .chain(mir.bodies.iter().flat_map(|b| b.locals.iter().map(|l| l.ty)))
+        .any(|ty| ty != Type::Int32 && ty.integer().is_some())
+        || mir.bodies.iter().flat_map(|b| &b.blocks).flat_map(|b| &b.statements).any(|s| {
+            matches!(&s.kind, StatementKind::Assign(_, Rvalue::Interpolate(parts)) if parts.iter().any(|p| matches!(p, Operand::Constant(Constant::Integer(_)))))
+        });
+    emitter.output.push_str("declare void @nova_panic(i32, i32, i32, i32) noreturn\ndeclare void @nova_print(ptr, i64, i32, i32, i32)\ndeclare void @nova_format_int(ptr, i32, i32, i32, i32)\n");
+    if expanded {
+        emitter.output.push_str("declare void @nova_format_i64(ptr, i64, i32, i32, i32)\ndeclare void @nova_format_u64(ptr, i64, i32, i32, i32)\n");
+    }
+    emitter.output.push_str("declare void @nova_format_bool(ptr, i32)\ndeclare void @nova_concat(ptr, ptr, i64, i32, i32, i32)\n");
+    for width in [8, 16, 32, 64] {
+        for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
+            if !expanded && (width != 32 || op.starts_with('u')) {
+                continue;
+            }
+            let _ = writeln!(
+                emitter.output,
+                "declare {{ i{width}, i1 }} @llvm.{op}.with.overflow.i{width}(i{width}, i{width})"
+            );
+        }
     }
     for body in &mir.bodies {
         emitter.body(body);
@@ -63,7 +78,10 @@ pub fn emit_ir(
 }
 fn ty(ty: Type) -> &'static str {
     match ty {
-        Type::Int32 => "i32",
+        Type::Int8 | Type::UInt8 => "i8",
+        Type::Int16 | Type::UInt16 => "i16",
+        Type::Int32 | Type::UInt32 => "i32",
+        Type::Int64 | Type::UInt64 => "i64",
         Type::Bool => "i1",
         Type::String => "%String",
         Type::Unit => "{}",
@@ -123,6 +141,9 @@ impl Emitter<'_> {
                 let value = self.instruction(format!("load {}, ptr %p{}", ty(type_), local.0));
                 (type_, value)
             }
+            Operand::Constant(Constant::Integer(value)) => {
+                (value.kind().ty(), value.value().to_string())
+            }
             Operand::Constant(Constant::Int32(value)) => (Type::Int32, value.to_string()),
             Operand::Constant(Constant::Bool(value)) => (Type::Bool, value.to_string()),
             Operand::Constant(Constant::Unit) => (Type::Unit, "zeroinitializer".into()),
@@ -149,13 +170,21 @@ impl Emitter<'_> {
         self.line("unreachable");
         let _ = writeln!(self.output, "ok.{label}:");
     }
-    fn checked(&mut self, op: &str, left: &str, right: &str, source: SourceInfo) -> String {
-        let pair = self.instruction(format!(
-            "call {{ i32, i1 }} @llvm.{op}.with.overflow.i32(i32 {left}, i32 {right})"
-        ));
-        let value = self.instruction(format!("extractvalue {{ i32, i1 }} {pair}, 0"));
-        let overflow = self.instruction(format!("extractvalue {{ i32, i1 }} {pair}, 1"));
-        self.guard(&overflow, 1, source);
+    fn checked(
+        &mut self,
+        op: &str,
+        type_: Type,
+        left: &str,
+        right: &str,
+        source: SourceInfo,
+    ) -> String {
+        let kind = type_.integer().expect("verified integer arithmetic");
+        let llvm = ty(type_);
+        let sign = if kind.signed() { "s" } else { "u" };
+        let pair = self.instruction(format!("call {{ {llvm}, i1 }} @llvm.{sign}{op}.with.overflow.{llvm}({llvm} {left}, {llvm} {right})"));
+        let value = self.instruction(format!("extractvalue {{ {llvm}, i1 }} {pair}, 0"));
+        let overflow = self.instruction(format!("extractvalue {{ {llvm}, i1 }} {pair}, 1"));
+        self.guard(&overflow, if type_ == Type::Int32 { 1 } else { 3 }, source);
         value
     }
     fn body(&mut self, body: &Body) {
@@ -204,12 +233,32 @@ impl Emitter<'_> {
                 self.source(statement.source);
                 let StatementKind::Assign(Place(destination), rvalue) = &statement.kind;
                 let result = match rvalue {
+                    Rvalue::Widen(value, dest) => {
+                        let (source, value) = self.operand(body, value);
+                        let result = if source == *dest {
+                            value
+                        } else {
+                            let op = if source.integer().expect("verified widening").signed() {
+                                "sext"
+                            } else {
+                                "zext"
+                            };
+                            self.instruction(format!(
+                                "{op} {} {value} to {}",
+                                ty(source),
+                                ty(*dest)
+                            ))
+                        };
+                        Some((*dest, result))
+                    }
                     Rvalue::Use(value) => Some(self.operand(body, value)),
                     Rvalue::Unary(op, value) => {
                         let (type_, value) = self.operand(body, value);
                         let result = match op {
                             Symbol::Plus => value,
-                            Symbol::Minus => self.checked("ssub", "0", &value, statement.source),
+                            Symbol::Minus => {
+                                self.checked("sub", type_, "0", &value, statement.source)
+                            }
                             Symbol::Bang => self.instruction(format!("xor i1 {value}, true")),
                             _ => unreachable!(),
                         };
@@ -219,30 +268,72 @@ impl Emitter<'_> {
                         let (type_, left) = self.operand(body, left);
                         let (_, right) = self.operand(body, right);
                         let result = match op {
-                            Symbol::Plus => self.checked("sadd", &left, &right, statement.source),
-                            Symbol::Minus => self.checked("ssub", &left, &right, statement.source),
-                            Symbol::Star => self.checked("smul", &left, &right, statement.source),
+                            Symbol::Plus => {
+                                self.checked("add", type_, &left, &right, statement.source)
+                            }
+                            Symbol::Minus => {
+                                self.checked("sub", type_, &left, &right, statement.source)
+                            }
+                            Symbol::Star => {
+                                self.checked("mul", type_, &left, &right, statement.source)
+                            }
                             Symbol::Slash | Symbol::Percent => {
-                                let zero = self.instruction(format!("icmp eq i32 {right}, 0"));
+                                let kind = type_.integer().expect("verified division");
+                                let llvm = ty(type_);
+                                let zero = self.instruction(format!("icmp eq {llvm} {right}, 0"));
                                 self.guard(&zero, 2, statement.source);
-                                let min =
-                                    self.instruction(format!("icmp eq i32 {left}, -2147483648"));
-                                let minus = self.instruction(format!("icmp eq i32 {right}, -1"));
-                                let overflow = self.instruction(format!("and i1 {min}, {minus}"));
-                                self.guard(&overflow, 1, statement.source);
-                                self.instruction(format!(
-                                    "{} i32 {left}, {right}",
-                                    if *op == Symbol::Slash { "sdiv" } else { "srem" }
-                                ))
+                                if kind.signed() {
+                                    let min = self.instruction(format!(
+                                        "icmp eq {llvm} {left}, {}",
+                                        kind.min()
+                                    ));
+                                    let minus =
+                                        self.instruction(format!("icmp eq {llvm} {right}, -1"));
+                                    let overflow =
+                                        self.instruction(format!("and i1 {min}, {minus}"));
+                                    self.guard(
+                                        &overflow,
+                                        if type_ == Type::Int32 { 1 } else { 3 },
+                                        statement.source,
+                                    );
+                                }
+                                let sign = if kind.signed() { "s" } else { "u" };
+                                let op = if *op == Symbol::Slash { "div" } else { "rem" };
+                                self.instruction(format!("{sign}{op} {llvm} {left}, {right}"))
                             }
                             _ => {
+                                let unsigned = type_.integer().is_some_and(|kind| !kind.signed());
                                 let predicate = match op {
                                     Symbol::EqualEqual => "eq",
                                     Symbol::BangEqual => "ne",
-                                    Symbol::Less => "slt",
-                                    Symbol::LessEqual => "sle",
-                                    Symbol::Greater => "sgt",
-                                    Symbol::GreaterEqual => "sge",
+                                    Symbol::Less => {
+                                        if unsigned {
+                                            "ult"
+                                        } else {
+                                            "slt"
+                                        }
+                                    }
+                                    Symbol::LessEqual => {
+                                        if unsigned {
+                                            "ule"
+                                        } else {
+                                            "sle"
+                                        }
+                                    }
+                                    Symbol::Greater => {
+                                        if unsigned {
+                                            "ugt"
+                                        } else {
+                                            "sgt"
+                                        }
+                                    }
+                                    Symbol::GreaterEqual => {
+                                        if unsigned {
+                                            "uge"
+                                        } else {
+                                            "sge"
+                                        }
+                                    }
                                     _ => unreachable!(),
                                 };
                                 self.instruction(format!(
@@ -265,6 +356,21 @@ impl Emitter<'_> {
                                     "call void @nova_format_int(ptr {pointer}, i32 {value}, {})",
                                     Self::location(statement.source)
                                 )),
+                                type_ if type_.integer().is_some() => {
+                                    let kind = type_.integer().expect("integer formatting");
+                                    let signed = kind.signed();
+                                    let value = if kind.bits() < 64 {
+                                        let op = if signed { "sext" } else { "zext" };
+                                        self.instruction(format!(
+                                            "{op} {} {value} to i64",
+                                            ty(type_)
+                                        ))
+                                    } else {
+                                        value
+                                    };
+                                    let name = if signed { "i64" } else { "u64" };
+                                    self.line(format!("call void @nova_format_{name}(ptr {pointer}, i64 {value}, {})", Self::location(statement.source)));
+                                }
                                 Type::Bool => {
                                     let extended =
                                         self.instruction(format!("zext i1 {value} to i32"));

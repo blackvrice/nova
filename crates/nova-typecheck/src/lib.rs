@@ -7,7 +7,7 @@ use nova_hir::{HirId, HirKind, Module};
 use nova_resolve::{DefId, DefinitionKind, Resolution, Resolved};
 use nova_source::Span;
 use nova_syntax::Symbol;
-use nova_types::{Type, TypeId, TypeInterner};
+use nova_types::{IntKind, IntegerValue, Type, TypeId, TypeInterner};
 use std::fmt::{self, Write};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -25,6 +25,10 @@ pub struct Checked {
     pub signatures: Vec<Option<Signature>>,
     pub calls: Vec<Option<DefId>>,
     pub integer_values: Vec<Option<i32>>,
+    /// P07 literal payloads; legacy Int32 payloads above remain available.
+    pub integer_literals: Vec<Option<IntegerValue>>,
+    /// Destination at each expression use; type_table retains its source type.
+    pub coercions: Vec<Option<TypeId>>,
     pub always_returns: Vec<bool>,
     /// P05/P06 evaluation state, indexed by resolved DefId.
     pub const_values: Vec<ConstEvaluation>,
@@ -66,6 +70,21 @@ impl Checked {
                 let _ = writeln!(output, "const def {index} {value:?}");
             }
         }
+        for (index, value) in self.integer_literals.iter().enumerate() {
+            if let Some(value) = value.filter(|v| v.kind() != IntKind::I32) {
+                let _ = writeln!(output, "integer {index} {value:?}");
+            }
+        }
+        for (index, dest) in self.coercions.iter().enumerate() {
+            if let Some(dest) = dest {
+                let _ = writeln!(
+                    output,
+                    "widen {index} {:?} -> {:?}",
+                    self.types.get(self.type_table[index]),
+                    self.types.get(*dest)
+                );
+            }
+        }
         output
     }
 }
@@ -85,6 +104,7 @@ struct Checker<'a> {
     resolved: &'a Resolved,
     result: Checked,
     flow: Vec<Flow>,
+    literal_only: Vec<bool>,
 }
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum Flow {
@@ -104,6 +124,11 @@ struct Context {
 enum Work {
     Enter(HirId, Context),
     Exit(HirId, Context),
+    Peer {
+        literal: HirId,
+        typed: HirId,
+        context: Context,
+    },
 }
 
 pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError> {
@@ -195,6 +220,8 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         signatures: vec![None; resolved.definitions.len()],
         calls: vec![None; size],
         integer_values: vec![None; size],
+        integer_literals: vec![None; size],
+        coercions: vec![None; size],
         always_returns: vec![false; size],
         const_values: resolved
             .definitions
@@ -215,6 +242,26 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         resolved,
         result,
         flow: vec![Flow::Fallthrough; size],
+        literal_only: module
+            .nodes()
+            .iter()
+            .fold(Vec::with_capacity(size), |mut flags, node| {
+                let allowed = matches!(
+                    node.kind,
+                    HirKind::Integer(_)
+                        | HirKind::Group
+                        | HirKind::Prefix(Symbol::Plus | Symbol::Minus)
+                        | HirKind::Binary(
+                            Symbol::Plus
+                                | Symbol::Minus
+                                | Symbol::Star
+                                | Symbol::Slash
+                                | Symbol::Percent
+                        )
+                );
+                flags.push(allowed && node.children.iter().all(|child| flags[child.0]));
+                flags
+            }),
     };
     checker.collect_signatures();
     checker.check_globals();
@@ -293,12 +340,18 @@ impl Checker<'_> {
                     "int32" => Type::Int32,
                     "bool" => Type::Bool,
                     "string" => Type::String,
-                    "byte" | "char" | "int8" | "int16" | "int64" | "uint8" | "uint16"
-                    | "uint32" | "uint64" | "float32" | "float64" | "never" => {
+                    "int8" => Type::Int8,
+                    "int16" => Type::Int16,
+                    "int64" => Type::Int64,
+                    "uint8" => Type::UInt8,
+                    "uint16" => Type::UInt16,
+                    "uint32" => Type::UInt32,
+                    "uint64" => Type::UInt64,
+                    "char" | "float32" | "float64" | "never" => {
                         self.report(
                             1102,
                             node.span,
-                            "this Primitive type is outside Stage A",
+                            "this Primitive type is outside the approved subset",
                             None,
                         );
                         Type::Error
@@ -367,7 +420,17 @@ impl Checker<'_> {
     }
     fn mismatch(&mut self, id: HirId, expected: TypeId, secondary: Option<Span>) -> bool {
         let actual = self.result.type_table[id.0];
-        if !self.result.types.compatible(actual, expected) {
+        if self.result.types.compatible(actual, expected) {
+            return false;
+        }
+        if let (Some(source), Some(dest)) = (self.ty(actual).integer(), self.ty(expected).integer())
+        {
+            if source.widens_to(dest) {
+                self.result.coercions[id.0] = Some(expected);
+                return false;
+            }
+        }
+        {
             self.report(
                 2101,
                 self.module.nodes()[id.0].span,
@@ -379,14 +442,62 @@ impl Checker<'_> {
                 secondary,
             );
             true
+        }
+    }
+    fn literal(&mut self, id: HirId, spelling: &str, negative: bool, context: Context) {
+        if context
+            .expected
+            .is_some_and(|ty| self.ty(ty) == Type::Error)
+        {
+            self.set(id, Type::Error);
+            return;
+        }
+        let kind = context
+            .expected
+            .and_then(|ty| self.ty(ty).integer())
+            .unwrap_or(IntKind::I32);
+        if let Some(value) = integer(spelling, negative, kind) {
+            self.set(id, kind.ty());
+            self.result.integer_literals[id.0] = Some(value);
+            if kind == IntKind::I32 {
+                self.result.integer_values[id.0] = Some(value.value() as i32);
+            }
         } else {
-            false
+            self.report(
+                2102,
+                self.module.nodes()[id.0].span,
+                "integer literal is outside its expected/default range",
+                context.expected_span,
+            );
+            self.set(id, Type::Error);
         }
     }
     fn walk(&mut self, root: HirId, context: Context) {
         let mut pending = vec![Work::Enter(root, context)];
         while let Some(work) = pending.pop() {
             let (id, context, exit) = match work {
+                Work::Peer {
+                    literal,
+                    typed,
+                    context,
+                } => {
+                    let peer = self.result.type_table[typed.0];
+                    let expected =
+                        if self.ty(peer).integer().is_some() || self.ty(peer) == Type::Error {
+                            Some(peer)
+                        } else {
+                            None
+                        };
+                    pending.push(Work::Enter(
+                        literal,
+                        Context {
+                            expected,
+                            expected_span: Some(self.module.nodes()[typed.0].span),
+                            ..context
+                        },
+                    ));
+                    continue;
+                }
                 Work::Enter(id, cx) => (id, cx, false),
                 Work::Exit(id, cx) => (id, cx, true),
             };
@@ -515,27 +626,78 @@ impl Checker<'_> {
                         HirKind::Integer(_)
                     ) =>
                 {
-                    // Check signed magnitude as one literal so Int32::MIN is valid.
                     let child = node.children[0];
                     let HirKind::Integer(ref spelling) = self.module.nodes()[child.0].kind else {
                         unreachable!()
                     };
-                    if let Some(value) = integer(spelling, true) {
-                        self.set(child, Type::Int32);
-                        self.set(id, Type::Int32);
-                        self.result.integer_values[id.0] = Some(value);
-                    } else {
-                        self.report(
-                            2102,
-                            node.span,
-                            "integer literal is outside Int32 range",
-                            None,
-                        );
-                        self.set(child, Type::Error);
-                        self.set(id, Type::Error);
-                    }
+                    self.literal(id, spelling, true, context);
+                    let ty = self.result.type_table[id.0];
+                    self.result.type_table[child.0] = ty;
                     pending.pop();
                     self.apply_expected(id, context);
+                }
+                HirKind::Binary(op) if !matches!(op, Symbol::AndAnd | Symbol::OrOr) => {
+                    let left = node.children[0];
+                    let right = node.children[1];
+                    let clean = Context {
+                        expected: None,
+                        expected_span: None,
+                        direct_callee: false,
+                        ..context
+                    };
+                    let arithmetic = matches!(
+                        op,
+                        Symbol::Plus
+                            | Symbol::Minus
+                            | Symbol::Star
+                            | Symbol::Slash
+                            | Symbol::Percent
+                    );
+                    let expected = context.expected.filter(|ty| {
+                        arithmetic
+                            && (self.ty(*ty).integer().is_some() || self.ty(*ty) == Type::Error)
+                    });
+                    if let Some(expected) = expected {
+                        for child in [right, left] {
+                            let cx = if self.literal_only[child.0] {
+                                Context {
+                                    expected: Some(expected),
+                                    ..context
+                                }
+                            } else {
+                                clean
+                            };
+                            pending.push(Work::Enter(child, cx));
+                        }
+                    } else if self.literal_only[left.0] != self.literal_only[right.0] {
+                        let (literal, typed) = if self.literal_only[left.0] {
+                            (left, right)
+                        } else {
+                            (right, left)
+                        };
+                        pending.push(Work::Peer {
+                            literal,
+                            typed,
+                            context: clean,
+                        });
+                        pending.push(Work::Enter(typed, clean));
+                    } else {
+                        pending.push(Work::Enter(right, clean));
+                        pending.push(Work::Enter(left, clean));
+                    }
+                }
+                HirKind::Prefix(Symbol::Plus | Symbol::Minus) => {
+                    let child = node.children[0];
+                    let cx = if self.literal_only[child.0] {
+                        context
+                    } else {
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            ..context
+                        }
+                    };
+                    pending.push(Work::Enter(child, cx));
                 }
                 HirKind::Group => {
                     pending.push(Work::Enter(node.children[0], context));
@@ -581,20 +743,7 @@ impl Checker<'_> {
         let node = &self.module.nodes()[id.0];
         match &node.kind {
             HirKind::Error => self.set(id, Type::Error),
-            HirKind::Integer(spelling) => {
-                if let Some(value) = integer(spelling, false) {
-                    self.result.integer_values[id.0] = Some(value);
-                    self.set(id, Type::Int32);
-                } else {
-                    self.report(
-                        2102,
-                        node.span,
-                        "integer literal is outside Int32 range",
-                        None,
-                    );
-                    self.set(id, Type::Error);
-                }
-            }
+            HirKind::Integer(spelling) => self.literal(id, spelling, false, context),
             HirKind::String(_) => self.set(id, Type::String),
             HirKind::Boolean(_) => self.set(id, Type::Bool),
             HirKind::Unit => self.set(id, Type::Unit),
@@ -614,7 +763,8 @@ impl Checker<'_> {
                 }
             }
             HirKind::Group => {
-                self.result.type_table[id.0] = self.result.type_table[node.children[0].0]
+                self.result.type_table[id.0] = self.result.coercions[node.children[0].0]
+                    .unwrap_or(self.result.type_table[node.children[0].0])
             }
             HirKind::Binding {
                 has_type, constant, ..
@@ -765,21 +915,19 @@ impl Checker<'_> {
             HirKind::ExpressionStatement => self.set(id, Type::Unit),
             HirKind::Prefix(op) => {
                 let operand = node.children[0];
-                let wanted = if *op == Symbol::Bang {
-                    Type::Bool
+                let ty = self
+                    .ty(self.result.coercions[operand.0]
+                        .unwrap_or(self.result.type_table[operand.0]));
+                let valid = if *op == Symbol::Bang {
+                    ty == Type::Bool
                 } else {
-                    Type::Int32
+                    ty.integer()
+                        .is_some_and(|kind| *op == Symbol::Plus || kind.signed())
                 };
-                let expected = self.result.types.intern(wanted);
-                let wrong = self.mismatch(operand, expected, None);
-                self.set(
-                    id,
-                    if wrong || self.ty(self.result.type_table[operand.0]) == Type::Error {
-                        Type::Error
-                    } else {
-                        wanted
-                    },
-                );
+                if !valid && ty != Type::Error {
+                    self.report(2101, node.span, "invalid unary operand type", None);
+                }
+                self.set(id, if valid { ty } else { Type::Error });
             }
             HirKind::Binary(op) => {
                 let left = self.ty(self.result.type_table[node.children[0].0]);
@@ -798,30 +946,31 @@ impl Checker<'_> {
                         | Symbol::GreaterEqual
                 );
                 let logical = matches!(op, Symbol::AndAnd | Symbol::OrOr);
-                let valid = if logical {
-                    left == Type::Bool && right == Type::Bool
-                } else if matches!(op, Symbol::EqualEqual | Symbol::BangEqual) {
-                    left == right && matches!(left, Type::Int32 | Type::Bool)
+                let bool_valid = left == Type::Bool
+                    && right == Type::Bool
+                    && (logical || matches!(op, Symbol::EqualEqual | Symbol::BangEqual));
+                let common = if logical {
+                    None
                 } else {
-                    left == Type::Int32 && right == Type::Int32
+                    left.integer()
+                        .zip(right.integer())
+                        .and_then(|(a, b)| a.common(b))
                 };
-                if !valid {
+                if let Some(common) = common {
+                    let expected = self.result.types.intern(common.ty());
+                    self.mismatch(node.children[0], expected, None);
+                    self.mismatch(node.children[1], expected, None);
+                    self.set(id, if comparison { Type::Bool } else { common.ty() });
+                } else if bool_valid {
+                    self.set(id, Type::Bool);
+                } else {
                     self.report(
                         2101,
                         node.span,
-                        "operator operand types are incompatible",
+                        "operator operand types have no supported common type",
                         None,
                     );
                     self.set(id, Type::Error);
-                } else {
-                    self.set(
-                        id,
-                        if comparison || logical {
-                            Type::Bool
-                        } else {
-                            Type::Int32
-                        },
-                    );
                 }
             }
             HirKind::Call => {
@@ -870,14 +1019,13 @@ impl Checker<'_> {
             HirKind::Interpolation => {
                 let value = node.children[0];
                 let actual = self.ty(self.result.type_table[value.0]);
-                if !matches!(
-                    actual,
-                    Type::Int32 | Type::Bool | Type::String | Type::Error
-                ) {
+                if actual.integer().is_none()
+                    && !matches!(actual, Type::Bool | Type::String | Type::Error)
+                {
                     self.report(
                         2101,
                         self.module.nodes()[value.0].span,
-                        "interpolation requires Int32, Bool or String",
+                        "interpolation requires integer, Bool or String",
                         None,
                     );
                     self.set(id, Type::Error);
@@ -909,7 +1057,10 @@ impl Checker<'_> {
 
 /// No fixed-width accumulation until each digit is checked against the allowed
 /// signed magnitude, so arbitrarily long source literals cannot overflow Rust.
-fn integer(spelling: &str, negative: bool) -> Option<i32> {
+fn integer(spelling: &str, negative: bool, kind: IntKind) -> Option<IntegerValue> {
+    if negative && !kind.signed() {
+        return None;
+    }
     let (radix, digits) = if let Some(s) = spelling.strip_prefix("0x") {
         (16, s)
     } else if let Some(s) = spelling.strip_prefix("0b") {
@@ -919,11 +1070,7 @@ fn integer(spelling: &str, negative: bool) -> Option<i32> {
     } else {
         (10, spelling)
     };
-    let limit = if negative {
-        2_147_483_648u64
-    } else {
-        2_147_483_647
-    };
+    let limit = if negative { -kind.min() } else { kind.max() } as u64;
     let mut value = 0u64;
     let mut previous_digit = false;
     let mut seen = false;
@@ -947,9 +1094,9 @@ fn integer(spelling: &str, negative: bool) -> Option<i32> {
         return None;
     }
     let signed = if negative {
-        -(value as i64)
+        -(value as i128)
     } else {
-        value as i64
+        value as i128
     };
-    i32::try_from(signed).ok()
+    IntegerValue::new(kind, signed)
 }

@@ -1,5 +1,7 @@
 # P06 단일 파일 전역 const·의존성 평가 구현·검증 기록
 
+후속 전역 정수 값·승격과 현재 검증 수는 [P07 구현 기록](INTEGER_IMPLEMENTATION.md)을 따른다. dependency/cycle·print 정책은 보존하며 아래 Int32 설명은 P06 단계의 기록이다.
+
 작성일: 2026-10-04. [사용자 승인 P06](GLOBAL_CONST_STAGE_B_PROPOSAL.md)과
 [31-production 전용 EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf)를 구현했다.
 승인 답변은 “P06 승인하고 전역 const 구현 진행”이다.

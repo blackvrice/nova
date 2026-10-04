@@ -620,6 +620,93 @@ fn tampered_analysis_is_rejected_without_indexing_panics() {
 }
 
 #[test]
+fn p07_widening_is_explicit_and_illegal_conversions_are_rejected() {
+    pass("func f(x:int64)->int64{return x} func g(x:uint64)->uint64{return x} func main(){let a:byte=255;let s:int8=-128;var r:int64=0;r=s;print(\"{f(s)} {g(a)} {r}\")}");
+    let base = pass("func f(a:int8,b:uint8)->int64{let x=a+b;return x}");
+    let body = &base.bodies[0];
+    let widens: Vec<_> = body
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .filter_map(|s| {
+            if let StatementKind::Assign(_, Rvalue::Widen(operand, dest)) = &s.kind {
+                Some((operand, *dest, s.source))
+            } else {
+                None
+            }
+        })
+        .collect();
+    assert_eq!(widens.len(), 3);
+    assert_eq!(
+        widens.iter().map(|(_, ty, _)| *ty).collect::<Vec<_>>(),
+        [Type::Int16, Type::Int16, Type::Int64]
+    );
+    for (_, _, source) in widens {
+        assert_eq!(base.sources[source.hir.0], source);
+    }
+    for dest in [Type::Int8, Type::UInt64, Type::Bool, Type::Error] {
+        let mut module = base.clone();
+        let statement = module.bodies[0].blocks[0]
+            .statements
+            .iter_mut()
+            .find(|s| {
+                matches!(
+                    s.kind,
+                    StatementKind::Assign(_, Rvalue::Widen(_, Type::Int16))
+                )
+            })
+            .unwrap();
+        let StatementKind::Assign(place, value) = &mut statement.kind;
+        *value = Rvalue::Widen(Operand::Constant(Constant::Int32(1)), dest);
+        let local = place.0 .0;
+        module.bodies[0].locals[local].ty = dest;
+        error(&module, Violation::TypeMismatch);
+    }
+}
+
+#[test]
+fn p07_payload_source_types_and_coercion_tables_have_exact_provenance() {
+    let mut sources = SourceDatabase::default();
+    let file = sources
+        .add(
+            "test.nova",
+            "func f(x:uint8)->int64{let n:uint64=18446744073709551615;return x}".into(),
+        )
+        .unwrap();
+    let lexed = lex(&sources, file).unwrap();
+    let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+    let hir = nova_hir::lower(&sources, &parsed.arena, parsed.root).unwrap();
+    let resolved = resolve(&hir);
+    for mutation in 0..4 {
+        let mut checked = check(&hir, &resolved).unwrap();
+        match mutation {
+            0 => checked.coercions.clear(),
+            1 => {
+                let i = checked.coercions.iter().position(Option::is_some).unwrap();
+                checked.coercions[i] = None;
+            }
+            2 => {
+                let i = checked
+                    .integer_literals
+                    .iter()
+                    .position(Option::is_some)
+                    .unwrap();
+                checked.integer_literals[i] =
+                    nova_types::IntegerValue::new(nova_types::IntKind::U64, 1);
+            }
+            _ => {
+                let i = checked.coercions.iter().position(Option::is_some).unwrap();
+                checked.type_table[i] = checked.types.intern(Type::Int64);
+            }
+        }
+        assert_eq!(
+            lower(&hir, &resolved, &checked, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+
+#[test]
 fn validator_rejects_targets_terminators_sources_and_local_ids() {
     let base = pass("func f()->int { let x=1; return x }");
     let mut module = base.clone();

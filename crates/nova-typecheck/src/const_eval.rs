@@ -3,7 +3,7 @@ use crate::Checked;
 use nova_hir::{HirId, HirKind, Module};
 use nova_resolve::{Resolution, Resolved};
 use nova_syntax::Symbol;
-use nova_types::ConstValue;
+use nova_types::{ConstValue, IntegerOp};
 
 pub const CONST_NODE_LIMIT: usize = 10_000;
 
@@ -31,6 +31,7 @@ pub(crate) struct Failure {
 
 enum Work {
     Evaluate(HirId),
+    Convert(HirId),
     Unary(HirId, Symbol),
     Binary(HirId, Symbol),
     Logical(HirId, Symbol),
@@ -105,11 +106,27 @@ pub(crate) fn evaluate(
     let mut values = vec![];
     while let Some(task) = work.pop() {
         match task {
+            Work::Convert(id) => {
+                if let Some(dest) = checked.coercions[id.0] {
+                    let value: ConstValue = values.pop().expect("converted operand");
+                    let dest = checked
+                        .types
+                        .get(dest)
+                        .and_then(|ty| ty.integer())
+                        .expect("integer coercion");
+                    let value = value
+                        .integer()
+                        .and_then(|v| v.widen(dest))
+                        .expect("checked lossless conversion");
+                    values.push(ConstValue::from_integer(value));
+                }
+            }
             Work::Evaluate(id) => {
+                work.push(Work::Convert(id));
                 let node = &module.nodes()[id.0];
                 // Also handles the directly checked -2147483648 magnitude.
-                if let Some(value) = checked.integer_values[id.0] {
-                    values.push(ConstValue::Int32(value));
+                if let Some(value) = checked.integer_literals[id.0] {
+                    values.push(ConstValue::from_integer(value));
                     continue;
                 }
                 match &node.kind {
@@ -156,55 +173,62 @@ pub(crate) fn evaluate(
             }
             Work::Unary(id, op) => {
                 let value = values.pop().expect("unary operand");
-                let value = match (op, value) {
-                    (Symbol::Plus, ConstValue::Int32(value)) => ConstValue::Int32(value),
-                    (Symbol::Minus, ConstValue::Int32(value)) => ConstValue::Int32(
-                        value
-                            .checked_neg()
-                            .ok_or_else(|| fail(id, "Int32 overflow in const unary minus"))?,
-                    ),
-                    (Symbol::Bang, ConstValue::Bool(value)) => ConstValue::Bool(!value),
-                    _ => unreachable!("typed permitted unary operation"),
+                let value = if let Some(integer) = value.integer() {
+                    ConstValue::from_integer(match op {
+                        Symbol::Plus => integer,
+                        Symbol::Minus => integer
+                            .negated()
+                            .ok_or_else(|| fail(id, "integer overflow in const unary minus"))?,
+                        _ => unreachable!("typed integer unary operation"),
+                    })
+                } else if let (Symbol::Bang, ConstValue::Bool(value)) = (op, value) {
+                    ConstValue::Bool(!value)
+                } else {
+                    unreachable!("typed permitted unary operation")
                 };
                 values.push(value);
             }
             Work::Binary(id, op) => {
                 let right = values.pop().expect("binary right operand");
                 let left = values.pop().expect("binary left operand");
-                let value = match (left, right) {
-                    (ConstValue::Int32(left), ConstValue::Int32(right)) => match op {
-                        Symbol::EqualEqual => ConstValue::Bool(left == right),
-                        Symbol::BangEqual => ConstValue::Bool(left != right),
-                        Symbol::Less => ConstValue::Bool(left < right),
-                        Symbol::LessEqual => ConstValue::Bool(left <= right),
-                        Symbol::Greater => ConstValue::Bool(left > right),
-                        Symbol::GreaterEqual => ConstValue::Bool(left >= right),
+                let value = if let (Some(left), Some(right)) = (left.integer(), right.integer()) {
+                    match op {
+                        Symbol::EqualEqual => ConstValue::Bool(left.value() == right.value()),
+                        Symbol::BangEqual => ConstValue::Bool(left.value() != right.value()),
+                        Symbol::Less => ConstValue::Bool(left.value() < right.value()),
+                        Symbol::LessEqual => ConstValue::Bool(left.value() <= right.value()),
+                        Symbol::Greater => ConstValue::Bool(left.value() > right.value()),
+                        Symbol::GreaterEqual => ConstValue::Bool(left.value() >= right.value()),
                         _ => {
-                            if matches!(op, Symbol::Slash | Symbol::Percent) && right == 0 {
+                            if matches!(op, Symbol::Slash | Symbol::Percent) && right.value() == 0 {
                                 return Err(fail(id, "division or remainder by zero in const"));
                             }
-                            let result = match op {
-                                Symbol::Plus => left.checked_add(right),
-                                Symbol::Minus => left.checked_sub(right),
-                                Symbol::Star => left.checked_mul(right),
-                                Symbol::Slash => left.checked_div(right),
-                                Symbol::Percent => left.checked_rem(right),
-                                _ => unreachable!("typed permitted Int32 operation"),
+                            let op = match op {
+                                Symbol::Plus => IntegerOp::Add,
+                                Symbol::Minus => IntegerOp::Subtract,
+                                Symbol::Star => IntegerOp::Multiply,
+                                Symbol::Slash => IntegerOp::Divide,
+                                Symbol::Percent => IntegerOp::Remainder,
+                                _ => unreachable!("typed integer arithmetic"),
                             };
-                            ConstValue::Int32(
-                                result
-                                    .ok_or_else(|| fail(id, "Int32 overflow in const operation"))?,
+                            ConstValue::from_integer(
+                                left.arithmetic(op, right).ok_or_else(|| {
+                                    fail(id, "integer overflow in const operation")
+                                })?,
                             )
                         }
-                    },
-                    (ConstValue::Bool(left), ConstValue::Bool(right)) => {
-                        ConstValue::Bool(match op {
-                            Symbol::EqualEqual => left == right,
-                            Symbol::BangEqual => left != right,
-                            _ => unreachable!("logical operations use separate work items"),
-                        })
                     }
-                    _ => unreachable!("typed permitted binary operands"),
+                } else {
+                    match (left, right) {
+                        (ConstValue::Bool(left), ConstValue::Bool(right)) => {
+                            ConstValue::Bool(match op {
+                                Symbol::EqualEqual => left == right,
+                                Symbol::BangEqual => left != right,
+                                _ => unreachable!("logical operations use separate work items"),
+                            })
+                        }
+                        _ => unreachable!("typed permitted binary operands"),
+                    }
                 };
                 values.push(value);
             }

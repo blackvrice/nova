@@ -23,6 +23,7 @@ pub extern "C" fn nova_panic(reason: i32, file: u32, start: u32, end: u32) -> ! 
         match reason {
             1 => "Int32 overflow",
             2 => "division or remainder by zero",
+            3 => "integer overflow",
             _ => "runtime invariant failure",
         },
         file,
@@ -104,6 +105,53 @@ pub unsafe extern "C" fn nova_format_int(
     text.extend_from_slice(&buffer[position..]);
     let result = retain(text, file, start, end);
     unsafe { out.write(result) }
+}
+fn format_wide(mut magnitude: u64, negative: bool, file: u32, start: u32, end: u32) -> NovaString {
+    let mut buffer = [0u8; 21];
+    let mut position = buffer.len();
+    loop {
+        position -= 1;
+        buffer[position] = b'0' + (magnitude % 10) as u8;
+        magnitude /= 10;
+        if magnitude == 0 {
+            break;
+        }
+    }
+    if negative {
+        position -= 1;
+        buffer[position] = b'-';
+    }
+    let mut text = allocate(buffer.len() - position, file, start, end);
+    text.extend_from_slice(&buffer[position..]);
+    retain(text, file, start, end)
+}
+#[no_mangle]
+pub unsafe extern "C" fn nova_format_i64(
+    out: *mut NovaString,
+    value: i64,
+    file: u32,
+    start: u32,
+    end: u32,
+) {
+    unsafe {
+        out.write(format_wide(
+            value.unsigned_abs(),
+            value < 0,
+            file,
+            start,
+            end,
+        ))
+    }
+}
+#[no_mangle]
+pub unsafe extern "C" fn nova_format_u64(
+    out: *mut NovaString,
+    value: u64,
+    file: u32,
+    start: u32,
+    end: u32,
+) {
+    unsafe { out.write(format_wide(value, false, file, start, end)) }
 }
 #[no_mangle]
 pub unsafe extern "C" fn nova_format_bool(out: *mut NovaString, value: i32) {

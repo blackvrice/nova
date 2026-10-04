@@ -4,6 +4,153 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p07_example_and_all_width_arithmetic_abi_formatting_match_const_in_both_profiles() {
+    let mut source = String::new();
+    let cases = [
+        ("int8", -128i128, 127i128),
+        ("uint8", 0, 255),
+        ("int16", -32768, 32767),
+        ("uint16", 0, 65535),
+        ("int32", -2147483648, 2147483647),
+        ("uint32", 0, 4294967295),
+        ("int64", -9223372036854775808, 9223372036854775807),
+        ("uint64", 0, 18446744073709551615),
+    ];
+    for (i, (ty, _, _)) in cases.iter().enumerate() {
+        source.push_str(&format!("func f{i}(x:{ty})->{ty}{{return x}} "));
+    }
+    source.push_str("func main(){");
+    let mut expected = String::new();
+    for (i, (ty, min, max)) in cases.iter().enumerate() {
+        source.push_str(&format!("let min{i}:{ty}={min};let max{i}:{ty}=f{i}({max});let a{i}:{ty}=7;let b{i}:{ty}=3;const c{i}:{ty}=7+3;let add{i}=a{i}+b{i};let sub{i}=a{i}-b{i};let mul{i}=a{i}*b{i};let div{i}=a{i}/b{i};let rem{i}=a{i}%b{i};let cmp{i}=max{i}>0;print(\"{{min{i}}} {{max{i}}} {{add{i}}} {{sub{i}}} {{mul{i}}} {{div{i}}} {{rem{i}}} {{cmp{i}}} {{c{i}}}\");"));
+        expected.push_str(&format!("{min} {max} 10 4 21 2 1 true 10\n"));
+        if *min < 0 {
+            source.push_str(&format!("let n{i}=-a{i};let q{i}=n{i}/b{i};let r{i}=n{i}%b{i};print(\"{{n{i}}} {{q{i}}} {{r{i}}}\");"));
+            expected.push_str("-7 -2 -1\n");
+        }
+    }
+    source.push('}');
+    for profile in ["debug", "release"] {
+        for (source, expected) in [
+            (
+                include_str!("../../../examples/integers.nova"),
+                "mixed=254, wide=253, min=-9223372036854775808, max=18446744073709551615\n",
+            ),
+            (source.as_str(), expected.as_str()),
+            (
+                "const X:uint64=18446744073709551615;func main(){print(\"{X}\")}",
+                "18446744073709551615\n",
+            ),
+        ] {
+            let result = program_profile(source, profile);
+            assert!(
+                result.status.success(),
+                "{profile}: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert_eq!(result.stdout, expected.as_bytes());
+            assert!(result.stderr.is_empty());
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p07_all_width_abort_boundaries_have_exact_source_in_both_profiles() {
+    for (ty, min, max) in [
+        ("int8", -128i128, 127i128),
+        ("uint8", 0, 255),
+        ("int16", -32768, 32767),
+        ("uint16", 0, 65535),
+        ("int32", -2147483648, 2147483647),
+        ("uint32", 0, 4294967295),
+        ("int64", -9223372036854775808, 9223372036854775807),
+        ("uint64", 0, 18446744073709551615),
+    ] {
+        let mut cases = vec![
+            (max, 1, "a+b"),
+            (min, 1, "a-b"),
+            (max, 2, "a*b"),
+            (1, 0, "a/b"),
+            (1, 0, "a%b"),
+        ];
+        if min < 0 {
+            cases.extend([(min, -1, "a/b"), (min, -1, "a%b"), (min, 0, "-a")]);
+        }
+        for (a, b, expr) in cases {
+            let source = format!(
+                "func main(){{let a:{ty}={a};let b:{ty}={b};let x={expr};print(\"unreachable\")}}"
+            );
+            let start = source.find(&format!("={expr};")).unwrap() + 1;
+            let zero = b == 0 && matches!(expr, "a/b" | "a%b");
+            let reason = if zero {
+                "division or remainder by zero"
+            } else if ty == "int32" {
+                "Int32 overflow"
+            } else {
+                "integer overflow"
+            };
+            for profile in ["debug", "release"] {
+                let result = program_profile(&source, profile);
+                assert!(!result.status.success(), "{ty} {expr} {profile}");
+                assert!(result.stdout.is_empty());
+                let stderr = String::from_utf8(result.stderr).unwrap();
+                let mut lines = stderr.lines();
+                assert_eq!(
+                    lines.next(),
+                    Some(
+                        format!(
+                            "Nova panic: {reason} at file#0:{start}..{}",
+                            start + expr.len()
+                        )
+                        .as_str()
+                    )
+                );
+                // P03 CLI also reports Windows abort status when it cannot fit u8.
+                assert!(
+                    lines.all(|line| line.starts_with("Native process terminated: Some(")),
+                    "{stderr}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p07_result_widening_preserves_operation_width_and_operand_source_order() {
+    for profile in ["debug", "release"] {
+        let result=program_profile("func f(x:int64)->int64{return x} func g(x:uint64)->uint64{return x} func main(){let a:byte=255;let s:int8=-128;var r:int64=0;r=s;print(\"{f(s)} {g(a)} {r}\")}",profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, b"-128 255 -128\n");
+        let result=program_profile("func a()->int8{print(\"left\");return 100} func b()->uint8{print(\"right\");return 200} func main(){let x:int64=a()+b();print(\"{x}\")}",profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, b"left\nright\n300\n");
+        let result = program_profile(
+            "func main(){let a:int8=127;let b:int8=1;let x:int64=a+b}",
+            profile,
+        );
+        assert!(!result.status.success());
+        assert!(String::from_utf8_lossy(&result.stderr).contains("integer overflow"));
+        let result = program_profile(
+            "func main(){let a:int8=127;let x:int64=a+1;print(\"{x}\")}",
+            profile,
+        );
+        assert!(result.status.success());
+        assert_eq!(result.stdout, b"128\n");
+    }
+}
 fn program(source: &str) -> std::process::Output {
     program_profile(source, "debug")
 }

@@ -1,7 +1,8 @@
 # Stage B 고정 폭 정수 타입·손실 없는 승격 착수안 — P07
 
-작성일: 2026-10-04. 상태: **Draft / 사용자 승인 대기**.
-이 문서는 검토용 제안이며 Compiler에 적용하지 않았다.
+작성일: 2026-10-04. 상태: **Accepted / 2026-10-04 사용자 승인**.
+사용자 답변: “P07 승인하고 정수 타입·승격 구현 진행”.
+현재 구현·검증 경계는 [P07 구현 기록](INTEGER_IMPLEMENTATION.md)을 따른다.
 [P02](SEMANTICS_STAGE_A_PROPOSAL.md)/[P03](NATIVE_STAGE_A_PROPOSAL.md)의 Int32와
 [P04](CONTROL_STAGE_B_PROPOSAL.md)~[P06](GLOBAL_CONST_STAGE_B_PROPOSAL.md)의 기존 동작을 보존한다.
 D07의 정수 부분만 구체화하며 전체 Primitive/숫자 모델·Stage B의 승인안은 아니다.
@@ -12,9 +13,9 @@ D07의 정수 부분만 구체화하며 전체 Primitive/숫자 모델·Stage B�
   [타입/변환 NOVA-025](../03_Types_Declarations/NOVA-025_타입_시스템_타입_추론_형변환_사양서.md),
   [Primitive/Literal NOVA-026](../03_Types_Declarations/NOVA-026_Primitive_Literal_기본_타입_결정_사양서.md),
   [D07](DECISIONS.md), [숫자 초안](NUMERIC_RULES.md), [현재 전역 const](GLOBAL_CONST_IMPLEMENTATION.md).
-- 현재 사양: 고정 폭 signed/unsigned 타입과 byte/int/uint alias, 양방향 검사와 제한적인
-  lossless numeric widening은 Canonical/원본 기준이다. 현재 Compiler는 Int32만 검사·평가·실행한다.
-  폭별 literal 문맥과 혼합 연산·checked 산술·MIR 변환·Runtime 출력의 상세는 미동결이다.
+- 착수 전 사양: 고정 폭 signed/unsigned 타입과 byte/int/uint alias, 양방향 검사와 제한적인
+  lossless numeric widening은 Canonical/원본 기준이었다. P07 착수 전 Compiler는 Int32만 검사·평가·실행했다.
+  아래 상세를 사용자 승인으로 동결하고 구현했다.
 - 발견된 문제: 타입 이름만 수용하면 모든 계산을 Int32로 수행하거나 host integer 폭에 의존하게 된다.
   타입 승격을 LLVM에 맡기거나 작은 현재 값만 보고 narrowing을 허용하면 const/runtime 의미가 달라진다.
 - 제안 변경: 아래 8종 정수, 기대 타입/리터럴 전용 부분식 문맥, 전체 범위 기반 widening과
@@ -175,7 +176,7 @@ type는 기존 IDENT, expression/operator/literal 철자도 같으므로 새 EBN
 
 ## 목표 프로그램과 수용 계획
 
-아래는 **승인 후 구현할 수용 예제**이며 현재 실행 성공을 주장하지 않는다.
+아래 수용 예제를 [실행 파일](../../examples/integers.nova)과 [구현·검증 기록](INTEGER_IMPLEMENTATION.md)에 연결했다.
 
 ```nova
 const MAX: uint64 = 18446744073709551615
@@ -220,4 +221,4 @@ mixed는 Int16, wide는 Int64다.
 공통 정수 타입·checked 연산·const 확장, MIR 변환·정수 보간/private Runtime 확장이다.
 float/char/never·cast/bitwise/shift·wrapping API·overload/aggregate/module·const function,
 ownership/Drop·일반 FFI/ABI·Linux Native와 전체 D07/Stage B는 후속이다.
-승인 전에는 Compiler·accepted ledger·기존 EBNF를 변경하지 않는다.
+사용자가 위 P07 subset을 승인했다. 기존 P06 EBNF를 재사용하며 전체 D07의 후속 범위는 Draft다.

@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P07 정수 타입·승격 구현
+
+- 사용자 “P07 승인하고 정수 타입·승격 구현 진행” 답변에 따라 P07 subset을 Accepted로 기록.
+- 8종 정수와 alias, 기대/peer literal 문맥, 전체 범위 기반 widening/common type 구현.
+- checked const/Runtime·MIR Widen·LLVM 폭/부호별 연산·정수 보간/private wide formatter 연결.
+- P06 grammar와 기존 Int32 진단·panic reason·formatter·Hello snapshots 보존.
+- [구현·검증 기록](INTEGER_IMPLEMENTATION.md), [예제](../../examples/integers.nova). 전체 D07·후속 타입은 Draft.
+- 15 tests 추가, 기본 174 + 실제 LLVM/Native 22 = 총 196 tests와 fmt/clippy/all-features·문서 검증 통과.
+
 ## 2026-10-04 — P07 정수 타입·승격 착수안 (Draft)
 
 - int8~int64/uint8~uint64·Canonical alias, expected/peer literal 문맥과 전체 범위 lossless widening 제안.

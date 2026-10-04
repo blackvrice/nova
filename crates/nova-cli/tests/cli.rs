@@ -2,6 +2,47 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+fn p07_integer_diagnostics_gate_tools_and_outputs() {
+    for (program, code) in [
+        ("func main(){let x:uint64=18446744073709551616}", "N2102"),
+        ("func main(){let x:int64=1;let y:uint64=x}", "N2101"),
+        ("const X:uint8=255+1;func main(){}", "N3201"),
+        (
+            "func main(){let a:int64=0;let b:uint64=0;let x=a+b}",
+            "N2101",
+        ),
+    ] {
+        let directory = directory();
+        let source = directory.join("bad.nova");
+        std::fs::write(&source, program).unwrap();
+        for command in ["check", "build", "run"] {
+            let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg(command)
+                .arg(&source)
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&directory)
+                .output()
+                .unwrap();
+            assert_eq!(result.status.code(), Some(1));
+            assert!(String::from_utf8(result.stderr).unwrap().contains(code));
+            assert!(!directory.join("target").exists());
+        }
+    }
+    let directory = directory();
+    let source = directory.join("integers.nova");
+    std::fs::write(&source, include_str!("../../../examples/integers.nova")).unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("check")
+        .arg(&source)
+        .env("NOVA_CLANG", "missing-clang")
+        .current_dir(&directory)
+        .output()
+        .unwrap();
+    assert!(result.status.success());
+    assert!(!directory.join("target").exists());
+}
 fn directory() -> PathBuf {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/cli-tests")

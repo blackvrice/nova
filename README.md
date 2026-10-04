@@ -2,10 +2,10 @@
 
 개발 전에 읽을 [전체 개발 문서 보완팩](docs/development-v0.1/README.md)을 작성했습니다.
 148개 주제별 문서와 구체 EBNF, 30건 결정 초안, API/schema, 수용 테스트 계획을 포함합니다.
-D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 지역 const, P06 전역 const 최소 계약은 Accepted이며,
+D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 지역 const, P06 전역 const, P07 고정 폭 정수·승격 최소 계약은 Accepted이며,
 나머지 상세는 Draft입니다.
 
-Nova 컴파일러의 Stage A와 Stage B 제어 흐름·지역/전역 const 구현입니다. 언어 사양은 `docs/`의 원본
+Nova 컴파일러의 Stage A와 Stage B 제어 흐름·지역/전역 const·고정 폭 정수 구현입니다. 언어 사양은 `docs/`의 원본
 Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다.
 원본 사양 파일은 보존하며, 사용자 승인된 상세 계약을 별도 문서로 추가했습니다.
 
@@ -25,11 +25,11 @@ Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다
   기본 표현식·문자열 보간, P04 var·대입·while·break/continue, P05 함수 내부/P06 전역 const. 구문 복구 포함.
 - `nova-hir`: AST와 분리된 flat HIR, SymbolId/SourceOrigin, Primitive/Unit 정규화와 String decode.
 - `nova-resolve`: ScopeTree/DefId/DefinitionRegistry/ResolutionMap, 함수·전역 const forward reference, 지역 Scope·가변성.
-- `nova-types`: TypeInterner, Int32/Bool/String/Unit, internal Function/ErrorType와 ConstValue.
+- `nova-types`: TypeInterner, 8종 signed/unsigned 정수·Bool/String/Unit, IntegerValue·lossless widening와 ConstValue.
 - `nova-typecheck`: expected type/TypeTable, Literal 범위·인수·return·Bool 조건·불변 대입·loop jump,
-  P05/P06 const checked 평가와 10,000-node budget·ConstEvaluation table, 전역 dependency/SCC 순환 진단.
+  P05/P06 const checked 평가와 10,000-node budget·ConstEvaluation table, 전역 dependency/SCC 순환 진단, 기대/peer literal 문맥과 승격 metadata.
 - `nova-mir`: 비SSA Place/Operand/Rvalue, BasicBlock CFG, source-order Call Terminator,
-  short-circuit/if/return/while·jump/const Lowering과 타입·초기화·순환 CFG 검증.
+  명시적인 Widen·short-circuit/if/return/while·jump/const Lowering과 타입·초기화·순환 CFG 검증.
 - `nova-codegen`: immutable verified CodegenUnit, Backend trait/Target/Options/Artifact/error 경계.
 - `nova-codegen-llvm`: LLVM 21.1.8 textual IR, checked arithmetic/CFG, verify와 COFF/ELF Object 생성.
 - `nova-cli`: 단일 `.nova` check/build/run과 Windows x64 MSVC Rust Runtime 링크·실행.
@@ -87,8 +87,8 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 8. [P06 단일 파일 전역 const](docs/development-v0.1/GLOBAL_CONST_STAGE_B_PROPOSAL.md)와
    [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf) 구현 완료:
    [구현·검증 기록](docs/development-v0.1/GLOBAL_CONST_IMPLEMENTATION.md).
-9. 다음 검토 대상: [P07 고정 폭 정수 타입·손실 없는 승격](docs/development-v0.1/INTEGER_STAGE_B_PROPOSAL.md).
-   Draft/승인 대기이며 현재 Compiler는 Int32만 지원합니다.
+9. [P07 고정 폭 정수 타입·손실 없는 승격](docs/development-v0.1/INTEGER_STAGE_B_PROPOSAL.md) 구현 완료:
+   [타입·const·MIR·Native 검증 기록](docs/development-v0.1/INTEGER_IMPLEMENTATION.md), [예제](examples/integers.nova).
 10. 후속 float/char·aggregate/module 상세와 Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.

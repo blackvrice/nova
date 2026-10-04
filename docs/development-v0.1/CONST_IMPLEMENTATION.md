@@ -1,5 +1,7 @@
 # P05 함수 내부 const·상수 평가 구현·검증 기록
 
+후속 8종 정수·checked 평가·implicit conversion과 현재 API/검증 수는 [P07 구현 기록](INTEGER_IMPLEMENTATION.md)을 따른다. 아래 Int32 설명은 P05 단계의 기록이다.
+
 작성일: 2026-10-04. [사용자 승인 P05](CONST_STAGE_B_PROPOSAL.md)와
 [전용 30-production EBNF](GRAMMAR_STAGE_B_CONST.ebnf)의 최소 subset을 구현했다.
 전체 D09/Stage B, 전역 상수·const function 승인이 아니다.

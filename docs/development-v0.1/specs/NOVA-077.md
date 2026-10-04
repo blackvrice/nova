@@ -18,6 +18,8 @@ Stage B 가변 지역 변수·반복문 최소 부분은 사용자 진행 요청
 
 단일 파일 전역 const·forward dependency/cycle 최소 부분은 사용자 승인 [P06](../GLOBAL_CONST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](../GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf)를 따른다. [구현·검증 기록](../GLOBAL_CONST_IMPLEMENTATION.md). 함수 print shadow는 기존 P02대로 허용하고 전역 const print만 N2002다. module/const function/전체 D06·D09는 Draft다.
 
+8종 고정 폭 정수·기대/peer literal 문맥·lossless 승격·checked runtime/const·MIR 변환·보간은 사용자 승인 [P07](../INTEGER_STAGE_B_PROPOSAL.md)를 따른다. [구현·검증 기록](../INTEGER_IMPLEMENTATION.md). P06 grammar를 재사용하고 float/char/cast/전체 D07은 Draft다.
+
 ## Type/Ownership 분리
 type checker는 typed expressions/call resolution/coercion과 요구 ownership mode를 계산한다. MIR analysis가 concrete CFG에서 initialization/move/borrow/drop 검사를 수행한다. source 수준 검사와 CFG 수준 검사를 중복 구현하더라도 책임을 명확히 한다.
 

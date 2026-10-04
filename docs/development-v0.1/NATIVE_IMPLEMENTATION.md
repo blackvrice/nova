@@ -1,5 +1,7 @@
 # Stage A Native 구현·사용·검증 기록
 
+후속 폭별 정수 연산·wide formatter/private ABI와 현재 검증 수는 [P07 구현 기록](INTEGER_IMPLEMENTATION.md)을 따른다. 아래 Int32/검증 수는 해당 구현 단계의 기록이다.
+
 작성일: 2026-10-04. [사용자 승인 P03](NATIVE_STAGE_A_PROPOSAL.md)의 최소 부분을 구현했다.
 전체 D07~D28, Public ABI/FFI/ownership/Package 승인이나 전체 Nova 구현 완료가 아니다.
 
