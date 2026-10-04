@@ -13,6 +13,24 @@ fn run(source: &str) -> (SourceDatabase, Lexed, Parsed) {
     (sources, lexed, result)
 }
 
+#[test]
+fn p09_float_leaves_spelling_spans_and_truncation_recovery() {
+    let source = "const X:double=1_000.25e-3;func main(){let y=-0.0;print(\"{X+1e2}\")}";
+    let (sources, lexed, parsed) = run(source);
+    assert!(!lexed.has_errors() && !parsed.has_errors());
+    let spellings: Vec<_> = parsed
+        .arena
+        .iter()
+        .filter(|(_, n)| n.kind == NodeKind::Float)
+        .map(|(_, n)| sources.slice(n.span).unwrap())
+        .collect();
+    assert_eq!(spellings, ["1_000.25e-3", "0.0", "1e2"]);
+    for at in 0..source.len() {
+        let (_, _, parsed) = run(&source[..at]);
+        assert!(parsed.arena.iter().next().is_some());
+    }
+}
+
 fn assert_spans(sources: &SourceDatabase, parsed: &Parsed) {
     for (id, node) in parsed.arena.iter() {
         sources.slice(node.span).unwrap();
@@ -325,7 +343,6 @@ fn missing_brace_preserves_the_next_function() {
 fn unsupported_stage_features_are_not_silently_accepted() {
     for body in [
         "struct X {}",
-        "let x=1.5",
         "let x=none",
         "let x=[1,2]",
         "let x=lambda () => 1",

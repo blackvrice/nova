@@ -44,6 +44,115 @@ fn body_named<'a>(module: &'a Module, name: &str) -> &'a Body {
 }
 
 #[test]
+fn p09_float_mir_conversions_preserve_raw_width_and_reject_illegal_values() {
+    let source="func f(a:float,b:float,i:int16,u:uint32)->double{let c:double=a+b;let d:float=a+i;let e:double=b+u;return c+d+e}";
+    let module = pass(source);
+    let statements: Vec<_> = body_named(&module, "f")
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .collect();
+    assert!(statements.iter().any(|s| matches!(
+        s.kind,
+        StatementKind::Assign(_, Rvalue::NumericConvert(_, Type::Float64))
+    )));
+    assert!(statements.iter().any(|s| matches!(
+        s.kind,
+        StatementKind::Assign(_, Rvalue::NumericConvert(_, Type::Float32))
+    )));
+    for bad in [
+        Rvalue::Widen(
+            Operand::Constant(Constant::Float(nova_types::FloatValue::from_f32(1.0))),
+            Type::Float64,
+        ),
+        Rvalue::NumericConvert(Operand::Constant(Constant::Int32(1)), Type::Float32),
+        Rvalue::NumericConvert(
+            Operand::Constant(Constant::Float(nova_types::FloatValue::from_f64(1.0))),
+            Type::Float32,
+        ),
+        Rvalue::NumericConvert(Operand::Constant(Constant::Bool(true)), Type::Float64),
+        Rvalue::Binary(
+            Symbol::Percent,
+            Operand::Constant(Constant::Float(nova_types::FloatValue::from_f32(1.0))),
+            Operand::Constant(Constant::Float(nova_types::FloatValue::from_f32(1.0))),
+        ),
+    ] {
+        let mut module = pass(source);
+        let body = module
+            .bodies
+            .iter_mut()
+            .find(|b| module.callees[b.callee.0].name == "f")
+            .unwrap();
+        let statement = body
+            .blocks
+            .iter_mut()
+            .flat_map(|b| &mut b.statements)
+            .next()
+            .unwrap();
+        let StatementKind::Assign(_, ref mut value) = statement.kind;
+        *value = bad;
+        assert!(!validate(&module).is_empty());
+    }
+}
+
+#[test]
+fn p09_float_analysis_bits_zero_nan_counts_and_tables_cannot_be_forged() {
+    use nova_types::{ConstValue, FloatValue};
+    let mut sources = SourceDatabase::default();
+    let file = sources
+        .add(
+            "test.nova",
+            "const C:double=-0.0;const N:double=0.0/0.0;func f()->double{return C+N}".into(),
+        )
+        .unwrap();
+    let lexed = lex(&sources, file).unwrap();
+    let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+    let hir = nova_hir::lower(&sources, &parsed.arena, parsed.root).unwrap();
+    let resolved = resolve(&hir);
+    let id = hir
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::Float(_)))
+        .unwrap();
+    let def = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == "C")
+        .unwrap();
+    for mutation in 0..7 {
+        let mut checked = check(&hir, &resolved).unwrap();
+        match mutation {
+            0 => checked.float_literals[id] = Some(FloatValue::from_f64(1.0)),
+            1 => checked.float_literals.clear(),
+            2 => checked.type_table[id] = checked.types.intern(Type::Float32),
+            3 => checked.coercions[id] = Some(checked.types.intern(Type::Int32)),
+            4 => {
+                checked.const_values[def] = nova_typecheck::ConstEvaluation::Value {
+                    value: ConstValue::Float(FloatValue::from_f64(0.0)),
+                    nodes: 2,
+                }
+            }
+            5 => {
+                checked.const_values[def] = nova_typecheck::ConstEvaluation::Value {
+                    value: ConstValue::Float(FloatValue::from_f64(-0.0)),
+                    nodes: 3,
+                }
+            }
+            _ => {
+                checked.const_values[def] = nova_typecheck::ConstEvaluation::Value {
+                    value: ConstValue::Float(FloatValue::from_f64(f64::NAN)),
+                    nodes: 2,
+                }
+            }
+        }
+        assert_eq!(
+            lower(&hir, &resolved, &checked, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+
+#[test]
 fn p08_char_constants_places_calls_and_sources_are_preserved() {
     let module = pass(include_str!("../../../examples/characters.nova"));
     assert!(module

@@ -3,7 +3,7 @@ use crate::Checked;
 use nova_hir::{HirId, HirKind, Module};
 use nova_resolve::{Resolution, Resolved};
 use nova_syntax::Symbol;
-use nova_types::{ConstValue, IntegerOp};
+use nova_types::{ConstValue, FloatComparison, FloatOp, IntegerOp};
 
 pub const CONST_NODE_LIMIT: usize = 10_000;
 
@@ -60,6 +60,7 @@ pub(crate) fn evaluate(
         let node = &module.nodes()[id.0];
         let allowed = match node.kind {
             HirKind::Integer(_)
+            | HirKind::Float(_)
             | HirKind::Character(_)
             | HirKind::Boolean(_)
             | HirKind::String(_)
@@ -110,21 +111,17 @@ pub(crate) fn evaluate(
             Work::Convert(id) => {
                 if let Some(dest) = checked.coercions[id.0] {
                     let value: ConstValue = values.pop().expect("converted operand");
-                    let dest = checked
-                        .types
-                        .get(dest)
-                        .and_then(|ty| ty.integer())
-                        .expect("integer coercion");
-                    let value = value
-                        .integer()
-                        .and_then(|v| v.widen(dest))
-                        .expect("checked lossless conversion");
-                    values.push(ConstValue::from_integer(value));
+                    let dest = checked.types.get(dest).expect("numeric coercion");
+                    values.push(value.widen(dest).expect("checked lossless conversion"));
                 }
             }
             Work::Evaluate(id) => {
                 work.push(Work::Convert(id));
                 let node = &module.nodes()[id.0];
+                if let Some(value) = checked.float_literals[id.0] {
+                    values.push(ConstValue::Float(value));
+                    continue;
+                }
                 // Also handles the directly checked -2147483648 magnitude.
                 if let Some(value) = checked.integer_literals[id.0] {
                     values.push(ConstValue::from_integer(value));
@@ -183,6 +180,12 @@ pub(crate) fn evaluate(
                             .ok_or_else(|| fail(id, "integer overflow in const unary minus"))?,
                         _ => unreachable!("typed integer unary operation"),
                     })
+                } else if let ConstValue::Float(value) = value {
+                    ConstValue::Float(if op == Symbol::Minus {
+                        value.negated()
+                    } else {
+                        value
+                    })
                 } else if let (Symbol::Bang, ConstValue::Bool(value)) = (op, value) {
                     ConstValue::Bool(!value)
                 } else {
@@ -222,6 +225,35 @@ pub(crate) fn evaluate(
                     }
                 } else {
                     match (left, right) {
+                        (ConstValue::Float(left), ConstValue::Float(right)) => {
+                            let comparison = match op {
+                                Symbol::EqualEqual => Some(FloatComparison::Equal),
+                                Symbol::BangEqual => Some(FloatComparison::NotEqual),
+                                Symbol::Less => Some(FloatComparison::Less),
+                                Symbol::LessEqual => Some(FloatComparison::LessEqual),
+                                Symbol::Greater => Some(FloatComparison::Greater),
+                                Symbol::GreaterEqual => Some(FloatComparison::GreaterEqual),
+                                _ => None,
+                            };
+                            if let Some(op) = comparison {
+                                ConstValue::Bool(
+                                    left.compare(op, right)
+                                        .expect("controlled typed float comparison"),
+                                )
+                            } else {
+                                let op = match op {
+                                    Symbol::Plus => FloatOp::Add,
+                                    Symbol::Minus => FloatOp::Subtract,
+                                    Symbol::Star => FloatOp::Multiply,
+                                    Symbol::Slash => FloatOp::Divide,
+                                    _ => unreachable!("typed float arithmetic"),
+                                };
+                                ConstValue::Float(
+                                    left.arithmetic(op, right)
+                                        .expect("controlled typed float arithmetic"),
+                                )
+                            }
+                        }
                         (ConstValue::Char(left), ConstValue::Char(right)) => {
                             ConstValue::Bool(match op {
                                 Symbol::EqualEqual => left == right,

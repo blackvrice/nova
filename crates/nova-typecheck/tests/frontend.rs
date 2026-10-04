@@ -24,6 +24,215 @@ const INTEGER_CASES: [(&str, Type, i128, i128); 8] = [
 ];
 
 #[test]
+fn p09_float_context_peer_precision_and_raw_operation_width() {
+    pass(include_str!("../../../examples/floats.nova"));
+    for (source, name, expected) in [
+        ("func f(a:float){let b=a+1}", "b", Type::Float64),
+        ("func f(a:float){let b=a+1.0}", "b", Type::Float32),
+        ("func f(a:double){let b=(1.0+2.0)+a}", "b", Type::Float64),
+        ("func f(a:int16){let b=a+1.0}", "b", Type::Float32),
+        ("func f(a:int){let b=a+1.0}", "b", Type::Float64),
+        ("func f(){let b=1.0+2.0}", "b", Type::Float32),
+    ] {
+        let (_, resolved, checked) = pass(source).semantic.unwrap();
+        let index = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == name)
+            .unwrap();
+        assert_eq!(
+            checked.types.get(checked.definition_types[index]),
+            Some(expected),
+            "{source}"
+        );
+    }
+    let (hir, _, checked) = pass("func f(a:float,b:float){let x:double=a+b;let y:double=a+1.0}")
+        .semantic
+        .unwrap();
+    let expressions: Vec<_> = hir
+        .nodes()
+        .iter()
+        .enumerate()
+        .filter(|(_, n)| matches!(n.kind, HirKind::Binary(_)))
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(
+        checked.types.get(checked.type_table[expressions[0]]),
+        Some(Type::Float32)
+    );
+    assert_eq!(
+        checked.coercions[expressions[0]].and_then(|ty| checked.types.get(ty)),
+        Some(Type::Float64)
+    );
+    assert_eq!(
+        checked.types.get(checked.type_table[expressions[1]]),
+        Some(Type::Float64)
+    );
+    // Expected double reaches REAL leaves directly, even with a float peer.
+    pass("func f(a:float)->double{return a+1e100}");
+    let (hir, _, checked) = pass("func f(a:int8)->double{return a+1}").semantic.unwrap();
+    let binary = hir
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::Binary(_)))
+        .unwrap();
+    assert_eq!(
+        checked.types.get(checked.type_table[binary]),
+        Some(Type::Int8)
+    );
+    assert_eq!(
+        codes(&frontend("func f(){let a:float=1.0;let b=a+1e100}")),
+        ["N2102"]
+    );
+}
+
+#[test]
+fn p09_all_conversion_sites_enforce_whole_type_precision() {
+    for (name, ty, ..) in INTEGER_CASES {
+        for (dest, p) in [("float", 24), ("double", 53)] {
+            let kind = ty.integer().unwrap();
+            let allowed = kind.bits() - u32::from(kind.signed()) <= p;
+            for source in [
+                format!("func f(x:{name}){{let a:{dest}=x}}"),
+                format!("func f(x:{name}){{var a:{dest}=1.0;a=x}}"),
+                format!("func f(x:{name})->{dest}{{return x}}"),
+                format!("func f(x:{dest}){{}}func g(x:{name}){{f(x)}}"),
+                format!("const A:{name}=1;const B:{dest}=A"),
+            ] {
+                if allowed {
+                    pass(&source);
+                } else {
+                    assert_eq!(codes(&frontend(&source)), ["N2101"], "{source}");
+                }
+            }
+        }
+    }
+    pass("func f(x:float)->double{var y:double=x;y=x;return y}const C:double=1");
+    for source in [
+        "func f(){let x:float=1}",
+        "func f(a:float){let b:float=a+1}",
+        "func f(x:double)->float{return x}",
+        "const C:int=1.0",
+        "const C:char=1.0",
+        "const C:bool=1.0",
+        "const C:string=1.0",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N2101"], "{source}");
+    }
+}
+
+#[test]
+fn p09_float_const_ieee_results_nan_zero_and_short_circuit() {
+    use nova_types::{FloatKind, FloatValue};
+    for (expr, kind, bits) in [
+        ("1.0/0.0", FloatKind::F32, 0x7f800000),
+        ("-1.0/0.0", FloatKind::F32, 0xff800000),
+        ("0.0/0.0", FloatKind::F32, 0x7fc00000),
+        ("-(0.0/0.0)", FloatKind::F32, 0x7fc00000),
+        ("-0.0", FloatKind::F32, 0x80000000),
+        ("-1e-1000", FloatKind::F32, 0x80000000),
+        ("1e-45", FloatKind::F32, 1),
+        ("3.4028235e38*2.0", FloatKind::F32, 0x7f800000),
+    ] {
+        let (value, _) = constant_value(&format!("const C={expr}"), "C");
+        assert_eq!(
+            value,
+            ConstValue::Float(FloatValue::from_bits(kind, bits).unwrap()),
+            "{expr}"
+        );
+    }
+    for (expr, expected) in [
+        ("N==N", false),
+        ("N!=N", true),
+        ("N<N", false),
+        ("N<=N", false),
+        ("N>N", false),
+        ("N>=N", false),
+        ("-0.0==0.0", true),
+        ("false&&(1.0/0.0==0.0)", false),
+    ] {
+        assert_eq!(
+            constant_value(&format!("const N:double=0.0/0.0;const C={expr}"), "C").0,
+            ConstValue::Bool(expected)
+        );
+    }
+    assert_eq!(constant_value("const C:double=1.0+2.0", "C").1, 3);
+    assert_eq!(constant_value("const A:int16=2;const C:float=A", "C").1, 1);
+}
+
+#[test]
+fn p09_negative_operators_conditions_literal_spans_and_const_permission() {
+    for expr in [
+        "1.0%2.0",
+        "!1.0",
+        "1.0&&true",
+        "true||1.0",
+        "1.0+'a'",
+        "1.0==true",
+    ] {
+        assert_eq!(
+            codes(&frontend(&format!("func f(){{let x={expr}}}"))),
+            ["N2101"],
+            "{expr}"
+        );
+    }
+    for source in ["func f(){if 1.0{}}", "func f(){while 1.0{}}"] {
+        assert_eq!(codes(&frontend(source)), ["N3001"]);
+    }
+    let result = frontend("func f(){let x:float=1e100}");
+    assert_eq!(codes(&result), ["N2102"]);
+    let diagnostic = &result.diagnostics()[0];
+    assert_eq!(
+        result.sources.slice(diagnostic.primary.span).unwrap(),
+        "1e100"
+    );
+    assert_eq!(
+        result.sources.slice(diagnostic.secondary[0].span).unwrap(),
+        "float"
+    );
+    for source in [
+        "func f(){var a:float=1.0;const C=a}",
+        "func f()->float{return 1.0}const C=f()",
+        "func f()->float{return 1.0}const C=false&&(f()==1.0)",
+        "const C=\"{1.0}\"",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N3201"], "{source}");
+    }
+    assert_eq!(
+        codes(&frontend("const A:float=B;const B:float=A")),
+        ["N3202"]
+    );
+    assert_eq!(codes(&frontend("const A=false&&(A||1.0==0.0)")), ["N3202"]);
+}
+
+#[test]
+fn p09_direct_float_literal_bits_match_rational_oracle_in_annotations() {
+    for row in include_str!("../../../tools/tests/fixtures/float-literals.tsv").lines() {
+        let row: Vec<_> = row.split('\t').collect();
+        let ty = if row[0] == "32" { "float" } else { "double" };
+        let source = format!("const C:{ty}={}", row[1]);
+        let ConstValue::Float(value) = constant_value(&source, "C").0 else {
+            panic!("float const")
+        };
+        assert_eq!(value.bits(), u64::from_str_radix(row[2], 16).unwrap());
+    }
+}
+
+#[test]
+fn p09_float_const_budget_counts_nodes_and_not_implicit_conversion() {
+    let expression = std::iter::repeat("1.0")
+        .take(5000)
+        .collect::<Vec<_>>()
+        .join("+");
+    let (_, count) = constant_value(&format!("const C:double=({expression})"), "C");
+    assert_eq!(count, CONST_NODE_LIMIT);
+    assert_eq!(
+        codes(&frontend(&format!("const C:double=(({expression}))"))),
+        ["N3202"]
+    );
+}
+
+#[test]
 fn p08_char_binding_calls_returns_forward_const_and_scalar_comparisons() {
     pass(include_str!("../../../examples/characters.nova"));
     pass("func f(x:char)->char{var y:char=x;while y<'Z'{y='Z';continue};return (y)} func print(x:char)->char{return x} func g(){const print='a';let x=print}");
@@ -543,7 +752,8 @@ fn parameter_and_return_expected_types_flow_into_expressions() {
 fn primitive_aliases_unknown_and_unsupported_types() {
     pass("func f(x: int32) -> int { return x } func main() -> void { let value: ()=(); return value }");
     assert_eq!(codes(&frontend("func f(x: Unknown) {}")), ["N2001"]);
-    for ty in ["float", "double", "never"] {
+    {
+        let ty = "never";
         assert_eq!(
             codes(&frontend(&format!("func f(x: {ty}) {{}}"))),
             ["N1102"],

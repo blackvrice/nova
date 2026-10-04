@@ -1,0 +1,17 @@
+const HALF: float = 0.5
+const TOTAL: double = 1.25 + 2.5
+const ZERO: double = 0.0
+const INF: double = 1.0 / ZERO
+const NAN: double = ZERO / ZERO
+const NZ: float = -0.0
+func echo(value: double) -> double { return value }
+func main() {
+    var value: float = HALF
+    value = value + 0.25
+    let tiny: int16 = 2
+    let mixed = value + tiny
+    let equal = NAN == NAN
+    let different = NAN != NAN
+    print("value={value}, mixed={mixed}, total={echo(TOTAL)}")
+    print("inf={INF}, nan={NAN}, negzero={NZ}, eq={equal}, ne={different}")
+}

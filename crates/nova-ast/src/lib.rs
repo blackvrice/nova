@@ -57,6 +57,7 @@ pub enum NodeKind {
     ExpressionStatement,
     Name,
     Integer,
+    Float,
     Character,
     String,
     Boolean(bool),

@@ -7,7 +7,9 @@ use nova_hir::{HirId, HirKind, Module};
 use nova_resolve::{DefId, DefinitionKind, Resolution, Resolved};
 use nova_source::Span;
 use nova_syntax::Symbol;
-use nova_types::{IntKind, IntegerValue, Type, TypeId, TypeInterner};
+use nova_types::{
+    float_host_supported, FloatKind, FloatValue, IntKind, IntegerValue, Type, TypeId, TypeInterner,
+};
 use std::fmt::{self, Write};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -27,6 +29,7 @@ pub struct Checked {
     pub integer_values: Vec<Option<i32>>,
     /// P07 literal payloads; legacy Int32 payloads above remain available.
     pub integer_literals: Vec<Option<IntegerValue>>,
+    pub float_literals: Vec<Option<FloatValue>>,
     /// Destination at each expression use; type_table retains its source type.
     pub coercions: Vec<Option<TypeId>>,
     pub always_returns: Vec<bool>,
@@ -76,6 +79,9 @@ impl Checked {
             }
         }
         for (index, dest) in self.coercions.iter().enumerate() {
+            if let Some(value) = self.float_literals[index] {
+                let _ = writeln!(output, "float {index} {value:?}");
+            }
             if let Some(dest) = dest {
                 let _ = writeln!(
                     output,
@@ -91,10 +97,16 @@ impl Checked {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CheckError {
     InvalidResolution,
+    UnsupportedFloatHost,
 }
 impl fmt::Display for CheckError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("resolution tables do not match the HIR module")
+        f.write_str(match self {
+            Self::InvalidResolution => "resolution tables do not match the HIR module",
+            Self::UnsupportedFloatHost => {
+                "float evaluation requires an x86_64 host with controlled IEEE environment"
+            }
+        })
     }
 }
 impl std::error::Error for CheckError {}
@@ -105,6 +117,7 @@ struct Checker<'a> {
     result: Checked,
     flow: Vec<Flow>,
     literal_only: Vec<bool>,
+    float_literal_only: Vec<bool>,
 }
 #[derive(Clone, Copy, Eq, PartialEq)]
 enum Flow {
@@ -128,10 +141,14 @@ enum Work {
         literal: HirId,
         typed: HirId,
         context: Context,
+        floating: bool,
     },
 }
 
 pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError> {
+    if !float_host_supported() && module.nodes().iter().any(|node| matches!(node.kind, HirKind::Float(_)) || matches!(node.kind, HirKind::TypeName(name) if matches!(module.symbol(name), Some("float32" | "float64")))) {
+        return Err(CheckError::UnsupportedFloatHost);
+    }
     // Names, scopes and declaration kinds are public tables; verify their exact provenance.
     if nova_resolve::resolve(module) != *resolved {
         return Err(CheckError::InvalidResolution);
@@ -221,6 +238,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         calls: vec![None; size],
         integer_values: vec![None; size],
         integer_literals: vec![None; size],
+        float_literals: vec![None; size],
         coercions: vec![None; size],
         always_returns: vec![false; size],
         const_values: resolved
@@ -237,11 +255,29 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         diagnostics: resolved.diagnostics.clone(),
         upstream_errors: module.has_errors(),
     };
+    let float_literal_only =
+        module
+            .nodes()
+            .iter()
+            .fold(Vec::with_capacity(size), |mut flags, node| {
+                let allowed = matches!(
+                    node.kind,
+                    HirKind::Float(_)
+                        | HirKind::Group
+                        | HirKind::Prefix(Symbol::Plus | Symbol::Minus)
+                        | HirKind::Binary(
+                            Symbol::Plus | Symbol::Minus | Symbol::Star | Symbol::Slash
+                        )
+                );
+                flags.push(allowed && node.children.iter().all(|child| flags[child.0]));
+                flags
+            });
     let mut checker = Checker {
         module,
         resolved,
         result,
         flow: vec![Flow::Fallthrough; size],
+        float_literal_only,
         literal_only: module
             .nodes()
             .iter()
@@ -348,7 +384,9 @@ impl Checker<'_> {
                     "uint16" => Type::UInt16,
                     "uint32" => Type::UInt32,
                     "uint64" => Type::UInt64,
-                    "float32" | "float64" | "never" => {
+                    "float32" => Type::Float32,
+                    "float64" => Type::Float64,
+                    "never" => {
                         self.report(
                             1102,
                             node.span,
@@ -424,12 +462,9 @@ impl Checker<'_> {
         if self.result.types.compatible(actual, expected) {
             return false;
         }
-        if let (Some(source), Some(dest)) = (self.ty(actual).integer(), self.ty(expected).integer())
-        {
-            if source.widens_to(dest) {
-                self.result.coercions[id.0] = Some(expected);
-                return false;
-            }
+        if self.ty(actual).widens_to(self.ty(expected)) {
+            self.result.coercions[id.0] = Some(expected);
+            return false;
         }
         {
             self.report(
@@ -481,14 +516,19 @@ impl Checker<'_> {
                     literal,
                     typed,
                     context,
+                    floating,
                 } => {
                     let peer = self.result.type_table[typed.0];
-                    let expected =
-                        if self.ty(peer).integer().is_some() || self.ty(peer) == Type::Error {
-                            Some(peer)
-                        } else {
-                            None
-                        };
+                    let expected = if (if floating {
+                        self.ty(peer).float().is_some()
+                    } else {
+                        self.ty(peer).integer().is_some()
+                    }) || self.ty(peer) == Type::Error
+                    {
+                        Some(peer)
+                    } else {
+                        None
+                    };
                     pending.push(Work::Enter(
                         literal,
                         Context {
@@ -656,11 +696,20 @@ impl Checker<'_> {
                     );
                     let expected = context.expected.filter(|ty| {
                         arithmetic
-                            && (self.ty(*ty).integer().is_some() || self.ty(*ty) == Type::Error)
+                            && (self.ty(*ty).integer().is_some()
+                                || self.ty(*ty) == Type::Error
+                                || (op != Symbol::Percent
+                                    && self.ty(*ty).float().is_some()
+                                    && (self.float_literal_only[left.0]
+                                        || self.float_literal_only[right.0])))
                     });
                     if let Some(expected) = expected {
                         for child in [right, left] {
-                            let cx = if self.literal_only[child.0] {
+                            let cx = if if self.ty(expected).float().is_some() {
+                                self.float_literal_only[child.0]
+                            } else {
+                                self.literal_only[child.0]
+                            } {
                                 Context {
                                     expected: Some(expected),
                                     ..context
@@ -670,8 +719,16 @@ impl Checker<'_> {
                             };
                             pending.push(Work::Enter(child, cx));
                         }
-                    } else if self.literal_only[left.0] != self.literal_only[right.0] {
-                        let (literal, typed) = if self.literal_only[left.0] {
+                    } else if self.literal_only[left.0] != self.literal_only[right.0]
+                        || self.float_literal_only[left.0] != self.float_literal_only[right.0]
+                    {
+                        let floating = self.literal_only[left.0] == self.literal_only[right.0];
+                        let flags = if floating {
+                            &self.float_literal_only
+                        } else {
+                            &self.literal_only
+                        };
+                        let (literal, typed) = if flags[left.0] {
                             (left, right)
                         } else {
                             (right, left)
@@ -680,6 +737,7 @@ impl Checker<'_> {
                             literal,
                             typed,
                             context: clean,
+                            floating,
                         });
                         pending.push(Work::Enter(typed, clean));
                     } else {
@@ -689,7 +747,7 @@ impl Checker<'_> {
                 }
                 HirKind::Prefix(Symbol::Plus | Symbol::Minus) => {
                     let child = node.children[0];
-                    let cx = if self.literal_only[child.0] {
+                    let cx = if self.literal_only[child.0] || self.float_literal_only[child.0] {
                         context
                     } else {
                         Context {
@@ -745,6 +803,34 @@ impl Checker<'_> {
         match &node.kind {
             HirKind::Error => self.set(id, Type::Error),
             HirKind::Integer(spelling) => self.literal(id, spelling, false, context),
+            HirKind::Float(spelling) => {
+                if context
+                    .expected
+                    .is_some_and(|ty| self.ty(ty) == Type::Error)
+                {
+                    self.set(id, Type::Error);
+                    return;
+                }
+                let kind = context
+                    .expected
+                    .and_then(|ty| self.ty(ty).float())
+                    .unwrap_or(FloatKind::F32);
+                match FloatValue::parse_decimal(kind, spelling) {
+                    Ok(value) => {
+                        self.set(id, kind.ty());
+                        self.result.float_literals[id.0] = Some(value);
+                    }
+                    Err(_) => {
+                        self.report(
+                            2102,
+                            node.span,
+                            "float literal is outside its expected/default finite range",
+                            context.expected_span,
+                        );
+                        self.set(id, Type::Error);
+                    }
+                }
+            }
             HirKind::Character(_) => self.set(id, Type::Char),
             HirKind::String(_) => self.set(id, Type::String),
             HirKind::Boolean(_) => self.set(id, Type::Bool),
@@ -923,8 +1009,10 @@ impl Checker<'_> {
                 let valid = if *op == Symbol::Bang {
                     ty == Type::Bool
                 } else {
-                    ty.integer()
-                        .is_some_and(|kind| *op == Symbol::Plus || kind.signed())
+                    ty.float().is_some()
+                        || ty
+                            .integer()
+                            .is_some_and(|kind| *op == Symbol::Plus || kind.signed())
                 };
                 if !valid && ty != Type::Error {
                     self.report(2101, node.span, "invalid unary operand type", None);
@@ -955,15 +1043,14 @@ impl Checker<'_> {
                 let common = if logical {
                     None
                 } else {
-                    left.integer()
-                        .zip(right.integer())
-                        .and_then(|(a, b)| a.common(b))
+                    left.common_numeric(right)
+                        .filter(|ty| ty.float().is_none() || *op != Symbol::Percent)
                 };
                 if let Some(common) = common {
-                    let expected = self.result.types.intern(common.ty());
+                    let expected = self.result.types.intern(common);
                     self.mismatch(node.children[0], expected, None);
                     self.mismatch(node.children[1], expected, None);
-                    self.set(id, if comparison { Type::Bool } else { common.ty() });
+                    self.set(id, if comparison { Type::Bool } else { common });
                 } else if bool_valid || char_valid {
                     self.set(id, Type::Bool);
                 } else {
@@ -1022,13 +1109,13 @@ impl Checker<'_> {
             HirKind::Interpolation => {
                 let value = node.children[0];
                 let actual = self.ty(self.result.type_table[value.0]);
-                if actual.integer().is_none()
+                if !actual.numeric()
                     && !matches!(actual, Type::Bool | Type::Char | Type::String | Type::Error)
                 {
                     self.report(
                         2101,
                         self.module.nodes()[value.0].span,
-                        "interpolation requires integer, Bool, Char or String",
+                        "interpolation requires numeric, Bool, Char or String",
                         None,
                     );
                     self.set(id, Type::Error);

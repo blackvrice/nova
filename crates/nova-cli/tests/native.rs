@@ -7,6 +7,140 @@ static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 #[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p09_float_native_example_and_rational_operation_oracle_in_o0_o2() {
+    for profile in ["debug", "release"] {
+        for (source,expected) in [
+            (include_str!("../../../examples/floats.nova"),"value=0.75, mixed=2.75, total=3.75\ninf=inf, nan=NaN, negzero=-0, eq=false, ne=true\n"),
+            ("const A=0.1;const B:double=-0.0;func main(){print(\"{A} {B}\")}","0.1 -0\n"),
+            (include_str!("../../../tools/tests/fixtures/float-native.nova"),include_str!("../../../tools/tests/fixtures/float-native.stdout.txt")),
+        ] {
+            let result=program_profile(source,profile);
+            assert!(result.status.success(),"{profile}: {}",String::from_utf8_lossy(&result.stderr));
+            assert_eq!(result.stdout,expected.as_bytes(),"{profile}");
+            assert!(result.stderr.is_empty());
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p09_float_native_ieee_abi_order_mutation_and_no_contraction() {
+    let source = r#"
+func f(a:float)->float{return a}
+func d(a:double)->double{return a}
+func left()->float{print("left");return 1.0}
+func right()->double{print("right");return 2.0}
+func main(){
+let z=f(0.0);let nz=f(-0.0);let n=z/z;let inf=f(1.0)/z
+print("{n} {-n} {inf} {f(1.0)/nz} {n==n} {n!=n} {n<z} {n<=z} {n>z} {n>=z} {z==nz}")
+let sub=f(1e-45);print("{sub*f(1.0)} {f(3.4028235e38)*f(2.0)}")
+let a=f(16777216.0);let b=f(1.0);let c=f(-16777216.0);print("{(a+b)+c} {a+(b+c)}")
+let x=f(1.00000011920928955078125);let y=f(0.99999988079071044921875);let neg=f(-1.0);print("{x*y+neg}")
+let aa=d(9007199254740992.0);let bb=d(1.0);let cc=d(-9007199254740992.0);print("{(aa+bb)+cc} {aa+(bb+cc)}")
+let dx=d(1.0000000000000002220446049250313080847263336181640625);let dy=d(0.9999999999999997779553950749686919152736663818359375);print("{dx*dy+d(-1.0)}")
+let order=left()+right();print("{order}")
+var value:float=0.5;let saved="{value}";while value<1.0{value=value+0.25;continue};print("{saved} {value}")
+let i:int16=-2;let u:uint32=4294967295;let mix:double=value+i+u;print("{mix}")
+print("{f(2097152.25)} {d(562949953421312.25)}")
+}
+
+"#;
+    let expected="NaN NaN inf -inf false true false false false false true\n0.000000000000000000000000000000000000000000001 inf\n0 1\n0\n0 1\n0\nleft\nright\n3\n0.5 1\n4294967294\n2097152.2 562949953421312.2\n";
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, expected.as_bytes(), "{profile}");
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires Windows x64 MSVC Rust linker"]
+fn p09_runtime_bits_formatter_oracle_and_host_initialization_o0_o2() {
+    let runtime = include_str!("../runtime/stage_a.rs")
+        .lines()
+        .filter(|line| !line.starts_with("//!"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tools/tests/fixtures/float-format.tsv")
+        .canonicalize()
+        .unwrap();
+    let fixture = fixture.to_string_lossy().replace('\\', "/");
+    let source = format!(
+        r#"
+#[allow(dead_code)]mod runtime{{
+{runtime}
+pub unsafe fn print_value(v:NovaString){{unsafe{{nova_print(v.ptr,v.len,7,11,19);}}}}
+}}
+#[no_mangle]pub extern "C" fn nova_stage_a_entry(){{}}
+fn main(){{
+let bad=0xffc0u32;unsafe{{std::arch::asm!("ldmxcsr [{{p}}]",p=in(reg)&bad,options(nostack));}}
+runtime::initialize_float_environment();
+let mut actual=0u32;unsafe{{std::arch::asm!("stmxcsr [{{p}}]",p=in(reg)&mut actual,options(nostack));}}
+assert_eq!(actual,0x1f80);
+for row in include_str!("{fixture}").lines(){{
+let row:Vec<_>=row.split('\t').collect();let bits=u64::from_str_radix(row[1],16).unwrap();
+let mut out=std::mem::MaybeUninit::<runtime::NovaString>::uninit();
+unsafe{{if row[0]=="32"{{runtime::nova_format_f32(out.as_mut_ptr(),bits as u32,7,11,19);}}
+else{{runtime::nova_format_f64(out.as_mut_ptr(),bits,7,11,19);}}runtime::print_value(out.assume_init());}}
+}}
+}}
+"#
+    );
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/runtime-float-tests")
+        .join(format!(
+            "{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+    std::fs::create_dir_all(&root).unwrap();
+    let path = root.join("harness.rs");
+    std::fs::write(&path, source).unwrap();
+    let expected = include_str!("../../../tools/tests/fixtures/float-format.tsv")
+        .lines()
+        .map(|row| row.split('\t').nth(2).unwrap())
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    for level in ["0", "2"] {
+        let executable = root.join(format!("float-o{level}.exe"));
+        let compiler =
+            Command::new(std::env::var_os("NOVA_RUSTC").unwrap_or_else(|| "rustc".into()))
+                .arg(&path)
+                .args([
+                    "--edition=2021",
+                    "-Cpanic=abort",
+                    "-C",
+                    &format!("opt-level={level}"),
+                    "-o",
+                ])
+                .arg(&executable)
+                .output()
+                .unwrap();
+        assert!(
+            compiler.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiler.stderr)
+        );
+        let result = Command::new(executable).output().unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, expected.as_bytes());
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
 fn p08_char_example_and_global_only_formatter_match_in_both_profiles() {
     for profile in ["debug", "release"] {
         for (source, expected) in [

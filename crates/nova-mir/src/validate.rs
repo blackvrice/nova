@@ -168,7 +168,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
 }
 
 fn value_type(ty: Type) -> bool {
-    ty.integer().is_some() || matches!(ty, Type::Unit | Type::Bool | Type::Char | Type::String)
+    ty.numeric() || matches!(ty, Type::Unit | Type::Bool | Type::Char | Type::String)
 }
 fn successors(kind: &TerminatorKind) -> Vec<BlockId> {
     match kind {
@@ -231,6 +231,13 @@ impl Validator<'_> {
     fn rvalue_type(&mut self, body: &Body, value: &Rvalue) -> Option<Type> {
         match value {
             Rvalue::Use(operand) => self.operand_type(body, operand),
+            Rvalue::NumericConvert(operand, dest) => {
+                let source = self.operand_type(body, operand);
+                if dest.float().is_none() || !source.is_some_and(|source| source.widens_to(*dest)) {
+                    self.report(Violation::TypeMismatch);
+                }
+                Some(*dest)
+            }
             Rvalue::Widen(operand, dest) => {
                 let source = self.operand_type(body, operand);
                 if !source
@@ -245,8 +252,11 @@ impl Validator<'_> {
             Rvalue::Unary(op, operand) => {
                 let ty = self.operand_type(body, operand);
                 let valid = match op {
-                    Symbol::Plus => ty.and_then(Type::integer).is_some(),
-                    Symbol::Minus => ty.and_then(Type::integer).is_some_and(|k| k.signed()),
+                    Symbol::Plus => ty.is_some_and(Type::numeric),
+                    Symbol::Minus => {
+                        ty.and_then(Type::float).is_some()
+                            || ty.and_then(Type::integer).is_some_and(|k| k.signed())
+                    }
                     Symbol::Bang => ty == Some(Type::Bool),
                     _ => {
                         self.report(Violation::InvalidOperator);
@@ -262,6 +272,7 @@ impl Validator<'_> {
                 let left = self.operand_type(body, left);
                 let right = self.operand_type(body, right);
                 let integer = left.and_then(Type::integer).is_some();
+                let numeric = left.is_some_and(Type::numeric);
                 let comparison = matches!(
                     op,
                     Symbol::Less
@@ -272,16 +283,13 @@ impl Validator<'_> {
                         | Symbol::BangEqual
                 );
                 let valid = match op {
-                    Symbol::Plus
-                    | Symbol::Minus
-                    | Symbol::Star
-                    | Symbol::Slash
-                    | Symbol::Percent => integer,
+                    Symbol::Plus | Symbol::Minus | Symbol::Star | Symbol::Slash => numeric,
+                    Symbol::Percent => integer,
                     Symbol::Less | Symbol::LessEqual | Symbol::Greater | Symbol::GreaterEqual => {
-                        integer || left == Some(Type::Char)
+                        numeric || left == Some(Type::Char)
                     }
                     Symbol::EqualEqual | Symbol::BangEqual => {
-                        integer || matches!(left, Some(Type::Bool | Type::Char))
+                        numeric || matches!(left, Some(Type::Bool | Type::Char))
                     }
                     _ => {
                         self.report(Violation::InvalidOperator);
@@ -301,7 +309,7 @@ impl Validator<'_> {
             Rvalue::Interpolate(parts) => {
                 for part in parts {
                     let ty = self.operand_type(body, part);
-                    if ty.and_then(Type::integer).is_none()
+                    if !ty.is_some_and(Type::numeric)
                         && !matches!(ty, Some(Type::Bool | Type::Char | Type::String))
                     {
                         self.report(Violation::TypeMismatch);
@@ -395,9 +403,10 @@ impl Validator<'_> {
                 self.source = Some(statement.source);
                 let StatementKind::Assign(place, value) = &statement.kind;
                 match value {
-                    Rvalue::Use(op) | Rvalue::Unary(_, op) | Rvalue::Widen(op, _) => {
-                        self.read(&state, op)
-                    }
+                    Rvalue::Use(op)
+                    | Rvalue::Unary(_, op)
+                    | Rvalue::Widen(op, _)
+                    | Rvalue::NumericConvert(op, _) => self.read(&state, op),
                     Rvalue::Binary(_, left, right) => {
                         self.read(&state, left);
                         self.read(&state, right);

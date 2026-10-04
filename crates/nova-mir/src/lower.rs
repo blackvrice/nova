@@ -335,13 +335,26 @@ impl Builder<'_> {
                             source: self.sources[id.0],
                         });
                         let destination = Place(local);
-                        self.assign(destination, Rvalue::Widen(self.value(id)?, ty), id)?;
+                        let value = self.value(id)?;
+                        self.assign(
+                            destination,
+                            if ty.float().is_some() {
+                                Rvalue::NumericConvert(value, ty)
+                            } else {
+                                Rvalue::Widen(value, ty)
+                            },
+                            id,
+                        )?;
                         self.values[id.0] = Some(Operand::Place(destination));
                     }
                 }
                 Work::Expression(id) => {
                     work.push(Work::Convert(id));
                     let node = &self.hir.nodes()[id.0];
+                    if let Some(value) = self.checked.float_literals[id.0] {
+                        self.values[id.0] = Some(Operand::Constant(Constant::Float(value)));
+                        continue;
+                    }
                     // Direct -2147483648 has a checked signed value on the prefix,
                     // while its magnitude child deliberately has no Int32 value.
                     if let Some(value) = self.checked.integer_literals[id.0] {
@@ -379,6 +392,7 @@ impl Builder<'_> {
                                 self.values[id.0] = Some(Operand::Constant(match value {
                                     ConstValue::Int32(value) => Constant::Int32(*value),
                                     ConstValue::Integer(value) => Constant::from_integer(*value),
+                                    ConstValue::Float(value) => Constant::Float(*value),
                                     ConstValue::Bool(value) => Constant::Bool(*value),
                                     ConstValue::Char(value) => Constant::Char(*value),
                                     ConstValue::String(value) => Constant::String(value.clone()),
@@ -483,6 +497,7 @@ impl Builder<'_> {
                         Operand::Constant(match value {
                             ConstValue::Int32(value) => Constant::Int32(*value),
                             ConstValue::Integer(value) => Constant::from_integer(*value),
+                            ConstValue::Float(value) => Constant::Float(*value),
                             ConstValue::Bool(value) => Constant::Bool(*value),
                             ConstValue::Char(value) => Constant::Char(*value),
                             ConstValue::String(value) => Constant::String(value.clone()),

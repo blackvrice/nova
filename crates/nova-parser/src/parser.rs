@@ -571,6 +571,7 @@ impl<'a> Parser<'a> {
                 return self.node(NodeKind::Prefix(operator), start, vec![operand]);
             }
             TokenKind::Integer => NodeKind::Integer,
+            TokenKind::Float => NodeKind::Float,
             TokenKind::Character => NodeKind::Character,
             TokenKind::String => NodeKind::String,
             TokenKind::Identifier => NodeKind::Name,
@@ -713,8 +714,7 @@ fn binary(kind: TokenKind) -> Option<(Symbol, u8)> {
 fn unsupported(kind: TokenKind) -> bool {
     matches!(
         kind,
-        TokenKind::Float
-            | TokenKind::LeftBracket
+        TokenKind::LeftBracket
             | TokenKind::Dot
             | TokenKind::Symbol(
                 Symbol::Equal

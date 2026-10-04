@@ -4,6 +4,10 @@
 Stage A 단일 파일 check/build/run 최소 부분은 사용자 승인 [P03](NATIVE_STAGE_A_PROPOSAL.md)과
 [현재 구현](NATIVE_IMPLEMENTATION.md)을 따른다. 아래 전체 options/package/JSON 등은 Draft다.
 
+float는 사용자 승인 [P09](FLOAT_STAGE_B_PROPOSAL.md)의 범위와 [구현·검증](FLOAT_IMPLEMENTATION.md)을 따른다.
+float source 오류는 exit 1로 도구 실행 전에 거부하며 기존 output을 보존한다.
+미지원 float 평가 host는 exit 3이며 현재 Core 환경 제어/Native host는 x86_64/Windows x64다.
+
 | 명령 | 입력 | 산출물/행동 | Stage |
 |---|---|---|---|
 | check | file 또는 manifest target | frontend/semantic 진단; object/link 없음 | A→E |

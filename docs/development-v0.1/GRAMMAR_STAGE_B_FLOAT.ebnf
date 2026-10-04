@@ -1,5 +1,5 @@
-(* P09 float subset: Draft, awaiting user approval.
-   Review copy of accepted P08 grammar; only primary_expr adds FLOAT.
+(* P09 float subset: Accepted by the user on 2026-10-04.
+   Extension of accepted P08 grammar; only primary_expr adds FLOAT.
    FLOAT maps to the existing D04 TokenKind::Float token.
    Float validity, rounding, promotion, IEEE arithmetic, const and ABI are semantic.
    Input: existing D05 normalized END tokens. *)

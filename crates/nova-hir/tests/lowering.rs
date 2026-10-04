@@ -1,4 +1,25 @@
 use nova_ast::{Arena, NodeKind};
+
+#[test]
+fn p09_public_ast_float_leaves_cannot_bypass_literal_spelling_contract() {
+    for literal in [
+        "inf", "NaN", "1", ".5", "1.", "1__0.0", "1_.0", "1.0_", "1e", "1e+", "1e_1", "0x1.0",
+        "1.0f32",
+    ] {
+        let mut sources = SourceDatabase::default();
+        let file = sources.add("api.nova", literal.into()).unwrap();
+        let span = Span::new(file, 0, literal.len()).unwrap();
+        let mut arena = Arena::default();
+        let value = arena.insert(NodeKind::Float, span, vec![]).unwrap();
+        let error = arena.insert(NodeKind::Error, span, vec![value]).unwrap();
+        let root = arena.insert(NodeKind::Root, span, vec![error]).unwrap();
+        assert_eq!(
+            lower(&sources, &arena, root),
+            Err(LoweringError::MalformedAst),
+            "{literal}"
+        );
+    }
+}
 use nova_hir::{lower, HirKind, LoweringError, SourceOrigin};
 use nova_lexer::{lex, normalize_ends};
 use nova_parser::parse;

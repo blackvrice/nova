@@ -185,7 +185,14 @@ fn frontend(path: &Path, executable: bool) -> Result<CodegenUnit, Failure> {
     let hir =
         nova_hir::lower(&sources, &parsed.arena, parsed.root).map_err(|e| (101, e.to_string()))?;
     let resolved = nova_resolve::resolve(&hir);
-    let checked = nova_typecheck::check(&hir, &resolved).map_err(|e| (101, e.to_string()))?;
+    let checked = nova_typecheck::check(&hir, &resolved).map_err(|e| {
+        let code = if e == nova_typecheck::CheckError::UnsupportedFloatHost {
+            3
+        } else {
+            101
+        };
+        (code, e.to_string())
+    })?;
     if checked.has_errors() {
         return Err((1, render(&sources, &checked.diagnostics)?));
     }

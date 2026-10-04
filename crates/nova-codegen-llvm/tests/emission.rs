@@ -42,6 +42,120 @@ fn char_corpus() -> String {
     source
 }
 
+fn float_corpus() -> String {
+    let mut source = include_str!("../../../examples/floats.nova").to_owned();
+    for ty in ["float", "double"] {
+        for (i, op) in ["+", "-", "*", "/", "==", "!=", "<", "<=", ">", ">="]
+            .iter()
+            .enumerate()
+        {
+            let result = if i < 4 { ty } else { "bool" };
+            source.push_str(&format!(
+                "func {ty}_{i}(a:{ty},b:{ty})->{result}{{return a{op}b}}"
+            ));
+        }
+        source.push_str(&format!("func negate_{ty}(a:{ty})->{ty}{{return -a}}"));
+    }
+    source.push_str("func signed(a:int16)->float{return a}func unsigned(a:uint32)->double{return a}func widen(a:float)->double{return a}");
+    source
+}
+
+#[test]
+fn p09_ir_exact_bits_predicates_scalar_abi_and_no_fast_math() {
+    let corpus = unit(&float_corpus());
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&corpus, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&corpus, target, true).unwrap());
+        for llvm in ["float", "double"] {
+            for op in ["fadd", "fsub", "fmul", "fdiv", "fneg"] {
+                assert!(ir.text.contains(&format!("{op} {llvm}")));
+            }
+            for predicate in ["oeq", "une", "olt", "ole", "ogt", "oge", "uno"] {
+                assert!(ir.text.contains(&format!("fcmp {predicate} {llvm}")));
+            }
+            assert!(ir.text.contains(&format!("define internal fastcc {llvm}")));
+        }
+        for op in [
+            "fpext float",
+            "sitofp i16",
+            "uitofp i32",
+            "bitcast (i32 2147483648 to float)",
+            "bitcast (i64 9221120237041090560 to double)",
+        ] {
+            assert!(ir.text.contains(op), "{op}");
+        }
+        for flag in [
+            " fast ",
+            " nnan ",
+            " ninf ",
+            " nsz ",
+            " arcp ",
+            " contract ",
+            " reassoc ",
+            " afn ",
+            "llvm.fma",
+            "fptrunc",
+            "fptosi",
+            "fptoui",
+            "frem",
+        ] {
+            assert!(!ir.text.contains(flag), "{flag}");
+        }
+        assert_eq!(ir.sources, corpus.mir().sources);
+        let global_only = unit("const A=0.1;const B:double=-0.0;func main(){print(\"{A} {B}\")}");
+        let ir = emit_ir(&global_only, target, true).unwrap();
+        assert!(ir
+            .text
+            .contains("declare void @nova_format_f32(ptr, i32, i32, i32, i32)"));
+        assert!(ir
+            .text
+            .contains("declare void @nova_format_f64(ptr, i64, i32, i32, i32)"));
+        assert!(ir.text.contains("bitcast (i32 1036831949 to float)"));
+    }
+}
+
+#[test]
+#[ignore = "requires real LLVM 21.1.8"]
+fn p09_real_llvm_verifies_float_coff_elf_o0_o2() {
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG")),
+    };
+    let corpus = unit(&float_corpus());
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-float-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for (target, ext) in [
+        (TargetSpec::WindowsX64Msvc, "obj"),
+        (TargetSpec::LinuxX64Gnu, "o"),
+    ] {
+        for (optimization, name) in [
+            (OptimizationLevel::None, "o0"),
+            (OptimizationLevel::Default, "o2"),
+        ] {
+            let output = root.join(format!("{name}.{ext}"));
+            backend
+                .codegen_unit(
+                    &corpus,
+                    &target,
+                    &CodegenOptions {
+                        object_path: output.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(output).unwrap();
+            assert!(bytes.len() > 100);
+            if ext == "o" {
+                assert_eq!(&bytes[..4], b"\x7fELF");
+            } else {
+                assert_eq!(&bytes[..2], b"\x64\x86");
+            }
+        }
+    }
+}
+
 #[test]
 fn p08_ir_uses_scalar_abi_unsigned_comparisons_and_char_formatter() {
     let corpus = unit(&char_corpus());

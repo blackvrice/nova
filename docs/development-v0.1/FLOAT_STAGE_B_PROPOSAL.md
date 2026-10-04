@@ -1,7 +1,8 @@
 # Stage B float·반올림·숫자 승격·보간 착수안 — P09
 
-작성일: 2026-10-04. 상태: **Draft / 사용자 승인 대기**.
-검토용 제안이며 Compiler에는 적용하지 않았다. D01~D05/P01~P08 승인과 기존 구현을 보존한다.
+작성일: 2026-10-04. 상태: **Accepted / 2026-10-04 사용자 승인**.
+승인 기록: 사용자 “P09 승인하고 float 구현 진행”. 구현·검증은 [P09 기록](FLOAT_IMPLEMENTATION.md)을 따른다.
+D01~D05/P01~P08 승인과 기존 구현을 보존한다.
 float의 최소 실행 계약이며 source cast·float remainder·전체 D07/Stage B 승인은 아니다.
 
 ## Specification Change Proposal
@@ -236,4 +237,4 @@ func main() {
 전체 타입 범위 기반 lossless numeric promotion, IEEE `+ - * /`·unary·6종 비교,
 canonical NaN/±0·const·MIR/LLVM/private formatter·출력과 FLOAT primary EBNF다.
 `as`/narrowing·float remainder/math API·never·aggregate/module·const function·ownership/Drop,
-public FFI·Linux Native와 전체 D07은 후속이다. 승인 전 Compiler/accepted ledger/기존 accepted EBNF는 변경하지 않는다.
+public FFI·Linux Native와 전체 D07은 후속이다. P09 승인 범위만 Compiler/accepted ledger에 적용하며 기존 accepted EBNF를 보존한다.

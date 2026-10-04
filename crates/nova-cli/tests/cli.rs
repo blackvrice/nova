@@ -4,6 +4,52 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn p09_float_failures_precede_tools_and_preserve_existing_output() {
+    for (program, code) in [
+        ("func main(){let x:float=1}", "N2101"),
+        ("func main(){let x:float=1e100}", "N2102"),
+        ("func main(){let x=1.0%2.0}", "N2101"),
+        ("func main(){if 1.0{}}", "N3001"),
+        ("const C:float=1.0f32;func main(){}", "N1002"),
+        ("const A:float=B;const B:float=A;func main(){}", "N3202"),
+    ] {
+        let directory = directory();
+        let source = directory.join("bad.nova");
+        let output = directory.join("keep.exe");
+        std::fs::write(&source, program).unwrap();
+        std::fs::write(&output, b"keep").unwrap();
+        for command in ["check", "build", "run"] {
+            let mut process = Command::new(env!("CARGO_BIN_EXE_nova"));
+            process
+                .arg(command)
+                .arg(&source)
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&directory);
+            if command == "build" {
+                process.arg("-o").arg(&output);
+            }
+            let result = process.output().unwrap();
+            assert_eq!(result.status.code(), Some(1));
+            assert!(String::from_utf8(result.stderr).unwrap().contains(code));
+            assert!(!directory.join("target").exists());
+            assert_eq!(std::fs::read(&output).unwrap(), b"keep");
+        }
+    }
+    let directory = directory();
+    let source = directory.join("float.nova");
+    std::fs::write(&source, include_str!("../../../examples/floats.nova")).unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("check")
+        .arg(source)
+        .env("NOVA_CLANG", "missing-clang")
+        .current_dir(&directory)
+        .output()
+        .unwrap();
+    assert!(result.status.success());
+    assert!(!directory.join("target").exists());
+}
+
+#[test]
 fn p08_char_source_failures_precede_tools_and_outputs() {
     for (program, code) in [
         ("func main(){print('a')}", "N2101"),

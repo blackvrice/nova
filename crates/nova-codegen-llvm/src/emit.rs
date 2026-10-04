@@ -47,6 +47,14 @@ pub fn emit_ir(
             .push_str("declare void @nova_format_char(ptr, i32, i32, i32, i32)\n");
     }
     emitter.output.push_str("declare void @nova_format_bool(ptr, i32)\ndeclare void @nova_concat(ptr, ptr, i64, i32, i32, i32)\n");
+    let float_used = mir.callees.iter().flat_map(|c| c.parameters.iter().copied().chain([c.return_type]))
+        .chain(mir.bodies.iter().flat_map(|b| b.locals.iter().map(|l| l.ty))).any(|ty| ty.float().is_some())
+        || mir.bodies.iter().flat_map(|b| &b.blocks).flat_map(|b| &b.statements).any(|s| {
+            matches!(&s.kind, StatementKind::Assign(_, Rvalue::Interpolate(parts)) if parts.iter().any(|p| matches!(p, Operand::Constant(Constant::Float(_)))))
+        });
+    if float_used {
+        emitter.output.push_str("declare void @nova_format_f32(ptr, i32, i32, i32, i32)\ndeclare void @nova_format_f64(ptr, i64, i32, i32, i32)\n");
+    }
     for width in [8, 16, 32, 64] {
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
             if !expanded && (width != 32 || op.starts_with('u')) {
@@ -93,6 +101,8 @@ fn ty(ty: Type) -> &'static str {
         Type::Int16 | Type::UInt16 => "i16",
         Type::Int32 | Type::UInt32 | Type::Char => "i32",
         Type::Int64 | Type::UInt64 => "i64",
+        Type::Float32 => "float",
+        Type::Float64 => "double",
         Type::Bool => "i1",
         Type::String => "%String",
         Type::Unit => "{}",
@@ -156,6 +166,15 @@ impl Emitter<'_> {
                 (value.kind().ty(), value.value().to_string())
             }
             Operand::Constant(Constant::Int32(value)) => (Type::Int32, value.to_string()),
+            Operand::Constant(Constant::Float(value)) => (
+                value.kind().ty(),
+                format!(
+                    "bitcast (i{} {} to {})",
+                    value.kind().bits(),
+                    value.bits(),
+                    ty(value.kind().ty())
+                ),
+            ),
             Operand::Constant(Constant::Bool(value)) => (Type::Bool, value.to_string()),
             Operand::Constant(Constant::Char(value)) => (Type::Char, (*value as u32).to_string()),
             Operand::Constant(Constant::Unit) => (Type::Unit, "zeroinitializer".into()),
@@ -198,6 +217,42 @@ impl Emitter<'_> {
         let overflow = self.instruction(format!("extractvalue {{ {llvm}, i1 }} {pair}, 1"));
         self.guard(&overflow, if type_ == Type::Int32 { 1 } else { 3 }, source);
         value
+    }
+    fn canonical_float(&mut self, type_: Type, value: String) -> String {
+        let kind = type_.float().expect("float operation");
+        let nan = self.instruction(format!("fcmp uno {} {value}, {value}", ty(type_)));
+        self.instruction(format!(
+            "select i1 {nan}, {} bitcast (i{} {} to {}), {} {value}",
+            ty(type_),
+            kind.bits(),
+            kind.nan_bits(),
+            ty(type_),
+            ty(type_)
+        ))
+    }
+    fn float_binary(&mut self, op: Symbol, type_: Type, left: &str, right: &str) -> String {
+        let arithmetic = match op {
+            Symbol::Plus => Some("fadd"),
+            Symbol::Minus => Some("fsub"),
+            Symbol::Star => Some("fmul"),
+            Symbol::Slash => Some("fdiv"),
+            _ => None,
+        };
+        if let Some(op) = arithmetic {
+            let value = self.instruction(format!("{op} {} {left}, {right}", ty(type_)));
+            self.canonical_float(type_, value)
+        } else {
+            let predicate = match op {
+                Symbol::EqualEqual => "oeq",
+                Symbol::BangEqual => "une",
+                Symbol::Less => "olt",
+                Symbol::LessEqual => "ole",
+                Symbol::Greater => "ogt",
+                Symbol::GreaterEqual => "oge",
+                _ => unreachable!("verified float operator"),
+            };
+            self.instruction(format!("fcmp {predicate} {} {left}, {right}", ty(type_)))
+        }
     }
     fn body(&mut self, body: &Body) {
         let signature = &self.mir.callees[body.callee.0];
@@ -245,6 +300,27 @@ impl Emitter<'_> {
                 self.source(statement.source);
                 let StatementKind::Assign(Place(destination), rvalue) = &statement.kind;
                 let result = match rvalue {
+                    Rvalue::NumericConvert(value, dest) => {
+                        let (source, value) = self.operand(body, value);
+                        let result = if source == *dest {
+                            value
+                        } else {
+                            let op = if source.float().is_some() {
+                                "fpext"
+                            } else if source.integer().expect("numeric conversion").signed() {
+                                "sitofp"
+                            } else {
+                                "uitofp"
+                            };
+                            let value = self.instruction(format!(
+                                "{op} {} {value} to {}",
+                                ty(source),
+                                ty(*dest)
+                            ));
+                            self.canonical_float(*dest, value)
+                        };
+                        Some((*dest, result))
+                    }
                     Rvalue::Widen(value, dest) => {
                         let (source, value) = self.operand(body, value);
                         let result = if source == *dest {
@@ -268,6 +344,10 @@ impl Emitter<'_> {
                         let (type_, value) = self.operand(body, value);
                         let result = match op {
                             Symbol::Plus => value,
+                            Symbol::Minus if type_.float().is_some() => {
+                                let value = self.instruction(format!("fneg {} {value}", ty(type_)));
+                                self.canonical_float(type_, value)
+                            }
                             Symbol::Minus => {
                                 self.checked("sub", type_, "0", &value, statement.source)
                             }
@@ -279,80 +359,85 @@ impl Emitter<'_> {
                     Rvalue::Binary(op, left, right) => {
                         let (type_, left) = self.operand(body, left);
                         let (_, right) = self.operand(body, right);
-                        let result = match op {
-                            Symbol::Plus => {
-                                self.checked("add", type_, &left, &right, statement.source)
-                            }
-                            Symbol::Minus => {
-                                self.checked("sub", type_, &left, &right, statement.source)
-                            }
-                            Symbol::Star => {
-                                self.checked("mul", type_, &left, &right, statement.source)
-                            }
-                            Symbol::Slash | Symbol::Percent => {
-                                let kind = type_.integer().expect("verified division");
-                                let llvm = ty(type_);
-                                let zero = self.instruction(format!("icmp eq {llvm} {right}, 0"));
-                                self.guard(&zero, 2, statement.source);
-                                if kind.signed() {
-                                    let min = self.instruction(format!(
-                                        "icmp eq {llvm} {left}, {}",
-                                        kind.min()
-                                    ));
-                                    let minus =
-                                        self.instruction(format!("icmp eq {llvm} {right}, -1"));
-                                    let overflow =
-                                        self.instruction(format!("and i1 {min}, {minus}"));
-                                    self.guard(
-                                        &overflow,
-                                        if type_ == Type::Int32 { 1 } else { 3 },
-                                        statement.source,
-                                    );
+                        let result = if type_.float().is_some() {
+                            self.float_binary(*op, type_, &left, &right)
+                        } else {
+                            match op {
+                                Symbol::Plus => {
+                                    self.checked("add", type_, &left, &right, statement.source)
                                 }
-                                let sign = if kind.signed() { "s" } else { "u" };
-                                let op = if *op == Symbol::Slash { "div" } else { "rem" };
-                                self.instruction(format!("{sign}{op} {llvm} {left}, {right}"))
-                            }
-                            _ => {
-                                let unsigned = type_ == Type::Char
-                                    || type_.integer().is_some_and(|kind| !kind.signed());
-                                let predicate = match op {
-                                    Symbol::EqualEqual => "eq",
-                                    Symbol::BangEqual => "ne",
-                                    Symbol::Less => {
-                                        if unsigned {
-                                            "ult"
-                                        } else {
-                                            "slt"
-                                        }
+                                Symbol::Minus => {
+                                    self.checked("sub", type_, &left, &right, statement.source)
+                                }
+                                Symbol::Star => {
+                                    self.checked("mul", type_, &left, &right, statement.source)
+                                }
+                                Symbol::Slash | Symbol::Percent => {
+                                    let kind = type_.integer().expect("verified division");
+                                    let llvm = ty(type_);
+                                    let zero =
+                                        self.instruction(format!("icmp eq {llvm} {right}, 0"));
+                                    self.guard(&zero, 2, statement.source);
+                                    if kind.signed() {
+                                        let min = self.instruction(format!(
+                                            "icmp eq {llvm} {left}, {}",
+                                            kind.min()
+                                        ));
+                                        let minus =
+                                            self.instruction(format!("icmp eq {llvm} {right}, -1"));
+                                        let overflow =
+                                            self.instruction(format!("and i1 {min}, {minus}"));
+                                        self.guard(
+                                            &overflow,
+                                            if type_ == Type::Int32 { 1 } else { 3 },
+                                            statement.source,
+                                        );
                                     }
-                                    Symbol::LessEqual => {
-                                        if unsigned {
-                                            "ule"
-                                        } else {
-                                            "sle"
+                                    let sign = if kind.signed() { "s" } else { "u" };
+                                    let op = if *op == Symbol::Slash { "div" } else { "rem" };
+                                    self.instruction(format!("{sign}{op} {llvm} {left}, {right}"))
+                                }
+                                _ => {
+                                    let unsigned = type_ == Type::Char
+                                        || type_.integer().is_some_and(|kind| !kind.signed());
+                                    let predicate = match op {
+                                        Symbol::EqualEqual => "eq",
+                                        Symbol::BangEqual => "ne",
+                                        Symbol::Less => {
+                                            if unsigned {
+                                                "ult"
+                                            } else {
+                                                "slt"
+                                            }
                                         }
-                                    }
-                                    Symbol::Greater => {
-                                        if unsigned {
-                                            "ugt"
-                                        } else {
-                                            "sgt"
+                                        Symbol::LessEqual => {
+                                            if unsigned {
+                                                "ule"
+                                            } else {
+                                                "sle"
+                                            }
                                         }
-                                    }
-                                    Symbol::GreaterEqual => {
-                                        if unsigned {
-                                            "uge"
-                                        } else {
-                                            "sge"
+                                        Symbol::Greater => {
+                                            if unsigned {
+                                                "ugt"
+                                            } else {
+                                                "sgt"
+                                            }
                                         }
-                                    }
-                                    _ => unreachable!(),
-                                };
-                                self.instruction(format!(
-                                    "icmp {predicate} {} {left}, {right}",
-                                    ty(type_)
-                                ))
+                                        Symbol::GreaterEqual => {
+                                            if unsigned {
+                                                "uge"
+                                            } else {
+                                                "sge"
+                                            }
+                                        }
+                                        _ => unreachable!(),
+                                    };
+                                    self.instruction(format!(
+                                        "icmp {predicate} {} {left}, {right}",
+                                        ty(type_)
+                                    ))
+                                }
                             }
                         };
                         Some((body.locals[destination.0].ty, result))
@@ -362,6 +447,14 @@ impl Emitter<'_> {
                             let (type_, value) = self.operand(body, value);
                             let pointer = format!("%part.{bb}.{s}.{part}");
                             match type_ {
+                                type_ if type_.float().is_some() => {
+                                    let width = type_.float().expect("float formatting").bits();
+                                    let bits = self.instruction(format!(
+                                        "bitcast {} {value} to i{width}",
+                                        ty(type_)
+                                    ));
+                                    self.line(format!("call void @nova_format_f{width}(ptr {pointer}, i{width} {bits}, {})", Self::location(statement.source)));
+                                }
                                 Type::String => {
                                     self.line(format!("store %String {value}, ptr {pointer}"))
                                 }

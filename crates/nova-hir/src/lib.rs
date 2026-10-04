@@ -49,6 +49,7 @@ pub enum HirKind {
     ExpressionStatement,
     Name(SymbolId),
     Integer(String),
+    Float(String),
     Character(char),
     String(String),
     Boolean(bool),
@@ -265,6 +266,13 @@ pub fn lower(
             NodeKind::ExpressionStatement => HirKind::ExpressionStatement,
             NodeKind::Name => HirKind::Name(intern(node.span, &mut module, &mut interned)?),
             NodeKind::Integer => HirKind::Integer(sources.slice(node.span)?.into()),
+            NodeKind::Float => {
+                let spelling = sources.slice(node.span)?;
+                if !float_spelling(spelling) {
+                    return Err(LoweringError::MalformedAst);
+                }
+                HirKind::Float(spelling.into())
+            }
             NodeKind::Character => HirKind::Character(decode_character(sources.slice(node.span)?)?),
             NodeKind::String => {
                 let spelling = sources.slice(node.span)?;
@@ -295,6 +303,47 @@ pub fn lower(
     }
     module.root = mapping[root.index()];
     Ok(module)
+}
+
+fn float_spelling(text: &str) -> bool {
+    fn digits(bytes: &[u8], at: &mut usize) -> bool {
+        let start = *at;
+        while *at < bytes.len() && (bytes[*at].is_ascii_digit() || bytes[*at] == b'_') {
+            if bytes[*at] == b'_'
+                && (*at == start
+                    || !bytes[*at - 1].is_ascii_digit()
+                    || !bytes.get(*at + 1).is_some_and(u8::is_ascii_digit))
+            {
+                return false;
+            }
+            *at += 1;
+        }
+        *at > start
+    }
+    let bytes = text.as_bytes();
+    let mut at = 0;
+    if !digits(bytes, &mut at) {
+        return false;
+    }
+    let mut real = false;
+    if bytes.get(at) == Some(&b'.') {
+        real = true;
+        at += 1;
+        if !digits(bytes, &mut at) {
+            return false;
+        }
+    }
+    if matches!(bytes.get(at), Some(b'e' | b'E')) {
+        real = true;
+        at += 1;
+        if matches!(bytes.get(at), Some(b'+' | b'-')) {
+            at += 1;
+        }
+        if !digits(bytes, &mut at) {
+            return false;
+        }
+    }
+    real && at == bytes.len()
 }
 
 fn intern_symbol(
@@ -341,6 +390,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             kind,
             NodeKind::Name
                 | NodeKind::Integer
+                | NodeKind::Float
                 | NodeKind::Character
                 | NodeKind::String
                 | NodeKind::Boolean(_)

@@ -180,6 +180,205 @@ pub unsafe extern "C" fn nova_format_bool(out: *mut NovaString, value: i32) {
         })
     }
 }
+// Fallible formatting preserves the runtime's source-located allocation policy.
+struct FloatText(Vec<u8>);
+impl std::fmt::Write for FloatText {
+    fn write_str(&mut self, text: &str) -> std::fmt::Result {
+        self.0
+            .try_reserve(text.len())
+            .map_err(|_| std::fmt::Error)?;
+        self.0.extend_from_slice(text.as_bytes());
+        Ok(())
+    }
+}
+fn float_text(
+    arguments: std::fmt::Arguments<'_>,
+    bits: u64,
+    width: u32,
+    file: u32,
+    start: u32,
+    end: u32,
+) -> NovaString {
+    let mut text = FloatText(Vec::new());
+    if std::fmt::write(&mut text, arguments).is_err() {
+        fatal("String allocation failed", file, start, end);
+    }
+    decimal_even_tie(&mut text.0, bits, width, file, start, end);
+    retain(text.0, file, start, end)
+}
+// Rust's shortest Display candidate rounds decimal ties upward. P09 requires
+// the even decimal coefficient. Detect exact midpoint equality with integers:
+// M*2^(E+1) == (2*C +/- 1)*10^K. Powers of 2 and 5 are cancelled separately,
+// avoiding host arithmetic, approximate comparisons and large integers.
+fn decimal_midpoint(
+    mut mantissa: u64,
+    exponent: i32,
+    mut twice_coefficient: u64,
+    place: i32,
+) -> bool {
+    let left_twos = mantissa.trailing_zeros() as i32;
+    let right_twos = twice_coefficient.trailing_zeros() as i32;
+    mantissa >>= left_twos;
+    twice_coefficient >>= right_twos;
+    if exponent + 1 + left_twos != place + right_twos {
+        return false;
+    }
+    if place >= 0 {
+        for _ in 0..place {
+            if mantissa % 5 != 0 {
+                return false;
+            }
+            mantissa /= 5;
+        }
+    } else {
+        for _ in place..0 {
+            if twice_coefficient % 5 != 0 {
+                return false;
+            }
+            twice_coefficient /= 5;
+        }
+    }
+    mantissa == twice_coefficient
+}
+fn decimal_even_tie(text: &mut Vec<u8>, bits: u64, width: u32, file: u32, start: u32, end: u32) {
+    let negative = text.first() == Some(&b'-');
+    let start_digit = usize::from(negative);
+    if !text.get(start_digit).is_some_and(u8::is_ascii_digit) {
+        return;
+    }
+    let point = text.iter().position(|&b| b == b'.').unwrap_or(text.len());
+    let last = text.iter().rposition(|&b| b.is_ascii_digit() && b != b'0');
+    let Some(last) = last else {
+        return;
+    };
+    let mut coefficient = 0u64;
+    for &byte in &text[start_digit..=last] {
+        if byte == b'.' {
+            continue;
+        }
+        coefficient = coefficient * 10 + u64::from(byte - b'0');
+    }
+    if coefficient % 2 == 0 {
+        return;
+    }
+    let place = point as i32 - last as i32 - if last < point { 1 } else { 0 };
+    let (p, bias, fraction_mask, exponent_mask) = if width == 32 {
+        (23, 127, 0x7fffff, 0xff)
+    } else {
+        (52, 1023, 0xfffffffffffff, 0x7ff)
+    };
+    let encoded_exponent = ((bits >> p) & exponent_mask) as i32;
+    let mantissa = (bits & fraction_mask) | if encoded_exponent == 0 { 0 } else { 1 << p };
+    if mantissa == 0 || encoded_exponent == exponent_mask as i32 {
+        return;
+    }
+    let exponent = encoded_exponent.max(1) - bias - p;
+    let adjusted = if decimal_midpoint(mantissa, exponent, coefficient * 2 - 1, place) {
+        coefficient - 1
+    } else if decimal_midpoint(mantissa, exponent, coefficient * 2 + 1, place) {
+        coefficient + 1
+    } else {
+        return;
+    };
+    // Fixed decimal has at most 326 characters for binary64. Reserve before
+    // modifying so every subsequent write is allocation-free.
+    if text.try_reserve(768).is_err() {
+        fatal("String allocation failed", file, start, end);
+    }
+    text.clear();
+    if negative {
+        text.push(b'-');
+    }
+    let mut digits = [0u8; 20];
+    let mut at = digits.len();
+    let mut value = adjusted;
+    while value != 0 {
+        at -= 1;
+        digits[at] = b'0' + (value % 10) as u8;
+        value /= 10;
+    }
+    let digits = &digits[at..];
+    let decimal_point = digits.len() as i32 + place;
+    if decimal_point <= 0 {
+        text.extend_from_slice(b"0.");
+        for _ in decimal_point..0 {
+            text.push(b'0');
+        }
+        text.extend_from_slice(digits);
+    } else {
+        for (i, &byte) in digits.iter().enumerate() {
+            if i as i32 == decimal_point {
+                text.push(b'.');
+            }
+            text.push(byte);
+        }
+        for _ in digits.len() as i32..decimal_point {
+            text.push(b'0');
+        }
+    }
+    if text.contains(&b'.') {
+        while text.last() == Some(&b'0') {
+            text.pop();
+        }
+        if text.last() == Some(&b'.') {
+            text.pop();
+        }
+    }
+}
+/// Safety: out points to writable NovaString storage owned by generated code.
+#[no_mangle]
+pub unsafe extern "C" fn nova_format_f32(
+    out: *mut NovaString,
+    bits: u32,
+    file: u32,
+    start: u32,
+    end: u32,
+) {
+    let value = f32::from_bits(bits);
+    unsafe {
+        out.write(float_text(
+            format_args!("{value}"),
+            u64::from(bits),
+            32,
+            file,
+            start,
+            end,
+        ));
+    }
+}
+/// Safety: out points to writable NovaString storage owned by generated code.
+#[no_mangle]
+pub unsafe extern "C" fn nova_format_f64(
+    out: *mut NovaString,
+    bits: u64,
+    file: u32,
+    start: u32,
+    end: u32,
+) {
+    let value = f64::from_bits(bits);
+    unsafe {
+        out.write(float_text(
+            format_args!("{value}"),
+            bits,
+            64,
+            file,
+            start,
+            end,
+        ));
+    }
+}
+
+pub fn initialize_float_environment() {
+    #[cfg(target_arch = "x86_64")]
+    {
+        let current = 0x1f80u32; // RN, gradual underflow, all exceptions masked.
+        unsafe {
+            std::arch::asm!("ldmxcsr [{pointer}]", pointer = in(reg) &current, options(nostack));
+        }
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    fatal("unsupported float host", 0, 0, 0);
+}
 #[no_mangle]
 pub unsafe extern "C" fn nova_concat(
     out: *mut NovaString,
@@ -216,7 +415,32 @@ extern "C" {
     fn nova_stage_a_entry();
 }
 fn main() {
+    initialize_float_environment();
     // Link-time bridge is generated only after checking main() -> Unit.
     unsafe { nova_stage_a_entry() };
     STRINGS.with(|arena| arena.borrow_mut().clear());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn p09_actual_formatters_match_independent_shortest_rational_oracle() {
+        for row in include_str!("../../../tools/tests/fixtures/float-format.tsv").lines() {
+            let row: Vec<_> = row.split('\t').collect();
+            let bits = u64::from_str_radix(row[1], 16).unwrap();
+            let mut out = std::mem::MaybeUninit::<NovaString>::uninit();
+            unsafe {
+                if row[0] == "32" {
+                    nova_format_f32(out.as_mut_ptr(), bits as u32, 0, 1, 2);
+                } else {
+                    nova_format_f64(out.as_mut_ptr(), bits, 0, 1, 2);
+                }
+                let value = bytes(out.assume_init(), 0, 1, 2);
+                assert_eq!(value, row[2].as_bytes(), "{row:?}");
+                assert!(!value.contains(&b'e') && !value.contains(&b'E'));
+            }
+        }
+        STRINGS.with(|arena| arena.borrow_mut().clear());
+    }
 }

@@ -1,5 +1,15 @@
 # 문서 변경 기록
 
+## 2026-10-05 — P09 float 구현
+
+- 사용자 “P09 승인하고 float 구현 진행”을 Accepted subset/전용 FLOAT primary EBNF로 기록.
+- Float32/64의 직접 literal 반올림·whole-type lossless 승격·IEEE 산술/비교·canonical NaN·±0를 AST→Native에 연결.
+- const와 MIR NumericConvert/독립 validator·재계산 gate·LLVM scalar/bit formatter ABI 구현.
+- MXCSR 제어/복원, Runtime entry 환경 초기화, fallible fixed decimal 출력과 정확한 decimal-even 동률 보정.
+- Python 정수/유리수 독립 oracle: literal 24개·연산 1,599개·formatter bits 2,474개, Native const/runtime 229쌍 검증.
+- [구현·검증 기록](FLOAT_IMPLEMENTATION.md), [실행 예제](../../examples/floats.nova).
+- source cast·float remainder/math API·aggregate/module·전체 D07은 후속.
+
 ## 2026-10-04 — P09 float 착수안 (Draft)
 
 - binary32/64·REAL literal 문맥·직접 ties-to-even·전체 범위 기반 numeric 승격 제안.

@@ -1,5 +1,9 @@
 //! P02 Stage A semantic types. No LLVM or target host type dependency.
+mod float;
 mod integer;
+pub use float::{
+    float_host_supported, FloatComparison, FloatError, FloatKind, FloatOp, FloatValue,
+};
 pub use integer::{IntKind, IntegerOp, IntegerValue};
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Type {
@@ -13,12 +17,48 @@ pub enum Type {
     UInt16,
     UInt32,
     UInt64,
+    Float32,
+    Float64,
     Bool,
     Char,
     String,
     Function,
 }
 impl Type {
+    pub const fn float(self) -> Option<FloatKind> {
+        match self {
+            Self::Float32 => Some(FloatKind::F32),
+            Self::Float64 => Some(FloatKind::F64),
+            _ => None,
+        }
+    }
+    pub const fn numeric(self) -> bool {
+        self.integer().is_some() || self.float().is_some()
+    }
+    pub fn widens_to(self, dest: Self) -> bool {
+        if let (Some(source), Some(dest)) = (self.integer(), dest.integer()) {
+            return source.widens_to(dest);
+        }
+        if let Some(dest) = dest.float() {
+            return self == dest.ty()
+                || self == Type::Float32 && dest == FloatKind::F64
+                || self
+                    .integer()
+                    .is_some_and(|source| dest.accepts_integer(source));
+        }
+        false
+    }
+    pub fn common_numeric(self, other: Self) -> Option<Self> {
+        if let (Some(a), Some(b)) = (self.integer(), other.integer()) {
+            return a.common(b).map(IntKind::ty);
+        }
+        if self.float().is_some() || other.float().is_some() {
+            return [Self::Float32, Self::Float64]
+                .into_iter()
+                .find(|&dest| self.widens_to(dest) && other.widens_to(dest));
+        }
+        None
+    }
     pub const fn integer(self) -> Option<IntKind> {
         match self {
             Self::Int8 => Some(IntKind::I8),
@@ -39,6 +79,7 @@ impl Type {
 pub enum ConstValue {
     Int32(i32),
     Integer(IntegerValue),
+    Float(FloatValue),
     Bool(bool),
     Char(char),
     String(String),
@@ -49,6 +90,7 @@ impl ConstValue {
         match self {
             Self::Int32(_) => Type::Int32,
             Self::Integer(value) => value.kind().ty(),
+            Self::Float(value) => value.kind().ty(),
             Self::Bool(_) => Type::Bool,
             Self::Char(_) => Type::Char,
             Self::String(_) => Type::String,
@@ -68,6 +110,20 @@ impl ConstValue {
             Self::Integer(value) => Some(*value),
             _ => None,
         }
+    }
+    pub fn widen(&self, dest: Type) -> Option<Self> {
+        if let Some(dest) = dest.float() {
+            return match self {
+                Self::Float(value) => value.widen(dest).map(Self::Float),
+                _ => self
+                    .integer()
+                    .and_then(|value| FloatValue::from_integer(value, dest))
+                    .map(Self::Float),
+            };
+        }
+        self.integer()
+            .and_then(|value| dest.integer().and_then(|dest| value.widen(dest)))
+            .map(Self::from_integer)
     }
 }
 
