@@ -12,6 +12,8 @@
 
 Stage A MIR은 원본 CFG/Place 기준과 P02의 평가 순서에 따라 구현했다. [MIR 구현 기록](../MIR_IMPLEMENTATION.md)은 현재 API/검증 경계이며 runtime/미래 Stage 정책의 승인이 아니다.
 
+Stage B 가변 지역 변수·반복문 최소 부분은 사용자 진행 요청으로 승인한 [P04](../CONTROL_STAGE_B_PROPOSAL.md)와 [전용 EBNF](../GRAMMAR_STAGE_B_CONTROL.ebnf)가 우선한다. [구현·검증 기록](../CONTROL_IMPLEMENTATION.md). 전체 Stage B와 ownership/Drop 정책은 Draft다.
+
 ## 비SSA 결정
 MVP MIR은 Place 기반 비SSA다. Move/Borrow/Drop 분석은 SSA 이전에 수행한다. phi node 요구 때문에 source ownership 모델을 바꾸지 않는다.
 

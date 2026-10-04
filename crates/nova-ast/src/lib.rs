@@ -17,7 +17,7 @@ impl AstNodeId {
     }
 }
 
-/// P01 syntax only. Child lists contain source-ordered IDs, never semantic IDs.
+/// P01/P04 syntax only. Child lists contain source-ordered IDs, never semantic IDs.
 /// The required child order for each construct is documented below.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NodeKind {
@@ -40,11 +40,18 @@ pub enum NodeKind {
     Binding {
         name: Span,
         has_type: bool,
+        mutable: bool,
     },
+    /// Target Name, then value. Assignment is a statement, never an expression.
+    Assignment,
     /// Zero or one value child.
     Return,
     /// Condition, then block, optional else block/if.
     If,
+    /// Condition, then loop body.
+    While,
+    Break,
+    Continue,
     ExpressionStatement,
     Name,
     Integer,

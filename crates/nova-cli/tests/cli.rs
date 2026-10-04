@@ -79,3 +79,47 @@ fn invalid_entry_is_rejected_before_tool_invocation_or_output() {
         .contains("main must"));
     assert!(!directory.join("target").exists());
 }
+
+#[test]
+fn mutable_control_diagnostics_precede_tool_invocation_and_outputs() {
+    for (program, code) in [
+        ("func main(){let x=1;x=2}", "N3004"),
+        ("func main(){break}", "N3002"),
+        ("func main(){while 1 {continue}}", "N3001"),
+        ("func main(){var x=1;x=true}", "N2101"),
+    ] {
+        for command in ["check", "build", "run"] {
+            let directory = directory();
+            let source = directory.join("bad-control.nova");
+            std::fs::write(&source, program).unwrap();
+            let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg(command)
+                .arg(&source)
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&directory)
+                .output()
+                .unwrap();
+            assert_eq!(result.status.code(), Some(1), "{command}: {program}");
+            assert!(String::from_utf8(result.stderr).unwrap().contains(code));
+            assert!(result.stdout.is_empty());
+            assert!(!directory.join("target").exists());
+        }
+    }
+}
+
+#[test]
+fn loop_check_needs_no_native_tools_or_outputs() {
+    let directory = directory();
+    let source = directory.join("loops.nova");
+    std::fs::write(&source, include_str!("../../../examples/loops.nova")).unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("check")
+        .arg(&source)
+        .env("NOVA_CLANG", "missing-clang")
+        .current_dir(&directory)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{:?}", result);
+    assert!(result.stdout.is_empty() && result.stderr.is_empty());
+    assert!(!directory.join("target").exists());
+}

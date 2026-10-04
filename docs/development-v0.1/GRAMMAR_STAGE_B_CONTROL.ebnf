@@ -1,4 +1,4 @@
-(* P04 Stage B control subset. Draft: awaiting user approval.
+(* P04 Stage B control subset. Accepted by user request on 2026-10-04.
    P01 productions retained; only binding and statement alternatives extended.
    Input: existing D05 normalized END tokens. *)
 program = { "END" | function_decl }, "EOF" ;

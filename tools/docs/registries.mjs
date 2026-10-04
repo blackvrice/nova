@@ -82,6 +82,7 @@ export const codes = [
 ['N3001','control','non-bool condition','condition','bool requirement','A~B'],
 ['N3002','control','invalid jump/return','jump','function/loop boundary','A~B'],
 ['N3003','control','missing return','fallthrough/closing block','return signature','A~B'],
+['N3004','control','assignment to non-mutable local','target identifier','declaration if available','B'],
 ['N3101','match','incomplete match','match','missing constructor note','B'],
 ['N3102','match','unreachable arm','arm','covering arm','B'],
 ['N3201','const','const evaluation failure','failing operation','const declaration','B'],

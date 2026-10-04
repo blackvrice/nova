@@ -309,7 +309,7 @@ fn syntax_errors_never_enter_successful_semantic_analysis() {
         "func main() { let x=🙂 }",
         "func main() { let x }",
         "func main() { print(\"x\")",
-        "func main() { var x=1 }",
+        "func main() { const x=1 }",
     ] {
         let result = frontend(source);
         assert!(!result.passed());
@@ -368,4 +368,141 @@ fn integer_literal_type_table_is_fixed_width() {
             );
         }
     }
+}
+
+#[test]
+fn mutable_locals_of_all_value_types_and_loop_scopes_pass() {
+    pass(include_str!("../../../examples/loops.nova"));
+    let result = pass("func f(x:int){var a=x;var b=true;var c=\"x\";var u:()=();a=a+1;b=false;c=\"y\";u=();while b {var a=a+1;a=2;break}}");
+    let (_, resolved, _) = result.semantic.unwrap();
+    assert_eq!(resolved.definitions.iter().filter(|d| d.mutable).count(), 5);
+    assert!(resolved
+        .definitions
+        .iter()
+        .filter(|d| matches!(d.kind, DefinitionKind::Parameter(_)))
+        .all(|d| !d.mutable));
+    pass("func f(){var x=1;while true {var x=x+1;x=2;break} x=3}");
+}
+
+#[test]
+fn assignment_errors_have_exact_target_value_and_declaration_spans() {
+    for (source, code, excerpt, secondary) in [
+        ("func f(){let 한글=1;한글=2}", "N3004", "한글", true),
+        ("func f(x:int){x=2}", "N3004", "x", true),
+        ("func f(){f=2}", "N3004", "f", true),
+        ("func f(){print=2}", "N3004", "print", false),
+        ("func f(){missing=1}", "N2001", "missing", false),
+        ("func f(){var x=1;x=true}", "N2101", "true", true),
+    ] {
+        let result = frontend(source);
+        assert_eq!(codes(&result), [code], "{source}");
+        let diagnostic = &result.diagnostics()[0];
+        assert_eq!(
+            result.sources.slice(diagnostic.primary.span).unwrap(),
+            excerpt
+        );
+        assert_eq!(!diagnostic.secondary.is_empty(), secondary);
+        if secondary {
+            assert!(diagnostic.secondary[0].span.start() < diagnostic.primary.span.start());
+        }
+    }
+}
+
+#[test]
+fn nearer_immutable_shadow_blocks_outer_mutable_assignment() {
+    assert_eq!(
+        codes(&frontend(
+            "func f(){var x=1;while true {let x=x;x=2;break}}"
+        )),
+        ["N3004"]
+    );
+    assert_eq!(
+        codes(&frontend("func f(){while false {var inner=1} inner=2}")),
+        ["N2001"]
+    );
+    assert_eq!(codes(&frontend("func f(){var x=x}")), ["N2001"]);
+    assert_eq!(codes(&frontend("func f(){var x=1;let x=2}")), ["N2002"]);
+}
+
+#[test]
+fn while_conditions_and_jump_boundaries_use_control_diagnostics() {
+    let result = frontend("func f(){while 1 {break}}");
+    assert_eq!(codes(&result), ["N3001"]);
+    assert_eq!(
+        result
+            .sources
+            .slice(result.diagnostics()[0].primary.span)
+            .unwrap(),
+        "1"
+    );
+    for jump in ["break", "continue"] {
+        let result = frontend(&format!("func f(){{if true {{{jump}}}}}"));
+        assert_eq!(codes(&result), ["N3002"]);
+        assert_eq!(
+            result
+                .sources
+                .slice(result.diagnostics()[0].primary.span)
+                .unwrap(),
+            jump
+        );
+    }
+    assert_eq!(
+        codes(&frontend("func f(){while false {break} continue}")),
+        ["N3002"]
+    );
+    pass("func f(){while true {if true {continue}else{break}}}");
+}
+
+#[test]
+fn loop_returns_are_conservative_and_unreachable_source_is_checked() {
+    for source in [
+        "func f()->int{while true {return 1}}",
+        "func f()->int{while true {break;return 1}}",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N3003"]);
+    }
+    pass("func f(x:bool)->int{while x {if x {return 1}else{break}} return 2}");
+    assert_eq!(
+        codes(&frontend("func f(){while true {break;missing()}}")),
+        ["N2001"]
+    );
+    assert_eq!(
+        codes(&frontend("func f(){while true {continue;let x:int=true}}")),
+        ["N2101"]
+    );
+    let result = pass("func f(){while true {if true {break}else{continue};return}}");
+    let (module, _, checked) = result.semantic.unwrap();
+    for (index, node) in module.nodes().iter().enumerate() {
+        if node.kind == HirKind::Block {
+            assert!(
+                !checked.always_returns[index],
+                "unreachable return cannot prove return"
+            );
+        }
+    }
+}
+
+#[test]
+fn assignment_error_types_suppress_derived_type_diagnostics() {
+    assert_eq!(
+        codes(&frontend("func f(){var x=missing;x=true;while x {break}}")),
+        ["N2001"]
+    );
+    assert_eq!(codes(&frontend("func f(){var x=1;x=missing}")), ["N2001"]);
+}
+
+#[test]
+fn tampered_mutability_is_an_invalid_resolution_table() {
+    let result = pass("func f(){let x=1}");
+    let (module, mut resolved, _) = result.semantic.unwrap();
+    resolved
+        .definitions
+        .iter_mut()
+        .find(|d| matches!(d.kind, DefinitionKind::Local(_)))
+        .unwrap()
+        .mutable = true;
+    assert_eq!(
+        check(&module, &resolved),
+        Err(CheckError::InvalidResolution)
+    );
 }

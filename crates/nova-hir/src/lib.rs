@@ -37,9 +37,14 @@ pub enum HirKind {
         name: SymbolId,
         name_span: Span,
         has_type: bool,
+        mutable: bool,
     },
+    Assignment,
     Return,
     If,
+    While,
+    Break,
+    Continue,
     ExpressionStatement,
     Name(SymbolId),
     Integer(String),
@@ -237,13 +242,22 @@ pub fn lower(
             }
             NodeKind::UnitType => HirKind::UnitType,
             NodeKind::Block => HirKind::Block,
-            NodeKind::Binding { name, has_type } => HirKind::Binding {
+            NodeKind::Binding {
+                name,
+                has_type,
+                mutable,
+            } => HirKind::Binding {
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
                 has_type,
+                mutable,
             },
+            NodeKind::Assignment => HirKind::Assignment,
             NodeKind::Return => HirKind::Return,
             NodeKind::If => HirKind::If,
+            NodeKind::While => HirKind::While,
+            NodeKind::Break => HirKind::Break,
+            NodeKind::Continue => HirKind::Continue,
             NodeKind::ExpressionStatement => HirKind::ExpressionStatement,
             NodeKind::Name => HirKind::Name(intern(node.span, &mut module, &mut interned)?),
             NodeKind::Integer => HirKind::Integer(sources.slice(node.span)?.into()),
@@ -349,6 +363,12 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 && expr(*kinds.last().expect("length checked"))
         }
         NodeKind::Return => kinds.len() <= 1 && kinds.iter().all(|k| expr(*k)),
+        NodeKind::Assignment => kinds.len() == 2 && kinds[0] == NodeKind::Name && expr(kinds[1]),
+        NodeKind::While => {
+            kinds.len() == 2
+                && expr(kinds[0])
+                && matches!(kinds[1], NodeKind::Block | NodeKind::Error)
+        }
         NodeKind::If => {
             (kinds.len() == 2 || kinds.len() == 3)
                 && expr(kinds[0])
@@ -360,6 +380,10 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             matches!(
                 k,
                 NodeKind::Binding { .. }
+                    | NodeKind::Assignment
+                    | NodeKind::While
+                    | NodeKind::Break
+                    | NodeKind::Continue
                     | NodeKind::Return
                     | NodeKind::If
                     | NodeKind::ExpressionStatement

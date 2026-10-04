@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P04 가변 지역 변수·반복문 구현
+
+- P04 문서/승인 질문 뒤 사용자 “다음 개발 진행ㅎ재ㅝ” 요청을 해당 최소 범위 진행 승인으로 기록.
+- var 가변성, direct-name 대입, while/break/continue를 AST→HIR→이름·타입→MIR→Native로 연결.
+- N3004 불변 대상 대입 진단 등록, loop nesting 및 Return/Jump/Fallthrough 분석, CFG cycle 검증.
+- loops.nova 예제, 24 tests 추가: 기본 125와 실제 LLVM/Native 14, 총 139 tests.
+- Windows x64 O0/O2 누적/nested jump/조건·initializer 횟수/zero iteration/return/문자열·Abort 검증.
+- 전체 Stage B/ownership/Drop와 Linux Native는 후속. P03 Runtime ABI·String arena 유지.
+
 ## 2026-10-04 — P04 Stage B 착수안 (Draft)
 
 - var/direct-name 대입/while/break/continue의 문법·의미·진단·MIR·Native 수용 기준 작성.

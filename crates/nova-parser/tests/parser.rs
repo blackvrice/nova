@@ -136,7 +136,7 @@ fn shape(parsed: &Parsed, sources: &SourceDatabase) -> String {
                 sources.slice(name).unwrap()
             ),
             NodeKind::Parameter { name } => format!("Parameter {}", sources.slice(name).unwrap()),
-            NodeKind::Binding { name, has_type } => {
+            NodeKind::Binding { name, has_type, .. } => {
                 format!("Binding {} {has_type}", sources.slice(name).unwrap())
             }
             kind => format!("{kind:?}"),
@@ -295,7 +295,7 @@ fn missing_brace_preserves_the_next_function() {
 #[test]
 fn unsupported_stage_features_are_not_silently_accepted() {
     for body in [
-        "var x=1",
+        "const x=1",
         "let x=1.5",
         "let x='a'",
         "let x=none",
@@ -303,10 +303,10 @@ fn unsupported_stage_features_are_not_silently_accepted() {
         "let x=lambda () => 1",
         "let x=f(name: 1)",
         "let x=f<int>(1)",
-        "x=1",
+        "(x)=1",
         "f().member",
         "let x=1 as int",
-        "while true { print(1) }",
+        "for x in xs { print(1) }",
     ] {
         let source = format!("func main() {{ {body}; print(2) }}\nfunc later() {{ print(3) }}");
         let (sources, _, parsed) = run(&source);
@@ -337,6 +337,91 @@ fn unsupported_stage_features_are_not_silently_accepted() {
             "{source}"
         );
     }
+}
+
+#[test]
+fn mutable_binding_assignment_and_nested_loops_have_source_order() {
+    let (sources, lexed, parsed) = run(include_str!("../../../examples/loops.nova"));
+    assert!(!lexed.has_errors() && !parsed.has_errors());
+    let bindings = parsed
+        .arena
+        .iter()
+        .filter(|(_, n)| matches!(n.kind, NodeKind::Binding { mutable: true, .. }))
+        .count();
+    assert_eq!(bindings, 2);
+    let assignments = parsed
+        .arena
+        .iter()
+        .filter(|(_, n)| n.kind == NodeKind::Assignment)
+        .map(|(_, n)| {
+            sources
+                .slice(parsed.arena.get(n.children[0]).unwrap().span)
+                .unwrap()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(assignments, ["index", "sum"]);
+    assert_pass("func f(){var x:()=();while true {while false {break} if true {continue} x=()}}");
+}
+
+#[test]
+fn loop_end_forms_and_jump_newlines_preserve_statement_shapes() {
+    let (a_sources, _, a) = run("func f(){\nvar x=0\nwhile true\n{\nx=x+1\nbreak\nprint(x)\n}\n}");
+    let (b_sources, _, b) = run("func f(){var x=0;while true {x=x+1;break;print(x)}}");
+    assert!(!a.has_errors() && !b.has_errors());
+    assert_eq!(shape(&a, &a_sources), shape(&b, &b_sources));
+    assert_pass("func f(){while true {continue\nprint(1)}}");
+}
+
+#[test]
+fn unsupported_assignment_and_jump_forms_preserve_later_functions() {
+    for body in [
+        "(x)=1",
+        "f()=1",
+        "x.member=1",
+        "x[0]=1",
+        "x= y=1",
+        "x+=1",
+        "f(x=1)",
+        "break 1",
+        "continue label",
+        "var x",
+    ] {
+        let source = format!("func f(){{{body}}} func later(){{}}");
+        let (sources, _, parsed) = run(&source);
+        assert!(parsed.has_errors(), "{body}");
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.code.to_string() == if body == "var x" { "N1101" } else { "N1102" }),
+            "{body}: {:?}",
+            parsed.diagnostics
+        );
+        assert!(parsed.arena.iter().any(|(_, n)| matches!(n.kind,
+            NodeKind::Function { name, .. } if sources.slice(name).unwrap() == "later")));
+    }
+}
+
+#[test]
+fn truncated_and_deep_loop_sources_recover_with_bounded_nesting() {
+    let source = "func f(){var x=0;while x<2 {x=x+1;if x==1 {continue}else{break}}} func later(){}";
+    for end in 0..=source.len() {
+        let (_, _, first) = run(&source[..end]);
+        let (_, _, second) = run(&source[..end]);
+        assert_eq!(first, second);
+    }
+    let source = format!(
+        "func f(){{{}break{}}} func later(){{}}",
+        "while true {".repeat(200),
+        "}".repeat(200)
+    );
+    let (sources, _, parsed) = run(&source);
+    assert!(parsed
+        .diagnostics
+        .iter()
+        .any(|d| d.code.to_string() == "N8901"));
+    assert!(parsed.arena.iter().any(|(_, n)| matches!(n.kind,
+        NodeKind::Function { name, .. } if sources.slice(name).unwrap() == "later")));
 }
 
 #[derive(Default)]

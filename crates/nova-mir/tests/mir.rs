@@ -94,6 +94,18 @@ fn execute(module: &Module, name: &str, args: Vec<Constant>) -> (Constant, Vec<S
                         };
                         Constant::Int32(left.checked_add(right).expect("in-range fixture"))
                     }
+                    Rvalue::Binary(op @ (Symbol::Less | Symbol::EqualEqual), left, right) => {
+                        let (Constant::Int32(left), Constant::Int32(right)) =
+                            (operand(left, &locals), operand(right, &locals))
+                        else {
+                            panic!("int")
+                        };
+                        Constant::Bool(if *op == Symbol::Less {
+                            left < right
+                        } else {
+                            left == right
+                        })
+                    }
                     _ => panic!("operation outside control-flow oracle"),
                 };
                 locals[local.0] = Some(value);
@@ -166,6 +178,55 @@ fn hello_snapshot_and_deterministic_lowering() {
         execute(&module, "main", vec![]),
         (Constant::Unit, vec!["print".into()])
     );
+}
+
+#[test]
+fn loops_update_places_and_nearest_jump_targets_execute_correctly() {
+    let source = "func f()->int{var i=0;var sum=0;while i<6 {i=i+1;if i==2 {continue} if i==5 {break} sum=sum+i} return sum}";
+    let module = pass(source);
+    assert_eq!(module, pass(source));
+    assert_eq!(execute(&module, "f", vec![]).0, Constant::Int32(8));
+    let module = pass("func f()->int{var i=0;var sum=0;while i<3 {i=i+1;var j=0;while j<4 {j=j+1;if j==2 {continue} if j==3 {break} sum=sum+1} sum=sum+10} return sum}");
+    assert_eq!(execute(&module, "f", vec![]).0, Constant::Int32(33));
+}
+
+#[test]
+fn zero_iteration_condition_calls_and_initializer_calls_have_exact_counts() {
+    let module = pass("func condition(x:int)->bool{print(\"test\");return x<3} func make()->int{print(\"init\");return 0} func f()->int{var i=0;while condition(i) {let x=make();i=i+1;continue} while false {print(\"never\")} return i}");
+    let (result, calls) = execute(&module, "f", vec![]);
+    assert_eq!(result, Constant::Int32(3));
+    assert_eq!(calls.iter().filter(|c| *c == "condition").count(), 4);
+    assert_eq!(calls.iter().filter(|c| *c == "make").count(), 3);
+    assert_eq!(calls.iter().filter(|c| *c == "print").count(), 7);
+}
+
+#[test]
+fn loop_exits_skip_unreachable_code_and_preserve_function_returns() {
+    let module =
+        pass("func f()->int{while true {if true {return 7}else{break};print(\"never\")} return 9}");
+    assert_eq!(execute(&module, "f", vec![]), (Constant::Int32(7), vec![]));
+    let module = pass("func f()->int{var i=0;while i<2 {i=i+1;if i==1 {continue}else{break};print(\"never\")} return i}");
+    assert_eq!(execute(&module, "f", vec![]), (Constant::Int32(2), vec![]));
+}
+
+#[test]
+fn loop_validator_rejects_missing_initialization_on_zero_iteration_path() {
+    let mut module = pass("func f(x:bool)->int{var value=0;while x {value=1;break} return value}");
+    let body = &mut module.bodies[0];
+    body.blocks[body.entry.0].statements.clear();
+    error(&module, Violation::UninitializedRead);
+}
+
+#[test]
+fn mutable_control_errors_are_blocked_before_mir() {
+    for source in [
+        "func f(){let x=1;x=2}",
+        "func f(){break}",
+        "func f(){while 1 {continue}}",
+        "func f(){var x=1;x=true}",
+    ] {
+        assert_eq!(compile(source), Err(LoweringError::FrontendErrors));
+    }
 }
 
 #[test]

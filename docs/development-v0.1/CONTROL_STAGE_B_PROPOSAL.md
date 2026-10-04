@@ -1,7 +1,9 @@
 # Stage B 가변 지역 변수·반복문 착수안 — P04
 
-작성일: 2026-10-04. 상태: **Draft / 사용자 승인 대기**.
-이 문서는 구현 승인을 위한 제안이다. 현재 compiler는 아래 확장 문법을 지원하지 않는다.
+작성일: 2026-10-04. 상태: **Accepted / 2026-10-04 사용자 진행 요청**.
+승인 근거: P04 문서와 승인 질문을 제시한 뒤 사용자가 “다음 개발 진행ㅎ재ㅝ”로 구현 진행을 요청했다.
+이 요청을 앞서 제시한 P04 최소 범위의 진행 승인으로 해석해 사용자에게 알리고 적용했다.
+현재 구현과 실행 검증은 [P04 구현 기록](CONTROL_IMPLEMENTATION.md)을 따른다.
 [P01](PARSER_STAGE_A_PROPOSAL.md), [P02](SEMANTICS_STAGE_A_PROPOSAL.md),
 [P03](NATIVE_STAGE_A_PROPOSAL.md)의 기존 subset은 유지한다.
 D06/D08의 필요한 부분만 제안하며 Stage B 전체나 D06~D30 전체 승인이 아니다.
@@ -60,21 +62,21 @@ D06/D08의 필요한 부분만 제안하며 Stage B 전체나 D06~D30 전체 승
 | 상황 | 코드 | Primary / 보조 위치 |
 |---|---|---|
 | 대입 대상 이름 미정의 | N2001 | target identifier |
-| let/parameter/function/print 등 가변 지역 var가 아닌 이름에 대입 | **N3004 (신규 제안)** | target identifier / 선언 위치가 있으면 secondary |
+| let/parameter/function/print 등 가변 지역 var가 아닌 이름에 대입 | **N3004 (P04 추가)** | target identifier / 선언 위치가 있으면 secondary |
 | RHS 타입 불일치 | N2101 | RHS / target 선언 위치 |
 | while 조건이 Bool 아님 | N3001 | condition |
 | loop 밖 break/continue | N3002 | jump keyword |
 | non-Unit 함수의 fallthrough | N3003 | function body / return signature |
 | 초기값/필수 token 누락 | N1101 | 누락·예상 token 위치 |
 | 표현식 대입, 비-name 대상, compound/label/value jump | N1102 | 미지원 construct |
-| 중첩 한도 초과 | N8901 | 초과 construct |
+| P04 반복문 내 중첩 한도 초과 | N8901 | 초과 construct (기존 P01 입력의 한도 진단 N1102는 유지) |
 
-N3004는 승인 후 diagnostic registry에 등록한다. 오류 입력은 기존처럼 CodegenUnit 생성 전에 차단한다.
+N3004는 승인된 diagnostic registry에 등록한다. 오류 입력은 기존처럼 CodegenUnit 생성 전에 차단한다.
 ErrorType에서 비롯된 중복 타입 진단은 억제한다.
 
 ## 목표 프로그램과 예상 결과
 
-아래는 승인 후 구현할 수용 사례이며 현재 실행 검증 결과가 아니다.
+아래는 P04 수용 사례다. 현재 Windows x64 O0/O2 실행 검증 결과는 구현 기록에 있다.
 
 ```nova
 func main() {
@@ -115,4 +117,4 @@ func main() {
 승인 대상은 이 문서의 P04 최소 계약과 전용 EBNF, N3004 등록이다.
 const/지연 초기화/숫자 승격/for/loop/range/match/aggregate/module/multi-file,
 Read·change·take 확장, Drop/Move/NLL, 일반 ABI와 Linux Native는 후속이다.
-승인 전에는 compiler 의미 변경과 승인 ledger 등록을 수행하지 않는다.
+이 최소 계약만 승인 ledger와 구현에 적용했다. 나머지 Stage B/D06~D30 상세는 Draft다.

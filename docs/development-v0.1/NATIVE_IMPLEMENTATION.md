@@ -85,7 +85,8 @@ Clang이 permission denied로 끝날 수 있다. 이번 실제 시험은 승인�
 | Linux x64 GNU | verify/ELF x64 Object O2 | cross-object 검증, Native link/run 미검증 |
 | AArch64/기타 | 없음 | 명시적 미지원 |
 
-기본 **105 tests**, opt-in 실제 LLVM/Native **10 tests**, 총 **115 tests**다.
+P03 완료 당시 기본 **105 tests**, opt-in 실제 LLVM/Native **10 tests**, 총 **115 tests**였다.
+후속 P04 포함 현재 숫자와 반복문 Native 증거는 [P04 구현 기록](CONTROL_IMPLEMENTATION.md)을 따른다.
 기본 Cargo test만으로 ignored Native tests가 실행됐다고 보고하지 않는다.
 
 ```powershell
@@ -109,4 +110,5 @@ cargo test -p nova-cli --offline --test native -- --ignored --test-threads=1
   Local 증거와 새 GitHub Actions run의 완료는 별개다.
 
 선택된 Stage A Native subset은 실행 가능하다. Linux Native/full ABI/foreign/modules,
-ownership/Drop/borrow/package/query/cache와 Stage B 기능은 후속이다.
+ownership/Drop/borrow/package/query/cache와 나머지 Stage B 기능은 후속이다.
+P04 가변 변수·반복문은 별도 승인 범위로 구현했다.

@@ -101,6 +101,12 @@ const nativeProposal = manifest.accepted_proposals?.find(p => p.id === 'P03');
 assert(nativeProposal?.approval_date === '2026-10-04' && nativeProposal?.document === 'NATIVE_STAGE_A_PROPOSAL.md', 'Missing P03 approval ledger');
 assert(fs.readFileSync(path.join(pack, 'NATIVE_STAGE_A_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P03 status');
 checks.push('P03 Stage A Native 승인 subset/날짜 기록');
+const controlProposal = manifest.accepted_proposals?.find(p => p.id === 'P04');
+assert(controlProposal?.approval_date === '2026-10-04' && controlProposal?.document === 'CONTROL_STAGE_B_PROPOSAL.md'
+  && controlProposal?.grammar === 'GRAMMAR_STAGE_B_CONTROL.ebnf', 'Missing P04 approval ledger');
+assert(fs.readFileSync(path.join(pack, 'CONTROL_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 진행 요청'), 'Invalid P04 status');
+assert(knownCodes.has('N3004'), 'Missing P04 immutable assignment diagnostic');
+checks.push('P04 Stage B control 승인 subset/날짜/전용 EBNF와 N3004 등록');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

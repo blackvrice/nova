@@ -112,6 +112,7 @@ pub fn lower(
             declarations: BTreeMap::new(),
             values: &mut values,
             current: None,
+            loops: vec![],
         };
         builder.current = Some(builder.block());
         for &parameter in &hir.nodes()[id.0].children[..parameters] {
@@ -151,7 +152,19 @@ enum Work {
     Expression(HirId),
     FinishExpression(HirId),
     Binding(HirId),
+    Assignment(HirId),
     Return(HirId),
+    While {
+        id: HirId,
+        condition: BlockId,
+        body: BlockId,
+        exit: BlockId,
+    },
+    AfterLoop {
+        id: HirId,
+        condition: BlockId,
+        exit: BlockId,
+    },
     If(HirId),
     AfterThen {
         id: HirId,
@@ -180,6 +193,8 @@ struct Builder<'a> {
     declarations: BTreeMap<usize, LocalId>,
     values: &'a mut [Option<Operand>],
     current: Option<BlockId>,
+    /// Active lexical loops: continue condition and break exit.
+    loops: Vec<(BlockId, BlockId)>,
 }
 impl Builder<'_> {
     fn block(&mut self) -> BlockId {
@@ -259,6 +274,36 @@ impl Builder<'_> {
                         HirKind::If => {
                             work.push(Work::If(id));
                             work.push(Work::Expression(node.children[0]));
+                        }
+                        HirKind::Assignment => {
+                            work.push(Work::Assignment(id));
+                            work.push(Work::Expression(node.children[1]));
+                        }
+                        HirKind::While => {
+                            let condition = self.block();
+                            let body = self.block();
+                            let exit = self.block();
+                            self.end(TerminatorKind::Goto(condition), id)?;
+                            self.current = Some(condition);
+                            work.push(Work::While {
+                                id,
+                                condition,
+                                body,
+                                exit,
+                            });
+                            work.push(Work::Expression(node.children[0]));
+                        }
+                        HirKind::Break | HirKind::Continue => {
+                            let &(condition, exit) =
+                                self.loops.last().ok_or(LoweringError::InvalidAnalysis)?;
+                            self.end(
+                                TerminatorKind::Goto(if node.kind == HirKind::Break {
+                                    exit
+                                } else {
+                                    condition
+                                }),
+                                id,
+                            )?;
                         }
                         HirKind::ExpressionStatement => {
                             work.push(Work::Expression(node.children[0]))
@@ -392,6 +437,7 @@ impl Builder<'_> {
                     self.end(TerminatorKind::Return(value), id)?;
                 }
                 Work::If(id) => {
+                    // Both branches preserve the enclosing lexical loop stack.
                     let node = &self.hir.nodes()[id.0];
                     let then_block = self.block();
                     let otherwise = self.block();
@@ -411,6 +457,55 @@ impl Builder<'_> {
                         join,
                     });
                     work.push(Work::Statement(node.children[1]));
+                }
+                Work::Assignment(id) => {
+                    let children = &self.hir.nodes()[id.0].children;
+                    let Some(Resolution::Definition(def)) = self.resolved.references[children[0].0]
+                    else {
+                        return Err(LoweringError::InvalidAnalysis);
+                    };
+                    let local = *self
+                        .declarations
+                        .get(&def.0)
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    self.assign(Place(local), Rvalue::Use(self.value(children[1])?), id)?;
+                }
+                Work::While {
+                    id,
+                    condition,
+                    body,
+                    exit,
+                } => {
+                    let children = &self.hir.nodes()[id.0].children;
+                    self.end(
+                        TerminatorKind::Branch {
+                            condition: self.value(children[0])?,
+                            then_block: body,
+                            else_block: exit,
+                        },
+                        id,
+                    )?;
+                    self.loops.push((condition, exit));
+                    self.current = Some(body);
+                    work.push(Work::AfterLoop {
+                        id,
+                        condition,
+                        exit,
+                    });
+                    work.push(Work::Statement(children[1]));
+                }
+                Work::AfterLoop {
+                    id,
+                    condition,
+                    exit,
+                } => {
+                    if self.current.is_some() {
+                        self.end(TerminatorKind::Goto(condition), id)?;
+                    }
+                    if self.loops.pop() != Some((condition, exit)) {
+                        return Err(LoweringError::InvalidAnalysis);
+                    }
+                    self.current = Some(exit);
                 }
                 Work::AfterThen {
                     id,

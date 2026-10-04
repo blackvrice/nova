@@ -1,7 +1,7 @@
 //! Opt-in real LLVM/MSVC Native evidence. Run with NOVA_CLANG and --ignored.
 #![cfg(all(target_os = "windows", target_arch = "x86_64"))]
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 fn program(source: &str) -> std::process::Output {
@@ -19,13 +19,32 @@ fn program_profile(source: &str, profile: &str) -> std::process::Output {
     let root = root.canonicalize().unwrap();
     let path = root.join("한글 프로그램.nova");
     std::fs::write(&path, source).unwrap();
-    Command::new(env!("CARGO_BIN_EXE_nova"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_nova"))
         .arg("run")
         .arg(path)
         .args(["--profile", profile])
         .current_dir(root)
-        .output()
-        .unwrap()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let started = std::time::Instant::now();
+    while child.try_wait().unwrap().is_none() {
+        if started.elapsed() > std::time::Duration::from_secs(40) {
+            // Kill the test-owned CLI and its native child if a loop regresses.
+            let _ = Command::new("taskkill")
+                .args(["/PID", &child.id().to_string(), "/T", "/F"])
+                .output();
+            let _ = child.kill();
+            let result = child.wait_with_output().unwrap();
+            panic!(
+                "Native test timed out: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+        }
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+    child.wait_with_output().unwrap()
 }
 #[test]
 #[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
@@ -38,6 +57,97 @@ fn hello_is_exact_utf8_lf_and_exit_zero() {
     );
     assert_eq!(result.stdout, b"Hello, Nova\n");
     assert!(result.stderr.is_empty());
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn loops_mutable_places_and_nested_jumps_match_in_both_profiles() {
+    let nested = "func main(){var i=0;var sum=0;while i<3 {i=i+1;var j=0;while j<4 {j=j+1;if j==2 {continue} if j==3 {break} sum=sum+1} sum=sum+10} print(\"{sum} {i}\")}";
+    for profile in ["debug", "release"] {
+        for (source, stdout) in [
+            (
+                include_str!("../../../examples/loops.nova"),
+                b"sum=8, index=5\n".as_slice(),
+            ),
+            (nested, b"33 3\n".as_slice()),
+        ] {
+            let result = program_profile(source, profile);
+            assert!(
+                result.status.success(),
+                "{}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert_eq!(result.stdout, stdout);
+            assert!(result.stderr.is_empty());
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn loop_condition_initializer_and_unreachable_effect_counts_are_native() {
+    let source = "func cond(i:int)->bool{print(\"cond {i}\");return i<3} func make(i:int)->int{print(\"init {i}\");return i} func f()->int{var i=0;while cond(i) {let x=make(i);i=i+1;if x<2 {continue}else{return i};print(\"never\")} return 9} func main(){while false {print(\"never\")} print(\"return={f()}\")}";
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            b"cond 0\ninit 0\ncond 1\ninit 1\ncond 2\ninit 2\nreturn=3\n"
+        );
+        let result = program_profile("func cond(i:int)->bool{print(\"cond\");return i<2} func main(){var i=0;while cond(i) {i=i+1;continue} print(\"{i}\")}", profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, b"cond\ncond\ncond\n2\n");
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn bool_string_unit_mutation_shadowing_and_previous_strings_are_preserved() {
+    let source = "func main(){var run=true;var text=\"초기{0}\\0\";let old=text;var unit:()=();var i=0;while run {var text=\"내부 {i}\";print(text);i=i+1;run=i<2;unit=()} text=\"끝 {i}\";print(\"{old}|{text}|{run}\");print(\"done\")}";
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "내부 0\n내부 1\n초기0\0|끝 2|false\ndone\n".as_bytes()
+        );
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn repeated_checked_failure_aborts_before_following_effects() {
+    for profile in ["debug", "release"] {
+        for source in [
+            "func main(){var i=2147483646;while true {print(\"{i}\");i=i+1} print(\"never\")}",
+            "func main(){var i=1;while 1/i==1 {print(\"body\");i=0} print(\"never\")}",
+        ] {
+            let result = program_profile(source, profile);
+            assert!(!result.status.success());
+            let stderr = String::from_utf8_lossy(&result.stderr);
+            assert!(stderr.contains("file#0:"), "{stderr}");
+            assert_eq!(
+                result.stdout,
+                if source.contains("2147483646") {
+                    b"2147483646\n2147483647\n".as_slice()
+                } else {
+                    b"body\n".as_slice()
+                }
+            );
+        }
+    }
 }
 #[test]
 #[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]

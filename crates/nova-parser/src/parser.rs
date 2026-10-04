@@ -15,6 +15,7 @@ pub(crate) struct Parser<'a> {
     synthetic: Vec<SyntheticToken>,
     delimiters: Vec<Token>,
     depth: usize,
+    loop_depth: usize,
     options: ParserOptions,
 }
 
@@ -36,6 +37,7 @@ impl<'a> Parser<'a> {
             synthetic: vec![],
             delimiters: vec![],
             depth: 0,
+            loop_depth: 0,
             options,
         }
     }
@@ -122,7 +124,7 @@ impl<'a> Parser<'a> {
     }
     fn report(&mut self, code: u16, span: Span, message: &str) {
         self.diagnostics.push(Diagnostic {
-            code: DiagnosticCode::new(code).expect("parser diagnostic codes are in N1xxx"),
+            code: DiagnosticCode::new(code).expect("approved parser diagnostic code"),
             severity: Severity::Error,
             message: message.into(),
             primary: Label {
@@ -165,7 +167,7 @@ impl<'a> Parser<'a> {
     fn enter(&mut self) -> bool {
         if self.depth == self.options.max_nesting {
             self.report(
-                1102,
+                if self.loop_depth > 0 { 8901 } else { 1102 },
                 self.current().span,
                 "parser nesting limit exceeded (P01 max_nesting)",
             );
@@ -200,8 +202,12 @@ impl<'a> Parser<'a> {
                     | TokenKind::Keyword(
                         Keyword::Func
                             | Keyword::Let
+                            | Keyword::Var
                             | Keyword::Return
                             | Keyword::If
+                            | Keyword::While
+                            | Keyword::Break
+                            | Keyword::Continue
                             | Keyword::Else
                     )
             )
@@ -391,9 +397,12 @@ impl<'a> Parser<'a> {
         if self.kind() == TokenKind::Keyword(Keyword::If) {
             return self.if_statement();
         }
+        if self.kind() == TokenKind::Keyword(Keyword::While) {
+            return self.while_statement();
+        }
         let id = match self.kind() {
-            TokenKind::Keyword(Keyword::Let) => {
-                self.bump();
+            TokenKind::Keyword(Keyword::Let | Keyword::Var) => {
+                let mutable = self.bump().kind == TokenKind::Keyword(Keyword::Var);
                 let name = self.expect(TokenKind::Identifier).span;
                 let has_type = self.eat(TokenKind::Colon);
                 let mut children = vec![];
@@ -402,7 +411,44 @@ impl<'a> Parser<'a> {
                 }
                 self.expect(TokenKind::Symbol(Symbol::Equal));
                 children.push(self.expression(0));
-                self.node(NodeKind::Binding { name, has_type }, start, children)
+                self.node(
+                    NodeKind::Binding {
+                        name,
+                        has_type,
+                        mutable,
+                    },
+                    start,
+                    children,
+                )
+            }
+            TokenKind::Identifier
+                if self
+                    .tokens
+                    .get(self.cursor + 1)
+                    .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::Equal)) =>
+            {
+                self.bump();
+                let target = self.node(NodeKind::Name, start, vec![]);
+                self.bump();
+                let value = self.expression(0);
+                self.node(NodeKind::Assignment, start, vec![target, value])
+            }
+            TokenKind::Keyword(Keyword::Break | Keyword::Continue) => {
+                let kind = if self.bump().kind == TokenKind::Keyword(Keyword::Break) {
+                    NodeKind::Break
+                } else {
+                    NodeKind::Continue
+                };
+                if !self.at_end() && !matches!(self.kind(), TokenKind::RightBrace | TokenKind::Eof)
+                {
+                    self.report(
+                        1102,
+                        self.current().span,
+                        "jump labels and values are unsupported",
+                    );
+                    self.recover_statement();
+                }
+                self.node(kind, start, vec![])
             }
             TokenKind::Keyword(Keyword::Return) => {
                 self.bump();
@@ -425,7 +471,7 @@ impl<'a> Parser<'a> {
             self.report(
                 code,
                 self.current().span,
-                "expected statement END; this syntax is outside the Stage A grammar",
+                "expected statement END; syntax is outside the P01/P04 grammar",
             );
             self.recover_statement();
         }
@@ -451,6 +497,23 @@ impl<'a> Parser<'a> {
         }
         self.depth -= 1;
         self.node(NodeKind::If, start, children)
+    }
+
+    fn while_statement(&mut self) -> AstNodeId {
+        let start = self.current().span.start();
+        self.loop_depth += 1;
+        if !self.enter() {
+            self.bump();
+            self.recover_statement();
+            self.loop_depth -= 1;
+            return self.node(NodeKind::Error, start, vec![]);
+        }
+        self.bump();
+        let condition = self.expression(0);
+        let body = self.block();
+        self.depth -= 1;
+        self.loop_depth -= 1;
+        self.node(NodeKind::While, start, vec![condition, body])
     }
 
     fn expression(&mut self, minimum: u8) -> AstNodeId {
@@ -655,17 +718,13 @@ fn unsupported(kind: TokenKind) -> bool {
                     | Symbol::FatArrow
             )
             | TokenKind::Keyword(
-                Keyword::Var
-                    | Keyword::Const
+                Keyword::Const
                     | Keyword::Struct
                     | Keyword::Class
                     | Keyword::Enum
                     | Keyword::Interface
-                    | Keyword::While
                     | Keyword::For
                     | Keyword::Loop
-                    | Keyword::Break
-                    | Keyword::Continue
                     | Keyword::Match
                     | Keyword::None
                     | Keyword::Change

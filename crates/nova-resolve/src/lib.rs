@@ -22,6 +22,8 @@ pub struct Definition {
     pub kind: DefinitionKind,
     pub span: Option<Span>,
     pub scope: ScopeId,
+    /// True only for P04 local var declarations; parameters and let are Read.
+    pub mutable: bool,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Scope {
@@ -51,6 +53,9 @@ impl Resolved {
                 "def {index} {:?} {:?} scope {}",
                 definition.name, definition.kind, definition.scope.0
             );
+            if definition.mutable {
+                let _ = writeln!(output, "mutable def {index}");
+            }
         }
         for (index, resolution) in self.references.iter().enumerate() {
             if let Some(resolution) = resolution {
@@ -85,6 +90,7 @@ pub fn resolve(module: &Module) -> Resolved {
         kind: DefinitionKind::BuiltinPrint,
         span: None,
         scope: ScopeId(0),
+        mutable: false,
     });
     result.scopes[0]
         .definitions
@@ -146,6 +152,12 @@ pub fn resolve(module: &Module) -> Resolved {
                             name_span,
                             id,
                         );
+                        if let Some(def) = result.declaration_ids[id.0] {
+                            result.definitions[def.0].mutable = matches!(
+                                module.nodes()[id.0].kind,
+                                HirKind::Binding { mutable: true, .. }
+                            );
+                        }
                     }
                     continue;
                 }
@@ -234,6 +246,7 @@ fn declare(
         kind,
         span: Some(span),
         scope,
+        mutable: false,
     });
     result.declaration_ids[node.0] = Some(id);
 }

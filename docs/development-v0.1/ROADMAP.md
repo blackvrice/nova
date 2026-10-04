@@ -38,8 +38,10 @@ Native 실행 전 arithmetic runtime, panic/print, entry/CLI/LLVM host 계약의
 다음은 Linux Native host 검증 및 Stage B 착수 범위 검토다.
 
 2026-10-04 Stage B 첫 범위로 [P04](CONTROL_STAGE_B_PROPOSAL.md)의 var/direct-name 대입,
-while/break/continue를 제안했다. 전용 EBNF와 진단·Native 수용 기준을 작성했고 사용자 승인을 기다린다.
-이 범위 완료는 Stage B 전체 완료가 아니다. 현재 로컬에는 Linux 실행 환경이 없어 Linux Native 검증은 후속이다.
+while/break/continue를 사용자 진행 요청에 따라 구현했다. 전용 EBNF, 진단·MIR와
+Windows x64 O0/O2 증거는 [P04 구현 기록](CONTROL_IMPLEMENTATION.md)에 있다.
+이 범위 완료는 Stage B 전체 완료가 아니다. 다음은 const/Primitive·aggregate/module 상세의 별도 동결이다.
+현재 로컬에는 Linux 실행 환경이 없어 Linux Native 검증은 후속이다.
 
 ## Backlog 경계
 

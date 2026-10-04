@@ -1,4 +1,4 @@
-//! P01 Stage A syntax. Parsing does not resolve names or infer semantic types.
+//! P01 Stage A and P04 control syntax. Parsing does not resolve names or types.
 
 mod parser;
 

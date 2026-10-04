@@ -66,6 +66,13 @@ struct Checker<'a> {
     module: &'a Module,
     resolved: &'a Resolved,
     result: Checked,
+    flow: Vec<Flow>,
+}
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum Flow {
+    Fallthrough,
+    Return,
+    Jump,
 }
 #[derive(Clone, Copy)]
 struct Context {
@@ -74,6 +81,7 @@ struct Context {
     return_type: TypeId,
     return_span: Option<Span>,
     direct_callee: bool,
+    loop_depth: usize,
 }
 enum Work {
     Enter(HirId, Context),
@@ -98,7 +106,12 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     }
     for (index, definition) in resolved.definitions.iter().enumerate() {
         let id = match definition.kind {
-            DefinitionKind::BuiltinPrint => continue,
+            DefinitionKind::BuiltinPrint => {
+                if definition.mutable {
+                    return Err(CheckError::InvalidResolution);
+                }
+                continue;
+            }
             DefinitionKind::Function(id)
             | DefinitionKind::Parameter(id)
             | DefinitionKind::Local(id) => id,
@@ -114,6 +127,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         };
         if module.symbol(*name) != Some(definition.name.as_str())
             || resolved.declaration_ids[id.0] != Some(DefId(index))
+            || definition.mutable != matches!(node.kind, HirKind::Binding { mutable: true, .. })
         {
             return Err(CheckError::InvalidResolution);
         }
@@ -156,6 +170,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         module,
         resolved,
         result,
+        flow: vec![Flow::Fallthrough; size],
     };
     checker.collect_signatures();
     let items = module.nodes()[module.root().0].children.clone();
@@ -173,6 +188,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             return_type,
             return_span: Some(module.nodes()[return_id.0].span),
             direct_callee: false,
+            loop_depth: 0,
         };
         checker.walk(body, context);
         if !checker.result.upstream_errors
@@ -331,12 +347,62 @@ impl Checker<'_> {
             };
             if exit {
                 self.finish(id, context);
+                self.result.always_returns[id.0] = self.flow[id.0] == Flow::Return;
                 self.apply_expected(id, context);
                 continue;
             }
             let node = &self.module.nodes()[id.0];
             pending.push(Work::Exit(id, context));
             match node.kind {
+                HirKind::Assignment => {
+                    let target = node.children[0];
+                    let def = match self.resolved.references[target.0] {
+                        Some(Resolution::Definition(def)) => Some(def),
+                        _ => None,
+                    };
+                    let expected = def
+                        .filter(|d| self.resolved.definitions[d.0].mutable)
+                        .map(|d| self.result.definition_types[d.0]);
+                    pending.push(Work::Enter(
+                        node.children[1],
+                        Context {
+                            expected,
+                            expected_span: def.and_then(|d| self.resolved.definitions[d.0].span),
+                            direct_callee: false,
+                            ..context
+                        },
+                    ));
+                    pending.push(Work::Enter(
+                        target,
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: true,
+                            ..context
+                        },
+                    ));
+                }
+                HirKind::While => {
+                    pending.push(Work::Enter(
+                        node.children[1],
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: false,
+                            loop_depth: context.loop_depth + 1,
+                            ..context
+                        },
+                    ));
+                    pending.push(Work::Enter(
+                        node.children[0],
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: false,
+                            ..context
+                        },
+                    ));
+                }
                 HirKind::Binding { has_type, .. } => {
                     let expected = if has_type {
                         Some(self.type_syntax(node.children[0]))
@@ -533,6 +599,7 @@ impl Checker<'_> {
                 self.set(id, Type::Unit);
             }
             HirKind::Return => {
+                self.flow[id.0] = Flow::Return;
                 if let Some(&value) = node.children.first() {
                     self.mismatch(value, context.return_type, context.return_span);
                 } else if !matches!(self.ty(context.return_type), Type::Unit | Type::Error) {
@@ -543,10 +610,36 @@ impl Checker<'_> {
                         context.return_span,
                     );
                 }
-                self.result.always_returns[id.0] = true;
                 self.set(id, Type::Unit);
             }
-            HirKind::If => {
+            HirKind::Assignment => {
+                let target = node.children[0];
+                if let Some(Resolution::Definition(def)) = self.resolved.references[target.0] {
+                    let definition = &self.resolved.definitions[def.0];
+                    if !definition.mutable {
+                        self.report(
+                            3004,
+                            self.module.nodes()[target.0].span,
+                            "assignment requires a mutable local var",
+                            definition.span,
+                        );
+                    }
+                }
+                self.set(id, Type::Unit);
+            }
+            HirKind::Break | HirKind::Continue => {
+                if context.loop_depth == 0 {
+                    self.report(
+                        3002,
+                        node.span,
+                        "jump requires an enclosing while loop",
+                        None,
+                    );
+                }
+                self.flow[id.0] = Flow::Jump;
+                self.set(id, Type::Unit);
+            }
+            HirKind::If | HirKind::While => {
                 let condition = node.children[0];
                 if !matches!(
                     self.ty(self.result.type_table[condition.0]),
@@ -555,20 +648,30 @@ impl Checker<'_> {
                     self.report(
                         3001,
                         self.module.nodes()[condition.0].span,
-                        "if condition must be Bool",
+                        "condition must be Bool",
                         None,
                     );
                 }
-                self.result.always_returns[id.0] = node.children.len() == 3
-                    && self.result.always_returns[node.children[1].0]
-                    && self.result.always_returns[node.children[2].0];
+                if node.kind == HirKind::If && node.children.len() == 3 {
+                    let then_flow = self.flow[node.children[1].0];
+                    let else_flow = self.flow[node.children[2].0];
+                    self.flow[id.0] = if then_flow == Flow::Return && else_flow == Flow::Return {
+                        Flow::Return
+                    } else if then_flow != Flow::Fallthrough && else_flow != Flow::Fallthrough {
+                        Flow::Jump
+                    } else {
+                        Flow::Fallthrough
+                    };
+                }
                 self.set(id, Type::Unit);
             }
             HirKind::Block => {
-                self.result.always_returns[id.0] = node
+                self.flow[id.0] = node
                     .children
                     .iter()
-                    .any(|c| self.result.always_returns[c.0]);
+                    .map(|c| self.flow[c.0])
+                    .find(|flow| *flow != Flow::Fallthrough)
+                    .unwrap_or(Flow::Fallthrough);
                 self.set(id, Type::Unit);
             }
             HirKind::ExpressionStatement => self.set(id, Type::Unit),

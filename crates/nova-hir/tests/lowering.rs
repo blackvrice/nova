@@ -28,6 +28,56 @@ fn hello_hir_snapshot() {
 }
 
 #[test]
+fn mutable_control_recovery_keeps_shapes_and_source_origins() {
+    let source = "func f(){var x=0;while x<2 {x=x+1;if x==1 {continue}else{break}}} func next(){}";
+    for end in 0..=source.len() {
+        lower_source(&source[..end]);
+    }
+    let module = lower_source(source);
+    assert!(module
+        .nodes()
+        .iter()
+        .any(|n| matches!(n.kind, HirKind::Binding { mutable: true, .. })));
+    for node in module.nodes().iter().filter(|n| {
+        matches!(
+            n.kind,
+            HirKind::Assignment | HirKind::While | HirKind::Break | HirKind::Continue
+        )
+    }) {
+        assert!(matches!(node.origin, SourceOrigin::Source(_)));
+    }
+}
+
+#[test]
+fn malformed_assignment_and_loop_ast_shapes_are_rejected() {
+    let mut sources = SourceDatabase::default();
+    let file = sources.add("api.nova", "1".into()).unwrap();
+    let span = Span::new(file, 0, 1).unwrap();
+    for kind in [NodeKind::Assignment, NodeKind::While] {
+        let mut arena = Arena::default();
+        let value = arena.insert(NodeKind::Integer, span, vec![]).unwrap();
+        let wrong = arena.insert(kind, span, vec![value, value]).unwrap();
+        let block = arena.insert(NodeKind::Block, span, vec![wrong]).unwrap();
+        let function = arena
+            .insert(
+                NodeKind::Function {
+                    name: span,
+                    parameters: 0,
+                    has_return_type: false,
+                },
+                span,
+                vec![block],
+            )
+            .unwrap();
+        let root = arena.insert(NodeKind::Root, span, vec![function]).unwrap();
+        assert_eq!(
+            lower(&sources, &arena, root),
+            Err(LoweringError::MalformedAst)
+        );
+    }
+}
+
+#[test]
 fn canonical_unit_return_and_alias_origins() {
     let module = lower_source("func f(x: int) -> void { return () }\nfunc main() {}");
     assert!(module
