@@ -108,6 +108,7 @@ fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 �
   `[P06 단일 파일 전역 const](GLOBAL_CONST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf) subset도 Accepted이며 [구현·검증 기록](GLOBAL_CONST_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[P07 고정 폭 정수·승격](INTEGER_STAGE_B_PROPOSAL.md) subset도 Accepted이며 [구현·검증 기록](INTEGER_IMPLEMENTATION.md)을 따른다. 기존 P06 source grammar를 재사용한다.\n\n` +
   `[P08 char·scalar 비교·UTF-8 보간](CHAR_STAGE_B_PROPOSAL.md)과 [CHAR primary 전용 EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 Accepted이며 [구현·검증 기록](CHAR_IMPLEMENTATION.md)을 따른다.\n\n` +
+  `[P09 float·IEEE 결과·숫자 승격·보간](FLOAT_STAGE_B_PROPOSAL.md)과 [검토용 전용 EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf)는 Draft/승인 대기이며 Compiler에는 적용하지 않았다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -138,6 +139,7 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P08', approval_date: '2026-10-04', scope: 'Stage B Unicode scalar char literals type comparison const UTF-8 interpolation and private scalar ABI', document: 'CHAR_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_CHAR.ebnf', grammar_change: true, implementation_verified: true },
   ],
   draft_proposals: [
+    { id: 'P09', status: 'Draft', scope: 'Stage B binary32 binary64 contextual real literals lossless numeric promotion IEEE arithmetic canonical NaN const interpolation and private ABI', document: 'FLOAT_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_FLOAT.ebnf', grammar_change: true, implementation_verified: false },
   ],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');

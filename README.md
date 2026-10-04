@@ -92,7 +92,9 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 10. [P08 char·scalar 비교·UTF-8 보간](docs/development-v0.1/CHAR_STAGE_B_PROPOSAL.md)과
     [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_CHAR.ebnf) 구현 완료:
     [구현·검증 기록](docs/development-v0.1/CHAR_IMPLEMENTATION.md), [예제](examples/characters.nova).
-11. 후속 float/cast·aggregate/module 상세와 Linux Native host 검증.
+11. 다음 검토 대상: [P09 float·IEEE 결과·숫자 승격·보간](docs/development-v0.1/FLOAT_STAGE_B_PROPOSAL.md)과
+    [검토용 전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_FLOAT.ebnf). Draft/승인 대기이며 아직 미구현입니다.
+12. 후속 source cast·float remainder·aggregate/module 상세와 Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.

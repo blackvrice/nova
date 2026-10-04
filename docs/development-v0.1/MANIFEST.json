@@ -71,7 +71,17 @@
       "implementation_verified": true
     }
   ],
-  "draft_proposals": [],
+  "draft_proposals": [
+    {
+      "id": "P09",
+      "status": "Draft",
+      "scope": "Stage B binary32 binary64 contextual real literals lossless numeric promotion IEEE arithmetic canonical NaN const interpolation and private ABI",
+      "document": "FLOAT_STAGE_B_PROPOSAL.md",
+      "grammar": "GRAMMAR_STAGE_B_FLOAT.ebnf",
+      "grammar_change": true,
+      "implementation_verified": false
+    }
+  ],
   "authored_date": "2026-10-03",
   "topics": [
     {

@@ -6,7 +6,9 @@ Stage A Int32 Literal 기본 타입·범위·직접 unary minus 처리는 사용
 Stage A Int32 checked runtime은 [P03](NATIVE_STAGE_A_PROPOSAL.md), 지역/전역 const는 P05/P06을 따른다.
 8종 정수·literal 문맥·whole-range widening·공통 타입·checked Runtime/const·MIR 변환·보간은
 사용자 승인 [P07](INTEGER_STAGE_B_PROPOSAL.md)이 우선한다. [현재 구현·검증 기록](INTEGER_IMPLEMENTATION.md).
-아래 큰 숫자 모델 중 float/char/cast/wrapping API와 전체 D07은 Draft다.
+char 값·비교·보간은 사용자 승인 [P08](CHAR_STAGE_B_PROPOSAL.md)이 우선한다.
+float 최소 범위의 새 검토안은 [P09](FLOAT_STAGE_B_PROPOSAL.md)이며 Draft/승인 대기다.
+아래 큰 숫자 모델 중 float/cast/wrapping API와 전체 D07은 Draft다.
 
 ## 범위와 기본 타입
 

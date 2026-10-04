@@ -50,6 +50,11 @@ float/cast·aggregate/module은 별도 후속 범위다.
 문자 비교·const·UTF-8 보간·private scalar ABI의 [구현·검증 기록](CHAR_IMPLEMENTATION.md).
 기존 P06 primary에 CHAR만 추가하며 D04 Lexer/escape/END는 보존한다.
 
+다음 최소 범위는 [P09 float·IEEE 결과·숫자 승격·보간 착수안](FLOAT_STAGE_B_PROPOSAL.md)과
+[검토용 31-production EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf)다. Draft/승인 대기이며 미구현이다.
+IEEE rounding·NaN/Infinity/±0·const·private formatter와 Native 검증 계약을 검토한다.
+source cast와 float remainder는 이번 제안에서 제외한다.
+
 ## 상태와 효력
 
 **작성 완료와 사양 승인, 구현 완료, 테스트 통과는 서로 다른 상태다.** 원본 Canonical

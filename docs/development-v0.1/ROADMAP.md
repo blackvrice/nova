@@ -68,6 +68,11 @@ D04의 기존 char token/escape를 AST·HIR·타입·const·MIR·Native로 연�
 [구현·검증 기록](CHAR_IMPLEMENTATION.md)에 Windows O0/O2와 Runtime scalar 경계 검증을 기록했다.
 float/숫자 cast·aggregate/module의 상세 동결은 별도 후속이다.
 
+다음 Primitive 최소 범위를 [P09 float·IEEE 결과·숫자 승격·보간](FLOAT_STAGE_B_PROPOSAL.md)으로 작성했다.
+기존 D04 Float token을 AST→Native까지 연결하는 제안이며 [검토용 EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf)는
+P08 primary에 FLOAT만 추가한다. P09은 사용자 승인 대기이며 아직 Compiler에 적용하지 않았다.
+source cast·float remainder/math API·aggregate/module과 전체 D07은 별도 후속이다.
+
 ## Backlog 경계
 
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,

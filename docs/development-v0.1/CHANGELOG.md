@@ -1,5 +1,15 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P09 float 착수안 (Draft)
+
+- binary32/64·REAL literal 문맥·직접 ties-to-even·전체 범위 기반 numeric 승격 제안.
+- IEEE overflow/div0·canonical NaN/±0, const/MIR·LLVM/private formatter와 decimal 보간 검증 경계 명시.
+- [P09 초안](FLOAT_STAGE_B_PROPOSAL.md), P08 primary에 FLOAT만 추가하는 [검토 EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf) 작성.
+- 승인 대기/미구현 Draft ledger와 validator 검사 추가. source cast·float remainder·전체 D07은 후속.
+- 기존 Compiler·accepted ledger/EBNF·원본 사양은 보존.
+- 문서 validator와 기존 기본 187 tests, Cargo fmt/clippy/all-features check 통과.
+  Compiler 변경이 없어 기존 opt-in LLVM/Native tests는 이번 초안 작업에서 다시 실행하지 않았다.
+
 ## 2026-10-04 — P08 char 구현
 
 - 사용자 “P08 승인하고 char 구현 진행” 답변을 Accepted subset/전용 CHAR primary EBNF로 기록.
