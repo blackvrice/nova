@@ -51,3 +51,6 @@ Canonical → Governance/Freeze → Language → Architecture → Implementation
 
 2026-10-04 사용자 승인 [P01](PARSER_STAGE_A_PROPOSAL.md)은 Stage A Parser 구문·AST·복구
 subset에만 적용한다. Canonical 변경이나 D06~D30 전체 의미 정책 승인은 아니다.
+
+2026-10-04 사용자 승인 [P02](SEMANTICS_STAGE_A_PROPOSAL.md)는 Stage A 단일 파일
+HIR/이름·타입 검사 최소 계약이다. runtime/ABI와 미래 Stage 전체 정책 승인은 아니다.

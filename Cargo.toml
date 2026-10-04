@@ -7,6 +7,10 @@ members = [
     "crates/nova-lexer",
     "crates/nova-ast",
     "crates/nova-parser",
+    "crates/nova-hir",
+    "crates/nova-resolve",
+    "crates/nova-types",
+    "crates/nova-typecheck",
 ]
 resolver = "2"
 exclude = ["vendor/unicode-ident-1.0.26"]
@@ -21,5 +25,8 @@ nova-core-ids = { path = "crates/nova-core-ids" }
 nova-source = { path = "crates/nova-source" }
 nova-syntax = { path = "crates/nova-syntax" }
 nova-ast = { path = "crates/nova-ast" }
+nova-hir = { path = "crates/nova-hir" }
+nova-resolve = { path = "crates/nova-resolve" }
+nova-types = { path = "crates/nova-types" }
 nova-diagnostics = { path = "crates/nova-diagnostics" }
 unicode-ident = { version = "=1.0.26", path = "vendor/unicode-ident-1.0.26" }

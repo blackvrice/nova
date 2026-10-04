@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01 Accepted / 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01/P02 Accepted / 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -22,12 +22,15 @@
 다음 구현의 검토 대상: [Stage A Parser·AST 착수안 P01](PARSER_STAGE_A_PROPOSAL.md)과
 [Stage A EBNF](GRAMMAR_STAGE_A.ebnf). P01 subset은 2026-10-04 사용자 승인으로 Accepted다.
 현재 API와 검증 경계는 [Parser 구현 계약](PARSER_IMPLEMENTATION.md)에 기록했다.
+Stage A 의미 검사는 [사용자 승인 P02](SEMANTICS_STAGE_A_PROPOSAL.md)를 따른다.
+현재 API·검증 범위는 [의미 검사 구현 계약](SEMANTICS_IMPLEMENTATION.md)에 기록했다.
 
 ## 상태와 효력
 
 **작성 완료와 사양 승인, 구현 완료, 테스트 통과는 서로 다른 상태다.** 원본 Canonical
 결정은 유지한다. D01~D05는 사용자 승인으로 Accepted이며 Lexer 구현에 적용한다.
 P01 Stage A Parser 구문·복구는 2026-10-04 사용자 승인으로 Accepted다.
+P02 단일 파일 HIR·이름·타입 최소 계약도 같은 날짜 사용자 승인으로 Accepted다.
 나머지 새 문법·언어 의미·공용 API·ABI·Package 형식은 Draft다. D번호 승인
 기록 없이 이 보완팩을 확정 사양으로 구현하지 않는다. 본문에서 '제안'이 생략된 구현
 설명도 문서 상태는 Draft다. 기존 코드와 달라지는 규칙 역시 코드에 자동 적용하지 않았다.
@@ -46,5 +49,5 @@ DECISIONS에 기록했다. 원본에 있는 '확정' 상태를 새 내용에 그
 
 자료구조/API/schema는 설계 계약 예시이며 실행 가능한 현재 compiler API 목록이 아니다.
 Nova 예제와 conformance fixture 역시 향후 수용 사례다. 현 compiler는 Source/Diagnostic
-기반과 Token/Lexer/END 및 P01 Stage A AST/Parser를 구현했으며, HIR/의미 검사/CLI/Native
-실행은 후속 단계다. Parser 수용은 이름·타입 검사나 전체 compile-pass가 아니다.
+기반과 Token/Lexer/END, P01 AST/Parser, P02 HIR/이름·타입 검사 및 frontend pass/fail harness를
+구현했다. MIR/CLI/Native 실행은 후속 단계다. frontend-pass는 Native 실행 성공이 아니다.

@@ -12,6 +12,8 @@
 
 Stage A Parser 구문/복구는 사용자 승인 [P01](../PARSER_STAGE_A_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_A.ebnf)가 우선한다. 나머지 추가 상세는 Draft다.
 
+Stage A 단일 파일 의미 검사는 사용자 승인 [P02](../SEMANTICS_STAGE_A_PROPOSAL.md)가 우선한다. runtime/전체 타입/미래 Stage의 추가 상세는 Draft다.
+
 ## 제어 흐름 초안 — D08
 if/while 조건은 bool만 허용한다. if/while/for/loop는 statement이며 value expression으로 사용하지 않는다. for binding in expression { ... }는 iterable/range를 한 번 평가한다.
 

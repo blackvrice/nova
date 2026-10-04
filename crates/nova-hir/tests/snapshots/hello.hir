@@ -1,0 +1,10 @@
+symbol 0 "print"
+symbol 1 "main"
+0 Name(SymbolId(0)) 18..23 [] Source(AstNodeId(0))
+1 String("Hello, Nova") 24..37 [] Source(AstNodeId(1))
+2 Call 18..38 [HirId(0), HirId(1)] Source(AstNodeId(2))
+3 ExpressionStatement 18..38 [HirId(2)] Source(AstNodeId(3))
+4 Block 12..40 [HirId(3)] Source(AstNodeId(4))
+5 UnitType 9..9 [] ImplicitReturn(AstNodeId(5))
+6 Function { name: SymbolId(1), name_span: Span { file: FileId(0), start: 5, end: 9 }, parameters: 0 } 0..40 [HirId(5), HirId(4)] Source(AstNodeId(5))
+7 Module 0..41 [HirId(6)] Source(AstNodeId(6))

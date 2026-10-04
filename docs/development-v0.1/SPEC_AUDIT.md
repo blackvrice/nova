@@ -8,6 +8,7 @@
 - NOVA-004 vs 072: use keyword 누락 → D01; alias/lambda/noPanic contextual 표기도 검토.
 - NOVA-070: compiler source Span과 runtime Span<T> 항목 혼재 → 담당 문서 070/118 구분(D10).
 - NOVA-026/037: numeric widening/default/overload 비용 불완전 → D07/D11.
+- Stage A HIR/name/type 최소 부분은 P02 승인 완료. 전체 widening/overload/ABI/runtime 정책은 Draft.
 - NOVA-029/117/121: growable Array와 List 역할 중복 → D23.
 - NOVA-059/066/067/135/148: 비지원 기능의 문서 존재는 구현 허가가 아님.
 - NOVA-111~113: hosted adapters는 C FFI 동결표에 없음 → D27 후속 제안.

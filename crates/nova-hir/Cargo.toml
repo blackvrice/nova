@@ -1,0 +1,14 @@
+[package]
+name = "nova-hir"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+nova-ast.workspace = true
+nova-source.workspace = true
+nova-syntax.workspace = true
+
+[dev-dependencies]
+nova-lexer = { path = "../nova-lexer" }
+nova-parser = { path = "../nova-parser" }

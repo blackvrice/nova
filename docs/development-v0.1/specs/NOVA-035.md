@@ -12,6 +12,8 @@
 
 Stage A Parser 구문/복구는 사용자 승인 [P01](../PARSER_STAGE_A_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_A.ebnf)가 우선한다. 나머지 추가 상세는 Draft다.
 
+Stage A 단일 파일 의미 검사는 사용자 승인 [P02](../SEMANTICS_STAGE_A_PROPOSAL.md)가 우선한다. runtime/전체 타입/미래 Stage의 추가 상세는 Draft다.
+
 ## Function signature
 FunctionId, ReceiverMode, ParameterMode, ReturnType/ownership, Effects를 포함한다. modifier 부재는 Read, change는 exclusive loan, take는 이전이다. 인수는 소스 순서로 평가하고 return type만으로 overload하지 않는다.
 

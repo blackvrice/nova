@@ -1,0 +1,1 @@
+func value() -> int { if true { return 1 } }

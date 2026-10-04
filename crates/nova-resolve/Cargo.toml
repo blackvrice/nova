@@ -1,0 +1,10 @@
+[package]
+name = "nova-resolve"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+nova-hir.workspace = true
+nova-source.workspace = true
+nova-diagnostics.workspace = true

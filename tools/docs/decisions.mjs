@@ -39,6 +39,10 @@ export function decisionMarkdown() {
   text += '2026-10-04 사용자 답변 “P01 승인하고 Stage A Parser 구현 진행”으로 ' +
     '[Stage A Parser P01](PARSER_STAGE_A_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_A.ebnf)를 승인했다. ' +
     '해당 구문/복구 subset에만 적용하며 아래 D06~D30 전체 정책은 Draft를 유지한다.\n\n';
+  text += '2026-10-04 사용자 답변 “P02 승인하고 이름·타입 검사까지 진행”으로 ' +
+    '[Stage A 의미 계약 P02](SEMANTICS_STAGE_A_PROPOSAL.md)를 승인했다. ' +
+    'Int32/Bool/String/Unit, 단일 파일 scope/call/return/print typing subset에만 적용한다. ' +
+    '숫자 승격·runtime/ABI·미래 Stage와 D06~D30 전체 정책은 Draft다.\n\n';
   text += '## 공통 승인 계약\n\n원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. ' +
     '최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. ' +
     'Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 ' +

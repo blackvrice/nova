@@ -2,6 +2,9 @@
 
 상태 Draft, D07. Primitive alias 자체는 기존 Canonical이다. 아래 default/conversion/overflow는 제안이다.
 
+Stage A Int32 Literal 기본 타입·범위·직접 unary minus 처리는 사용자 승인 [P02](SEMANTICS_STAGE_A_PROPOSAL.md)를 따른다.
+그 외 widening/float/overflow/runtime 계약은 이 문서의 Draft 상태를 유지한다.
+
 ## 범위와 기본 타입
 
 intN: [-2^(N-1),2^(N-1)-1], uintN: [0,2^N-1]. byte=uint8, int=int32, uint=uint32.

@@ -10,6 +10,8 @@
 
 이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
+Stage A 단일 파일 의미 검사는 사용자 승인 [P02](../SEMANTICS_STAGE_A_PROPOSAL.md)가 우선한다. runtime/전체 타입/미래 Stage의 추가 상세는 Draft다.
+
 ## Type/Ownership 분리
 type checker는 typed expressions/call resolution/coercion과 요구 ownership mode를 계산한다. MIR analysis가 concrete CFG에서 initialization/move/borrow/drop 검사를 수행한다. source 수준 검사와 CFG 수준 검사를 중복 구현하더라도 책임을 명확히 한다.
 

@@ -1,0 +1,11 @@
+func main() {
+    let value: int = add(1, 2)
+    if value > 2 {
+        print("value {value}")
+    } else {
+        return
+    }
+}
+func add(left: int32, right: int) -> int {
+    return left + right
+}

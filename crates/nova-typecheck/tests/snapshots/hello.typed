@@ -1,0 +1,8 @@
+0 Some(Function) value None call None returns false
+1 Some(String) value None call None returns false
+2 Some(Unit) value None call Some(DefId(0)) returns false
+3 Some(Unit) value None call None returns false
+4 Some(Unit) value None call None returns false
+5 Some(Unit) value None call None returns false
+6 Some(Function) value None call None returns false
+7 Some(Unit) value None call None returns false

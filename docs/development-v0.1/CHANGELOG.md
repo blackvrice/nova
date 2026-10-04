@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P02 Stage A HIR/이름·타입 검사
+
+- 사용자 답변 “P02 승인하고 이름·타입 검사까지 진행”과 최소 의미 계약을 Accepted로 기록.
+- nova-hir/nova-resolve/nova-types/nova-typecheck 추가. Primitive/Unit 정규화와 SourceOrigin 보존.
+- 단일 파일 forward/recursive call, lexical Scope/중복/shadow, Int32 range, call/return/condition 검사.
+- print(String)과 보간 타입 검사, ErrorType 연쇄 진단 억제, recovery HIR 성공 차단.
+- HIR·resolution·typed table snapshot, 정확한 code/Span frontend pass/fail harness 추가.
+- MIR/Runtime/CLI/LLVM Native 실행과 미래 Stage 전체 정책은 후속 작업.
 ## 2026-10-04 — P01 Stage A AST/Parser
 
 - 사용자 답변 “P01 승인하고 Stage A Parser 구현 진행” 기록. 전용 EBNF와 구문·복구 subset Accepted.

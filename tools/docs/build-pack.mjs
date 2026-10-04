@@ -76,7 +76,9 @@ for (const row of rows) {
     `새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. ` +
     `D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).\n\n` +
     ([14, 15, 16, 35, 43, 44, 72, 73, 136].includes(row.number)
-      ? `Stage A Parser 구문/복구는 사용자 승인 [P01](../PARSER_STAGE_A_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_A.ebnf)가 우선한다. 나머지 추가 상세는 Draft다.\n\n` : '') + body.trim() + '\n';
+      ? `Stage A Parser 구문/복구는 사용자 승인 [P01](../PARSER_STAGE_A_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_A.ebnf)가 우선한다. 나머지 추가 상세는 Draft다.\n\n` : '') +
+    ([19, 24, 25, 26, 35, 43, 44, 74, 75, 76, 77, 114, 116, 136].includes(row.number)
+      ? `Stage A 단일 파일 의미 검사는 사용자 승인 [P02](../SEMANTICS_STAGE_A_PROPOSAL.md)가 우선한다. runtime/전체 타입/미래 Stage의 추가 상세는 Draft다.\n\n` : '') + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -88,7 +90,7 @@ for (const row of rows) {
     original_sha256: hash(original), draft_sha256: hash(content) });
 }
 fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 색인\n\n` +
-  `148개 원본 주제를 빠짐없이 보완했다. 전체 상세는 Draft이며 D01~D05 Lexer와 [P01 Stage A Parser](PARSER_STAGE_A_PROPOSAL.md) subset은 Accepted다. 승인/구현/테스트 통과 상태를 구분한다.\n\n` +
+  `148개 원본 주제를 빠짐없이 보완했다. 전체 상세는 Draft이며 D01~D05 Lexer, [P01 Parser](PARSER_STAGE_A_PROPOSAL.md), [P02 Stage A 의미 검사](SEMANTICS_STAGE_A_PROPOSAL.md) subset은 Accepted다. 승인/구현/테스트 통과 상태를 구분한다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -99,6 +101,7 @@ fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보
   `- NOVA-004 vs 072: use keyword 누락 → D01; alias/lambda/noPanic contextual 표기도 검토.\n` +
   `- NOVA-070: compiler source Span과 runtime Span<T> 항목 혼재 → 담당 문서 070/118 구분(D10).\n` +
   `- NOVA-026/037: numeric widening/default/overload 비용 불완전 → D07/D11.\n` +
+  `- Stage A HIR/name/type 최소 부분은 P02 승인 완료. 전체 widening/overload/ABI/runtime 정책은 Draft.\n` +
   `- NOVA-029/117/121: growable Array와 List 역할 중복 → D23.\n` +
   `- NOVA-059/066/067/135/148: 비지원 기능의 문서 존재는 구현 허가가 아님.\n` +
   `- NOVA-111~113: hosted adapters는 C FFI 동결표에 없음 → D27 후속 제안.\n` +
@@ -107,7 +110,10 @@ fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보
 fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
   schema_version: 1, language: 'Nova', language_version: '0.1', document_status: 'PartiallyAccepted',
   accepted_decisions: ['D01', 'D02', 'D03', 'D04', 'D05'],
-  accepted_proposals: [{ id: 'P01', scope: 'Stage A Parser syntax and recovery', approval_date: '2026-10-04', document: 'PARSER_STAGE_A_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_A.ebnf' }],
+  accepted_proposals: [
+    { id: 'P01', scope: 'Stage A Parser syntax and recovery', approval_date: '2026-10-04', document: 'PARSER_STAGE_A_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_A.ebnf' },
+    { id: 'P02', scope: 'Stage A single-file HIR name and type checking', approval_date: '2026-10-04', document: 'SEMANTICS_STAGE_A_PROPOSAL.md' },
+  ],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);

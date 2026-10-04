@@ -22,6 +22,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nova-hir"
+version = "0.1.0"
+dependencies = [
+ "nova-ast",
+ "nova-lexer",
+ "nova-parser",
+ "nova-source",
+ "nova-syntax",
+]
+
+[[package]]
 name = "nova-lexer"
 version = "0.1.0"
 dependencies = [
@@ -43,6 +54,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nova-resolve"
+version = "0.1.0"
+dependencies = [
+ "nova-diagnostics",
+ "nova-hir",
+ "nova-source",
+]
+
+[[package]]
 name = "nova-source"
 version = "0.1.0"
 dependencies = [
@@ -55,6 +75,24 @@ version = "0.1.0"
 dependencies = [
  "nova-source",
 ]
+
+[[package]]
+name = "nova-typecheck"
+version = "0.1.0"
+dependencies = [
+ "nova-diagnostics",
+ "nova-hir",
+ "nova-lexer",
+ "nova-parser",
+ "nova-resolve",
+ "nova-source",
+ "nova-syntax",
+ "nova-types",
+]
+
+[[package]]
+name = "nova-types"
+version = "0.1.0"
 
 [[package]]
 name = "unicode-ident"

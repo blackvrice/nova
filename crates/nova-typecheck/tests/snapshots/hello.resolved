@@ -1,0 +1,3 @@
+def 0 "print" BuiltinPrint scope 0
+def 1 "main" Function(HirId(6)) scope 1
+ref 0 Definition(DefId(0))
