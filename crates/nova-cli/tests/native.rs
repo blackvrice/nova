@@ -838,3 +838,94 @@ fn stdout_io_failure_aborts_with_the_call_span() {
     );
     assert_eq!(std::fs::read(&sink).unwrap(), b"sentinel");
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p10_cast_native_example_and_exact_rational_const_runtime_oracle_o0_o2() {
+    for profile in ["debug", "release"] {
+        for (source,expected) in [
+            (include_str!("../../../examples/casts.nova"),"small=127, whole=127, zero=0, skipped=false\nrounded=16777216, value=2.25, back=2\n"),
+            (include_str!("../../../tools/tests/fixtures/cast-native.nova"),include_str!("../../../tools/tests/fixtures/cast-native.stdout.txt")),
+            ("func value()->double{print(\"once\");return 127.9}func main(){var x=value() as int8;print(\"{x}\");x=(x as int16+1) as int8}","once\n127\n"),
+        ] {
+            let result=program_profile(source,profile);
+            if source.contains("var x=value()") { assert!(!result.status.success());assert!(String::from_utf8_lossy(&result.stderr).contains("numeric cast out of range")); }
+            else {assert!(result.status.success(),"{profile}: {}",String::from_utf8_lossy(&result.stderr));assert!(result.stderr.is_empty());}
+            assert_eq!(result.stdout,expected.as_bytes(),"{profile}");
+        }
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p10_cast_native_abort_boundaries_nan_infinity_and_full_unicode_span_o0_o2() {
+    let mut cases = vec![
+        ("int", "int8", "128"),
+        ("int", "uint8", "-1"),
+        ("uint64", "int64", "18446744073709551615"),
+        ("double", "float", "1e100"),
+        ("double", "float", "-1e100"),
+        ("double", "int64", "1.0/0.0"),
+        ("double", "uint64", "-1.0/0.0"),
+        ("float", "int64", "1.0/0.0"),
+        ("float", "uint64", "-1.0/0.0"),
+        ("double", "int64", "9223372036854775808.0"),
+        ("double", "uint64", "18446744073709551616.0"),
+        ("double", "int8", "128.0"),
+        ("double", "int8", "-129.0"),
+        ("double", "uint8", "-1.0"),
+    ];
+    for s in ["float", "double"] {
+        for d in [
+            "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
+        ] {
+            cases.push((s, d, "0.0/0.0"));
+        }
+    }
+    for profile in ["debug", "release"] {
+        for (s, d, value) in &cases {
+            let source=format!("func get()->{s}{{print(\"한번🙂\");return {value}}}func main(){{let 실패=get() as {d};print(\"after\")}}");
+            let cast = format!("get() as {d}");
+            let start = source.find(&cast).unwrap();
+            let end = start + cast.len();
+            let result = program_profile(&source, profile);
+            assert!(!result.status.success());
+            assert_eq!(result.stdout, "한번🙂\n".as_bytes());
+            let stderr = String::from_utf8_lossy(&result.stderr);
+            assert_eq!(
+                stderr.lines().next().unwrap(),
+                format!("Nova panic: numeric cast out of range at file#0:{start}..{end}"),
+                "{profile} {s}->{d} {value}: {stderr}"
+            );
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p10_cast_native_truncation_signed_zero_subnormal_nan_infinity_and_chain_o0_o2() {
+    let source = r#"
+func d(x:double)->double{return x}
+func u(x:uint64)->uint64{return x}
+func main(){
+let a=d(127.9) as int8;let b=d(-128.9) as int8;let c=d(-0.9) as uint8
+let z=d(-0.0) as float;let t=d(-7e-46) as float;let sub=d(1.401298464324817e-45) as float
+let inf=d(1.0)/d(0.0);let ni=d(-1.0)/d(0.0);let n=d(0.0)/d(0.0)
+print("{a} {b} {c} {z} {t} {sub>0.0} {inf as float} {ni as float} {n as float}")
+let i=d(9223372036854774784.0) as int64;let j=d(18446744073709549568.0) as uint64
+let k=u(18446744073709551615) as double;let chain=(d(127.9) as int8) as double
+let less=d(127.9) as int<128
+let skipped=false&&((128 as int8)==0)
+print("{i} {j} {k} {chain} {d(-0.0) as int} {less} {skipped}")
+}
+"#;
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(result.stderr.is_empty());
+        assert_eq!(result.stdout,b"127 -128 0 -0 -0 true inf -inf NaN\n9223372036854774784 18446744073709549568 18446744073709552000 127 0 true false\n");
+    }
+}

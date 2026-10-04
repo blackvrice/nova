@@ -1,5 +1,5 @@
-(* P10 numeric cast subset: Draft, awaiting user approval.
-   Review copy of accepted P09 grammar; only postfix_expr adds as type.
+(* P10 numeric cast subset: Accepted by the user on 2026-10-05.
+   Extension of accepted P09 grammar; only postfix_expr adds as type.
    Existing D01 As keyword and D05 normalized END tokens are preserved.
    Cast target validation and checked value behavior are semantic. *)
 program = { "END" | function_decl | global_const_decl }, "EOF" ;

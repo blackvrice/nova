@@ -1,0 +1,15 @@
+const LIMIT:int16=127
+const SMALL=LIMIT as int8
+const WHOLE=127.9 as int8
+const ZERO=(-0.9) as uint8
+const SKIPPED=false&&((128 as int8)==0)
+func echo(value:float)->float{return value}
+func main(){
+ let wide:int64=16777217
+ let rounded=echo(wide as float)
+ let precise:double=1.25
+ var value=precise as float
+ value=value+(1 as float)
+ print("small={SMALL}, whole={WHOLE}, zero={ZERO}, skipped={SKIPPED}")
+ print("rounded={rounded}, value={value}, back={value as int}")
+}

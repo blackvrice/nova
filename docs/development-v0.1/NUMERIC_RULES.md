@@ -9,9 +9,9 @@ Stage A Int32 checked runtime은 [P03](NATIVE_STAGE_A_PROPOSAL.md), 지역/전�
 char 값·비교·보간은 사용자 승인 [P08](CHAR_STAGE_B_PROPOSAL.md)이 우선한다.
 float 최소 범위는 사용자 승인 [P09](FLOAT_STAGE_B_PROPOSAL.md)가 우선한다.
 RN ties-even·canonical NaN·const IEEE 값과 최단 fixed decimal의 [구현 기록](FLOAT_IMPLEMENTATION.md).
-아래 큰 숫자 모델 중 cast/wrapping/math API와 전체 D07은 Draft다.
-명시적 숫자 `as`의 다음 검토안은 [P10](CAST_STAGE_B_PROPOSAL.md)이다.
-float→int는 truncation 후 범위 검사, finite Float64→Float32 overflow는 실패하는 제안이며 아직 미적용이다.
+숫자 `as`는 사용자 승인 [P10](CAST_STAGE_B_PROPOSAL.md)이 우선한다.
+float→int는 truncation 후 범위 검사, finite Float64→Float32 overflow는 실패한다.
+[현재 구현·검증 기록](CAST_IMPLEMENTATION.md). Bool/Char/unsafe cast·wrapping/math API와 전체 D07은 Draft다.
 
 ## 범위와 기본 타입
 

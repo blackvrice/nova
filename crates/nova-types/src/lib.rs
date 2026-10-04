@@ -85,7 +85,39 @@ pub enum ConstValue {
     String(String),
     Unit,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CastError {
+    InvalidTypes,
+    OutOfRange,
+    UnsupportedHost,
+}
 impl ConstValue {
+    /// P10 explicit numeric conversion; never wrapping or saturating.
+    pub fn checked_cast(&self, dest: Type) -> Result<Self, CastError> {
+        if !self.ty().numeric() || !dest.numeric() {
+            return Err(CastError::InvalidTypes);
+        }
+        if let Some(value) = self.integer() {
+            if let Some(kind) = dest.integer() {
+                return IntegerValue::new(kind, value.value())
+                    .map(Self::from_integer)
+                    .ok_or(CastError::OutOfRange);
+            }
+            return FloatValue::cast_integer(value, dest.float().expect("numeric target"))
+                .map(Self::Float);
+        }
+        let Self::Float(value) = self else {
+            unreachable!("numeric value")
+        };
+        if let Some(kind) = dest.integer() {
+            value.truncated_integer(kind).map(Self::from_integer)
+        } else {
+            value
+                .cast_float(dest.float().expect("numeric target"))
+                .map(Self::Float)
+        }
+    }
+
     pub const fn ty(&self) -> Type {
         match self {
             Self::Int32(_) => Type::Int32,

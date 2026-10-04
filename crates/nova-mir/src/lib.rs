@@ -84,6 +84,8 @@ pub enum Rvalue {
     Widen(Operand, Type),
     /// P09 whole-type lossless integer-to-float or float widening.
     NumericConvert(Operand, Type),
+    /// P10 explicit checked conversion, distinct from lossless coercion.
+    CheckedCast(Operand, Type),
     Unary(Symbol, Operand),
     /// Never contains && or ||; those are CFG branches.
     Binary(Symbol, Operand, Operand),

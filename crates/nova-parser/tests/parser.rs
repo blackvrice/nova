@@ -350,7 +350,6 @@ fn unsupported_stage_features_are_not_silently_accepted() {
         "let x=f<int>(1)",
         "(x)=1",
         "f().member",
-        "let x=1 as int",
         "for x in xs { print(1) }",
     ] {
         let source = format!("func main() {{ {body}; print(2) }}\nfunc later() {{ print(3) }}");
@@ -712,5 +711,69 @@ fn adversarial_token_sequences_always_make_progress() {
         let (_, _, first) = run(&source);
         let (_, _, second) = run(&source);
         assert_eq!(first, second);
+    }
+}
+
+#[test]
+fn p10_postfix_cast_precedence_spans_and_recovery() {
+    let (_, _, comparison) = run("func f(){let a=x as int < y;let b=x as int<y;return\n1 as int}");
+    assert!(!comparison.has_errors(), "{:?}", comparison.diagnostics);
+    assert_eq!(
+        comparison
+            .arena
+            .iter()
+            .filter(|(_, n)| n.kind == NodeKind::Binary(Symbol::Less))
+            .count(),
+        2
+    );
+    assert!(comparison
+        .arena
+        .iter()
+        .any(|(_, n)| n.kind == NodeKind::Return && n.children.is_empty()));
+
+    let source="func f(){let a=-x as double;let b=x+y as int8;let c=f() as int as double;let d=x as int();let e=x\nas\nint;}";
+    let (sources, lexed, parsed) = run(source);
+    assert!(
+        !lexed.has_errors() && !parsed.has_errors(),
+        "{:?}",
+        parsed.diagnostics
+    );
+    let casts: Vec<_> = parsed
+        .arena
+        .iter()
+        .filter(|(_, n)| matches!(n.kind, NodeKind::Cast { .. }))
+        .map(|(_, n)| sources.slice(n.span).unwrap())
+        .collect();
+    assert_eq!(
+        casts,
+        [
+            "x as double",
+            "y as int8",
+            "f() as int",
+            "f() as int as double",
+            "x as int",
+            "x\nas\nint"
+        ]
+    );
+    let prefix = parsed
+        .arena
+        .iter()
+        .find(|(_, n)| n.kind == NodeKind::Prefix(Symbol::Minus))
+        .unwrap()
+        .1;
+    assert!(matches!(
+        parsed.arena.get(prefix.children[0]).unwrap().kind,
+        NodeKind::Cast { .. }
+    ));
+    for at in 0..source.len() {
+        run(&source[..at]);
+    }
+    for malformed in [
+        "func f(){let x=1 as;let y=2}",
+        "func f(){let x=1 as } func g(){}",
+        "func f(){let x=1 as int as;return}",
+    ] {
+        let (_, _, parsed) = run(malformed);
+        assert!(parsed.has_errors());
     }
 }

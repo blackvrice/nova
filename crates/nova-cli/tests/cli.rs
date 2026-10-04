@@ -365,3 +365,56 @@ fn global_const_check_fragments_need_no_tools_but_native_entry_still_requires_ma
         assert!(!directory.join("target").exists());
     }
 }
+
+#[test]
+fn p10_cast_source_failures_precede_tools_but_runtime_failures_pass_check() {
+    for (program, code) in [
+        ("func main(){let x=true as int}", "N2101"),
+        ("func main(){let x=1 as Missing}", "N2001"),
+        ("func main(){let x=2147483648 as int64}", "N2102"),
+        ("const X=128 as int8;func main(){}", "N3201"),
+    ] {
+        let directory = directory();
+        let source = directory.join("bad.nova");
+        let output = directory.join("keep.exe");
+        std::fs::write(&source, program).unwrap();
+        std::fs::write(&output, b"keep").unwrap();
+        for command in ["check", "build", "run"] {
+            let mut process = Command::new(env!("CARGO_BIN_EXE_nova"));
+            process
+                .arg(command)
+                .arg(&source)
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&directory);
+            if command == "build" {
+                process.arg("-o").arg(&output);
+            }
+            let result = process.output().unwrap();
+            assert_eq!(result.status.code(), Some(1));
+            assert!(String::from_utf8_lossy(&result.stderr).contains(code));
+            assert_eq!(std::fs::read(&output).unwrap(), b"keep");
+            assert!(!directory.join("target").exists());
+        }
+    }
+    for program in [
+        include_str!("../../../examples/casts.nova"),
+        "func main(){let x=128 as int8;let y=(-1) as uint8}",
+    ] {
+        let directory = directory();
+        let source = directory.join("cast.nova");
+        std::fs::write(&source, program).unwrap();
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("check")
+            .arg(&source)
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&directory)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(!directory.join("target").exists());
+    }
+}

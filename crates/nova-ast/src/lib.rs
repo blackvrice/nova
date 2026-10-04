@@ -68,6 +68,10 @@ pub enum NodeKind {
     Binary(Symbol),
     /// Callee, followed by positional arguments.
     Call,
+    /// Value, then target type; keyword preserves the source spelling.
+    Cast {
+        keyword: Span,
+    },
     InterpolatedString,
     StringText,
     Interpolation,

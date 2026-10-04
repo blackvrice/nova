@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-05 — P10 숫자 cast 구현
+
+- 사용자 “P10 승인하고 숫자 cast 구현 진행”을 Accepted subset/전용 postfix EBNF에 기록.
+- AST/HIR source origin·타입 문맥 격리·Core checked 변환·const N3201/예산·MIR CheckedCast 구현.
+- LLVM 원 width RN·truncation 후 ordered guard·안전한 fptoi·Runtime reason 4/full cast Span 구현.
+- 독립 rational oracle 9,000개, const/Native 957쌍, 숫자 100조합 O0/O2 COFF/ELF 및 실패/회귀 검증.
+- [구현·검증 기록](CAST_IMPLEMENTATION.md), [수용 예제](../../examples/casts.nova).
+- Bool/Char/unsafe cast·float remainder/math API·aggregate/module·전체 D07은 후속.
+
 ## 2026-10-05 — P10 명시적 숫자 cast 착수안 (Draft)
 
 - P07/P09 다음 최소 범위로 [숫자 as 계약](CAST_STAGE_B_PROPOSAL.md)을 작성.

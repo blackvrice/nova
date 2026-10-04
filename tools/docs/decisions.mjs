@@ -45,7 +45,10 @@ export function decisionMarkdown() {
     '숫자 승격·runtime/ABI·미래 Stage와 D06~D30 전체 정책은 Draft다.\n\n';
   text += '2026-10-04 사용자 “P09 승인하고 float 구현 진행”으로 [float 최소 계약 P09](FLOAT_STAGE_B_PROPOSAL.md)을 승인했다. ' +
     '[구현 기록](FLOAT_IMPLEMENTATION.md)과 MANIFEST의 accepted_proposals가 해당 subset에 우선한다. ' +
-    'source cast·float remainder/math API 및 전체 D07은 Draft를 유지한다.\n\n';
+    '숫자 cast는 P10, float remainder/math API 및 전체 D07은 Draft를 유지한다.\n\n';
+  text += '2026-10-05 사용자 “P10 승인하고 숫자 cast 구현 진행”으로 [명시적 숫자 cast P10](CAST_STAGE_B_PROPOSAL.md)을 승인했다. ' +
+    '[구현 기록](CAST_IMPLEMENTATION.md)과 [postfix as 전용 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)를 따른다. ' +
+    '숫자 10종의 checked 변환 subset에만 적용하며 Bool/Char/unsafe cast와 전체 D07은 Draft다.\n\n';
   text += '## 공통 승인 계약\n\n원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. ' +
     '최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. ' +
     'Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 ' +

@@ -58,6 +58,9 @@ pub enum HirKind {
     Prefix(Symbol),
     Binary(Symbol),
     Call,
+    Cast {
+        keyword: Span,
+    },
     InterpolatedString,
     Interpolation,
 }
@@ -154,6 +157,22 @@ pub fn lower(
             if name.file() != node.span.file()
                 || name.start() < node.span.start()
                 || name.end() > node.span.end()
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::Cast { keyword } = node.kind {
+            if sources.slice(keyword)? != "as"
+                || keyword.file() != node.span.file()
+                || keyword.start() < node.span.start()
+                || keyword.end() > node.span.end()
+                || node.children.len() != 2
+                || arena
+                    .get(node.children[0])
+                    .map_or(true, |value| value.span.end() > keyword.start())
+                || arena
+                    .get(node.children[1])
+                    .map_or(true, |target| target.span.start() < keyword.end())
             {
                 return Err(LoweringError::MalformedAst);
             }
@@ -289,6 +308,7 @@ pub fn lower(
             NodeKind::Prefix(op) => HirKind::Prefix(op),
             NodeKind::Binary(op) => HirKind::Binary(op),
             NodeKind::Call => HirKind::Call,
+            NodeKind::Cast { keyword } => HirKind::Cast { keyword },
             NodeKind::InterpolatedString => HirKind::InterpolatedString,
             NodeKind::Interpolation => HirKind::Interpolation,
         };
@@ -398,6 +418,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 | NodeKind::Group
                 | NodeKind::Prefix(_)
                 | NodeKind::Binary(_)
+                | NodeKind::Cast { .. }
                 | NodeKind::Call
                 | NodeKind::InterpolatedString
                 | NodeKind::Error
@@ -470,6 +491,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::Prefix(_)
         | NodeKind::Interpolation => kinds.len() == 1 && expr(kinds[0]),
         NodeKind::Binary(_) => kinds.len() == 2 && kinds.iter().all(|k| expr(*k)),
+        NodeKind::Cast { .. } => kinds.len() == 2 && expr(kinds[0]) && ty(kinds[1]),
         NodeKind::Call => !kinds.is_empty() && kinds.iter().all(|k| expr(*k)),
         NodeKind::InterpolatedString => kinds.iter().all(|k| {
             matches!(

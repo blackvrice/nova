@@ -1141,3 +1141,110 @@ fn truncated_sources_never_enter_successful_mir_with_recovery() {
         }
     }
 }
+
+#[test]
+fn p10_checked_cast_mir_is_separate_from_implicit_conversion_and_validated() {
+    let source = "func f(a:double)->int64{return a as int8}func main(){let x=128 as int8}";
+    let module = pass(source);
+    let f = body_named(&module, "f");
+    let casts: Vec<_> = f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .filter(|s| {
+            matches!(
+                s.kind,
+                StatementKind::Assign(_, Rvalue::CheckedCast(_, Type::Int8))
+            )
+        })
+        .collect();
+    assert_eq!(casts.len(), 1);
+    assert_eq!(
+        &source[casts[0].source.span.start()..casts[0].source.span.end()],
+        "a as int8"
+    );
+    assert!(f
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .any(|s| matches!(
+            s.kind,
+            StatementKind::Assign(_, Rvalue::Widen(_, Type::Int64))
+        )));
+    assert!(body_named(&module, "main")
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .any(|s| matches!(
+            s.kind,
+            StatementKind::Assign(_, Rvalue::CheckedCast(_, Type::Int8))
+        )));
+    for bad in [
+        Rvalue::CheckedCast(Operand::Constant(Constant::Bool(true)), Type::Int8),
+        Rvalue::CheckedCast(Operand::Constant(Constant::Int32(1)), Type::Bool),
+        Rvalue::CheckedCast(Operand::Constant(Constant::Int32(1)), Type::Int64),
+    ] {
+        let mut module = pass(source);
+        module.bodies[0].blocks[0].statements[0].kind =
+            StatementKind::Assign(Place(LocalId(1)), bad);
+        error(&module, Violation::TypeMismatch);
+    }
+    let mut module = pass(source);
+    module.bodies[0].blocks[0].statements[0].kind = StatementKind::Assign(
+        Place(LocalId(1)),
+        Rvalue::CheckedCast(Operand::Place(Place(LocalId(1))), Type::Int8),
+    );
+    error(&module, Violation::UninitializedRead);
+}
+
+#[test]
+fn p10_analysis_cast_target_value_count_and_operand_context_cannot_be_forged() {
+    let mut sources = SourceDatabase::default();
+    let file = sources
+        .add(
+            "test.nova",
+            "const C=1 as float;func f(a:double)->int64{return a as int8}".into(),
+        )
+        .unwrap();
+    let lexed = lex(&sources, file).unwrap();
+    let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+    let hir = nova_hir::lower(&sources, &parsed.arena, parsed.root).unwrap();
+    let resolved = resolve(&hir);
+    let cast = hir
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::Cast { .. }))
+        .unwrap();
+    let operand = hir.nodes()[cast].children[0].0;
+    let target = hir.nodes()[cast].children[1].0;
+    let def = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == "C")
+        .unwrap();
+    for mutation in 0..6 {
+        let mut checked = check(&hir, &resolved).unwrap();
+        match mutation {
+            0 => checked.type_table[cast] = checked.types.intern(Type::Float64),
+            1 => checked.type_table[target] = checked.types.intern(Type::Float64),
+            2 => checked.coercions[operand] = Some(checked.types.intern(Type::Float64)),
+            3 => {
+                checked.const_values[def] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Float(nova_types::FloatValue::from_f32(2.0)),
+                    nodes: 2,
+                }
+            }
+            4 => {
+                checked.const_values[def] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Float(nova_types::FloatValue::from_f32(1.0)),
+                    nodes: 3,
+                }
+            }
+            _ => checked.type_table.clear(),
+        }
+        assert_eq!(
+            lower(&hir, &resolved, &checked, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}

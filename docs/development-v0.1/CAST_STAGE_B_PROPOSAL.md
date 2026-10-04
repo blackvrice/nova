@@ -1,7 +1,8 @@
 # Stage B 명시적 숫자 변환 착수안 — P10
 
-작성일: 2026-10-05. 상태: **Draft / 사용자 승인 대기**.
-검토용 제안이며 Compiler에는 적용하지 않았다. D01~D05/P01~P09와 원본 Canonical을 보존한다.
+작성일: 2026-10-05. 상태: **Accepted / 2026-10-05 사용자 승인**.
+사용자 “P10 승인하고 숫자 cast 구현 진행”으로 아래 subset을 승인했다.
+[구현·검증 기록](CAST_IMPLEMENTATION.md)을 따른다. D01~D05/P01~P09와 원본 Canonical을 보존한다.
 이번 범위는 단일 파일의 숫자 `as`다. 전체 D07/Stage B 승인이 아니다.
 
 ## Specification Change Proposal
@@ -14,7 +15,7 @@
   [전체 Draft 문법](GRAMMAR.ebnf), [테스트 NOVA-136](../13_Testing_Release/NOVA-136_Compiler_테스트_전략서.md).
 - 현재 사양: `as`는 Canonical keyword다. 제한적 손실 없는 암묵 승격은 확정이다.
   전체 Draft EBNF는 postfix `as type`를 제안하고 NUMERIC_RULES는 checked narrowing을 제안한다.
-  현재 Parser는 source cast를 N1102로 거부한다. P09은 cast를 후속으로 명시했다.
+  승인 전 Parser는 source cast를 N1102로 거부했다. P09은 cast를 후속으로 명시했다.
 - 발견된 문제: 정수 signed/unsigned 경계, float truncation 전후의 범위 검사, finite narrowing overflow,
   literal 기대 문맥과 cast 우선순위, const/Runtime 실패 위치가 아직 동결되지 않았다.
 - 제안 변경: 아래 숫자 10종의 명시적 checked `as`·반올림·실패·구문·const·MIR/Native 계약을 적용한다.

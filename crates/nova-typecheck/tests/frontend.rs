@@ -1699,3 +1699,108 @@ fn every_three_node_dependency_graph_agrees_with_reachability_cycle_oracle() {
         }
     }
 }
+
+#[test]
+fn p10_cast_isolation_numeric_pairs_and_diagnostics() {
+    pass("func f(a:double,b:int)->bool{return a as int<b}");
+    for source in [
+        "func f(){let x=\"1\" as int}",
+        "func f(){let x=() as int}",
+        "func f(){let x=1 as void}",
+        "func f(){let x=(f) as int}",
+    ] {
+        assert!(
+            codes(&frontend(source)).contains(&"N2101".into()),
+            "{source}"
+        );
+    }
+
+    pass(include_str!("../../../examples/casts.nova"));
+    for s in [
+        "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float32",
+        "float64",
+    ] {
+        for d in [
+            "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float32",
+            "float64",
+        ] {
+            pass(&format!("func f(v:{s})->{d}{{return v as {d}}}"));
+        }
+    }
+    for (s, code) in [
+        ("func f(){let x=2147483648 as int64}", "N2102"),
+        ("func f(){let x=1e100 as double}", "N2102"),
+        ("func f(){let x=-1 as uint8}", "N2101"),
+        ("func f(){let x=true as int}", "N2101"),
+        ("func f(){let x='a' as int}", "N2101"),
+        ("func f(){let x=1 as bool}", "N2101"),
+        ("func f(){let x=1 as char}", "N2101"),
+        ("func f(){let x=1 as string}", "N2101"),
+        ("func f(){let x=1 as ()}", "N2101"),
+        ("func f(){let x=1 as Missing}", "N2001"),
+        ("func f(){let x=1 as int()}", "N2101"),
+        ("func f(){} func g(){let x=f as int}", "N2101"),
+    ] {
+        assert!(
+            codes(&frontend(s)).contains(&code.into()),
+            "{s}: {:?}",
+            codes(&frontend(s))
+        );
+    }
+    pass("func f(){let x=(-2147483648) as int64;let y:double=1.0 as float;let z=128 as int8}");
+    let (v, n) = constant_value("const X:double=0.1 as double;func f(){}", "X");
+    assert_eq!(
+        v,
+        ConstValue::Float(
+            nova_types::FloatValue::from_bits(nova_types::FloatKind::F64, 0x3fb99999a0000000)
+                .unwrap()
+        )
+    );
+    assert_eq!(n, 2);
+}
+#[test]
+fn p10_const_checks_skipped_rhs_and_cast_source_span() {
+    assert_eq!(
+        constant_value("const X=false&&((128 as int8)==0);func f(){}", "X").0,
+        ConstValue::Bool(false)
+    );
+    for source in [
+        "const X=128 as int8;func f(){}",
+        "const X=(-1) as uint8;func f(){}",
+        "const X=(0.0/0.0) as int;func f(){}",
+        "const X:double=1e100;const Y=X as float;func f(){}",
+    ] {
+        assert!(
+            codes(&frontend(source)).contains(&"N3201".into()),
+            "{source}"
+        );
+    }
+    assert!(codes(&frontend(
+        "func f()->int{return 1}const X=false&&((f() as int)==0)"
+    ))
+    .contains(&"N3201".into()));
+    assert!(codes(&frontend(
+        "const A=false&&((B as int)==0);const B=C as int;const C=B as int;func f(){}"
+    ))
+    .contains(&"N3202".into()));
+    let source = "const X=128 as int8;func f(){}";
+    let result = frontend(source);
+    let diag = result
+        .diagnostics()
+        .iter()
+        .find(|d| d.code.to_string() == "N3201")
+        .unwrap();
+    assert_eq!(
+        &source[diag.primary.span.start()..diag.primary.span.end()],
+        "128 as int8"
+    );
+    assert!(!diag.secondary.is_empty());
+}
+#[test]
+fn p10_const_budget_counts_casts_but_not_type_syntax() {
+    let expression = "1".to_owned() + &" as int".repeat(CONST_NODE_LIMIT - 1);
+    let source = format!("const X={expression};func f(){{}}");
+    assert_eq!(constant_value(&source, "X").1, CONST_NODE_LIMIT);
+    let source = format!("const X={expression} as int;func f(){{}}");
+    assert!(codes(&frontend(&source)).contains(&"N3202".into()));
+}

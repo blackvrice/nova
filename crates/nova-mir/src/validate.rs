@@ -231,6 +231,12 @@ impl Validator<'_> {
     fn rvalue_type(&mut self, body: &Body, value: &Rvalue) -> Option<Type> {
         match value {
             Rvalue::Use(operand) => self.operand_type(body, operand),
+            Rvalue::CheckedCast(operand, dest) => {
+                if !dest.numeric() || !self.operand_type(body, operand).is_some_and(Type::numeric) {
+                    self.report(Violation::TypeMismatch);
+                }
+                Some(*dest)
+            }
             Rvalue::NumericConvert(operand, dest) => {
                 let source = self.operand_type(body, operand);
                 if dest.float().is_none() || !source.is_some_and(|source| source.widens_to(*dest)) {
@@ -406,6 +412,7 @@ impl Validator<'_> {
                     Rvalue::Use(op)
                     | Rvalue::Unary(_, op)
                     | Rvalue::Widen(op, _)
+                    | Rvalue::CheckedCast(op, _)
                     | Rvalue::NumericConvert(op, _) => self.read(&state, op),
                     Rvalue::Binary(_, left, right) => {
                         self.read(&state, left);

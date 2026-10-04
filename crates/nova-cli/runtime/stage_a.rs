@@ -24,6 +24,7 @@ pub extern "C" fn nova_panic(reason: i32, file: u32, start: u32, end: u32) -> ! 
             1 => "Int32 overflow",
             2 => "division or remainder by zero",
             3 => "integer overflow",
+            4 => "numeric cast out of range",
             _ => "runtime invariant failure",
         },
         file,

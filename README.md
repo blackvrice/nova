@@ -95,8 +95,9 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 11. [P09 float·IEEE 결과·숫자 승격·보간](docs/development-v0.1/FLOAT_STAGE_B_PROPOSAL.md)과
     [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_FLOAT.ebnf) 구현 완료:
     [구현·검증 기록](docs/development-v0.1/FLOAT_IMPLEMENTATION.md), [예제](examples/floats.nova).
-12. 다음 검토 대상: [P10 명시적 숫자 cast](docs/development-v0.1/CAST_STAGE_B_PROPOSAL.md)와
-    [검토용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_CAST.ebnf). Draft/승인 대기이며 Compiler에는 미적용입니다.
+12. [P10 명시적 숫자 cast](docs/development-v0.1/CAST_STAGE_B_PROPOSAL.md)와
+    [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_CAST.ebnf) 구현 완료:
+    [checked 변환·const·Native 검증 기록](docs/development-v0.1/CAST_IMPLEMENTATION.md), [예제](examples/casts.nova).
 13. 후속 float remainder·aggregate/module 상세와 Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
@@ -106,16 +107,17 @@ P05 함수 내부 const 확장은 `GRAMMAR_STAGE_B_CONST.ebnf`를 따릅니다.
 P06 단일 파일 전역 const 확장은 `GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf`를 따릅니다.
 P08 문자 리터럴 확장은 `GRAMMAR_STAGE_B_CHAR.ebnf`를 따릅니다.
 P09 실수 리터럴 확장은 `GRAMMAR_STAGE_B_FLOAT.ebnf`를 따릅니다.
+P10 명시적 숫자 변환 확장은 `GRAMMAR_STAGE_B_CAST.ebnf`를 따릅니다.
 전체 `GRAMMAR.ebnf`의 미래 Stage 구문은 여전히 Draft입니다.
 
-현재 Windows x64 Stage A/P04~P09 CLI/LLVM/Runtime을 제공합니다. LLVM 21.1.8과 Rust/MSVC가 필요합니다.
+현재 Windows x64 Stage A/P04~P10 CLI/LLVM/Runtime을 제공합니다. LLVM 21.1.8과 Rust/MSVC가 필요합니다.
 기본 Cargo tests에는 실제 LLVM/Native tests가 ignored이며 별도 명령으로 실행합니다. 기반 테스트는 Rust
 기반 계층의 UTF-8, 범위 오류, EOF, 혼합 줄바꿈, 대형 파일, 진단 Snapshot,
 JSON escaping 및 Suggestion 위치 검증을 다룹니다.
 Lexer lexical pass/fail fixture와 source reconstruction/중첩 mode/END/회귀 테스트도 포함합니다.
 lexical pass는 프로그램 전체 타입 검사나 실행 성공을 뜻하지 않습니다.
 Parser-pass 역시 구문 수용만 뜻합니다. 이름·타입·실행 결과는 보장하지 않습니다.
-frontend-pass는 승인된 Stage A/P04~P09 이름·타입·const 검사 성공을 뜻하며 Native 실행 성공이 아닙니다.
+frontend-pass는 승인된 Stage A/P04~P10 이름·타입·const 검사 성공을 뜻하며 Native 실행 성공이 아닙니다.
 Parser 입력은 normalized tokens여야 하며, 잘못된 API 입력은 ParseInputError로 반환합니다.
 잘못된 Nova 구문은 N1101~N1103와 recovery AST로 반환합니다. 호출자는 Lexer와 Parser
 오류를 모두 확인한 후 lowering해야 합니다. 기본 nesting limit은 128이며 1~128로 설정 가능합니다.
@@ -128,6 +130,8 @@ P06 전역 const도 같은 예산을 따르고 정적 순환은 N3202입니다. 
 Stage A `print`는 `print(string) -> Unit`이며 정수/float/Bool/Char 출력은 보간 문자열을 사용합니다.
 P09 float는 IEEE 결과·canonical NaN·±0·점진적 underflow와 최단 fixed decimal 출력을 보존합니다.
 float 상수 평가의 host 환경 제어는 현재 x86_64를 지원합니다.
+P10 숫자 `as`는 원래 operand 타입을 유지하고 변환 값의 범위를 검사합니다.
+실패는 const에서 N3201, Native에서 전체 cast Span의 `numeric cast out of range` Abort입니다.
 main 존재/signature는 fragment 검사에서 강제하지 않으며 Native entry 단계에서 검사합니다.
 MIR은 arithmetic과 interpolation을 abstract 연산으로 보존하고 LLVM/Runtime이 P03 정책으로 구현합니다.
 MIR 검증 성공은 Native 실행 성공을 뜻하지 않습니다. 실제 Native tests는 별도로 실행합니다.

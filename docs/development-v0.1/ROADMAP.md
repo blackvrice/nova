@@ -66,21 +66,21 @@ P07은 기존 P06 grammar를 사용하며 float/cast·aggregate/module은 별도
 D04의 기존 char token/escape를 AST·HIR·타입·const·MIR·Native로 연결했다.
 [전용 EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 P06 primary에 CHAR만 추가한다.
 [구현·검증 기록](CHAR_IMPLEMENTATION.md)에 Windows O0/O2와 Runtime scalar 경계 검증을 기록했다.
-float/숫자 cast·aggregate/module의 상세 동결은 별도 후속이다.
+float/숫자 cast 최소 계약은 아래 P09/P10을 따르고 aggregate/module은 별도 후속이다.
 
 다음 Primitive 최소 범위 [P09 float·IEEE 결과·숫자 승격·보간](FLOAT_STAGE_B_PROPOSAL.md)은
 사용자 “P09 승인하고 float 구현 진행”으로 Accepted다. D04 Float token을 AST→Native까지 연결했다.
 [전용 EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf)는 P08 primary에 FLOAT만 추가한다.
 [구현 기록](FLOAT_IMPLEMENTATION.md)에 literal/연산/출력의 독립 유리수 oracle과 Windows O0/O2 검증을 기록했다.
-source cast·float remainder/math API·aggregate/module과 전체 D07은 별도 후속이다.
+숫자 cast는 P10, float remainder/math API·aggregate/module과 전체 D07은 별도 후속이다.
 
 ## Backlog 경계
 
-다음 작업은 [P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)의 검토다.
-[검토 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)는 P09 postfix에 `as type`만 추가한다.
-정수 checked narrowing·직접 integer→float 반올림·float→int truncation 후 범위 검사,
-finite Float64→Float32 overflow 실패·const/Runtime 진단 및 Native 검증 경계를 동결한 뒤 구현한다.
-P10은 Draft/사용자 승인 대기이며 현재 Compiler와 accepted ledger는 유지한다.
+[P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)는 사용자 승인으로 Accepted이며 구현했다.
+[전용 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)는 P09 postfix에 `as type`만 추가한다.
+checked narrowing·직접 RN 반올림·truncation 후 범위 검사·finite narrowing 실패와 const/Runtime
+진단의 [구현·검증 기록](CAST_IMPLEMENTATION.md). 후속은 aggregate/module 최소 계약의 정의·검토와
+float remainder/math API, Linux Native host 실행 검증이다. 전체 D07 승인을 의미하지 않는다.
 
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,
 hosted .NET/JVM/Python, self-hosting은 별도 버전/범위 검토. Stage A의 Advanced Optimization,

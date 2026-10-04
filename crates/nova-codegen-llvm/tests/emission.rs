@@ -508,3 +508,85 @@ fn real_llvm_rejects_invalid_ir() {
     );
     assert!(matches!(result, Err(CodegenError::ToolFailure { .. })));
 }
+
+fn cast_corpus() -> String {
+    let mut source = include_str!("../../../examples/casts.nova").to_owned();
+    for (i, s) in [
+        "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float", "double",
+    ]
+    .iter()
+    .enumerate()
+    {
+        for (j, d) in [
+            "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float",
+            "double",
+        ]
+        .iter()
+        .enumerate()
+        {
+            source.push_str(&format!("func c{i}_{j}(v:{s})->{d}{{return v as {d}}}"));
+        }
+    }
+    source
+}
+#[test]
+fn p10_cast_ir_guards_fptoi_before_conversion_and_uses_direct_rounding() {
+    let text = emit_ir(&unit(&cast_corpus()), TargetSpec::WindowsX64Msvc, true)
+        .unwrap()
+        .text;
+    assert!(text.contains("sitofp i64") && text.contains("uitofp i64"));
+    assert!(text.contains("fptrunc double") && text.contains("fpext float"));
+    assert!(text.contains("call double @llvm.trunc.f64"));
+    for op in ["fptosi", "fptoui"] {
+        for (at, _) in text.match_indices(op) {
+            let preceding = &text[..at];
+            let start = preceding.rfind("define ").unwrap();
+            let preceding = &preceding[start..];
+            assert!(preceding.contains("fcmp oge") && preceding.contains("fcmp olt"));
+            assert!(preceding.contains("call void @nova_panic(i32 4"));
+            assert!(preceding.rfind("ok.").unwrap() > preceding.rfind("unreachable").unwrap());
+        }
+    }
+    assert!(!text.contains(" fast ") && !text.contains(" nsw ") && !text.contains(" nuw "));
+}
+#[test]
+#[ignore = "requires real LLVM 21.1.8"]
+fn p10_real_llvm_verifies_all_cast_pairs_coff_elf_o0_o2() {
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG")),
+    };
+    let corpus = unit(&cast_corpus());
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-cast-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for (target, ext) in [
+        (TargetSpec::WindowsX64Msvc, "obj"),
+        (TargetSpec::LinuxX64Gnu, "o"),
+    ] {
+        for (optimization, name) in [
+            (OptimizationLevel::None, "o0"),
+            (OptimizationLevel::Default, "o2"),
+        ] {
+            let output = root.join(format!("{name}.{ext}"));
+            backend
+                .codegen_unit(
+                    &corpus,
+                    &target,
+                    &CodegenOptions {
+                        object_path: output.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(output).unwrap();
+            assert!(bytes.len() > 100);
+            if ext == "o" {
+                assert_eq!(&bytes[..4], b"\x7fELF")
+            } else {
+                assert_eq!(&bytes[..2], b"\x64\x86")
+            }
+        }
+    }
+}

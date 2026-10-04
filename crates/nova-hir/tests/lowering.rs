@@ -365,3 +365,48 @@ fn runtime_bindings_cannot_be_injected_at_ast_root() {
         );
     }
 }
+
+#[test]
+fn p10_cast_lowering_preserves_alias_syntax_origin_and_rejects_forged_keyword() {
+    let hir = lower_source("func f(){let x=1 as double}");
+    let node = hir
+        .nodes()
+        .iter()
+        .find(|n| matches!(n.kind, HirKind::Cast { .. }))
+        .unwrap();
+    let HirKind::TypeName(name) = hir.node(node.children[1]).unwrap().kind else {
+        panic!("type child")
+    };
+    assert_eq!(hir.symbol(name), Some("float64"));
+    assert!(matches!(node.origin, SourceOrigin::Source(_)));
+    for (text, start, end) in [
+        ("1 as int", 2, 4),
+        ("1 xx int", 2, 4),
+        ("1 as int", 0, 4),
+        ("1 as int", 2, 8),
+    ] {
+        let mut sources = SourceDatabase::default();
+        let file = sources.add("api.nova", text.into()).unwrap();
+        let sp = |a, b| Span::new(file, a, b).unwrap();
+        let mut arena = Arena::default();
+        let value = arena.insert(NodeKind::Integer, sp(0, 1), vec![]).unwrap();
+        let target = arena.insert(NodeKind::NamedType, sp(5, 8), vec![]).unwrap();
+        let cast = arena
+            .insert(
+                NodeKind::Cast {
+                    keyword: sp(start, end),
+                },
+                sp(0, 8),
+                vec![value, target],
+            )
+            .unwrap();
+        let error = arena.insert(NodeKind::Error, sp(0, 8), vec![cast]).unwrap();
+        let root = arena.insert(NodeKind::Root, sp(0, 8), vec![error]).unwrap();
+        let result = lower(&sources, &arena, root);
+        if text == "1 as int" && start == 2 && end == 4 {
+            assert!(result.is_ok());
+        } else {
+            assert_eq!(result, Err(LoweringError::MalformedAst));
+        }
+    }
+}

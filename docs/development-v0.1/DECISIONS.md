@@ -6,7 +6,9 @@
 
 2026-10-04 사용자 답변 “P02 승인하고 이름·타입 검사까지 진행”으로 [Stage A 의미 계약 P02](SEMANTICS_STAGE_A_PROPOSAL.md)를 승인했다. Int32/Bool/String/Unit, 단일 파일 scope/call/return/print typing subset에만 적용한다. 숫자 승격·runtime/ABI·미래 Stage와 D06~D30 전체 정책은 Draft다.
 
-2026-10-04 사용자 “P09 승인하고 float 구현 진행”으로 [float 최소 계약 P09](FLOAT_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](FLOAT_IMPLEMENTATION.md)과 MANIFEST의 accepted_proposals가 해당 subset에 우선한다. source cast·float remainder/math API 및 전체 D07은 Draft를 유지한다.
+2026-10-04 사용자 “P09 승인하고 float 구현 진행”으로 [float 최소 계약 P09](FLOAT_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](FLOAT_IMPLEMENTATION.md)과 MANIFEST의 accepted_proposals가 해당 subset에 우선한다. 숫자 cast는 P10, float remainder/math API 및 전체 D07은 Draft를 유지한다.
+
+2026-10-05 사용자 “P10 승인하고 숫자 cast 구현 진행”으로 [명시적 숫자 cast P10](CAST_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](CAST_IMPLEMENTATION.md)과 [postfix as 전용 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)를 따른다. 숫자 10종의 checked 변환 subset에만 적용하며 Bool/Char/unsafe cast와 전체 D07은 Draft다.
 
 ## 공통 승인 계약
 

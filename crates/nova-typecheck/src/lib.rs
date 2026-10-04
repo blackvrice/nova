@@ -758,6 +758,28 @@ impl Checker<'_> {
                     };
                     pending.push(Work::Enter(child, cx));
                 }
+                HirKind::Cast { .. } => {
+                    pending.push(Work::Enter(
+                        node.children[1],
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: false,
+                            ..context
+                        },
+                    ));
+                    // Allow inspection of a bare function's type, solely so the
+                    // cast itself reports N2101 rather than first-class N1102.
+                    pending.push(Work::Enter(
+                        node.children[0],
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: true,
+                            ..context
+                        },
+                    ));
+                }
                 HirKind::Group => {
                     pending.push(Work::Enter(node.children[0], context));
                 }
@@ -1136,6 +1158,23 @@ impl Checker<'_> {
                     .iter()
                     .any(|c| self.ty(self.result.type_table[c.0]) == Type::Error);
                 self.set(id, if error { Type::Error } else { Type::String });
+            }
+            HirKind::Cast { .. } => {
+                let source = self.ty(self.result.type_table[node.children[0].0]);
+                let dest = self.ty(self.result.type_table[node.children[1].0]);
+                if source == Type::Error || dest == Type::Error {
+                    self.set(id, Type::Error);
+                } else if source.numeric() && dest.numeric() {
+                    self.set(id, dest);
+                } else {
+                    self.report(
+                        2101,
+                        node.span,
+                        "as requires numeric source and target types",
+                        Some(self.module.nodes()[node.children[1].0].span),
+                    );
+                    self.set(id, Type::Error);
+                }
             }
             HirKind::TypeName(_) | HirKind::UnitType => {
                 self.type_syntax(id);

@@ -32,6 +32,7 @@ pub(crate) struct Failure {
 enum Work {
     Evaluate(HirId),
     Convert(HirId),
+    Cast(HirId),
     Unary(HirId, Symbol),
     Binary(HirId, Symbol),
     Logical(HirId, Symbol),
@@ -65,6 +66,7 @@ pub(crate) fn evaluate(
             | HirKind::Boolean(_)
             | HirKind::String(_)
             | HirKind::Unit
+            | HirKind::Cast { .. }
             | HirKind::Group
             | HirKind::Prefix(Symbol::Plus | Symbol::Minus | Symbol::Bang)
             | HirKind::Binary(
@@ -95,7 +97,11 @@ pub(crate) fn evaluate(
                 message: "expression is not permitted in a P05 const initializer",
             });
         }
-        pending.extend(node.children.iter().rev().copied());
+        if matches!(node.kind, HirKind::Cast { .. }) {
+            pending.push(node.children[0]);
+        } else {
+            pending.extend(node.children.iter().rev().copied());
+        }
     }
 
     let fail = |node, message| Failure {
@@ -108,6 +114,18 @@ pub(crate) fn evaluate(
     let mut values = vec![];
     while let Some(task) = work.pop() {
         match task {
+            Work::Cast(id) => {
+                let value: ConstValue = values.pop().expect("cast operand");
+                let dest = checked
+                    .types
+                    .get(checked.type_table[id.0])
+                    .expect("cast target");
+                values.push(
+                    value
+                        .checked_cast(dest)
+                        .map_err(|_| fail(id, "numeric cast out of range"))?,
+                );
+            }
             Work::Convert(id) => {
                 if let Some(dest) = checked.coercions[id.0] {
                     let value: ConstValue = values.pop().expect("converted operand");
@@ -141,6 +159,10 @@ pub(crate) fn evaluate(
                             unreachable!("permission checked cached const value")
                         };
                         values.push(value.clone());
+                    }
+                    HirKind::Cast { .. } => {
+                        work.push(Work::Cast(id));
+                        work.push(Work::Evaluate(node.children[0]));
                     }
                     HirKind::Group => work.push(Work::Evaluate(node.children[0])),
                     HirKind::Prefix(op) => {

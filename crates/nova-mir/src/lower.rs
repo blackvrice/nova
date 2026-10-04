@@ -421,6 +421,10 @@ impl Builder<'_> {
                                     .map(Work::Expression),
                             );
                         }
+                        HirKind::Cast { .. } => {
+                            work.push(Work::FinishExpression(id));
+                            work.push(Work::Expression(node.children[0]));
+                        }
                         HirKind::Group
                         | HirKind::Interpolation
                         | HirKind::Prefix(_)
@@ -439,6 +443,13 @@ impl Builder<'_> {
                             self.values[id.0] = Some(self.value(node.children[0])?);
                             continue;
                         }
+                        HirKind::Cast { .. } => Rvalue::CheckedCast(
+                            self.value(node.children[0])?,
+                            self.checked
+                                .types
+                                .get(self.checked.type_table[id.0])
+                                .ok_or(LoweringError::InvalidAnalysis)?,
+                        ),
                         HirKind::Prefix(op) => Rvalue::Unary(op, self.value(node.children[0])?),
                         HirKind::Binary(op) => Rvalue::Binary(
                             op,

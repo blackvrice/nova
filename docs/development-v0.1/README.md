@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P09 Accepted / 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P10 Accepted / 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -43,7 +43,7 @@ print 충돌 정정도 사용자 승인했고 현재 API·진단·검증 증거�
 
 [P07 고정 폭 정수 타입·손실 없는 승격](INTEGER_STAGE_B_PROPOSAL.md)은 사용자 승인으로 Accepted다.
 8종 정수·literal 문맥·checked 산술·const·MIR 변환·보간의 [구현·검증 기록](INTEGER_IMPLEMENTATION.md).
-float/cast·aggregate/module은 별도 후속 범위다.
+float/cast 최소 범위는 P09/P10을 따르고 aggregate/module은 별도 후속 범위다.
 
 [P08 char·Unicode scalar·보간 계약](CHAR_STAGE_B_PROPOSAL.md)과
 [31-production EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 2026-10-04 사용자 승인으로 Accepted다.
@@ -53,11 +53,12 @@ float/cast·aggregate/module은 별도 후속 범위다.
 [P09 float·IEEE 결과·숫자 승격·보간](FLOAT_STAGE_B_PROPOSAL.md)과
 [31-production EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf)는 2026-10-04 사용자 승인으로 Accepted다.
 IEEE rounding·NaN/Infinity/±0·const·private formatter의 [구현·검증 기록](FLOAT_IMPLEMENTATION.md).
-source cast와 float remainder는 후속이다.
+숫자 cast는 P10을 따르고 float remainder는 후속이다.
 
-다음 최소 범위는 [P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)와
-[검토용 31-production EBNF](GRAMMAR_STAGE_B_CAST.ebnf)다. Draft/승인 대기이며 미구현이다.
-정수 범위 검사·직접 float 반올림·float→int truncation·finite narrowing 실패·const/Runtime 경계를 제안한다.
+[P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)와
+[31-production EBNF](GRAMMAR_STAGE_B_CAST.ebnf)는 2026-10-05 사용자 승인으로 Accepted다.
+정수 범위 검사·직접 float 반올림·float→int truncation·finite narrowing 실패·const/Runtime의
+[구현·검증 기록](CAST_IMPLEMENTATION.md)을 따른다.
 Bool/Char/String 변환·wrapping/saturating cast API와 전체 D07은 포함하지 않는다.
 
 ## 상태와 효력
@@ -71,6 +72,7 @@ P05 함수 내부 const 최소 계약은 2026-10-04 사용자 승인으로 Accep
 P06 단일 파일 전역 const 최소 계약과 print 이름 경계도 2026-10-04 사용자 승인으로 Accepted다.
 P07 정수·승격과 P08 char 최소 계약도 같은 날짜 사용자 승인으로 Accepted다.
 P09 float 최소 계약도 같은 날짜 사용자 “P09 승인하고 float 구현 진행”으로 Accepted다.
+P10 숫자 cast도 2026-10-05 사용자 “P10 승인하고 숫자 cast 구현 진행”으로 Accepted다.
 나머지 새 문법·언어 의미·공용 API·ABI·Package 형식은 Draft다. D번호 승인
 기록 없이 이 보완팩을 확정 사양으로 구현하지 않는다. 본문에서 '제안'이 생략된 구현
 설명도 문서 상태는 Draft다. 기존 코드와 달라지는 규칙 역시 코드에 자동 적용하지 않았다.
@@ -96,6 +98,7 @@ P05 함수 내부 const 평가와 Windows x64 O0/O2 실행도 구현·검증했�
 P06 전역 const·forward dependency/cycle와 Windows x64 O0/O2 실행도 구현·검증했다.
 P07 정수·승격과 P08 char·비교·보간 및 Windows x64 O0/O2 실행도 구현·검증했다.
 P09 float·상수 평가·숫자 승격·보간과 Windows x64 O0/O2 실행도 구현·검증했다.
+P10 숫자 cast·범위 검사·const 평가와 Windows x64 O0/O2 실행도 구현·검증했다.
 Linux Native link/run과 일반 ABI/ownership/Package는 후속이다.
 frontend/MIR pass는 Native 실행 성공이 아니다. P03 Windows x64 Stage A Native는 실제 검증했다.
 일반 Arithmetic/출력/ABI 전체 정책은 Draft이며 P03 subset만 승인했다.

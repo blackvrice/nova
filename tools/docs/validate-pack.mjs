@@ -162,17 +162,17 @@ assert(floatGrammar.includes('Accepted by the user on 2026-10-04'), 'Invalid P09
 assert(compactGrammar(floatGrammar).replace('"INT"|"FLOAT"|', '"INT"|') === compactGrammar(charGrammar), 'P09 grammar changes more than the FLOAT primary terminal');
 checks.push('P09 float 승인 subset/날짜·전용 EBNF는 FLOAT primary만 추가·전체 D07 Draft 경계');
 
-const castProposal = manifest.draft_proposals?.find(p => p.id === 'P10');
-assert(castProposal?.status === 'Draft' && castProposal?.implementation_verified === false
+const castProposal = manifest.accepted_proposals?.find(p => p.id === 'P10');
+assert(castProposal?.approval_date === '2026-10-05' && castProposal?.implementation_verified === true
   && castProposal?.document === 'CAST_STAGE_B_PROPOSAL.md'
   && castProposal?.grammar === 'GRAMMAR_STAGE_B_CAST.ebnf'
-  && castProposal?.grammar_change === true, 'Missing P10 numeric cast draft ledger');
-assert(!manifest.accepted_proposals?.some(p => p.id === 'P10'), 'Unapproved P10 in accepted ledger');
-assert(fs.readFileSync(path.join(pack, 'CAST_STAGE_B_PROPOSAL.md'), 'utf8').includes('Draft / 사용자 승인 대기'), 'Invalid P10 draft status');
+  && castProposal?.grammar_change === true, 'Missing P10 approved numeric cast ledger');
+assert(!manifest.draft_proposals?.some(p => p.id === 'P10'), 'Accepted P10 still in draft ledger');
+assert(fs.readFileSync(path.join(pack, 'CAST_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-05 사용자 승인'), 'Invalid P10 approval status');
 const castGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_CAST.ebnf'), 'utf8');
-assert(castGrammar.includes('Draft, awaiting user approval'), 'Invalid P10 grammar draft status');
+assert(castGrammar.includes('Accepted by the user on 2026-10-05'), 'Invalid P10 grammar approval status');
 assert(compactGrammar(castGrammar).replace('|"as",type', '') === compactGrammar(floatGrammar), 'P10 grammar changes more than the as type postfix');
-checks.push('P10 숫자 cast Draft/미구현·accepted ledger 제외·검토 EBNF는 as type postfix만 추가');
+checks.push('P10 숫자 cast 승인 subset/날짜·전용 EBNF는 as type postfix만 추가·전체 D07 Draft 경계');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

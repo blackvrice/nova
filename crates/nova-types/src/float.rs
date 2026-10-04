@@ -1,5 +1,5 @@
 //! P09 binary values and controlled host evaluation. No LLVM dependency.
-use crate::{IntKind, IntegerValue, Type};
+use crate::{CastError, IntKind, IntegerValue, Type};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum FloatKind {
@@ -117,6 +117,86 @@ impl FloatValue {
         } else {
             Err(FloatError::LiteralOverflow)
         }
+    }
+    pub fn cast_integer(value: IntegerValue, dest: FloatKind) -> Result<Self, CastError> {
+        let _environment = Environment::enter().ok_or(CastError::UnsupportedHost)?;
+        let result = if value.kind().signed() {
+            let value = std::hint::black_box(value.value() as i64);
+            match dest {
+                FloatKind::F32 => Self::from_f32(value as f32),
+                FloatKind::F64 => Self::from_f64(value as f64),
+            }
+        } else {
+            let value = std::hint::black_box(value.value() as u64);
+            match dest {
+                FloatKind::F32 => Self::from_f32(value as f32),
+                FloatKind::F64 => Self::from_f64(value as f64),
+            }
+        };
+        Ok(std::hint::black_box(result))
+    }
+    pub fn cast_float(self, dest: FloatKind) -> Result<Self, CastError> {
+        if self.kind == dest {
+            return Ok(self);
+        }
+        let _environment = Environment::enter().ok_or(CastError::UnsupportedHost)?;
+        if dest == FloatKind::F64 {
+            return self.widen(dest).ok_or(CastError::UnsupportedHost);
+        }
+        let source = std::hint::black_box(f64::from_bits(self.bits));
+        let result = std::hint::black_box(Self::from_f32(source as f32));
+        if source.is_finite() && !f32::from_bits(result.bits as u32).is_finite() {
+            Err(CastError::OutOfRange)
+        } else {
+            Ok(result)
+        }
+    }
+    /// Decode the exact binary rational before truncation. No floating upper
+    /// bound, host rounding mode, or saturating Rust float-to-int conversion.
+    pub fn truncated_integer(self, dest: IntKind) -> Result<IntegerValue, CastError> {
+        let (fraction_bits, exponent_bits, bias) = match self.kind {
+            FloatKind::F32 => (23, 8, 127),
+            FloatKind::F64 => (52, 11, 1023),
+        };
+        let exponent_mask = (1u64 << exponent_bits) - 1;
+        let exponent = (self.bits >> fraction_bits) & exponent_mask;
+        if exponent == exponent_mask {
+            return Err(CastError::OutOfRange);
+        }
+        let fraction = self.bits & ((1u64 << fraction_bits) - 1);
+        let significand = fraction
+            | if exponent == 0 {
+                0
+            } else {
+                1u64 << fraction_bits
+            };
+        let shift = if exponent == 0 {
+            1 - bias
+        } else {
+            exponent as i32 - bias
+        } - fraction_bits;
+        let magnitude = if significand == 0 {
+            0
+        } else if shift < 0 {
+            (significand as u128)
+                .checked_shr((-shift) as u32)
+                .unwrap_or(0)
+        } else {
+            if shift > 64 {
+                return Err(CastError::OutOfRange);
+            }
+            (significand as u128) << shift
+        };
+        if magnitude > u64::MAX as u128 {
+            return Err(CastError::OutOfRange);
+        }
+        let negative = self.bits >> (self.kind.bits() - 1) != 0;
+        let value = if negative {
+            -(magnitude as i128)
+        } else {
+            magnitude as i128
+        };
+        IntegerValue::new(dest, value).ok_or(CastError::OutOfRange)
     }
     pub fn from_integer(value: IntegerValue, dest: FloatKind) -> Option<Self> {
         if !dest.accepts_integer(value.kind()) {

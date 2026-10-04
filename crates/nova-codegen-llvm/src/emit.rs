@@ -55,6 +55,17 @@ pub fn emit_ir(
     if float_used {
         emitter.output.push_str("declare void @nova_format_f32(ptr, i32, i32, i32, i32)\ndeclare void @nova_format_f64(ptr, i64, i32, i32, i32)\n");
     }
+    if mir
+        .bodies
+        .iter()
+        .flat_map(|b| &b.blocks)
+        .flat_map(|b| &b.statements)
+        .any(|s| matches!(&s.kind, StatementKind::Assign(_, Rvalue::CheckedCast(_, _))))
+    {
+        emitter.output.push_str(
+            "declare float @llvm.trunc.f32(float)\ndeclare double @llvm.trunc.f64(double)\n",
+        );
+    }
     for width in [8, 16, 32, 64] {
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
             if !expanded && (width != 32 || op.starts_with('u')) {
@@ -218,6 +229,82 @@ impl Emitter<'_> {
         self.guard(&overflow, if type_ == Type::Int32 { 1 } else { 3 }, source);
         value
     }
+    fn checked_cast(
+        &mut self,
+        source: Type,
+        dest: Type,
+        value: String,
+        location: SourceInfo,
+    ) -> String {
+        if source == dest {
+            return value;
+        }
+        if let (Some(s), Some(d)) = (source.integer(), dest.integer()) {
+            // i128 is backend scratch space, never a Nova semantic type.
+            let op = if s.signed() { "sext" } else { "zext" };
+            let wide = self.instruction(format!("{op} {} {value} to i128", ty(source)));
+            let low = self.instruction(format!("icmp slt i128 {wide}, {}", d.min()));
+            let high = self.instruction(format!("icmp sgt i128 {wide}, {}", d.max()));
+            let invalid = self.instruction(format!("or i1 {low}, {high}"));
+            self.guard(&invalid, 4, location);
+            return self.instruction(format!("trunc i128 {wide} to {}", ty(dest)));
+        }
+        if let Some(s) = source.integer() {
+            let op = if s.signed() { "sitofp" } else { "uitofp" };
+            let result = self.instruction(format!("{op} {} {value} to {}", ty(source), ty(dest)));
+            return self.canonical_float(dest, result);
+        }
+        if let Some(d) = dest.integer() {
+            let kind = source.float().expect("numeric cast");
+            let width = kind.bits();
+            let (fraction, bias) = if width == 32 { (23, 127) } else { (52, 1023) };
+            let power = |exponent: u32| ((bias + exponent) as u64) << fraction;
+            let upper = power(d.bits() - u32::from(d.signed()));
+            let lower = if d.signed() {
+                upper | (1u64 << (width - 1))
+            } else {
+                0
+            };
+            let truncated = self.instruction(format!(
+                "call {} @llvm.trunc.f{width}({} {value})",
+                ty(source),
+                ty(source)
+            ));
+            let low = self.instruction(format!(
+                "fcmp oge {} {truncated}, bitcast (i{width} {lower} to {})",
+                ty(source),
+                ty(source)
+            ));
+            let high = self.instruction(format!(
+                "fcmp olt {} {truncated}, bitcast (i{width} {upper} to {})",
+                ty(source),
+                ty(source)
+            ));
+            let valid = self.instruction(format!("and i1 {low}, {high}"));
+            let invalid = self.instruction(format!("xor i1 {valid}, true"));
+            // Ordered comparisons reject NaN. fptoi only exists on the valid edge.
+            self.guard(&invalid, 4, location);
+            let op = if d.signed() { "fptosi" } else { "fptoui" };
+            return self.instruction(format!("{op} {} {truncated} to {}", ty(source), ty(dest)));
+        }
+        let op = if dest == Type::Float64 {
+            "fpext"
+        } else {
+            "fptrunc"
+        };
+        let result = self.instruction(format!("{op} {} {value} to {}", ty(source), ty(dest)));
+        if dest == Type::Float32 {
+            let bits = self.instruction(format!("bitcast double {value} to i64"));
+            let exponent = self.instruction(format!("and i64 {bits}, 9218868437227405312"));
+            let finite = self.instruction(format!("icmp ne i64 {exponent}, 9218868437227405312"));
+            let bits = self.instruction(format!("bitcast float {result} to i32"));
+            let absolute = self.instruction(format!("and i32 {bits}, 2147483647"));
+            let infinite = self.instruction(format!("icmp eq i32 {absolute}, 2139095040"));
+            let invalid = self.instruction(format!("and i1 {finite}, {infinite}"));
+            self.guard(&invalid, 4, location);
+        }
+        self.canonical_float(dest, result)
+    }
     fn canonical_float(&mut self, type_: Type, value: String) -> String {
         let kind = type_.float().expect("float operation");
         let nan = self.instruction(format!("fcmp uno {} {value}, {value}", ty(type_)));
@@ -300,6 +387,13 @@ impl Emitter<'_> {
                 self.source(statement.source);
                 let StatementKind::Assign(Place(destination), rvalue) = &statement.kind;
                 let result = match rvalue {
+                    Rvalue::CheckedCast(value, dest) => {
+                        let (source, value) = self.operand(body, value);
+                        Some((
+                            *dest,
+                            self.checked_cast(source, *dest, value, statement.source),
+                        ))
+                    }
                     Rvalue::NumericConvert(value, dest) => {
                         let (source, value) = self.operand(body, value);
                         let result = if source == *dest {

@@ -336,14 +336,19 @@ impl<'a> Parser<'a> {
         }
     }
     fn type_node(&mut self) -> AstNodeId {
+        self.type_node_with_comparison(false)
+    }
+
+    fn type_node_with_comparison(&mut self, comparison: bool) -> AstNodeId {
         let start = self.current().span.start();
         match self.kind() {
             TokenKind::Identifier => {
                 self.bump();
                 if matches!(
                     self.kind(),
-                    TokenKind::Symbol(Symbol::Less | Symbol::Question | Symbol::ColonColon)
-                ) {
+                    TokenKind::Symbol(Symbol::Question | Symbol::ColonColon)
+                ) || (!comparison && self.kind() == TokenKind::Symbol(Symbol::Less))
+                {
                     self.report(
                         1102,
                         self.current().span,
@@ -533,6 +538,13 @@ impl<'a> Parser<'a> {
         loop {
             if self.kind() == TokenKind::LeftParen && minimum <= 15 {
                 left = self.call(left);
+                continue;
+            }
+            if self.kind() == TokenKind::Keyword(Keyword::As) && minimum <= 15 {
+                let keyword = self.bump().span;
+                let target = self.type_node_with_comparison(true);
+                let cast_start = self.arena.get(left).expect("parsed operand").span.start();
+                left = self.node(NodeKind::Cast { keyword }, cast_start, vec![left, target]);
                 continue;
             }
             let Some((operator, precedence)) = binary(self.kind()) else {
@@ -745,7 +757,6 @@ fn unsupported(kind: TokenKind) -> bool {
                     | Keyword::Unsafe
                     | Keyword::Until
                     | Keyword::Through
-                    | Keyword::As
                     | Keyword::Exists
                     | Keyword::Use
                     | Keyword::Type
