@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01/P02/P03/P04 Accepted / 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01/P02/P03/P04/P05 Accepted / 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -33,6 +33,10 @@ Stage B 최소 범위는 [P04 가변 지역 변수·반복문 계약](CONTROL_ST
 [전용 EBNF](GRAMMAR_STAGE_B_CONTROL.ebnf)를 따른다. 2026-10-04 사용자 진행 요청으로 승인했고
 현재 frontend/MIR와 Windows Native 검증은 [P04 구현 기록](CONTROL_IMPLEMENTATION.md)에 있다.
 
+함수 내부 const는 [사용자 승인 P05](CONST_STAGE_B_PROPOSAL.md)와
+[전용 EBNF](GRAMMAR_STAGE_B_CONST.ebnf)를 따른다. API·예산·진단과 실제 실행 증거는
+[P05 구현 기록](CONST_IMPLEMENTATION.md)에 있다. 전역 상수와 전체 D09는 Draft다.
+
 ## 상태와 효력
 
 **작성 완료와 사양 승인, 구현 완료, 테스트 통과는 서로 다른 상태다.** 원본 Canonical
@@ -40,6 +44,7 @@ Stage B 최소 범위는 [P04 가변 지역 변수·반복문 계약](CONTROL_ST
 P01 Stage A Parser 구문·복구는 2026-10-04 사용자 승인으로 Accepted다.
 P02 단일 파일 HIR·이름·타입 최소 계약도 같은 날짜 사용자 승인으로 Accepted다.
 P03 Native와 P04 가변 변수·반복문 최소 계약도 해당 문서의 사용자 승인/진행 요청 범위에서 Accepted다.
+P05 함수 내부 const 최소 계약은 2026-10-04 사용자 승인으로 Accepted다.
 나머지 새 문법·언어 의미·공용 API·ABI·Package 형식은 Draft다. D번호 승인
 기록 없이 이 보완팩을 확정 사양으로 구현하지 않는다. 본문에서 '제안'이 생략된 구현
 설명도 문서 상태는 Draft다. 기존 코드와 달라지는 규칙 역시 코드에 자동 적용하지 않았다.
@@ -61,6 +66,7 @@ Nova 예제와 conformance fixture 역시 향후 수용 사례다. 현 compiler�
 기반과 Token/Lexer/END, P01 AST/Parser, P02 HIR/이름·타입 검사 및 frontend pass/fail harness를
 구현했다. Stage A MIR lowering/validation과 P03 Windows x64 CLI/Native 실행도 구현·검증했다.
 P04 var·대입·while·break/continue와 Windows x64 O0/O2 실행도 구현·검증했다.
+P05 함수 내부 const 평가와 Windows x64 O0/O2 실행도 구현·검증했다.
 Linux Native link/run과 일반 ABI/ownership/Package는 후속이다.
 frontend/MIR pass는 Native 실행 성공이 아니다. P03 Windows x64 Stage A Native는 실제 검증했다.
 일반 Arithmetic/출력/ABI 전체 정책은 Draft이며 P03 subset만 승인했다.

@@ -24,6 +24,7 @@ pub struct Definition {
     pub scope: ScopeId,
     /// True only for P04 local var declarations; parameters and let are Read.
     pub mutable: bool,
+    pub constant: bool,
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Scope {
@@ -55,6 +56,9 @@ impl Resolved {
             );
             if definition.mutable {
                 let _ = writeln!(output, "mutable def {index}");
+            }
+            if definition.constant {
+                let _ = writeln!(output, "const def {index}");
             }
         }
         for (index, resolution) in self.references.iter().enumerate() {
@@ -91,6 +95,7 @@ pub fn resolve(module: &Module) -> Resolved {
         span: None,
         scope: ScopeId(0),
         mutable: false,
+        constant: false,
     });
     result.scopes[0]
         .definitions
@@ -156,6 +161,10 @@ pub fn resolve(module: &Module) -> Resolved {
                             result.definitions[def.0].mutable = matches!(
                                 module.nodes()[id.0].kind,
                                 HirKind::Binding { mutable: true, .. }
+                            );
+                            result.definitions[def.0].constant = matches!(
+                                module.nodes()[id.0].kind,
+                                HirKind::Binding { constant: true, .. }
                             );
                         }
                     }
@@ -247,6 +256,7 @@ fn declare(
         span: Some(span),
         scope,
         mutable: false,
+        constant: false,
     });
     result.declaration_ids[node.0] = Some(id);
 }

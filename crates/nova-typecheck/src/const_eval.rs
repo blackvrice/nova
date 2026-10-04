@@ -1,0 +1,215 @@
+//! P05 bounded evaluation after ordinary type checking, before MIR.
+use crate::Checked;
+use nova_hir::{HirId, HirKind, Module};
+use nova_resolve::{Resolution, Resolved};
+use nova_syntax::Symbol;
+use nova_types::ConstValue;
+
+pub const CONST_NODE_LIMIT: usize = 10_000;
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ConstEvaluation {
+    NotConstant,
+    Pending,
+    /// An upstream syntax/name/type failure; do not emit a derived const error.
+    Invalid,
+    Value {
+        value: ConstValue,
+        nodes: usize,
+    },
+    Failed {
+        code: u16,
+        nodes: usize,
+    },
+}
+pub(crate) struct Failure {
+    pub code: u16,
+    pub node: HirId,
+    pub nodes: usize,
+    pub message: &'static str,
+}
+
+enum Work {
+    Evaluate(HirId),
+    Unary(HirId, Symbol),
+    Binary(HirId, Symbol),
+    Logical(HirId, Symbol),
+}
+
+pub(crate) fn evaluate(
+    module: &Module,
+    resolved: &Resolved,
+    checked: &Checked,
+    root: HirId,
+) -> Result<(ConstValue, usize), Failure> {
+    // Permission checks include skipped logical RHS nodes. Counting this tree
+    // bounds the subsequent stack machine as well; const references are cached.
+    let mut pending = vec![root];
+    let mut nodes = 0;
+    while let Some(id) = pending.pop() {
+        nodes += 1;
+        if nodes > CONST_NODE_LIMIT {
+            return Err(Failure {
+                code: 3202,
+                node: id,
+                nodes,
+                message: "const initializer node budget exceeded",
+            });
+        }
+        let node = &module.nodes()[id.0];
+        let allowed = match node.kind {
+            HirKind::Integer(_)
+            | HirKind::Boolean(_)
+            | HirKind::String(_)
+            | HirKind::Unit
+            | HirKind::Group
+            | HirKind::Prefix(Symbol::Plus | Symbol::Minus | Symbol::Bang)
+            | HirKind::Binary(
+                Symbol::Plus
+                | Symbol::Minus
+                | Symbol::Star
+                | Symbol::Slash
+                | Symbol::Percent
+                | Symbol::EqualEqual
+                | Symbol::BangEqual
+                | Symbol::Less
+                | Symbol::LessEqual
+                | Symbol::Greater
+                | Symbol::GreaterEqual
+                | Symbol::AndAnd
+                | Symbol::OrOr,
+            ) => true,
+            HirKind::Name(_) => matches!(resolved.references[id.0],
+                Some(Resolution::Definition(def)) if resolved.definitions[def.0].constant
+                    && matches!(checked.const_values[def.0], ConstEvaluation::Value { .. })),
+            _ => false,
+        };
+        if !allowed {
+            return Err(Failure {
+                code: 3201,
+                node: id,
+                nodes,
+                message: "expression is not permitted in a P05 const initializer",
+            });
+        }
+        pending.extend(node.children.iter().rev().copied());
+    }
+
+    let fail = |node, message| Failure {
+        code: 3201,
+        node,
+        nodes,
+        message,
+    };
+    let mut work = vec![Work::Evaluate(root)];
+    let mut values = vec![];
+    while let Some(task) = work.pop() {
+        match task {
+            Work::Evaluate(id) => {
+                let node = &module.nodes()[id.0];
+                // Also handles the directly checked -2147483648 magnitude.
+                if let Some(value) = checked.integer_values[id.0] {
+                    values.push(ConstValue::Int32(value));
+                    continue;
+                }
+                match &node.kind {
+                    HirKind::String(text) => values.push(ConstValue::String(text.clone())),
+                    HirKind::Boolean(value) => values.push(ConstValue::Bool(*value)),
+                    HirKind::Unit => values.push(ConstValue::Unit),
+                    HirKind::Name(_) => {
+                        let Some(Resolution::Definition(def)) = resolved.references[id.0] else {
+                            unreachable!("permission checked const name")
+                        };
+                        let ConstEvaluation::Value { value, .. } = &checked.const_values[def.0]
+                        else {
+                            unreachable!("permission checked cached const value")
+                        };
+                        values.push(value.clone());
+                    }
+                    HirKind::Group => work.push(Work::Evaluate(node.children[0])),
+                    HirKind::Prefix(op) => {
+                        work.push(Work::Unary(id, *op));
+                        work.push(Work::Evaluate(node.children[0]));
+                    }
+                    HirKind::Binary(op @ (Symbol::AndAnd | Symbol::OrOr)) => {
+                        work.push(Work::Logical(id, *op));
+                        work.push(Work::Evaluate(node.children[0]));
+                    }
+                    HirKind::Binary(op) => {
+                        work.push(Work::Binary(id, *op));
+                        work.push(Work::Evaluate(node.children[1]));
+                        work.push(Work::Evaluate(node.children[0]));
+                    }
+                    _ => unreachable!("permission checked typed const node"),
+                }
+            }
+            Work::Logical(id, op) => {
+                let ConstValue::Bool(left) = values.pop().expect("logical left value") else {
+                    unreachable!("typed logical operand")
+                };
+                if (op == Symbol::AndAnd && !left) || (op == Symbol::OrOr && left) {
+                    values.push(ConstValue::Bool(left));
+                } else {
+                    // The right Bool becomes this expression's result directly.
+                    work.push(Work::Evaluate(module.nodes()[id.0].children[1]));
+                }
+            }
+            Work::Unary(id, op) => {
+                let value = values.pop().expect("unary operand");
+                let value = match (op, value) {
+                    (Symbol::Plus, ConstValue::Int32(value)) => ConstValue::Int32(value),
+                    (Symbol::Minus, ConstValue::Int32(value)) => ConstValue::Int32(
+                        value
+                            .checked_neg()
+                            .ok_or_else(|| fail(id, "Int32 overflow in const unary minus"))?,
+                    ),
+                    (Symbol::Bang, ConstValue::Bool(value)) => ConstValue::Bool(!value),
+                    _ => unreachable!("typed permitted unary operation"),
+                };
+                values.push(value);
+            }
+            Work::Binary(id, op) => {
+                let right = values.pop().expect("binary right operand");
+                let left = values.pop().expect("binary left operand");
+                let value = match (left, right) {
+                    (ConstValue::Int32(left), ConstValue::Int32(right)) => match op {
+                        Symbol::EqualEqual => ConstValue::Bool(left == right),
+                        Symbol::BangEqual => ConstValue::Bool(left != right),
+                        Symbol::Less => ConstValue::Bool(left < right),
+                        Symbol::LessEqual => ConstValue::Bool(left <= right),
+                        Symbol::Greater => ConstValue::Bool(left > right),
+                        Symbol::GreaterEqual => ConstValue::Bool(left >= right),
+                        _ => {
+                            if matches!(op, Symbol::Slash | Symbol::Percent) && right == 0 {
+                                return Err(fail(id, "division or remainder by zero in const"));
+                            }
+                            let result = match op {
+                                Symbol::Plus => left.checked_add(right),
+                                Symbol::Minus => left.checked_sub(right),
+                                Symbol::Star => left.checked_mul(right),
+                                Symbol::Slash => left.checked_div(right),
+                                Symbol::Percent => left.checked_rem(right),
+                                _ => unreachable!("typed permitted Int32 operation"),
+                            };
+                            ConstValue::Int32(
+                                result
+                                    .ok_or_else(|| fail(id, "Int32 overflow in const operation"))?,
+                            )
+                        }
+                    },
+                    (ConstValue::Bool(left), ConstValue::Bool(right)) => {
+                        ConstValue::Bool(match op {
+                            Symbol::EqualEqual => left == right,
+                            Symbol::BangEqual => left != right,
+                            _ => unreachable!("logical operations use separate work items"),
+                        })
+                    }
+                    _ => unreachable!("typed permitted binary operands"),
+                };
+                values.push(value);
+            }
+        }
+    }
+    debug_assert_eq!(values.len(), 1);
+    Ok((values.pop().expect("evaluated const root"), nodes))
+}

@@ -41,6 +41,7 @@ pub enum NodeKind {
         name: Span,
         has_type: bool,
         mutable: bool,
+        constant: bool,
     },
     /// Target Name, then value. Assignment is a statement, never an expression.
     Assignment,

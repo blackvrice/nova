@@ -38,6 +38,7 @@ pub enum HirKind {
         name_span: Span,
         has_type: bool,
         mutable: bool,
+        constant: bool,
     },
     Assignment,
     Return,
@@ -246,11 +247,13 @@ pub fn lower(
                 name,
                 has_type,
                 mutable,
+                constant,
             } => HirKind::Binding {
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
                 has_type,
                 mutable,
+                constant,
             },
             NodeKind::Assignment => HirKind::Assignment,
             NodeKind::Return => HirKind::Return,
@@ -307,6 +310,16 @@ fn intern_symbol(
 }
 
 fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
+    if matches!(
+        node.kind,
+        NodeKind::Binding {
+            mutable: true,
+            constant: true,
+            ..
+        }
+    ) {
+        return false;
+    }
     let kinds = node
         .children
         .iter()

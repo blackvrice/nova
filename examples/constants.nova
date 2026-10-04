@@ -1,0 +1,12 @@
+func main() {
+    const limit: int32 = 3 * 2
+    const title = "합계"
+    const skipped = false && (1 / 0 == 0)
+    var index = 0
+    var sum = 0
+    while index < limit {
+        sum = sum + index
+        index = index + 1
+    }
+    print("{title}: {sum}, skipped={skipped}")
+}

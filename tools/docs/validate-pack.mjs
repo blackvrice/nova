@@ -89,6 +89,7 @@ function validateGrammar(filename) {
 validateGrammar('GRAMMAR.ebnf');
 validateGrammar('GRAMMAR_STAGE_A.ebnf');
 validateGrammar('GRAMMAR_STAGE_B_CONTROL.ebnf');
+validateGrammar('GRAMMAR_STAGE_B_CONST.ebnf');
 const parserProposal = manifest.accepted_proposals?.find(p => p.id === 'P01');
 assert(parserProposal?.approval_date === '2026-10-04' && parserProposal?.grammar === 'GRAMMAR_STAGE_A.ebnf', 'Missing P01 approval ledger');
 assert(fs.readFileSync(path.join(pack, 'PARSER_STAGE_A_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P01 status');
@@ -107,6 +108,11 @@ assert(controlProposal?.approval_date === '2026-10-04' && controlProposal?.docum
 assert(fs.readFileSync(path.join(pack, 'CONTROL_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 진행 요청'), 'Invalid P04 status');
 assert(knownCodes.has('N3004'), 'Missing P04 immutable assignment diagnostic');
 checks.push('P04 Stage B control 승인 subset/날짜/전용 EBNF와 N3004 등록');
+const constProposal = manifest.accepted_proposals?.find(p => p.id === 'P05');
+assert(constProposal?.approval_date === '2026-10-04' && constProposal?.document === 'CONST_STAGE_B_PROPOSAL.md'
+  && constProposal?.grammar === 'GRAMMAR_STAGE_B_CONST.ebnf', 'Missing P05 approval ledger');
+assert(fs.readFileSync(path.join(pack, 'CONST_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P05 status');
+checks.push('P05 local const 승인 subset/날짜/전용 EBNF 기록');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

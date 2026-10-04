@@ -49,6 +49,64 @@ fn mutable_control_recovery_keeps_shapes_and_source_origins() {
 }
 
 #[test]
+fn const_recovery_classification_and_conflicting_binding_flags() {
+    let source = "func f(){const answer:int=1+2;const name=\"x\";while false {const u=()}}";
+    for end in 0..=source.len() {
+        lower_source(&source[..end]);
+    }
+    let module = lower_source(source);
+    assert_eq!(
+        module
+            .nodes()
+            .iter()
+            .filter(|n| matches!(
+                n.kind,
+                HirKind::Binding {
+                    constant: true,
+                    mutable: false,
+                    ..
+                }
+            ))
+            .count(),
+        3
+    );
+    let mut sources = SourceDatabase::default();
+    let file = sources.add("api.nova", "x".into()).unwrap();
+    let span = Span::new(file, 0, 1).unwrap();
+    let mut arena = Arena::default();
+    let value = arena.insert(NodeKind::Name, span, vec![]).unwrap();
+    let wrong = arena
+        .insert(
+            NodeKind::Binding {
+                name: span,
+                has_type: false,
+                mutable: true,
+                constant: true,
+            },
+            span,
+            vec![value],
+        )
+        .unwrap();
+    let block = arena.insert(NodeKind::Block, span, vec![wrong]).unwrap();
+    let function = arena
+        .insert(
+            NodeKind::Function {
+                name: span,
+                parameters: 0,
+                has_return_type: false,
+            },
+            span,
+            vec![block],
+        )
+        .unwrap();
+    let root = arena.insert(NodeKind::Root, span, vec![function]).unwrap();
+    assert_eq!(
+        lower(&sources, &arena, root),
+        Err(LoweringError::MalformedAst)
+    );
+}
+
+#[test]
 fn malformed_assignment_and_loop_ast_shapes_are_rejected() {
     let mut sources = SourceDatabase::default();
     let file = sources.add("api.nova", "1".into()).unwrap();

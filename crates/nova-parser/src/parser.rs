@@ -203,6 +203,7 @@ impl<'a> Parser<'a> {
                         Keyword::Func
                             | Keyword::Let
                             | Keyword::Var
+                            | Keyword::Const
                             | Keyword::Return
                             | Keyword::If
                             | Keyword::While
@@ -401,8 +402,10 @@ impl<'a> Parser<'a> {
             return self.while_statement();
         }
         let id = match self.kind() {
-            TokenKind::Keyword(Keyword::Let | Keyword::Var) => {
-                let mutable = self.bump().kind == TokenKind::Keyword(Keyword::Var);
+            TokenKind::Keyword(Keyword::Let | Keyword::Var | Keyword::Const) => {
+                let keyword = self.bump().kind;
+                let mutable = keyword == TokenKind::Keyword(Keyword::Var);
+                let constant = keyword == TokenKind::Keyword(Keyword::Const);
                 let name = self.expect(TokenKind::Identifier).span;
                 let has_type = self.eat(TokenKind::Colon);
                 let mut children = vec![];
@@ -416,6 +419,7 @@ impl<'a> Parser<'a> {
                         name,
                         has_type,
                         mutable,
+                        constant,
                     },
                     start,
                     children,
@@ -718,8 +722,7 @@ fn unsupported(kind: TokenKind) -> bool {
                     | Symbol::FatArrow
             )
             | TokenKind::Keyword(
-                Keyword::Const
-                    | Keyword::Struct
+                Keyword::Struct
                     | Keyword::Class
                     | Keyword::Enum
                     | Keyword::Interface

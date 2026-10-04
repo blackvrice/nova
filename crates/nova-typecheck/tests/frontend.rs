@@ -4,8 +4,8 @@ use nova_lexer::{lex, normalize_ends};
 use nova_parser::parse;
 use nova_resolve::{resolve, DefinitionKind, Resolution, Resolved};
 use nova_source::SourceDatabase;
-use nova_typecheck::{check, CheckError, Checked};
-use nova_types::Type;
+use nova_typecheck::{check, CheckError, Checked, ConstEvaluation, CONST_NODE_LIMIT};
+use nova_types::{ConstValue, Type};
 
 struct Frontend {
     sources: SourceDatabase,
@@ -309,7 +309,7 @@ fn syntax_errors_never_enter_successful_semantic_analysis() {
         "func main() { let x=🙂 }",
         "func main() { let x }",
         "func main() { print(\"x\")",
-        "func main() { const x=1 }",
+        "func main() { for x in xs {} }",
     ] {
         let result = frontend(source);
         assert!(!result.passed());
@@ -501,6 +501,259 @@ fn tampered_mutability_is_an_invalid_resolution_table() {
         .find(|d| matches!(d.kind, DefinitionKind::Local(_)))
         .unwrap()
         .mutable = true;
+    assert_eq!(
+        check(&module, &resolved),
+        Err(CheckError::InvalidResolution)
+    );
+}
+
+fn constant_value(source: &str, name: &str) -> (ConstValue, usize) {
+    let result = pass(source);
+    let (_, resolved, checked) = result.semantic.unwrap();
+    let index = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == name && d.constant)
+        .unwrap();
+    let ConstEvaluation::Value { value, nodes } = &checked.const_values[index] else {
+        panic!("const value")
+    };
+    (value.clone(), *nodes)
+}
+
+#[test]
+fn const_value_types_operations_and_integer_boundaries_are_exact() {
+    for (expression, expected) in [
+        ("1+2*3-4", ConstValue::Int32(3)),
+        ("+7", ConstValue::Int32(7)),
+        ("-2147483648", ConstValue::Int32(i32::MIN)),
+        ("0x7fff_ffff", ConstValue::Int32(i32::MAX)),
+        ("-7/3", ConstValue::Int32(-2)),
+        ("-7%3", ConstValue::Int32(-1)),
+        ("7/-3", ConstValue::Int32(-2)),
+        ("7%-3", ConstValue::Int32(1)),
+        ("!false", ConstValue::Bool(true)),
+        ("true!=false", ConstValue::Bool(true)),
+        ("true==false", ConstValue::Bool(false)),
+        ("1==1", ConstValue::Bool(true)),
+        ("1!=2", ConstValue::Bool(true)),
+        ("1<2", ConstValue::Bool(true)),
+        ("1<=1", ConstValue::Bool(true)),
+        ("2>1", ConstValue::Bool(true)),
+        ("2>=2", ConstValue::Bool(true)),
+        ("true&&false||true", ConstValue::Bool(true)),
+        ("false||true&&true", ConstValue::Bool(true)),
+        ("()", ConstValue::Unit),
+        ("\"한글\\0{{x}}\"", ConstValue::String("한글\0{x}".into())),
+    ] {
+        assert_eq!(
+            constant_value(&format!("func f(){{const x={expression}}}"), "x").0,
+            expected,
+            "{expression}"
+        );
+    }
+    pass(include_str!("../../../examples/constants.nova"));
+}
+
+#[test]
+fn const_dependencies_shadowing_duplicate_forward_and_immutability() {
+    assert_eq!(
+        constant_value("func f(){const a=2;const b=a*3}", "b"),
+        (ConstValue::Int32(6), 3)
+    );
+    let result = pass("func f(){const x=1;if true {const x=x+1;print(\"{x}\")}}");
+    let (_, resolved, checked) = result.semantic.unwrap();
+    let values = resolved
+        .definitions
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| d.constant)
+        .map(|(i, _)| checked.const_values[i].clone())
+        .collect::<Vec<_>>();
+    assert!(matches!(
+        values[1],
+        ConstEvaluation::Value {
+            value: ConstValue::Int32(2),
+            ..
+        }
+    ));
+    for (source, code) in [
+        ("func f(){const x=x}", "N2001"),
+        ("func f(){const x=y;const y=1}", "N2001"),
+        ("func f(){const x=1;const x=2}", "N2002"),
+        ("func f(){const x=1;x=2}", "N3004"),
+        ("func f(){const x:int=true}", "N2101"),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code]);
+    }
+}
+
+#[test]
+fn const_arithmetic_failures_use_operation_and_declaration_spans() {
+    for expression in [
+        "2147483647+1",
+        "-2147483648-1",
+        "2147483647*2",
+        "1/0",
+        "1%0",
+        "-2147483648/-1",
+        "-2147483648%-1",
+        "-(-2147483648)",
+    ] {
+        let result = frontend(&format!("func f(){{const BAD={expression}}}"));
+        assert_eq!(codes(&result), ["N3201"], "{expression}");
+        let diagnostic = &result.diagnostics()[0];
+        assert_eq!(
+            result.sources.slice(diagnostic.primary.span).unwrap(),
+            expression
+        );
+        assert_eq!(
+            result.sources.slice(diagnostic.secondary[0].span).unwrap(),
+            "BAD"
+        );
+    }
+}
+
+#[test]
+fn const_short_circuit_skips_arithmetic_but_checks_all_types_and_permissions() {
+    for (expression, expected) in [("false&&(1/0==0)", false), ("true||(1/0==0)", true)] {
+        assert_eq!(
+            constant_value(&format!("func f(){{const x={expression}}}"), "x").0,
+            ConstValue::Bool(expected)
+        );
+    }
+    for expression in ["true&&(1/0==0)", "false||(1/0==0)"] {
+        assert_eq!(
+            codes(&frontend(&format!("func f(){{const x={expression}}}"))),
+            ["N3201"]
+        );
+    }
+    assert_eq!(
+        codes(&frontend("func f(){const x=false&&(2147483648==0)}")),
+        ["N2102"]
+    );
+    assert_eq!(codes(&frontend("func f(){const x=false&&1}")), ["N2101"]);
+    assert_eq!(
+        codes(&frontend(
+            "func rhs()->bool{return true} func f(){const x=false&&rhs()}"
+        )),
+        ["N3201"]
+    );
+    assert_eq!(
+        codes(&frontend("func f(){var y=true;const x=true||y}")),
+        ["N3201"]
+    );
+}
+
+#[test]
+fn const_forbidden_names_calls_interpolation_have_exact_spans() {
+    for (source, excerpt) in [
+        ("func f(){let y=1;const x=y}", "y"),
+        ("func f(){var y=1;const x=y}", "y"),
+        ("func f(y:int){const x=y}", "y"),
+        (
+            "func value()->int{return 1} func f(){const x=value()}",
+            "value()",
+        ),
+        ("func f(){const x=print(\"x\")}", "print(\"x\")"),
+        ("func f(){const x=\"value {1}\"}", "\"value {1}\""),
+    ] {
+        let result = frontend(source);
+        assert_eq!(codes(&result), ["N3201"]);
+        assert_eq!(
+            result
+                .sources
+                .slice(result.diagnostics()[0].primary.span)
+                .unwrap(),
+            excerpt
+        );
+    }
+    assert_eq!(
+        codes(&frontend("func value(){} func f(){const x=value}")),
+        ["N1102"]
+    );
+}
+
+#[test]
+fn const_failed_and_unreachable_values_do_not_generate_cascades() {
+    let result = frontend("func f(){const x=1/0;const y=x+1;print(\"{y}\")}");
+    assert_eq!(codes(&result), ["N3201"]);
+    let (_, resolved, checked) = result.semantic.unwrap();
+    for (index, definition) in resolved.definitions.iter().enumerate() {
+        match definition.name.as_str() {
+            "x" => assert!(matches!(
+                checked.const_values[index],
+                ConstEvaluation::Failed { code: 3201, .. }
+            )),
+            "y" => assert_eq!(checked.const_values[index], ConstEvaluation::Invalid),
+            _ => {}
+        }
+    }
+    for source in [
+        "func f(){return;const x=1/0}",
+        "func f(){while false {const x=1/0}}",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N3201"]);
+    }
+    assert_eq!(
+        codes(&frontend("func f(){const x=missing;const y=x+1}")),
+        ["N2001"]
+    );
+    assert_eq!(
+        codes(&frontend("func f(){const x=\"a\"==\"b\"}")),
+        ["N2101"]
+    );
+}
+
+#[test]
+fn const_node_budget_boundary_skipped_subtree_and_cached_names_are_deterministic() {
+    assert_eq!(CONST_NODE_LIMIT, 10_000);
+    let chain = std::iter::repeat("1")
+        .take(5000)
+        .collect::<Vec<_>>()
+        .join("+");
+    let source = format!("func f(){{const x=({chain});const y=x;const z=({chain})}}");
+    assert_eq!(
+        constant_value(&source, "x"),
+        (ConstValue::Int32(5000), 10_000)
+    );
+    assert_eq!(constant_value(&source, "y"), (ConstValue::Int32(5000), 1));
+    let overflow = format!("func f(){{const x={chain}+1}}");
+    let first = frontend(&overflow);
+    let second = frontend(&overflow);
+    assert_eq!(codes(&first), ["N3202"]);
+    assert_eq!(first.diagnostics(), second.diagnostics());
+    assert_eq!(
+        first
+            .sources
+            .slice(first.diagnostics()[0].primary.span)
+            .unwrap(),
+        "1"
+    );
+    assert!(first.diagnostics()[0].notes[0].contains("10000"));
+    assert_eq!(
+        codes(&frontend(&format!(
+            "func f(){{const x=false&&({chain}==0)}}"
+        ))),
+        ["N3202"]
+    );
+}
+
+#[test]
+fn const_resolution_flags_and_successful_dumps_are_stable() {
+    let source = "func f(){const a=1+2;const text=\"x\";const empty=()}";
+    let first = pass(source).semantic.unwrap();
+    let second = pass(source).semantic.unwrap();
+    assert_eq!(first, second);
+    assert!(first.1.dump().contains("const def"));
+    assert!(first.2.dump().contains("value: Int32(3), nodes: 3"));
+    let (module, mut resolved, _) = first;
+    resolved
+        .definitions
+        .iter_mut()
+        .find(|d| d.constant)
+        .unwrap()
+        .constant = false;
     assert_eq!(
         check(&module, &resolved),
         Err(CheckError::InvalidResolution)

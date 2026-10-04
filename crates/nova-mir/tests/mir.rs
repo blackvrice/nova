@@ -230,6 +230,88 @@ fn mutable_control_errors_are_blocked_before_mir() {
 }
 
 #[test]
+fn const_materialization_removes_initializer_arithmetic_and_skipped_rhs() {
+    let module = pass("func f()->int{const x=1+2*3;const skipped=false&&(1/0==0);return x}");
+    assert_eq!(execute(&module, "f", vec![]).0, Constant::Int32(7));
+    let body = body_named(&module, "f");
+    assert_eq!(body.blocks.len(), 1);
+    assert!(body.blocks[0].statements.iter().all(|s| matches!(
+        s.kind,
+        StatementKind::Assign(_, Rvalue::Use(Operand::Constant(_)))
+    )));
+    assert!(body.blocks[0].statements.iter().any(|s| matches!(
+        s.kind,
+        StatementKind::Assign(_, Rvalue::Use(Operand::Constant(Constant::Int32(7))))
+    )));
+    let runtime = pass("func f()->int{let x=1+2*3;return x}");
+    assert!(body_named(&runtime, "f")
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .any(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Binary(_, _, _)))));
+}
+
+#[test]
+fn const_in_loops_and_all_value_types_preserve_cfg_and_sources() {
+    let module = pass("func f()->int{const limit=3;const text=\"x\";const unit=();var x=0;while x<limit {const one=1;x=x+one} return x}");
+    assert_eq!(execute(&module, "f", vec![]).0, Constant::Int32(3));
+    assert_eq!(module, pass("func f()->int{const limit=3;const text=\"x\";const unit=();var x=0;while x<limit {const one=1;x=x+one} return x}"));
+    assert!(validate(&module).is_empty());
+}
+
+#[test]
+fn const_evaluation_failures_block_mir_even_in_dead_source() {
+    for source in [
+        "func f(){const x=1/0}",
+        "func f(){return;const x=1/0}",
+        "func f(){let x=1;const y=x}",
+        "func f(){const x=print(\"x\")}",
+    ] {
+        assert_eq!(compile(source), Err(LoweringError::FrontendErrors));
+    }
+}
+
+#[test]
+fn tampered_const_values_counts_and_missing_tables_cannot_reach_mir() {
+    let mut sources = SourceDatabase::default();
+    let file = sources
+        .add("test.nova", "func f(){const x=1+2}".into())
+        .unwrap();
+    let lexed = lex(&sources, file).unwrap();
+    let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+    let hir = nova_hir::lower(&sources, &parsed.arena, parsed.root).unwrap();
+    let resolved = resolve(&hir);
+    for mutation in 0..4 {
+        let mut checked = check(&hir, &resolved).unwrap();
+        let index = resolved
+            .definitions
+            .iter()
+            .position(|d| d.constant)
+            .unwrap();
+        match mutation {
+            0 => {
+                checked.const_values[index] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Int32(4),
+                    nodes: 3,
+                }
+            }
+            1 => {
+                checked.const_values[index] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Int32(3),
+                    nodes: 2,
+                }
+            }
+            2 => checked.const_values[index] = nova_typecheck::ConstEvaluation::NotConstant,
+            _ => checked.const_values.clear(),
+        }
+        assert_eq!(
+            lower(&hir, &resolved, &checked, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+
+#[test]
 fn argument_and_operand_calls_run_in_source_order() {
     let module = pass("func a() -> int { return 1 } func b() -> int { return 2 } func sum(x:int,y:int)->int { return x+y } func f()->int { return sum(a(), b()) + a() }");
     assert_eq!(

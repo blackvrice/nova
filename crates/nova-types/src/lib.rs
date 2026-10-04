@@ -9,6 +9,25 @@ pub enum Type {
     Function,
 }
 
+/// P05 target-independent fixed-width values; no runtime or LLVM representation.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum ConstValue {
+    Int32(i32),
+    Bool(bool),
+    String(String),
+    Unit,
+}
+impl ConstValue {
+    pub const fn ty(&self) -> Type {
+        match self {
+            Self::Int32(_) => Type::Int32,
+            Self::Bool(_) => Type::Bool,
+            Self::String(_) => Type::String,
+            Self::Unit => Type::Unit,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub struct TypeId(usize);
 

@@ -1,4 +1,6 @@
 //! P02 single-file semantic checking. Successful checking is not native execution.
+mod const_eval;
+pub use const_eval::{ConstEvaluation, CONST_NODE_LIMIT};
 use nova_diagnostics::{Diagnostic, DiagnosticCode, Label, Severity};
 use nova_hir::{HirId, HirKind, Module};
 use nova_resolve::{DefId, DefinitionKind, Resolution, Resolved};
@@ -23,6 +25,8 @@ pub struct Checked {
     pub calls: Vec<Option<DefId>>,
     pub integer_values: Vec<Option<i32>>,
     pub always_returns: Vec<bool>,
+    /// P05 evaluation state, indexed by resolved DefId.
+    pub const_values: Vec<ConstEvaluation>,
     pub diagnostics: Vec<Diagnostic>,
     upstream_errors: bool,
 }
@@ -30,6 +34,14 @@ impl Checked {
     pub fn has_errors(&self) -> bool {
         self.upstream_errors
             || !self.diagnostics.is_empty()
+            || self.const_values.iter().any(|v| {
+                matches!(
+                    v,
+                    ConstEvaluation::Pending
+                        | ConstEvaluation::Invalid
+                        | ConstEvaluation::Failed { .. }
+                )
+            })
             || self
                 .type_table
                 .iter()
@@ -47,6 +59,11 @@ impl Checked {
                 self.calls[index],
                 self.always_returns[index]
             );
+        }
+        for (index, value) in self.const_values.iter().enumerate() {
+            if *value != ConstEvaluation::NotConstant {
+                let _ = writeln!(output, "const def {index} {value:?}");
+            }
         }
         output
     }
@@ -107,7 +124,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     for (index, definition) in resolved.definitions.iter().enumerate() {
         let id = match definition.kind {
             DefinitionKind::BuiltinPrint => {
-                if definition.mutable {
+                if definition.mutable || definition.constant {
                     return Err(CheckError::InvalidResolution);
                 }
                 continue;
@@ -128,6 +145,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         if module.symbol(*name) != Some(definition.name.as_str())
             || resolved.declaration_ids[id.0] != Some(DefId(index))
             || definition.mutable != matches!(node.kind, HirKind::Binding { mutable: true, .. })
+            || definition.constant != matches!(node.kind, HirKind::Binding { constant: true, .. })
         {
             return Err(CheckError::InvalidResolution);
         }
@@ -163,6 +181,17 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         calls: vec![None; size],
         integer_values: vec![None; size],
         always_returns: vec![false; size],
+        const_values: resolved
+            .definitions
+            .iter()
+            .map(|d| {
+                if d.constant {
+                    ConstEvaluation::Pending
+                } else {
+                    ConstEvaluation::NotConstant
+                }
+            })
+            .collect(),
         diagnostics: resolved.diagnostics.clone(),
         upstream_errors: module.has_errors(),
     };
@@ -571,7 +600,9 @@ impl Checker<'_> {
             HirKind::Group => {
                 self.result.type_table[id.0] = self.result.type_table[node.children[0].0]
             }
-            HirKind::Binding { has_type, .. } => {
+            HirKind::Binding {
+                has_type, constant, ..
+            } => {
                 let value = *node.children.last().expect("initializer");
                 let inferred = self.result.type_table[value.0];
                 let declared = if *has_type {
@@ -595,6 +626,47 @@ impl Checker<'_> {
                 };
                 if let Some(def) = self.resolved.declaration_ids[id.0] {
                     self.result.definition_types[def.0] = ty;
+                    if *constant {
+                        if self.ty(ty) == Type::Error {
+                            self.result.const_values[def.0] = ConstEvaluation::Invalid;
+                        } else {
+                            match const_eval::evaluate(
+                                self.module,
+                                self.resolved,
+                                &self.result,
+                                value,
+                            ) {
+                                Ok((value, nodes)) => {
+                                    self.result.const_values[def.0] =
+                                        ConstEvaluation::Value { value, nodes };
+                                }
+                                Err(error) => {
+                                    self.report(
+                                        error.code,
+                                        self.module.nodes()[error.node.0].span,
+                                        error.message,
+                                        self.resolved.definitions[def.0].span,
+                                    );
+                                    if error.code == 3202 {
+                                        self.result
+                                            .diagnostics
+                                            .last_mut()
+                                            .expect("reported const budget")
+                                            .notes
+                                            .push(format!(
+                                                "const initializer node limit: {CONST_NODE_LIMIT}"
+                                            ));
+                                    }
+                                    self.result.const_values[def.0] = ConstEvaluation::Failed {
+                                        code: error.code,
+                                        nodes: error.nodes,
+                                    };
+                                    self.result.definition_types[def.0] =
+                                        self.result.types.intern(Type::Error);
+                                }
+                            }
+                        }
+                    }
                 }
                 self.set(id, Type::Unit);
             }

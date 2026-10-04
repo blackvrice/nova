@@ -157,6 +157,19 @@ fn hello_ir_snapshot_is_stable() {
 }
 
 #[test]
+fn const_ir_has_materialized_values_and_no_initializer_runtime_guards() {
+    let source = "func f()->int{const x=1+2*3;const skipped=true||(1/0==0);return x}";
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&unit(source), target, false).unwrap();
+        assert!(ir.text.contains("store i32 7"));
+        assert!(!ir.text.contains("call void @nova_panic"));
+        assert!(!ir.text.contains(" sdiv "));
+        assert!(!ir.text.contains("call { i32, i1 } @llvm."));
+        assert_eq!(ir, emit_ir(&unit(source), target, false).unwrap());
+    }
+}
+
+#[test]
 #[ignore = "requires real LLVM 21.1.8"]
 fn real_llvm_verifies_both_x64_objects_and_preserves_existing_output() {
     let clang = ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG"));

@@ -20,6 +20,8 @@ Stage A Native 최소 arithmetic/print/entry/internal ABI/toolchain 계약은 �
 
 Stage B 가변 지역 변수·반복문 최소 부분은 사용자 진행 요청으로 승인한 [P04](../CONTROL_STAGE_B_PROPOSAL.md)와 [전용 EBNF](../GRAMMAR_STAGE_B_CONTROL.ebnf)가 우선한다. [구현·검증 기록](../CONTROL_IMPLEMENTATION.md). 전체 Stage B와 ownership/Drop 정책은 Draft다.
 
+함수 내부 const와 제한된 상수 평가는 사용자 승인 [P05](../CONST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](../GRAMMAR_STAGE_B_CONST.ebnf)가 우선한다. [구현·검증 기록](../CONST_IMPLEMENTATION.md). 전역 상수/const function/전체 D09는 Draft다.
+
 ## 테스트 계층
 Unit → Lexer/Parser/HIR/MIR Snapshot → Compile-pass/fail → Runtime integration → E2E → Fuzz → Benchmark → Compatibility. 비용이 높은 계층은 해당 Stage에서 추가한다.
 

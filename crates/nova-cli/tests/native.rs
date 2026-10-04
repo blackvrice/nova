@@ -149,6 +149,40 @@ fn repeated_checked_failure_aborts_before_following_effects() {
         }
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn const_example_executes_identically_in_both_profiles() {
+    for profile in ["debug", "release"] {
+        let result = program_profile(include_str!("../../../examples/constants.nova"), profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, "합계: 15, skipped=false\n".as_bytes());
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn const_boundaries_signed_arithmetic_strings_unit_and_shadowing_are_native() {
+    let source = "func value()->int{const base=7;const q=-base/3;const r=-base%3;return q*10+r} func keep(x:()){return x} func main(){const min=-2147483648;const max=2147483647;const text=\"한글\\0\";const alias=(text);const empty=();const skipped=true||(1/0==0);keep(empty);var i=0;while i<2 {const shadow=3;if i==0 {const shadow=shadow+1;print(\"{shadow}\")} i=i+1} print(\"{alias}|{min}|{max}|{value()}|{skipped}\")}";
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "4\n한글\0|-2147483648|2147483647|-21|true\n".as_bytes()
+        );
+        assert!(result.stderr.is_empty());
+    }
+}
 #[test]
 #[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
 fn interpolation_unicode_nul_and_int_boundaries_are_exact() {

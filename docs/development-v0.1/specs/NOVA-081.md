@@ -14,6 +14,8 @@ Stage A MIR은 원본 CFG/Place 기준과 P02의 평가 순서에 따라 구현�
 
 Stage B 가변 지역 변수·반복문 최소 부분은 사용자 진행 요청으로 승인한 [P04](../CONTROL_STAGE_B_PROPOSAL.md)와 [전용 EBNF](../GRAMMAR_STAGE_B_CONTROL.ebnf)가 우선한다. [구현·검증 기록](../CONTROL_IMPLEMENTATION.md). 전체 Stage B와 ownership/Drop 정책은 Draft다.
 
+함수 내부 const와 제한된 상수 평가는 사용자 승인 [P05](../CONST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](../GRAMMAR_STAGE_B_CONST.ebnf)가 우선한다. [구현·검증 기록](../CONST_IMPLEMENTATION.md). 전역 상수/const function/전체 D09는 Draft다.
+
 ## MIR 구조
 Body는 typed locals/scopes/basic blocks를 가지며 block은 Statements와 하나의 Terminator다. Place=root+projection, Operand=Copy/Move/Constant, Rvalue=Use/Binary/Aggregate/Ref 등으로 제안한다.
 

@@ -1,7 +1,8 @@
 use crate::*;
 use nova_hir::{HirKind, Module as HirModule};
 use nova_resolve::{DefinitionKind, Resolution, Resolved};
-use nova_typecheck::Checked;
+use nova_typecheck::{Checked, ConstEvaluation};
+use nova_types::ConstValue;
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -259,11 +260,13 @@ impl Builder<'_> {
                         HirKind::Block => {
                             work.extend(node.children.iter().rev().copied().map(Work::Statement))
                         }
-                        HirKind::Binding { .. } => {
+                        HirKind::Binding { constant, .. } => {
                             work.push(Work::Binding(id));
-                            work.push(Work::Expression(
-                                *node.children.last().ok_or(LoweringError::InvalidAnalysis)?,
-                            ));
+                            if !constant {
+                                work.push(Work::Expression(
+                                    *node.children.last().ok_or(LoweringError::InvalidAnalysis)?,
+                                ));
+                            }
                         }
                         HirKind::Return => {
                             work.push(Work::Return(id));
@@ -426,7 +429,19 @@ impl Builder<'_> {
                         .children
                         .last()
                         .ok_or(LoweringError::InvalidAnalysis)?;
-                    self.assign(Place(local), Rvalue::Use(self.value(initializer)?), id)?;
+                    let value = if let ConstEvaluation::Value { value, .. } =
+                        &self.checked.const_values[definition.0]
+                    {
+                        Operand::Constant(match value {
+                            ConstValue::Int32(value) => Constant::Int32(*value),
+                            ConstValue::Bool(value) => Constant::Bool(*value),
+                            ConstValue::String(value) => Constant::String(value.clone()),
+                            ConstValue::Unit => Constant::Unit,
+                        })
+                    } else {
+                        self.value(initializer)?
+                    };
+                    self.assign(Place(local), Rvalue::Use(value), id)?;
                     self.declarations.insert(definition.0, local);
                 }
                 Work::Return(id) => {

@@ -55,6 +55,7 @@ check에는 LLVM/entry가 필요 없고 산출물도 생성하지 않는다. 자
 - 이번 추가 **24 tests**: Parser 4, HIR 2, frontend semantics 7, MIR 5, CLI 2, 실제 Native 4.
 - 기본 workspace **125 pass**, 별도 opt-in 실제 LLVM **2 pass** 및 Windows Native **12 pass**,
   합계 **139 pass**. 기본 Cargo test는 실제 LLVM/Native tests를 ignored로 남긴다.
+  이는 P04 완료 당시 숫자이며 이후 const와 현재 tests는 [P05 구현 기록](CONST_IMPLEMENTATION.md)을 따른다.
 - Parser: source-order, END/newline jump, 미지원 대상/label/value, 다음 함수 복구,
   모든 ASCII prefix와 deep loop nesting의 결정성·한도.
 - HIR: 모든 loop prefix의 recovery lowering/Span/SourceOrigin, malformed assignment/loop AST API 거부.

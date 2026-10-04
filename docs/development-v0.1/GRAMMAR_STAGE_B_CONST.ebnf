@@ -1,0 +1,34 @@
+(* P05 Stage B local const subset. Accepted by the user on 2026-10-04.
+   P04 productions retained; binding adds const. Permission and evaluation are semantic.
+   Input: existing D05 normalized END tokens. *)
+program = { "END" | function_decl }, "EOF" ;
+function_decl = "func", "IDENT", "(", [ parameters ], ")", [ "->", type ], block ;
+parameters = parameter, { ",", parameter }, [ "," ] ;
+parameter = "IDENT", ":", type ;
+type = "IDENT" | "(", ")" ;
+block = "{", { "END" | statement }, "}" ;
+statement = if_stmt | while_stmt | simple_statement ;
+simple_statement = ( binding | assignment | return_stmt | break_stmt | continue_stmt | expression ), end ;
+binding = ( "let" | "var" | "const" ), "IDENT", [ ":", type ], "=", expression ;
+assignment = "IDENT", "=", expression ;
+return_stmt = "return", [ expression ] ;
+break_stmt = "break" ;
+continue_stmt = "continue" ;
+if_stmt = "if", expression, block, [ "else", ( if_stmt | block ) ] ;
+while_stmt = "while", expression, block ;
+expression = or_expr ;
+or_expr = and_expr, { "||", and_expr } ;
+and_expr = compare_expr, { "&&", compare_expr } ;
+compare_expr = add_expr, [ compare_op, add_expr ] ;
+compare_op = "==" | "!=" | "<" | "<=" | ">" | ">=" ;
+add_expr = mul_expr, { ( "+" | "-" ), mul_expr } ;
+mul_expr = prefix_expr, { ( "*" | "/" | "%" ), prefix_expr } ;
+prefix_expr = ( "+" | "-" | "!" ), prefix_expr | postfix_expr ;
+postfix_expr = primary_expr, { "(", [ arguments ], ")" } ;
+arguments = expression, { ",", expression }, [ "," ] ;
+primary_expr = "INT" | "STRING" | "true" | "false" | "IDENT"
+             | "(", ")" | "(", expression, ")" | interpolated_string ;
+interpolated_string = "STRING_START", { "STRING_TEXT" | interpolation }, "STRING_END" ;
+interpolation = "INTERP_START", expression, "INTERP_END" ;
+end = "END" | boundary ;
+boundary = ? zero-width only immediately before closing brace or EOF ? ;

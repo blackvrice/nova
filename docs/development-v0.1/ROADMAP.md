@@ -43,6 +43,11 @@ Windows x64 O0/O2 증거는 [P04 구현 기록](CONTROL_IMPLEMENTATION.md)에 �
 이 범위 완료는 Stage B 전체 완료가 아니다. 다음은 const/Primitive·aggregate/module 상세의 별도 동결이다.
 현재 로컬에는 Linux 실행 환경이 없어 Linux Native 검증은 후속이다.
 
+다음 [P05 함수 내부 const](CONST_STAGE_B_PROPOSAL.md)는 사용자 “P05 승인하고 const 구현 진행”
+답변에 따라 구현했다. 현재 값 타입의 제한된 상수 표현식·checked 평가·node budget과
+전용 EBNF를 적용했고 [구현 기록](CONST_IMPLEMENTATION.md)에 Windows O0/O2 증거를 남겼다.
+다음은 전역 상수·Primitive 확장·aggregate/module의 상세 범위 검토다. 전체 Stage B 동결과는 별도다.
+
 ## Backlog 경계
 
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,

@@ -1,5 +1,20 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P05 함수 내부 const 구현
+
+- 사용자 답변 “P05 승인하고 const 구현 진행”을 Accepted subset으로 기록.
+- local const 분류와 target-independent ConstValue, iterative permission/budget/checked evaluator 추가.
+- 10,000-node limit과 N3201/N3202, short-circuit와 skipped RHS 검사, 실패 ErrorType 전파.
+- 성공 값만 MIR Constant로 materialize. 일반 let/var Runtime 산술은 유지하고 변조된 값/count/table 차단.
+- constants.nova와 20 tests 추가. 기본 143 + 실제 LLVM/Native 16, 총 159 tests.
+- Windows x64 O0/O2 UTF-8/NUL·Unit·경계/음수 산술·shadow/loop 검증. 전역 상수/전체 D09는 Draft.
+
+## 2026-10-04 — P05 const 착수안 (Draft)
+
+- 함수 내부 초기값 필수 const, 현재 Int32/Bool/String/Unit 값과 제한된 표현식 계약 작성.
+- 기존 checked 산술의 compile-time N3201, short-circuit 허용성/평가 구분, 10,000-node/N3202 예산 제안.
+- 30-production 전용 EBNF, 의미/MIR/CLI/Native 수용 기준 추가. Compiler와 accepted ledger는 유지.
+
 ## 2026-10-04 — P04 가변 지역 변수·반복문 구현
 
 - P04 문서/승인 질문 뒤 사용자 “다음 개발 진행ㅎ재ㅝ” 요청을 해당 최소 범위 진행 승인으로 기록.

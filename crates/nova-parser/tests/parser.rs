@@ -295,7 +295,7 @@ fn missing_brace_preserves_the_next_function() {
 #[test]
 fn unsupported_stage_features_are_not_silently_accepted() {
     for body in [
-        "const x=1",
+        "struct X {}",
         "let x=1.5",
         "let x='a'",
         "let x=none",
@@ -361,6 +361,47 @@ fn mutable_binding_assignment_and_nested_loops_have_source_order() {
         .collect::<Vec<_>>();
     assert_eq!(assignments, ["index", "sum"]);
     assert_pass("func f(){var x:()=();while true {while false {break} if true {continue} x=()}}");
+}
+
+#[test]
+fn local_const_bindings_keep_declaration_spans_and_classification() {
+    let parsed = assert_pass(include_str!("../../../examples/constants.nova"));
+    assert_eq!(
+        parsed
+            .arena
+            .iter()
+            .filter(|(_, n)| matches!(
+                n.kind,
+                NodeKind::Binding {
+                    constant: true,
+                    mutable: false,
+                    ..
+                }
+            ))
+            .count(),
+        3
+    );
+    assert_pass("func f(){const unit:()=();if true {const x=1} while false {const x=2}}");
+    let (a_sources, _, a) = run("func f(){\nconst x=1\nconst y=x+1\n}");
+    let (b_sources, _, b) = run("func f(){const x=1;const y=x+1}");
+    assert!(!a.has_errors() && !b.has_errors());
+    assert_eq!(shape(&a, &a_sources), shape(&b, &b_sources));
+}
+
+#[test]
+fn const_initializers_are_required_and_global_const_is_unsupported() {
+    for (source, code) in [
+        ("const x=1\nfunc later(){}", "N1102"),
+        ("func f(){const x}\nfunc later(){}", "N1101"),
+    ] {
+        let (sources, _, parsed) = run(source);
+        assert!(parsed
+            .diagnostics
+            .iter()
+            .any(|d| d.code.to_string() == code));
+        assert!(parsed.arena.iter().any(|(_, n)| matches!(n.kind,
+            NodeKind::Function { name, .. } if sources.slice(name).unwrap() == "later")));
+    }
 }
 
 #[test]

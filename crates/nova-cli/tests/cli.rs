@@ -123,3 +123,51 @@ fn loop_check_needs_no_native_tools_or_outputs() {
     assert!(result.stdout.is_empty() && result.stderr.is_empty());
     assert!(!directory.join("target").exists());
 }
+
+#[test]
+fn const_failures_precede_tools_and_artifacts_in_all_commands() {
+    let chain = std::iter::repeat("1")
+        .take(5001)
+        .collect::<Vec<_>>()
+        .join("+");
+    for (source_text, code) in [
+        ("func main(){const x=1/0}".to_owned(), "N3201"),
+        (format!("func main(){{const x={chain}}}"), "N3202"),
+        ("func main(){const x=1;x=2}".to_owned(), "N3004"),
+        ("const x=1\nfunc main(){}".to_owned(), "N1102"),
+    ] {
+        for command in ["check", "build", "run"] {
+            let directory = directory();
+            let source = directory.join("bad-const.nova");
+            std::fs::write(&source, &source_text).unwrap();
+            let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg(command)
+                .arg(&source)
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&directory)
+                .output()
+                .unwrap();
+            assert_eq!(result.status.code(), Some(1), "{command}: {:?}", result);
+            assert!(String::from_utf8(result.stderr).unwrap().contains(code));
+            assert!(result.stdout.is_empty());
+            assert!(!directory.join("target").exists());
+        }
+    }
+}
+
+#[test]
+fn const_check_uses_no_llvm_or_runtime_execution() {
+    let directory = directory();
+    let source = directory.join("constants.nova");
+    std::fs::write(&source, include_str!("../../../examples/constants.nova")).unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("check")
+        .arg(&source)
+        .env("NOVA_CLANG", "missing-clang")
+        .current_dir(&directory)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{:?}", result);
+    assert!(result.stdout.is_empty() && result.stderr.is_empty());
+    assert!(!directory.join("target").exists());
+}
