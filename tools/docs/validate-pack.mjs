@@ -62,28 +62,36 @@ assert(knownD.size === 30 && knownT.size === 60, 'Decision/case registry counts 
 assert(knownCodes.size === codes.length && codes.every(c => /^N[1-589]\d{3}$/.test(c[0])), 'Invalid/duplicate diagnostic codes');
 checks.push(`30개 결정 (Accepted 5 / Draft 25), 60개 수용 묶음, ${codes.length}개 진단 코드 유일성/영역`);
 
-const grammar = fs.readFileSync(path.join(pack, 'GRAMMAR.ebnf'), 'utf8');
-const stripped = grammar.replace(/\(\*[\s\S]*?\*\)/g, '').replace(/"[^"\n]*"/g, '').replace(/\?[^?]*\?/g, '');
-const definitions = [...stripped.matchAll(/^\s*([a-z][a-z_0-9]*)\s*=/gm)].map(m => m[1]);
-const defined = new Set(definitions);
-assert(defined.size === definitions.length, 'Duplicate grammar production');
-const words = [...stripped.matchAll(/\b[a-z][a-z_0-9]*\b/g)].map(m => m[0]);
-for (const word of words) assert(defined.has(word), `Undefined grammar nonterminal ${word}`);
-assert(defined.has('program') && defined.has('expression') && defined.has('type'), 'Missing grammar roots');
-const references = new Map([...stripped.matchAll(/^\s*([a-z][a-z_0-9]*)\s*=([\s\S]*?);/gm)]
-  .map(m => [m[1], [...m[2].matchAll(/\b[a-z][a-z_0-9]*\b/g)].map(r => r[0])]));
-const reachable = new Set();
-const grammarQueue = ['program'];
-while (grammarQueue.length) {
-  const next = grammarQueue.pop();
-  if (reachable.has(next)) continue;
-  reachable.add(next);
-  grammarQueue.push(...(references.get(next) ?? []));
+function validateGrammar(filename) {
+  const grammar = fs.readFileSync(path.join(pack, filename), 'utf8');
+  const stripped = grammar.replace(/\(\*[\s\S]*?\*\)/g, '').replace(/"[^"\n]*"/g, '').replace(/\?[^?]*\?/g, '');
+  const definitions = [...stripped.matchAll(/^\s*([a-z][a-z_0-9]*)\s*=/gm)].map(m => m[1]);
+  const defined = new Set(definitions);
+  assert(defined.size === definitions.length, `${filename}: Duplicate grammar production`);
+  const words = [...stripped.matchAll(/\b[a-z][a-z_0-9]*\b/g)].map(m => m[0]);
+  for (const word of words) assert(defined.has(word), `${filename}: Undefined grammar nonterminal ${word}`);
+  assert(defined.has('program') && defined.has('expression') && defined.has('type'), `${filename}: Missing grammar roots`);
+  const references = new Map([...stripped.matchAll(/^\s*([a-z][a-z_0-9]*)\s*=([\s\S]*?);/gm)]
+    .map(m => [m[1], [...m[2].matchAll(/\b[a-z][a-z_0-9]*\b/g)].map(r => r[0])]));
+  const reachable = new Set();
+  const grammarQueue = ['program'];
+  while (grammarQueue.length) {
+    const next = grammarQueue.pop();
+    if (reachable.has(next)) continue;
+    reachable.add(next);
+    grammarQueue.push(...(references.get(next) ?? []));
+  }
+  for (const definition of definitions) {
+    assert(reachable.has(definition), `${filename}: Unreachable grammar production ${definition}`);
+  }
+  checks.push(`${filename}: ${defined.size}개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)`);
 }
-for (const definition of definitions) {
-  assert(reachable.has(definition), `Unreachable grammar production ${definition}`);
-}
-checks.push(`${defined.size}개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)`);
+validateGrammar('GRAMMAR.ebnf');
+validateGrammar('GRAMMAR_STAGE_A.ebnf');
+const parserProposal = manifest.accepted_proposals?.find(p => p.id === 'P01');
+assert(parserProposal?.approval_date === '2026-10-04' && parserProposal?.grammar === 'GRAMMAR_STAGE_A.ebnf', 'Missing P01 approval ledger');
+assert(fs.readFileSync(path.join(pack, 'PARSER_STAGE_A_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P01 status');
+checks.push('P01 Stage A Parser 승인 범위/날짜와 전용 EBNF 기록');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

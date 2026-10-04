@@ -2,11 +2,12 @@
 
 개발 전에 읽을 [전체 개발 문서 보완팩](docs/development-v0.1/README.md)을 작성했습니다.
 148개 주제별 문서와 구체 EBNF, 30건 결정 초안, API/schema, 수용 테스트 계획을 포함합니다.
-D01~D05 Lexer 상세는 사용자 승인으로 Accepted이며, 나머지 상세는 Draft입니다.
+D01~D05 Lexer와 P01 Stage A Parser 구문·복구는 사용자 승인으로 Accepted이며,
+나머지 상세는 Draft입니다.
 
 Nova 컴파일러의 첫 Stage A 기반 구현입니다. 언어 사양은 `docs/`의 원본
 Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다.
-사양 파일의 의미는 변경하지 않았습니다.
+원본 사양 파일은 보존하며, 사용자 승인된 상세 계약을 별도 문서로 추가했습니다.
 
 ## 현재 구현
 
@@ -18,9 +19,15 @@ Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다
 - `nova-syntax`: 공식/승인 키워드, token, END origin 등 단계 독립 자료형.
 - `nova-lexer`: UTF-8 lossless scanning, Unicode XID, Literal/Escape, 중첩 주석/보간,
   오류 진단, 결정적 token dump, Stage A END 정규화.
+- `nova-ast`: byte Span과 source-order 자식 ID를 보존하는 Arena, AstNodeId,
+  Error Node, 반복형 Visitor와 결정적 dump. 의미 TypeId/DefId는 포함하지 않습니다.
+- `nova-parser`: 승인된 Stage A 함수·let·return·if/else, typed parameter, positional call,
+  기본 표현식·문자열 보간. Recursive Descent+Pratt, Synthetic Token 및 오류 복구.
 
 의존 방향은 `nova-diagnostics → nova-source → nova-core-ids`입니다.
 Lexer의 의존 방향은 `nova-lexer → nova-syntax/nova-source/nova-diagnostics`입니다.
+Parser의 production 의존 방향은 `nova-parser → nova-ast/nova-syntax/nova-source/nova-diagnostics`입니다.
+Lexer 연동은 Parser 테스트의 dev dependency로만 사용합니다.
 Unicode 18.0.0의 XID 데이터는 고정된 unicode-ident 1.0.26을 vendor에 포함했습니다.
 Rust 1.80 이상이 필요하며 `cargo test --workspace --offline`으로 빌드할 수 있습니다.
 
@@ -55,17 +62,21 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 ## 다음 단계
 
 1. Lexer/Token/Stage A END 정규화 완료: [승인 기준](docs/development-v0.1/ACCEPTED_LEXER.md).
-2. Parser/AST: EBNF 초안의 나머지 관련 결정(D06 이후)을 확인·승인하고 구현.
-3. HIR, 최소 이름/타입 검사, Compile-pass/fail Harness.
+2. Stage A Parser/AST 완료: [P01 승인 범위와 전용 EBNF](docs/development-v0.1/PARSER_STAGE_A_PROPOSAL.md).
+3. HIR, 최소 이름/타입 검사, Compile-pass/fail Harness. 관련 미승인 의미 계약을 먼저 확인.
 4. MIR와 LLVM Adapter, Hello Nova E2E.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
-Parser 구현 전에 문법을 보완하거나 별도 공식 문법 자료를 받아야 하며, 구현으로
-언어 문법을 임의로 결정하지 않습니다.
+Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.
+전체 `GRAMMAR.ebnf`의 미래 Stage 구문은 여전히 Draft입니다.
 
-현재 Parser, CLI 및 LLVM Backend는 구현하지 않았습니다.
+현재 HIR/의미 검사, CLI 및 LLVM Backend는 구현하지 않았습니다.
 따라서 `nova check`와 `nova run`은 아직 제공하지 않습니다. 이번 테스트는 Rust
 기반 계층의 UTF-8, 범위 오류, EOF, 혼합 줄바꿈, 대형 파일, 진단 Snapshot,
 JSON escaping 및 Suggestion 위치 검증을 다룹니다.
 Lexer lexical pass/fail fixture와 source reconstruction/중첩 mode/END/회귀 테스트도 포함합니다.
 lexical pass는 프로그램 전체 타입 검사나 실행 성공을 뜻하지 않습니다.
+Parser-pass 역시 구문 수용만 뜻합니다. 이름·타입·실행 결과는 보장하지 않습니다.
+Parser 입력은 normalized tokens여야 하며, 잘못된 API 입력은 ParseInputError로 반환합니다.
+잘못된 Nova 구문은 N1101~N1103와 recovery AST로 반환합니다. 호출자는 Lexer와 Parser
+오류를 모두 확인한 후 lowering해야 합니다. 기본 nesting limit은 128이며 1~128로 설정 가능합니다.

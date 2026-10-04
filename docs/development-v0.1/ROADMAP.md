@@ -26,8 +26,10 @@ Generic/Closure 기반 std API 완성은 D에 의존한다. 특정 라이브러�
 3. Stage A parser fixtures의 source+expected diagnostic Span 구체화.
 4. SourceInfo/Diagnostic API에 승인된 변화만 적용, Lexer부터 순서대로 구현.
 
-현재 Source/Diagnostic과 Token/Lexer/END 기반을 구현했다. 문서 검증 스크립트 결과와
-compiler tests 통과를 구분한다. 다음은 미승인 Parser 관련 결정 확인과 AST/Parser 구현이다.
+현재 Source/Diagnostic과 Token/Lexer/END, P01 Stage A AST/Parser를 구현했다.
+2026-10-04 사용자 승인 [P01](PARSER_STAGE_A_PROPOSAL.md)은 구문·복구 subset에 적용한다.
+문서 검증 스크립트 결과와 compiler tests 통과를 구분한다. 다음은 HIR lowering과
+최소 이름/타입 검사다. D06/D07/D08/D11의 필요한 의미 계약은 구현 전에 별도 확인한다.
 
 ## Backlog 경계
 

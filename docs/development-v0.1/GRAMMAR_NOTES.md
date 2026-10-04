@@ -2,6 +2,9 @@
 
 상태: Draft. [문법 파일](GRAMMAR.ebnf)의 추가 구문은 [D01~D17](DECISIONS.md) 승인 대기다.
 
+Stage A Parser 구현은 2026-10-04 승인된 [P01](PARSER_STAGE_A_PROPOSAL.md)과
+[전용 EBNF](GRAMMAR_STAGE_A.ebnf)를 따른다. 아래 전체 문법의 미래 구문/의미는 Draft다.
+
 ## 표기와 Parser 입력
 
 = 정의, , 연결, | 대안, [] 선택, {} 반복, () 묶음, (* *) 주석, ? ? 특수 조건을 쓴다.

@@ -4,7 +4,7 @@
 
 ## 구현 전 핵심 문제
 
-- NOVA-014: 실제 EBNF Production 부재 → GRAMMAR 초안 작성, D01~D05 승인 완료; 이후 Parser 관련 결정은 승인 필요.
+- NOVA-014: 실제 EBNF Production 부재 → 전체 GRAMMAR는 Draft. D01~D05와 Stage A Parser P01/GRAMMAR_STAGE_A.ebnf는 승인 완료. 나머지 의미/미래 구문 결정은 승인 필요.
 - NOVA-004 vs 072: use keyword 누락 → D01; alias/lambda/noPanic contextual 표기도 검토.
 - NOVA-070: compiler source Span과 runtime Span<T> 항목 혼재 → 담당 문서 070/118 구분(D10).
 - NOVA-026/037: numeric widening/default/overload 비용 불완전 → D07/D11.

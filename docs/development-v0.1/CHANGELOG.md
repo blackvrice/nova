@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P01 Stage A AST/Parser
+
+- 사용자 답변 “P01 승인하고 Stage A Parser 구현 진행” 기록. 전용 EBNF와 구문·복구 subset Accepted.
+- nova-ast/nova-parser 추가. Arena/ID/byte Span, source-order Visitor, 결정적 AST dump.
+- 함수/typed parameter/return type, let/return/if/else, positional call, 기본 표현식·문자열 보간.
+- N1101~N1103, Synthetic Token, delimiter 동기화와 next-function 복구, nesting limit 적용.
+- AST 3개 및 Parser 16개 테스트 추가. 전체 문법 초안과 Stage A 문법을 함께 기계 검증.
+- 이름/타입 검사, HIR, CLI, LLVM 실행은 후속 단계. D06~D30 전체 정책은 Draft 유지.
+
 ## 2026-10-04 — 승인된 Lexer 구현 및 검증
 
 - 사용자 승인 D01~D05를 Accepted로 기록. D06~D30은 Draft 유지.

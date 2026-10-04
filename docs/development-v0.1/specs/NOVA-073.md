@@ -10,6 +10,8 @@
 
 이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
+Stage A Parser 구문/복구는 사용자 승인 [P01](../PARSER_STAGE_A_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_A.ebnf)가 우선한다. 나머지 추가 상세는 Draft다.
+
 ## AST 데이터
 Arena node는 AstNodeId/Span/NodeKind/token anchor를 가진다. item은 Func/Struct/Class/Enum/Interface/Foreign/Use/Const/TypeAlias, statement는 Binding/Assign/Expr/Return/If/While/For/Loop/Match/Using/Unsafe/Error를 제안한다.
 

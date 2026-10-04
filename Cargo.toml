@@ -5,6 +5,8 @@ members = [
     "crates/nova-diagnostics",
     "crates/nova-syntax",
     "crates/nova-lexer",
+    "crates/nova-ast",
+    "crates/nova-parser",
 ]
 resolver = "2"
 exclude = ["vendor/unicode-ident-1.0.26"]
@@ -18,5 +20,6 @@ rust-version = "1.80"
 nova-core-ids = { path = "crates/nova-core-ids" }
 nova-source = { path = "crates/nova-source" }
 nova-syntax = { path = "crates/nova-syntax" }
+nova-ast = { path = "crates/nova-ast" }
 nova-diagnostics = { path = "crates/nova-diagnostics" }
 unicode-ident = { version = "=1.0.26", path = "vendor/unicode-ident-1.0.26" }

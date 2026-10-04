@@ -3,6 +3,14 @@
 version = 3
 
 [[package]]
+name = "nova-ast"
+version = "0.1.0"
+dependencies = [
+ "nova-source",
+ "nova-syntax",
+]
+
+[[package]]
 name = "nova-core-ids"
 version = "0.1.0"
 
@@ -21,6 +29,17 @@ dependencies = [
  "nova-source",
  "nova-syntax",
  "unicode-ident",
+]
+
+[[package]]
+name = "nova-parser"
+version = "0.1.0"
+dependencies = [
+ "nova-ast",
+ "nova-diagnostics",
+ "nova-lexer",
+ "nova-source",
+ "nova-syntax",
 ]
 
 [[package]]

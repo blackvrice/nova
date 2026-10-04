@@ -2,6 +2,8 @@
 
 작성일 2026-10-03. **D01~D05는 2026-10-03 사용자 승인으로 Accepted이며, D06~D30은 Draft다.** 승인 기록: 사용자 답변 “D01~D05 승인하고 Lexer 진행”. 적용 상세는 [승인 Lexer 기준](ACCEPTED_LEXER.md). Parser 전체/타입/소유권/Backend의 미승인 제안을 함께 승인한 것으로 해석하지 않는다.
 
+2026-10-04 사용자 답변 “P01 승인하고 Stage A Parser 구현 진행”으로 [Stage A Parser P01](PARSER_STAGE_A_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_A.ebnf)를 승인했다. 해당 구문/복구 subset에만 적용하며 아래 D06~D30 전체 정책은 Draft를 유지한다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

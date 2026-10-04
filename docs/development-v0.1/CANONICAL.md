@@ -48,3 +48,6 @@ Canonical → Governance/Freeze → Language → Architecture → Implementation
 2026-10-03 사용자가 D01~D05를 승인했다. Lexer 추가 기준은
 [ACCEPTED_LEXER](ACCEPTED_LEXER.md)을 따른다. 원본 Canonical 표기의 의미는 유지하고
 추가 keyword/Unicode/literal/operator/END 상세만 승인 범위에 적용한다.
+
+2026-10-04 사용자 승인 [P01](PARSER_STAGE_A_PROPOSAL.md)은 Stage A Parser 구문·AST·복구
+subset에만 적용한다. Canonical 변경이나 D06~D30 전체 의미 정책 승인은 아니다.

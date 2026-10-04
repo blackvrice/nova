@@ -1,0 +1,13 @@
+func add(x: int, y: int,) -> int {
+    return x + y
+}
+func main() {
+    let result: int = add(1, 2,)
+    if result > 2 {
+        print("result {result}")
+    } else if false {
+        return
+    } else {
+        print("fallback")
+    }
+}
