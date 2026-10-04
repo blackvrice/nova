@@ -1,6 +1,8 @@
 # CLI 동작 계약 초안
 
 기존 command/option/exit 영역은 NOVA-125. 새 stream/child/output/clean 상세는 D22다.
+Stage A 단일 파일 check/build/run 최소 부분은 사용자 승인 [P03](NATIVE_STAGE_A_PROPOSAL.md)과
+[현재 구현](NATIVE_IMPLEMENTATION.md)을 따른다. 아래 전체 options/package/JSON 등은 Draft다.
 
 | 명령 | 입력 | 산출물/행동 | Stage |
 |---|---|---|---|

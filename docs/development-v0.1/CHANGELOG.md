@@ -1,5 +1,15 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P03 Stage A Native
+
+- 사용자 답변 “P03 승인하고 Stage A Native 구현 진행”을 Accepted subset으로 기록.
+- nova-codegen/nova-codegen-llvm/nova-cli 추가. Verified CodegenUnit, LLVM IR verify/Object, private Runtime ABI.
+- Windows x64 MSVC Runtime compile/link, main entry, check/build/run debug/release, 안전한 신규 출력 경로.
+- Checked Int32/Abort, UTF-8+LF print, decimal/Bool 보간과 실행 단위 String arena 구현.
+- LLVM 21.1.8 공식 배포 hash 고정. Hello와 Unicode/NUL/short-circuit/산술 실패 O0/O2 Native 검증.
+- 기본 105 tests와 opt-in 실제 LLVM/Native 10 tests, 재현 가능한 Hello executable/기존 출력·I/O 실패 검증.
+- Linux x64는 LLVM IR/ELF Object만 검증. Linux Native link/run, 전체 ABI/FFI/ownership/Package는 후속.
+
 ## 2026-10-04 — Stage A MIR Lowering·검증
 
 - nova-mir 추가: non-SSA Place 기반 BasicBlock CFG와 typed operand/local/signature/source origin.

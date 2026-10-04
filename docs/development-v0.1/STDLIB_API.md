@@ -3,6 +3,8 @@
 상태 Draft, D10/D15/D20/D23. 아래 signature는 설계 표기다. Self/view/result mode 표기를
 그대로 현재 Parser 지원으로 해석하지 않는다. Read는 소스 modifier 부재다. take는 owner 소비,
 change는 exclusive access다. view 수명은 owner/receiver에 연결되며 source syntax는 승인 대기다.
+Stage A print의 UTF-8+LF/I/O Abort와 보간 최소 계약은 [사용자 승인 P03](NATIVE_STAGE_A_PROPOSAL.md)을 따른다.
+아래 일반 library API와 ownership mode 전체 의미는 Draft다.
 
 ## Core
 

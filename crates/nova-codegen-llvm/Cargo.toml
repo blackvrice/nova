@@ -1,0 +1,19 @@
+[package]
+name = "nova-codegen-llvm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+nova-codegen.workspace = true
+nova-mir.workspace = true
+nova-types.workspace = true
+nova-syntax.workspace = true
+
+[dev-dependencies]
+nova-hir.workspace = true
+nova-resolve.workspace = true
+nova-source.workspace = true
+nova-typecheck.workspace = true
+nova-lexer = { path = "../nova-lexer" }
+nova-parser = { path = "../nova-parser" }

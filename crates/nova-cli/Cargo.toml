@@ -1,0 +1,21 @@
+[package]
+name = "nova-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "nova"
+path = "src/main.rs"
+
+[dependencies]
+nova-source.workspace = true
+nova-diagnostics.workspace = true
+nova-hir.workspace = true
+nova-resolve.workspace = true
+nova-typecheck.workspace = true
+nova-mir.workspace = true
+nova-codegen.workspace = true
+nova-codegen-llvm.workspace = true
+nova-lexer = { path = "../nova-lexer" }
+nova-parser = { path = "../nova-parser" }

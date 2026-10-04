@@ -11,6 +11,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "nova-cli"
+version = "0.1.0"
+dependencies = [
+ "nova-codegen",
+ "nova-codegen-llvm",
+ "nova-diagnostics",
+ "nova-hir",
+ "nova-lexer",
+ "nova-mir",
+ "nova-parser",
+ "nova-resolve",
+ "nova-source",
+ "nova-typecheck",
+]
+
+[[package]]
+name = "nova-codegen"
+version = "0.1.0"
+dependencies = [
+ "nova-hir",
+ "nova-lexer",
+ "nova-mir",
+ "nova-parser",
+ "nova-resolve",
+ "nova-source",
+ "nova-typecheck",
+ "nova-types",
+]
+
+[[package]]
+name = "nova-codegen-llvm"
+version = "0.1.0"
+dependencies = [
+ "nova-codegen",
+ "nova-hir",
+ "nova-lexer",
+ "nova-mir",
+ "nova-parser",
+ "nova-resolve",
+ "nova-source",
+ "nova-syntax",
+ "nova-typecheck",
+ "nova-types",
+]
+
+[[package]]
 name = "nova-core-ids"
 version = "0.1.0"
 

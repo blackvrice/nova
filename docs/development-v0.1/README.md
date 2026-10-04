@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01/P02 Accepted / 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01/P02/P03 Accepted / 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -26,6 +26,8 @@ Stage A 의미 검사는 [사용자 승인 P02](SEMANTICS_STAGE_A_PROPOSAL.md)�
 현재 API·검증 범위는 [의미 검사 구현 계약](SEMANTICS_IMPLEMENTATION.md)에 기록했다.
 Stage A MIR은 원본 NOVA-081~083/091과 P02 평가 순서에 따라 구현했다.
 현재 API·validator·runtime 미동결 경계는 [MIR 구현 기록](MIR_IMPLEMENTATION.md)에 있다.
+Stage A Native 최소 계약은 [사용자 승인 P03](NATIVE_STAGE_A_PROPOSAL.md), CLI/LLVM/Runtime의 현재
+지원·제약과 실제 검증 증거는 [Native 구현 기록](NATIVE_IMPLEMENTATION.md)을 따른다.
 
 ## 상태와 효력
 
@@ -52,5 +54,7 @@ DECISIONS에 기록했다. 원본에 있는 '확정' 상태를 새 내용에 그
 자료구조/API/schema는 설계 계약 예시이며 실행 가능한 현재 compiler API 목록이 아니다.
 Nova 예제와 conformance fixture 역시 향후 수용 사례다. 현 compiler는 Source/Diagnostic
 기반과 Token/Lexer/END, P01 AST/Parser, P02 HIR/이름·타입 검사 및 frontend pass/fail harness를
-구현했다. Stage A MIR lowering/validation도 구현했다. CLI/Native 실행은 후속 단계다.
-frontend/MIR pass는 Native 실행 성공이 아니다. Arithmetic/출력/ABI 정책은 Draft다.
+구현했다. Stage A MIR lowering/validation과 P03 Windows x64 CLI/Native 실행도 구현·검증했다.
+Linux Native link/run과 일반 ABI/ownership/Package는 후속이다.
+frontend/MIR pass는 Native 실행 성공이 아니다. P03 Windows x64 Stage A Native는 실제 검증했다.
+일반 Arithmetic/출력/ABI 전체 정책은 Draft이며 P03 subset만 승인했다.

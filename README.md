@@ -2,7 +2,7 @@
 
 개발 전에 읽을 [전체 개발 문서 보완팩](docs/development-v0.1/README.md)을 작성했습니다.
 148개 주제별 문서와 구체 EBNF, 30건 결정 초안, API/schema, 수용 테스트 계획을 포함합니다.
-D01~D05 Lexer, P01 Parser, P02 Stage A 이름·타입 최소 계약은 사용자 승인으로 Accepted이며,
+D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Stage A Native 최소 계약은 사용자 승인으로 Accepted이며,
 나머지 상세는 Draft입니다.
 
 Nova 컴파일러의 첫 Stage A 기반 구현입니다. 언어 사양은 `docs/`의 원본
@@ -29,6 +29,9 @@ Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다
 - `nova-typecheck`: expected type/TypeTable, Literal 범위·인수·return·Bool 조건 검사, 오류 진단.
 - `nova-mir`: 비SSA Place/Operand/Rvalue, BasicBlock CFG, source-order Call Terminator,
   short-circuit/if/return Lowering과 타입·초기화·CFG 검증.
+- `nova-codegen`: immutable verified CodegenUnit, Backend trait/Target/Options/Artifact/error 경계.
+- `nova-codegen-llvm`: LLVM 21.1.8 textual IR, checked arithmetic/CFG, verify와 COFF/ELF Object 생성.
+- `nova-cli`: 단일 `.nova` check/build/run과 Windows x64 MSVC Rust Runtime 링크·실행.
 
 의존 방향은 `nova-diagnostics → nova-source → nova-core-ids`입니다.
 Lexer의 의존 방향은 `nova-lexer → nova-syntax/nova-source/nova-diagnostics`입니다.
@@ -74,14 +77,16 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 2. Stage A Parser/AST 완료: [P01 승인 범위와 전용 EBNF](docs/development-v0.1/PARSER_STAGE_A_PROPOSAL.md).
 3. HIR·최소 이름/타입 검사와 frontend pass/fail harness 완료: [P02 승인 범위](docs/development-v0.1/SEMANTICS_STAGE_A_PROPOSAL.md).
 4. MIR lowering/validation 완료: [구현·검증 경계](docs/development-v0.1/MIR_IMPLEMENTATION.md).
-5. 최소 runtime/entry/print/host 계약 동결, Codegen Interface/LLVM Adapter와 Hello Nova E2E.
+5. [P03](docs/development-v0.1/NATIVE_STAGE_A_PROPOSAL.md) 승인과 Windows x64 Stage A Native/Hello E2E 완료:
+   [명령·지원·검증 기록](docs/development-v0.1/NATIVE_IMPLEMENTATION.md).
+6. Linux Native host 검증과 Stage B 착수 범위/사양 검토.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.
 전체 `GRAMMAR.ebnf`의 미래 Stage 구문은 여전히 Draft입니다.
 
-현재 Stage A MIR까지 구현했습니다. CLI 및 LLVM Backend는 후속 단계입니다.
-따라서 `nova check`와 `nova run`은 아직 제공하지 않습니다. 이번 테스트는 Rust
+현재 Windows x64 Stage A CLI/LLVM/Runtime을 제공합니다. LLVM 21.1.8과 Rust/MSVC가 필요합니다.
+기본 Cargo tests에는 실제 LLVM/Native tests가 ignored이며 별도 명령으로 실행합니다. 기반 테스트는 Rust
 기반 계층의 UTF-8, 범위 오류, EOF, 혼합 줄바꿈, 대형 파일, 진단 Snapshot,
 JSON escaping 및 Suggestion 위치 검증을 다룹니다.
 Lexer lexical pass/fail fixture와 source reconstruction/중첩 mode/END/회귀 테스트도 포함합니다.
@@ -95,5 +100,18 @@ Parser 입력은 normalized tokens여야 하며, 잘못된 API 입력은 ParseIn
 의미 분석 API/구현 경계는 [P02 구현 계약](docs/development-v0.1/SEMANTICS_IMPLEMENTATION.md)에 있습니다.
 Stage A `print`는 `print(string) -> Unit`이며 Int32/Bool 출력은 보간 문자열을 사용합니다.
 main 존재/signature는 아직 fragment 검사에서 강제하지 않으며 Native entry 단계에서 구현합니다.
-MIR은 arithmetic과 interpolation을 abstract 연산으로 보존합니다. Runtime overflow/출력 형식/ABI는
-Native 전에 승인해야 하며 MIR 검증 성공은 Native 실행 성공을 뜻하지 않습니다.
+MIR은 arithmetic과 interpolation을 abstract 연산으로 보존하고 LLVM/Runtime이 P03 정책으로 구현합니다.
+MIR 검증 성공은 Native 실행 성공을 뜻하지 않습니다. 실제 Native tests는 별도로 실행합니다.
+
+## Hello Nova 실행 (Windows x64)
+
+```powershell
+$env:NOVA_CLANG = 'target/toolchains/llvm-21.1.8/bin/clang.exe' # 또는 설치된 LLVM 21.1.8의 clang.exe
+cargo run -p nova-cli -- check examples/hello.nova
+cargo run -p nova-cli -- run examples/hello.nova
+cargo run -p nova-cli -- build examples/hello.nova -o hello.exe
+cargo run -p nova-cli -- run examples/hello.nova --profile release
+```
+
+출력은 `Hello, Nova` 뒤 LF이며 정상 종료는 0입니다. `-o`는 기존 파일을 덮어쓰지 않습니다.
+GitHub clone에는 LLVM binary가 포함되지 않습니다. 설치·시험 방법은 Native 구현 기록을 확인하세요.

@@ -4,6 +4,8 @@
 
 Stage A Int32 Literal 기본 타입·범위·직접 unary minus 처리는 사용자 승인 [P02](SEMANTICS_STAGE_A_PROPOSAL.md)를 따른다.
 그 외 widening/float/overflow/runtime 계약은 이 문서의 Draft 상태를 유지한다.
+후속 사용자 승인 [P03](NATIVE_STAGE_A_PROPOSAL.md)은 Stage A Int32 checked runtime 연산 부분에 적용한다.
+widening/float/cast/const 등 나머지는 Draft다.
 
 ## 범위와 기본 타입
 

@@ -16,6 +16,8 @@ Stage A 단일 파일 의미 검사는 사용자 승인 [P02](../SEMANTICS_STAGE
 
 Stage A MIR은 원본 CFG/Place 기준과 P02의 평가 순서에 따라 구현했다. [MIR 구현 기록](../MIR_IMPLEMENTATION.md)은 현재 API/검증 경계이며 runtime/미래 Stage 정책의 승인이 아니다.
 
+Stage A Native 최소 arithmetic/print/entry/internal ABI/toolchain 계약은 사용자 승인 [P03](../NATIVE_STAGE_A_PROPOSAL.md)를 따른다. [구현·지원·검증 범위](../NATIVE_IMPLEMENTATION.md). 전체 D07~D28과 미래 Stage 정책은 Draft다.
+
 ## 테스트 계층
 Unit → Lexer/Parser/HIR/MIR Snapshot → Compile-pass/fail → Runtime integration → E2E → Fuzz → Benchmark → Compatibility. 비용이 높은 계층은 해당 Stage에서 추가한다.
 

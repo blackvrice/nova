@@ -4,6 +4,8 @@
 새 언어 의미 승인 문서가 아니다. 근거는 원본 NOVA-081/082/083/091/092와
 [사용자 승인 P02](SEMANTICS_STAGE_A_PROPOSAL.md)의 source-order/short-circuit 계약이다.
 Arithmetic runtime/formatting/ABI/entry 정책과 미래 Stage 상세는 Draft를 유지한다.
+후속 [P03 승인](NATIVE_STAGE_A_PROPOSAL.md)으로 Stage A Native 최소 runtime 부분을 동결했다.
+아래는 MIR 단계의 기록이며 현재 Native 상태는 [후속 구현](NATIVE_IMPLEMENTATION.md)을 따른다.
 
 ## 구현 API와 의존 방향
 

@@ -33,6 +33,9 @@ Generic/Closure 기반 std API 완성은 D에 의존한다. 특정 라이브러�
 원본 NOVA-081~083/091과 P02에 따른 Stage A [MIR lowering/validation](MIR_IMPLEMENTATION.md)도 구현했다.
 문서 검증과 compiler tests, Native 실행 완료는 구분한다. 다음은 Codegen Interface/LLVM Adapter다.
 Native 실행 전 arithmetic runtime, panic/print, entry/CLI/LLVM host 계약의 필요한 부분을 별도 동결한다.
+후속 [P03](NATIVE_STAGE_A_PROPOSAL.md) 승인으로 최소 계약을 동결하고 Windows x64
+[Native/CLI/Runtime](NATIVE_IMPLEMENTATION.md)과 Hello E2E를 구현·검증했다.
+다음은 Linux Native host 검증 및 Stage B 착수 범위 검토다.
 
 ## Backlog 경계
 

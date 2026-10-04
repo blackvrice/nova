@@ -1,0 +1,81 @@
+use std::path::PathBuf;
+use std::process::Command;
+use std::sync::atomic::{AtomicU64, Ordering};
+static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+fn directory() -> PathBuf {
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/cli-tests")
+        .join(format!(
+            "{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+    std::fs::create_dir_all(&path).unwrap();
+    path.canonicalize().unwrap()
+}
+fn run(args: &[&str]) -> std::process::Output {
+    Command::new(env!("CARGO_BIN_EXE_nova"))
+        .args(args)
+        .output()
+        .unwrap()
+}
+#[test]
+fn usage_options_and_version_are_deterministic() {
+    assert_eq!(run(&[]).status.code(), Some(2));
+    assert_eq!(run(&["unknown", "a.nova"]).status.code(), Some(2));
+    assert_eq!(run(&["check", "a.txt"]).status.code(), Some(2));
+    assert_eq!(run(&["version"]).status.code(), Some(0));
+    assert!(String::from_utf8(run(&["--help"]).stdout)
+        .unwrap()
+        .contains("nova check"));
+}
+#[test]
+fn check_fragments_needs_no_tool_and_creates_no_artifacts() {
+    let directory = directory();
+    let source = directory.join("한글 파일.nova");
+    std::fs::write(&source, "func f(x:int)->int{return x+1}").unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .args(["check"])
+        .arg(&source)
+        .env("NOVA_CLANG", "missing-clang")
+        .current_dir(&directory)
+        .output()
+        .unwrap();
+    assert!(result.status.success(), "{:?}", result);
+    assert!(result.stdout.is_empty() && result.stderr.is_empty());
+    assert!(!directory.join("target").exists());
+}
+#[test]
+fn invalid_source_reports_stable_diagnostics_before_output_or_tools() {
+    let directory = directory();
+    let source = directory.join("bad.nova");
+    std::fs::write(&source, "func main(){print(1)}").unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("build")
+        .arg(&source)
+        .env("NOVA_CLANG", "missing-clang")
+        .current_dir(&directory)
+        .output()
+        .unwrap();
+    assert_eq!(result.status.code(), Some(1));
+    assert!(String::from_utf8(result.stderr).unwrap().contains("N2101"));
+    assert!(!directory.join("target").exists());
+}
+#[test]
+fn invalid_entry_is_rejected_before_tool_invocation_or_output() {
+    let directory = directory();
+    let source = directory.join("entry.nova");
+    std::fs::write(&source, "func main(x:int){}").unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("run")
+        .arg(&source)
+        .env("NOVA_CLANG", "missing-clang")
+        .current_dir(&directory)
+        .output()
+        .unwrap();
+    assert_eq!(result.status.code(), Some(1));
+    assert!(String::from_utf8(result.stderr)
+        .unwrap()
+        .contains("main must"));
+    assert!(!directory.join("target").exists());
+}

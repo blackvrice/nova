@@ -12,6 +12,9 @@ members = [
     "crates/nova-types",
     "crates/nova-typecheck",
     "crates/nova-mir",
+    "crates/nova-codegen",
+    "crates/nova-codegen-llvm",
+    "crates/nova-cli",
 ]
 resolver = "2"
 exclude = ["vendor/unicode-ident-1.0.26"]
@@ -30,5 +33,8 @@ nova-hir = { path = "crates/nova-hir" }
 nova-resolve = { path = "crates/nova-resolve" }
 nova-types = { path = "crates/nova-types" }
 nova-typecheck = { path = "crates/nova-typecheck" }
+nova-mir = { path = "crates/nova-mir" }
+nova-codegen = { path = "crates/nova-codegen" }
+nova-codegen-llvm = { path = "crates/nova-codegen-llvm" }
 nova-diagnostics = { path = "crates/nova-diagnostics" }
 unicode-ident = { version = "=1.0.26", path = "vendor/unicode-ident-1.0.26" }

@@ -80,7 +80,9 @@ for (const row of rows) {
     ([19, 24, 25, 26, 35, 43, 44, 74, 75, 76, 77, 114, 116, 136].includes(row.number)
       ? `Stage A 단일 파일 의미 검사는 사용자 승인 [P02](../SEMANTICS_STAGE_A_PROPOSAL.md)가 우선한다. runtime/전체 타입/미래 Stage의 추가 상세는 Draft다.\n\n` : '') +
     ([81, 82, 83, 91, 92, 136].includes(row.number)
-      ? `Stage A MIR은 원본 CFG/Place 기준과 P02의 평가 순서에 따라 구현했다. [MIR 구현 기록](../MIR_IMPLEMENTATION.md)은 현재 API/검증 경계이며 runtime/미래 Stage 정책의 승인이 아니다.\n\n` : '') + body.trim() + '\n';
+      ? `Stage A MIR은 원본 CFG/Place 기준과 P02의 평가 순서에 따라 구현했다. [MIR 구현 기록](../MIR_IMPLEMENTATION.md)은 현재 API/검증 경계이며 runtime/미래 Stage 정책의 승인이 아니다.\n\n` : '') +
+    ([25, 26, 93, 94, 95, 96, 97, 98, 99, 100, 101, 114, 116, 125, 128, 136, 139, 140].includes(row.number)
+      ? `Stage A Native 최소 arithmetic/print/entry/internal ABI/toolchain 계약은 사용자 승인 [P03](../NATIVE_STAGE_A_PROPOSAL.md)를 따른다. [구현·지원·검증 범위](../NATIVE_IMPLEMENTATION.md). 전체 D07~D28과 미래 Stage 정책은 Draft다.\n\n` : '') + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -92,7 +94,7 @@ for (const row of rows) {
     original_sha256: hash(original), draft_sha256: hash(content) });
 }
 fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 색인\n\n` +
-  `148개 원본 주제를 빠짐없이 보완했다. 전체 상세는 Draft이며 D01~D05 Lexer, [P01 Parser](PARSER_STAGE_A_PROPOSAL.md), [P02 Stage A 의미 검사](SEMANTICS_STAGE_A_PROPOSAL.md) subset은 Accepted다. 승인/구현/테스트 통과 상태를 구분한다.\n\n` +
+  `148개 원본 주제를 빠짐없이 보완했다. 전체 상세는 Draft이며 D01~D05 Lexer, [P01 Parser](PARSER_STAGE_A_PROPOSAL.md), [P02 의미 검사](SEMANTICS_STAGE_A_PROPOSAL.md), [P03 Native](NATIVE_STAGE_A_PROPOSAL.md) subset은 Accepted다. 승인/구현/테스트 통과 상태를 구분한다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -115,6 +117,7 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
   accepted_proposals: [
     { id: 'P01', scope: 'Stage A Parser syntax and recovery', approval_date: '2026-10-04', document: 'PARSER_STAGE_A_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_A.ebnf' },
     { id: 'P02', scope: 'Stage A single-file HIR name and type checking', approval_date: '2026-10-04', document: 'SEMANTICS_STAGE_A_PROPOSAL.md' },
+    { id: 'P03', scope: 'Stage A Native checked arithmetic print entry internal ABI and LLVM host subset', approval_date: '2026-10-04', document: 'NATIVE_STAGE_A_PROPOSAL.md' },
   ],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');

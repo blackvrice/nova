@@ -1,5 +1,8 @@
 # P02 Stage A 의미 검사 구현 계약
 
+후속 Stage A Native 상태는 [P03 승인](NATIVE_STAGE_A_PROPOSAL.md)과 [구현 기록](NATIVE_IMPLEMENTATION.md)을 따른다.
+아래는 P02 단계의 의미 검사 계약이며 check/fragment에는 여전히 main을 강제하지 않는다.
+
 사양: [사용자 승인 P02](SEMANTICS_STAGE_A_PROPOSAL.md). Parser는 [P01](PARSER_STAGE_A_PROPOSAL.md).
 지원 타입은 Int32/Bool/String/Unit. internal Function 표식은 call typing에만 쓰며 함수 값 기능이 아니다.
 
