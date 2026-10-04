@@ -5,17 +5,19 @@
 결과: **PASS**
 
 - 148개 NOVA ID 연속성/중복/원본·보완 SHA-256/상태/본문 섹션
-- 1551개 로컬 Markdown 링크/코드 fence/D·T 참조
+- 1567개 로컬 Markdown 링크/코드 fence/D·T 참조
 - 30개 결정 (Accepted 5 / Draft 25), 60개 수용 묶음, 42개 진단 코드 유일성/영역
 - GRAMMAR.ebnf: 94개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_A.ebnf: 26개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_B_CONTROL.ebnf: 30개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_B_CONST.ebnf: 30개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
+- GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf: 31개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - P01 Stage A Parser 승인 범위/날짜와 전용 EBNF 기록
 - P02 Stage A 의미 검사 승인 범위/날짜 기록
 - P03 Stage A Native 승인 subset/날짜 기록
 - P04 Stage B control 승인 subset/날짜/전용 EBNF와 N3004 등록
 - P05 local const 승인 subset/날짜/전용 EBNF 기록
+- P06 global const Draft/미구현·accepted ledger 제외/전용 EBNF 경계
 - 20개 예제 sidecar/UTF-8 byte Span/등록 code 검사 (컴파일 실행 아님)
 
 ## 검증의 범위

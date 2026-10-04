@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P06 전역 const 착수안 (Draft)
+
+- 단일 파일 전역 const·forward visibility·dependency-first 타입/상수 평가를 제안.
+- 정적 skipped RHS edge를 포함한 SCC별 N3202/chain 진단, 전역 불변 대입과 P05 node budget 재사용.
+- 31-production 전용 EBNF와 Parser→Native 수용 계획을 작성. P06은 승인 대기이며 Compiler는 유지.
+- Draft ledger와 문서 validator에 초안/승인 경계 검사를 추가. D06/D09 전체·module/다중 파일은 후속.
+
 ## 2026-10-04 — P05 함수 내부 const 구현
 
 - 사용자 답변 “P05 승인하고 const 구현 진행”을 Accepted subset으로 기록.

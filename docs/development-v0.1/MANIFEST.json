@@ -45,6 +45,16 @@
       "grammar": "GRAMMAR_STAGE_B_CONST.ebnf"
     }
   ],
+  "draft_proposals": [
+    {
+      "id": "P06",
+      "status": "Draft",
+      "scope": "Stage B single-file global const forward references static dependency cycles and P05 evaluation",
+      "document": "GLOBAL_CONST_STAGE_B_PROPOSAL.md",
+      "grammar": "GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf",
+      "implementation_verified": false
+    }
+  ],
   "authored_date": "2026-10-03",
   "topics": [
     {

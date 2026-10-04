@@ -84,7 +84,9 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
    [구현·검증 기록](docs/development-v0.1/CONTROL_IMPLEMENTATION.md).
 7. [P05 함수 내부 const](docs/development-v0.1/CONST_STAGE_B_PROPOSAL.md)와 Windows Native 검증 완료:
    [구현·검증 기록](docs/development-v0.1/CONST_IMPLEMENTATION.md).
-8. 후속 Stage B 전역 상수/기본 타입·aggregate/module 상세와 Linux Native host 검증.
+8. 다음 검토 대상: [P06 단일 파일 전역 const](docs/development-v0.1/GLOBAL_CONST_STAGE_B_PROPOSAL.md)와
+   [전용 EBNF 초안](docs/development-v0.1/GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf). Draft/승인 대기이며 아직 미구현.
+9. 후속 Stage B 기본 타입·aggregate/module 상세와 Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.

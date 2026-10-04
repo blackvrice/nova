@@ -37,6 +37,10 @@ Stage B 최소 범위는 [P04 가변 지역 변수·반복문 계약](CONTROL_ST
 [전용 EBNF](GRAMMAR_STAGE_B_CONST.ebnf)를 따른다. API·예산·진단과 실제 실행 증거는
 [P05 구현 기록](CONST_IMPLEMENTATION.md)에 있다. 전역 상수와 전체 D09는 Draft다.
 
+다음 검토 대상은 [P06 단일 파일 전역 const·의존성 평가](GLOBAL_CONST_STAGE_B_PROPOSAL.md)와
+[31-production 전용 EBNF 초안](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf)이다.
+P06은 Draft/승인 대기이며 아직 Compiler에 적용하지 않았다.
+
 ## 상태와 효력
 
 **작성 완료와 사양 승인, 구현 완료, 테스트 통과는 서로 다른 상태다.** 원본 Canonical

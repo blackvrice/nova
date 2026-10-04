@@ -48,6 +48,11 @@ Windows x64 O0/O2 증거는 [P04 구현 기록](CONTROL_IMPLEMENTATION.md)에 �
 전용 EBNF를 적용했고 [구현 기록](CONST_IMPLEMENTATION.md)에 Windows O0/O2 증거를 남겼다.
 다음은 전역 상수·Primitive 확장·aggregate/module의 상세 범위 검토다. 전체 Stage B 동결과는 별도다.
 
+다음 최소 범위를 [P06 단일 파일 전역 const·forward dependency/cycle](GLOBAL_CONST_STAGE_B_PROPOSAL.md)로
+구체화했다. [전용 EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf)와 진단·MIR·CLI/Native 수용 계획은
+Draft/승인 대기다. P05 evaluator를 재사용하되 root 선언 수집과 dependency ordering을 추가하는 안이며,
+module·새 primitive·aggregate·const function은 별도로 남긴다. 승인 전 Compiler에 적용하지 않았다.
+
 ## Backlog 경계
 
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,
