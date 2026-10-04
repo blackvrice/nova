@@ -1,0 +1,16 @@
+const LIMIT: int32 = BASE * 2
+
+func main() {
+    const title = TITLE
+    var index = 0
+    var sum = 0
+    while index < LIMIT {
+        sum = sum + index
+        index = index + 1
+    }
+    print("{title}: {sum}, skipped={SAFE}")
+}
+
+const BASE = 3
+const TITLE = "합계"
+const SAFE = false && (1 / 0 == 0)

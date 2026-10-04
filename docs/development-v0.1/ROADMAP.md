@@ -49,9 +49,11 @@ Windows x64 O0/O2 증거는 [P04 구현 기록](CONTROL_IMPLEMENTATION.md)에 �
 다음은 전역 상수·Primitive 확장·aggregate/module의 상세 범위 검토다. 전체 Stage B 동결과는 별도다.
 
 다음 최소 범위를 [P06 단일 파일 전역 const·forward dependency/cycle](GLOBAL_CONST_STAGE_B_PROPOSAL.md)로
-구체화했다. [전용 EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf)와 진단·MIR·CLI/Native 수용 계획은
-Draft/승인 대기다. P05 evaluator를 재사용하되 root 선언 수집과 dependency ordering을 추가하는 안이며,
-module·새 primitive·aggregate·const function은 별도로 남긴다. 승인 전 Compiler에 적용하지 않았다.
+구체화했고 사용자 “P06 승인하고 전역 const 구현 진행” 답변으로 Accepted다.
+P02의 기존 함수 print shadow를 보존하고 전역 const print만 N2002로 거부하는 정정도 승인했다.
+[전용 EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf)와 root 선언 수집·iterative dependency/SCC 평가,
+MIR Constant lowering을 구현했다. [구현·검증 기록](GLOBAL_CONST_IMPLEMENTATION.md)에 실제 Native 증거를 남겼다.
+다음은 Primitive 확장·숫자 승격·aggregate/module의 최소 상세 범위 검토다. const function도 별도 후속이다.
 
 ## Backlog 경계
 

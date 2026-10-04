@@ -61,6 +61,43 @@ fn hello_is_exact_utf8_lf_and_exit_zero() {
 
 #[test]
 #[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn global_const_example_is_exact_in_both_native_profiles() {
+    for profile in ["debug", "release"] {
+        let result = program_profile(
+            include_str!("../../../examples/global_constants.nova"),
+            profile,
+        );
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, "합계: 15, skipped=false\n".as_bytes());
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn global_boundaries_unicode_unit_shadowing_and_runtime_arithmetic_are_native() {
+    let source = "func unit(u:()){print(\"unit\")} func get()->int{return MAX} func main(){const MIN=MIN;var MAX=MAX;MAX=MAX-1;print(\"{MIN} {MAX} {DIV} {REM} {SAFE} {get()}\");print(TEXT);unit(U)} const MIN=-2147483648;const MAX=2147483647;const DIV=-7/3;const REM=-7%3;const SAFE=true||(1/0==0);const TEXT=ALIAS;const ALIAS=\"한글\\0🙂\";const U=()";
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "-2147483648 2147483646 -2 -1 true 2147483647\n한글\0🙂\nunit\n".as_bytes()
+        );
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
 fn loops_mutable_places_and_nested_jumps_match_in_both_profiles() {
     let nested = "func main(){var i=0;var sum=0;while i<3 {i=i+1;var j=0;while j<4 {j=j+1;if j==2 {continue} if j==3 {break} sum=sum+1} sum=sum+10} print(\"{sum} {i}\")}";
     for profile in ["debug", "release"] {

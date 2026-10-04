@@ -114,14 +114,16 @@ assert(constProposal?.approval_date === '2026-10-04' && constProposal?.document 
   && constProposal?.grammar === 'GRAMMAR_STAGE_B_CONST.ebnf', 'Missing P05 approval ledger');
 assert(fs.readFileSync(path.join(pack, 'CONST_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P05 status');
 checks.push('P05 local const 승인 subset/날짜/전용 EBNF 기록');
-const globalConstProposal = manifest.draft_proposals?.find(p => p.id === 'P06');
-assert(globalConstProposal?.status === 'Draft' && globalConstProposal?.implementation_verified === false
+const globalConstProposal = manifest.accepted_proposals?.find(p => p.id === 'P06');
+assert(globalConstProposal?.approval_date === '2026-10-04'
   && globalConstProposal?.document === 'GLOBAL_CONST_STAGE_B_PROPOSAL.md'
-  && globalConstProposal?.grammar === 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf', 'Missing P06 draft ledger');
-assert(!manifest.accepted_proposals?.some(p => p.id === 'P06'), 'Unapproved P06 in accepted ledger');
-assert(fs.readFileSync(path.join(pack, 'GLOBAL_CONST_STAGE_B_PROPOSAL.md'), 'utf8').includes('Draft / 사용자 승인 대기'), 'Invalid P06 draft status');
-assert(fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf'), 'utf8').includes('Draft: not implemented or accepted'), 'Invalid P06 grammar status');
-checks.push('P06 global const Draft/미구현·accepted ledger 제외/전용 EBNF 경계');
+  && globalConstProposal?.grammar === 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf', 'Missing P06 approval ledger');
+assert(globalConstProposal?.print_name_policy === 'P02 function shadow retained; global const print is N2002', 'Missing P06 print clarification ledger');
+const globalConstText = fs.readFileSync(path.join(pack, 'GLOBAL_CONST_STAGE_B_PROPOSAL.md'), 'utf8');
+assert(globalConstText.includes('Accepted / 2026-10-04 사용자 승인')
+  && globalConstText.includes('기존 함수 print 허용, 전역 const print만 거부'), 'Invalid P06 approval or clarification');
+assert(fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf'), 'utf8').includes('Accepted by the user on 2026-10-04'), 'Invalid P06 grammar status');
+checks.push('P06 global const 승인 subset/날짜/전용 EBNF·P02 print shadow 보존 정정');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

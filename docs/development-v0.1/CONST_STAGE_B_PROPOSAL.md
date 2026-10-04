@@ -3,6 +3,8 @@
 작성일: 2026-10-04. 상태: **Accepted / 2026-10-04 사용자 승인**.
 승인 근거: 사용자 답변 “P05 승인하고 const 구현 진행”.
 이 최소 계약을 구현에 적용했다. 현재 API와 실제 검증 증거는 [P05 구현 기록](CONST_IMPLEMENTATION.md)을 따른다.
+이후 전역 const는 별도 사용자 승인 [P06](GLOBAL_CONST_STAGE_B_PROPOSAL.md)으로 구현했다.
+아래 top-level N1102/전역 후속 표기는 P05 당시 범위이며 전역에는 이후 P06이 우선한다.
 [P01](PARSER_STAGE_A_PROPOSAL.md)/[P02](SEMANTICS_STAGE_A_PROPOSAL.md)/
 [P03](NATIVE_STAGE_A_PROPOSAL.md)/[P04](CONTROL_STAGE_B_PROPOSAL.md)의 기존 subset을 유지한다.
 D09의 아래 최소 부분만 제안하며 전체 Stage B/D09 승인이 아니다.

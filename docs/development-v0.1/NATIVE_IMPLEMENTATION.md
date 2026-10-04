@@ -87,7 +87,8 @@ Clang이 permission denied로 끝날 수 있다. 이번 실제 시험은 승인�
 
 P03 완료 당시 기본 **105 tests**, opt-in 실제 LLVM/Native **10 tests**, 총 **115 tests**였다.
 후속 반복문 Native 증거는 [P04 구현 기록](CONTROL_IMPLEMENTATION.md),
-P05 포함 현재 숫자와 const Native 증거는 [P05 구현 기록](CONST_IMPLEMENTATION.md)을 따른다.
+P05 const Native 증거는 [P05 구현 기록](CONST_IMPLEMENTATION.md), 이후 P06 포함 현재 숫자와
+전역 const Native 증거는 [P06 구현 기록](GLOBAL_CONST_IMPLEMENTATION.md)을 따른다.
 기본 Cargo test만으로 ignored Native tests가 실행됐다고 보고하지 않는다.
 
 ```powershell

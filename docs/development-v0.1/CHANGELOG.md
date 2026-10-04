@@ -1,5 +1,15 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P06 단일 파일 전역 const 구현
+
+- 사용자 “P06 승인하고 전역 const 구현 진행” 답변을 Accepted subset으로 기록.
+- P02/P06 print 문장 충돌을 보고했고 “기존 함수 print 허용, 전역 const print만 거부 (권장)” 정정 승인 기록.
+- global 선언 수집·forward 이름과 dependency-first 타입/상수 평가, iterative SCC/첫 back-edge N3202 chain 구현.
+- global 값은 MIR Constant operand로 사용하고 startup/global mutable storage 없이 기존 LLVM Adapter를 재사용.
+- global_constants.nova와 22 tests 추가. 512가지 3-node graph·10,000-link chain·budget/cascade/변조 gate 검증.
+- 실제 Windows O0/O2 예제·Int32 경계·Unicode/NUL·Unit·local shadow와 LLVM COFF/ELF 검증 통과.
+- 기본 163 + 실제 LLVM/Native 18, 총 181 tests와 fmt/clippy/all-features·문서 검증 통과.
+
 ## 2026-10-04 — P06 전역 const 착수안 (Draft)
 
 - 단일 파일 전역 const·forward visibility·dependency-first 타입/상수 평가를 제안.

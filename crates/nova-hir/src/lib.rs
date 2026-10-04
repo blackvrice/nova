@@ -351,9 +351,18 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         )
     };
     match node.kind {
-        NodeKind::Root => kinds
-            .iter()
-            .all(|k| matches!(k, NodeKind::Function { .. } | NodeKind::Error)),
+        NodeKind::Root => kinds.iter().all(|k| {
+            matches!(
+                k,
+                NodeKind::Function { .. }
+                    | NodeKind::Binding {
+                        constant: true,
+                        mutable: false,
+                        ..
+                    }
+                    | NodeKind::Error
+            )
+        }),
         NodeKind::Function {
             parameters,
             has_return_type,

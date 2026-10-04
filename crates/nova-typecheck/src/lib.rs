@@ -1,5 +1,6 @@
 //! P02 single-file semantic checking. Successful checking is not native execution.
 mod const_eval;
+mod global_consts;
 pub use const_eval::{ConstEvaluation, CONST_NODE_LIMIT};
 use nova_diagnostics::{Diagnostic, DiagnosticCode, Label, Severity};
 use nova_hir::{HirId, HirKind, Module};
@@ -25,7 +26,7 @@ pub struct Checked {
     pub calls: Vec<Option<DefId>>,
     pub integer_values: Vec<Option<i32>>,
     pub always_returns: Vec<bool>,
-    /// P05 evaluation state, indexed by resolved DefId.
+    /// P05/P06 evaluation state, indexed by resolved DefId.
     pub const_values: Vec<ConstEvaluation>,
     pub diagnostics: Vec<Diagnostic>,
     upstream_errors: bool,
@@ -106,6 +107,10 @@ enum Work {
 }
 
 pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError> {
+    // Names, scopes and declaration kinds are public tables; verify their exact provenance.
+    if nova_resolve::resolve(module) != *resolved {
+        return Err(CheckError::InvalidResolution);
+    }
     let size = module.nodes().len();
     if resolved.references.len() != size
         || resolved.declaration_ids.len() != size
@@ -130,6 +135,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 continue;
             }
             DefinitionKind::Function(id)
+            | DefinitionKind::GlobalConst(id)
             | DefinitionKind::Parameter(id)
             | DefinitionKind::Local(id) => id,
         };
@@ -140,6 +146,15 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             (DefinitionKind::Function(_), HirKind::Function { name, .. })
             | (DefinitionKind::Parameter(_), HirKind::Parameter { name, .. })
             | (DefinitionKind::Local(_), HirKind::Binding { name, .. }) => name,
+            (
+                DefinitionKind::GlobalConst(_),
+                HirKind::Binding {
+                    name,
+                    constant: true,
+                    mutable: false,
+                    ..
+                },
+            ) => name,
             _ => return Err(CheckError::InvalidResolution),
         };
         if module.symbol(*name) != Some(definition.name.as_str())
@@ -202,6 +217,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         flow: vec![Flow::Fallthrough; size],
     };
     checker.collect_signatures();
+    checker.check_globals();
     let items = module.nodes()[module.root().0].children.clone();
     for item in items {
         let node = &module.nodes()[item.0];
@@ -345,7 +361,7 @@ impl Checker<'_> {
                     self.result.definition_types[index] = ty;
                     self.result.type_table[id.0] = ty;
                 }
-                DefinitionKind::Local(_) => {}
+                DefinitionKind::Local(_) | DefinitionKind::GlobalConst(_) => {}
             }
         }
     }

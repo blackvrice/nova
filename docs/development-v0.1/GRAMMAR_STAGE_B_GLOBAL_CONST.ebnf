@@ -1,4 +1,4 @@
-(* P06 single-file global const proposal. Draft: not implemented or accepted.
+(* P06 single-file global const subset. Accepted by the user on 2026-10-04.
    P05 productions retained; program adds global_const_decl.
    Visibility, dependencies, cycles and expression permission are semantic.
    Input: existing D05 normalized END tokens. *)

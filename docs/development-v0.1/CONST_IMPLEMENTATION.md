@@ -88,7 +88,10 @@ check에는 LLVM/entry가 필요 없고 산출물을 생성하지 않는다.
 
 ## 후속
 
-전역 const/forward dependency/cycle/const function, 숫자 승격/다른 primitive/aggregate,
+단일 파일 전역 const·forward dependency/cycle은 이후 사용자 승인 [P06](GLOBAL_CONST_STAGE_B_PROPOSAL.md)과
+[P06 구현 기록](GLOBAL_CONST_IMPLEMENTATION.md)에서 구현했다. 위 P05 검증 수치는 P05 완료 당시 기록이다.
+
+const function, 숫자 승격/다른 primitive/aggregate,
 module·multi-file/array-size generic·const cache/optimizer는 다음 별도 승인 범위다.
 보완팩의 top-level const-divzero fixture와 전체 D09는 Draft로 유지했다.
 Linux Native link/run, ownership/Drop/NLL과 전체 Stage B 완료는 이번 작업의 결과가 아니다.

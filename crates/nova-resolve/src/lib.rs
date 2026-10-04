@@ -13,6 +13,7 @@ pub struct ScopeId(pub usize);
 pub enum DefinitionKind {
     BuiltinPrint,
     Function(HirId),
+    GlobalConst(HirId),
     Parameter(HirId),
     Local(HirId),
 }
@@ -116,32 +117,73 @@ pub fn resolve(module: &Module) -> Resolved {
                 name_span,
                 item,
             );
+        } else if let HirKind::Binding {
+            name,
+            name_span,
+            constant: true,
+            ..
+        } = module.nodes()[item.0].kind
+        {
+            // P06 reserves print only for new global consts. P02 user functions
+            // still shadow the prelude in the closer source root scope.
+            if module.symbol(name) == Some("print")
+                && !result.scopes[root_scope.0]
+                    .definitions
+                    .contains_key("print")
+            {
+                result.diagnostics.push(diagnostic(
+                    2002,
+                    name_span,
+                    "global const print conflicts with builtin print",
+                    None,
+                ));
+            }
+            declare(
+                &mut result,
+                root_scope,
+                module.symbol(name).expect("global symbol exists"),
+                DefinitionKind::GlobalConst(item),
+                name_span,
+                item,
+            );
+            if let Some(def) = result.declaration_ids[item.0] {
+                result.definitions[def.0].constant = true;
+            }
         }
     }
     for &item in items {
         let node = &module.nodes()[item.0];
-        let HirKind::Function { parameters, .. } = node.kind else {
-            continue;
-        };
+        let mut pending;
         result.node_scopes[item.0] = Some(root_scope);
-        let function_scope = new_scope(&mut result, root_scope);
-        for &parameter in &node.children[..parameters] {
-            if let HirKind::Parameter { name, name_span } = module.nodes()[parameter.0].kind {
-                declare(
-                    &mut result,
-                    function_scope,
-                    module.symbol(name).expect("parameter symbol exists"),
-                    DefinitionKind::Parameter(parameter),
-                    name_span,
-                    parameter,
-                );
-                result.node_scopes[parameter.0] = Some(function_scope);
+        if let HirKind::Function { parameters, .. } = node.kind {
+            let function_scope = new_scope(&mut result, root_scope);
+            for &parameter in &node.children[..parameters] {
+                if let HirKind::Parameter { name, name_span } = module.nodes()[parameter.0].kind {
+                    declare(
+                        &mut result,
+                        function_scope,
+                        module.symbol(name).expect("parameter symbol exists"),
+                        DefinitionKind::Parameter(parameter),
+                        name_span,
+                        parameter,
+                    );
+                    result.node_scopes[parameter.0] = Some(function_scope);
+                }
             }
+            pending = vec![Work::Body(
+                *node.children.last().expect("function body exists"),
+                function_scope,
+            )];
+        } else if matches!(node.kind, HirKind::Binding { constant: true, .. }) {
+            pending = node
+                .children
+                .iter()
+                .rev()
+                .map(|&id| Work::Visit(id, root_scope))
+                .collect();
+        } else {
+            continue;
         }
-        let mut pending = vec![Work::Body(
-            *node.children.last().expect("function body exists"),
-            function_scope,
-        )];
         while let Some(work) = pending.pop() {
             let (id, scope, body) = match work {
                 Work::Declare(id, scope) => {

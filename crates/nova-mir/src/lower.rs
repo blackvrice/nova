@@ -88,6 +88,12 @@ pub fn lower(
     // expression result table once, rather than once per function.
     let mut values = vec![None; hir.nodes().len()];
     for &id in &hir.nodes()[hir.root().0].children {
+        if matches!(
+            hir.nodes()[id.0].kind,
+            HirKind::Binding { constant: true, .. }
+        ) {
+            continue;
+        }
         let HirKind::Function { parameters, .. } = hir.nodes()[id.0].kind else {
             return Err(LoweringError::InvalidAnalysis);
         };
@@ -338,6 +344,23 @@ impl Builder<'_> {
                             else {
                                 return Err(LoweringError::InvalidAnalysis);
                             };
+                            if matches!(
+                                self.resolved.definitions[def.0].kind,
+                                DefinitionKind::GlobalConst(_)
+                            ) {
+                                let ConstEvaluation::Value { value, .. } =
+                                    &self.checked.const_values[def.0]
+                                else {
+                                    return Err(LoweringError::InvalidAnalysis);
+                                };
+                                self.values[id.0] = Some(Operand::Constant(match value {
+                                    ConstValue::Int32(value) => Constant::Int32(*value),
+                                    ConstValue::Bool(value) => Constant::Bool(*value),
+                                    ConstValue::String(value) => Constant::String(value.clone()),
+                                    ConstValue::Unit => Constant::Unit,
+                                }));
+                                continue;
+                            }
                             let local = *self
                                 .declarations
                                 .get(&def.0)

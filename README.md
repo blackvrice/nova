@@ -2,10 +2,10 @@
 
 개발 전에 읽을 [전체 개발 문서 보완팩](docs/development-v0.1/README.md)을 작성했습니다.
 148개 주제별 문서와 구체 EBNF, 30건 결정 초안, API/schema, 수용 테스트 계획을 포함합니다.
-D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 const 최소 계약은 Accepted이며,
+D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 지역 const, P06 전역 const 최소 계약은 Accepted이며,
 나머지 상세는 Draft입니다.
 
-Nova 컴파일러의 Stage A와 Stage B 제어 흐름·함수 내부 const 구현입니다. 언어 사양은 `docs/`의 원본
+Nova 컴파일러의 Stage A와 Stage B 제어 흐름·지역/전역 const 구현입니다. 언어 사양은 `docs/`의 원본
 Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다.
 원본 사양 파일은 보존하며, 사용자 승인된 상세 계약을 별도 문서로 추가했습니다.
 
@@ -22,12 +22,12 @@ Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다
 - `nova-ast`: byte Span과 source-order 자식 ID를 보존하는 Arena, AstNodeId,
   Error Node, 반복형 Visitor와 결정적 dump. 의미 TypeId/DefId는 포함하지 않습니다.
 - `nova-parser`: 승인된 Stage A 함수·let·return·if/else, typed parameter, positional call,
-  기본 표현식·문자열 보간, P04 var·대입·while·break/continue, P05 함수 내부 const. 구문 복구 포함.
+  기본 표현식·문자열 보간, P04 var·대입·while·break/continue, P05 함수 내부/P06 전역 const. 구문 복구 포함.
 - `nova-hir`: AST와 분리된 flat HIR, SymbolId/SourceOrigin, Primitive/Unit 정규화와 String decode.
-- `nova-resolve`: ScopeTree/DefId/DefinitionRegistry/ResolutionMap, 함수 forward reference, 지역 Scope·가변성.
+- `nova-resolve`: ScopeTree/DefId/DefinitionRegistry/ResolutionMap, 함수·전역 const forward reference, 지역 Scope·가변성.
 - `nova-types`: TypeInterner, Int32/Bool/String/Unit, internal Function/ErrorType와 ConstValue.
 - `nova-typecheck`: expected type/TypeTable, Literal 범위·인수·return·Bool 조건·불변 대입·loop jump,
-  P05 제한된 const checked 평가와 10,000-node budget·ConstEvaluation table.
+  P05/P06 const checked 평가와 10,000-node budget·ConstEvaluation table, 전역 dependency/SCC 순환 진단.
 - `nova-mir`: 비SSA Place/Operand/Rvalue, BasicBlock CFG, source-order Call Terminator,
   short-circuit/if/return/while·jump/const Lowering과 타입·초기화·순환 CFG 검증.
 - `nova-codegen`: immutable verified CodegenUnit, Backend trait/Target/Options/Artifact/error 경계.
@@ -84,29 +84,33 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
    [구현·검증 기록](docs/development-v0.1/CONTROL_IMPLEMENTATION.md).
 7. [P05 함수 내부 const](docs/development-v0.1/CONST_STAGE_B_PROPOSAL.md)와 Windows Native 검증 완료:
    [구현·검증 기록](docs/development-v0.1/CONST_IMPLEMENTATION.md).
-8. 다음 검토 대상: [P06 단일 파일 전역 const](docs/development-v0.1/GLOBAL_CONST_STAGE_B_PROPOSAL.md)와
-   [전용 EBNF 초안](docs/development-v0.1/GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf). Draft/승인 대기이며 아직 미구현.
+8. [P06 단일 파일 전역 const](docs/development-v0.1/GLOBAL_CONST_STAGE_B_PROPOSAL.md)와
+   [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf) 구현 완료:
+   [구현·검증 기록](docs/development-v0.1/GLOBAL_CONST_IMPLEMENTATION.md).
 9. 후속 Stage B 기본 타입·aggregate/module 상세와 Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.
 P04 확장은 `GRAMMAR_STAGE_B_CONTROL.ebnf`를 따릅니다.
 P05 함수 내부 const 확장은 `GRAMMAR_STAGE_B_CONST.ebnf`를 따릅니다.
+P06 단일 파일 전역 const 확장은 `GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf`를 따릅니다.
 전체 `GRAMMAR.ebnf`의 미래 Stage 구문은 여전히 Draft입니다.
 
-현재 Windows x64 Stage A/P04/P05 CLI/LLVM/Runtime을 제공합니다. LLVM 21.1.8과 Rust/MSVC가 필요합니다.
+현재 Windows x64 Stage A/P04/P05/P06 CLI/LLVM/Runtime을 제공합니다. LLVM 21.1.8과 Rust/MSVC가 필요합니다.
 기본 Cargo tests에는 실제 LLVM/Native tests가 ignored이며 별도 명령으로 실행합니다. 기반 테스트는 Rust
 기반 계층의 UTF-8, 범위 오류, EOF, 혼합 줄바꿈, 대형 파일, 진단 Snapshot,
 JSON escaping 및 Suggestion 위치 검증을 다룹니다.
 Lexer lexical pass/fail fixture와 source reconstruction/중첩 mode/END/회귀 테스트도 포함합니다.
 lexical pass는 프로그램 전체 타입 검사나 실행 성공을 뜻하지 않습니다.
 Parser-pass 역시 구문 수용만 뜻합니다. 이름·타입·실행 결과는 보장하지 않습니다.
-frontend-pass는 승인된 Stage A/P04/P05 이름·타입·const 검사 성공을 뜻하며 Native 실행 성공이 아닙니다.
+frontend-pass는 승인된 Stage A/P04/P05/P06 이름·타입·const 검사 성공을 뜻하며 Native 실행 성공이 아닙니다.
 Parser 입력은 normalized tokens여야 하며, 잘못된 API 입력은 ParseInputError로 반환합니다.
 잘못된 Nova 구문은 N1101~N1103와 recovery AST로 반환합니다. 호출자는 Lexer와 Parser
 오류를 모두 확인한 후 lowering해야 합니다. 기본 nesting limit은 128이며 1~128로 설정 가능합니다.
 P04 loop 내부의 nesting limit 초과는 N8901, 가변 지역 var 외 대상 대입은 N3004입니다.
 P05 const의 허용성/checked 산술 실패는 N3201, initializer 예산 초과는 N3202입니다.
+P06 전역 const도 같은 예산을 따르고 정적 순환은 N3202입니다. 실행을 생략하는 RHS도 dependency graph에 포함합니다.
+사용자 함수 print의 builtin shadow는 허용하며 전역 const print는 N2002로 거부합니다.
 
 의미 분석 API/구현 경계는 [P02 구현 계약](docs/development-v0.1/SEMANTICS_IMPLEMENTATION.md)에 있습니다.
 Stage A `print`는 `print(string) -> Unit`이며 Int32/Bool 출력은 보간 문자열을 사용합니다.
@@ -126,6 +130,8 @@ cargo run -p nova-cli -- run examples/loops.nova
 cargo run -p nova-cli -- run examples/loops.nova --profile release
 cargo run -p nova-cli -- run examples/constants.nova
 cargo run -p nova-cli -- run examples/constants.nova --profile release
+cargo run -p nova-cli -- run examples/global_constants.nova
+cargo run -p nova-cli -- run examples/global_constants.nova --profile release
 ```
 
 출력은 `Hello, Nova` 뒤 LF이며 정상 종료는 0입니다. `-o`는 기존 파일을 덮어쓰지 않습니다.

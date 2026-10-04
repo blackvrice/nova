@@ -17,10 +17,11 @@ impl AstNodeId {
     }
 }
 
-/// P01/P04 syntax only. Child lists contain source-ordered IDs, never semantic IDs.
+/// P01/P04/P05/P06 syntax. Child lists contain source-ordered IDs, never semantic IDs.
 /// The required child order for each construct is documented below.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NodeKind {
+    /// Functions, global const bindings, and recovery errors in source order.
     Root,
     Error,
     /// Parameters, optional return type, then body.

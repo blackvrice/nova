@@ -33,6 +33,21 @@ fn deterministic_ir_has_private_calls_and_source_origins() {
     assert!(ir.text.contains("hir "));
     assert_eq!(ir.sources, unit.mir().sources);
 }
+
+#[test]
+fn global_constant_reads_emit_no_runtime_initialization_or_arithmetic() {
+    let unit = unit("const A=B*2+1;func f()->int{return A} const B=3;const SAFE=false&&(1/0==0)");
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&unit, target, false).unwrap();
+        assert_eq!(ir, emit_ir(&unit, target, false).unwrap());
+        assert!(ir.text.contains("ret i32 7"));
+        assert!(!ir.text.contains("call void @nova_panic"));
+        assert!(!ir.text.contains("call { i32, i1 } @llvm"));
+        assert!(!ir.text.contains(" = sdiv "));
+        assert!(!ir.text.contains(" global ") && !ir.text.contains("@llvm.global_ctors"));
+        assert_eq!(ir.sources, unit.mir().sources);
+    }
+}
 #[test]
 fn arithmetic_guards_precede_division_and_checked_intrinsics() {
     let unit =
@@ -178,7 +193,7 @@ fn real_llvm_verifies_both_x64_objects_and_preserves_existing_output() {
         .join("../../target/llvm-object-tests")
         .join(std::process::id().to_string());
     std::fs::create_dir_all(&root).unwrap();
-    let unit=unit("func u(x:()){} func b(x:bool)->bool{return !x} func main(){u(());print(\"한글 {b(false)} {-7%3}\")}");
+    let unit=unit("const VALUE=BASE*2+1;func u(x:()){} func b(x:bool)->bool{return !x} func main(){u(());print(\"한글 {b(false)} {-7%3} {VALUE}\")} const BASE=3");
     for (target, name) in [
         (TargetSpec::WindowsX64Msvc, "windows.obj"),
         (TargetSpec::LinuxX64Gnu, "linux.o"),

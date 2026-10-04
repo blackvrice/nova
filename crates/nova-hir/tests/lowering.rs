@@ -234,3 +234,57 @@ fn truncated_parser_recovery_lowers_without_panicking() {
         lower_source(&source[..end]);
     }
 }
+
+#[test]
+fn global_const_origins_and_truncated_recovery_are_valid() {
+    let source = "const A:int=B+1\nfunc f(){const A=A+1}\nconst B=2";
+    for end in 0..=source.len() {
+        lower_source(&source[..end]);
+    }
+    let module = lower_source(source);
+    assert!(!module.has_errors());
+    let root = module.node(module.root()).unwrap();
+    assert_eq!(root.children.len(), 3);
+    for &id in &[root.children[0], root.children[2]] {
+        assert!(matches!(
+            module.node(id).unwrap().kind,
+            HirKind::Binding {
+                constant: true,
+                mutable: false,
+                ..
+            }
+        ));
+        assert!(matches!(
+            module.node(id).unwrap().origin,
+            SourceOrigin::Source(_)
+        ));
+    }
+}
+
+#[test]
+fn runtime_bindings_cannot_be_injected_at_ast_root() {
+    let mut sources = SourceDatabase::default();
+    let file = sources.add("test.nova", "x".into()).unwrap();
+    let span = Span::new(file, 0, 1).unwrap();
+    for mutable in [false, true] {
+        let mut arena = Arena::default();
+        let value = arena.insert(NodeKind::Integer, span, vec![]).unwrap();
+        let binding = arena
+            .insert(
+                NodeKind::Binding {
+                    name: span,
+                    has_type: false,
+                    mutable,
+                    constant: false,
+                },
+                span,
+                vec![value],
+            )
+            .unwrap();
+        let root = arena.insert(NodeKind::Root, span, vec![binding]).unwrap();
+        assert_eq!(
+            lower(&sources, &arena, root),
+            Err(LoweringError::MalformedAst)
+        );
+    }
+}

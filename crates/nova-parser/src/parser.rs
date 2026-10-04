@@ -52,12 +52,14 @@ impl<'a> Parser<'a> {
             let start = self.current().span.start();
             if self.kind() == TokenKind::Keyword(Keyword::Func) {
                 items.push(self.function());
+            } else if self.kind() == TokenKind::Keyword(Keyword::Const) {
+                items.push(self.statement());
             } else {
                 if self.kind() != TokenKind::Error {
                     self.report(
                         1102,
                         self.current().span,
-                        "Stage A accepts only function declarations at top level",
+                        "only function and const declarations are supported at top level",
                     );
                 }
                 self.recover_item();
@@ -188,7 +190,7 @@ impl<'a> Parser<'a> {
         self.bump();
         while !matches!(
             self.kind(),
-            TokenKind::Eof | TokenKind::Keyword(Keyword::Func)
+            TokenKind::Eof | TokenKind::Keyword(Keyword::Func | Keyword::Const)
         ) {
             self.bump();
         }

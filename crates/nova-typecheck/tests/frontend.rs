@@ -759,3 +759,364 @@ fn const_resolution_flags_and_successful_dumps_are_stable() {
         Err(CheckError::InvalidResolution)
     );
 }
+
+#[test]
+fn globals_infer_all_types_before_functions_and_independent_of_item_order() {
+    pass(include_str!("../../../examples/global_constants.nova"));
+    for source in [
+        "const A:int=B*2;func f()->int{return A} const B=3",
+        "func f()->int{return A} const B=3;const A:int=B*2",
+    ] {
+        assert_eq!(constant_value(source, "A"), (ConstValue::Int32(6), 3));
+    }
+    let source = "func f(){const local=T;print(local)} const T=TEXT;const TEXT=\"한글\\0🙂\";const B=!false;const U:()=()";
+    assert_eq!(
+        constant_value(source, "T").0,
+        ConstValue::String("한글\0🙂".into())
+    );
+    assert_eq!(constant_value(source, "B").0, ConstValue::Bool(true));
+    assert_eq!(constant_value(source, "U").0, ConstValue::Unit);
+    let (hir, resolved, checked) = pass(source).semantic.unwrap();
+    assert_eq!((hir, resolved, checked), pass(source).semantic.unwrap());
+}
+
+#[test]
+fn global_scope_collisions_shadowing_and_readonly_assignment_have_exact_spans() {
+    assert_eq!(
+        constant_value("const X=2;func f(){const X=X+1}", "X").0,
+        ConstValue::Int32(2)
+    );
+    pass("const X=2;func f(X:int){let Y=X;if true {var X=Y;X=3}}");
+    for (source, code, excerpt) in [
+        ("const A=1;const A=2", "N2002", "A"),
+        ("func A(){} const A=2", "N2002", "A"),
+        ("const A=2;func A(){}", "N2002", "A"),
+        ("const print=2", "N2002", "print"),
+        ("const A=missing", "N2001", "missing"),
+        ("const A=x;func f(x:int){}", "N2001", "x"),
+        ("const A=1;func f(){A=2}", "N3004", "A"),
+        ("func f(){const A=B;const B=2}", "N2001", "B"),
+    ] {
+        let result = frontend(source);
+        assert_eq!(codes(&result), [code], "{source}");
+        assert_eq!(
+            result
+                .sources
+                .slice(result.diagnostics()[0].primary.span)
+                .unwrap(),
+            excerpt
+        );
+        if code == "N3004" {
+            assert_eq!(
+                result
+                    .sources
+                    .slice(result.diagnostics()[0].secondary[0].span)
+                    .unwrap(),
+                "A"
+            );
+        }
+    }
+    let (_, resolved, checked) = pass("const X=2;func f(){const X=X+1;var Y=X;Y=Y+1}")
+        .semantic
+        .unwrap();
+    let local = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == "X" && matches!(d.kind, DefinitionKind::Local(_)))
+        .unwrap();
+    assert_eq!(
+        checked.const_values[local],
+        ConstEvaluation::Value {
+            value: ConstValue::Int32(3),
+            nodes: 3
+        }
+    );
+}
+
+#[test]
+fn static_global_cycles_include_skipped_edges_and_annotated_dependencies() {
+    for (source, chain) in [
+        ("const A=A", "A -> A"),
+        ("const A=false&&A", "A -> A"),
+        ("const A=true||B;const B=A", "A -> B -> A"),
+        ("const A:int=B;const B:int=A", "A -> B -> A"),
+        ("const A=B;const B=C;const C=A", "A -> B -> C -> A"),
+    ] {
+        let result = frontend(source);
+        assert_eq!(codes(&result), ["N3202"]);
+        let diagnostic = &result.diagnostics()[0];
+        assert_eq!(
+            diagnostic.notes,
+            [format!("const dependency cycle: {chain}")]
+        );
+        assert_eq!(result.sources.slice(diagnostic.primary.span).unwrap(), "A");
+        assert_eq!(diagnostic.primary.span.start(), source.rfind('A').unwrap());
+        assert_eq!(
+            diagnostic.secondary.len(),
+            chain.split(" -> ").count() * 2 - 3
+        );
+        assert_eq!(result.diagnostics(), frontend(source).diagnostics());
+    }
+}
+
+#[test]
+fn cycles_are_reported_once_per_scc_with_source_order_path_and_independent_errors() {
+    let source = "const A=B+C;const B=A+A;const C=A;const D=E;const E=D;const F=A;const BAD=1/0";
+    let result = frontend(source);
+    assert_eq!(codes(&result), ["N3202", "N3202", "N3201"]);
+    assert_eq!(
+        result.diagnostics()[0].notes[0],
+        "const dependency cycle: A -> B -> A"
+    );
+    assert_eq!(
+        result.diagnostics()[1].notes[0],
+        "const dependency cycle: D -> E -> D"
+    );
+    let (_, resolved, checked) = result.semantic.unwrap();
+    for (id, def) in resolved.definitions.iter().enumerate() {
+        if ["A", "B", "C", "D", "E"].contains(&def.name.as_str()) {
+            assert_eq!(
+                checked.const_values[id],
+                ConstEvaluation::Failed {
+                    code: 3202,
+                    nodes: 0
+                }
+            );
+        } else if def.name == "F" {
+            assert_eq!(checked.const_values[id], ConstEvaluation::Invalid);
+        }
+    }
+}
+
+#[test]
+fn failed_global_dependencies_and_unused_initializers_never_hide_errors_or_cascade() {
+    for (source, code) in [
+        (
+            "const USE=BAD+1;func f(){const X=USE;print(\"{X}\")} const BAD=1/0",
+            "N3201",
+        ),
+        ("const A=B;const B=missing", "N2001"),
+        ("const A=B;const B=A+missing", "N2001"),
+        ("const A=B;const B=\"a\"==\"b\"", "N2101"),
+        ("func main(){} const UNUSED=1/0", "N3201"),
+        ("const A=true||BAD;const BAD=1/0==0", "N3201"),
+    ] {
+        let result = frontend(source);
+        assert_eq!(codes(&result), [code], "{source}");
+        assert!(!result
+            .semantic
+            .unwrap()
+            .2
+            .const_values
+            .contains(&ConstEvaluation::Pending));
+    }
+}
+
+#[test]
+fn long_global_chains_cycles_and_many_components_do_not_recurse() {
+    let mut source = String::new();
+    for i in 0..10_000 {
+        source.push_str(&format!("const C{i}=C{}+1\n", i + 1));
+    }
+    source.push_str("const C10000=0");
+    assert_eq!(
+        constant_value(&source, "C0"),
+        (ConstValue::Int32(10_000), 3)
+    );
+    let mut cycle = String::new();
+    for i in 0..2048 {
+        cycle.push_str(&format!("const C{i}=C{}\n", (i + 1) % 2048));
+    }
+    let result = frontend(&cycle);
+    assert_eq!(codes(&result), ["N3202"]);
+    assert_eq!(result.diagnostics()[0].secondary.len(), 4095);
+    let source = (0..1024)
+        .map(|i| format!("const C{i}=C{i}\n"))
+        .collect::<String>();
+    let result = frontend(&source);
+    assert_eq!(result.diagnostics().len(), 1024);
+    for (index, diagnostic) in result.diagnostics().iter().enumerate() {
+        assert_eq!(
+            diagnostic.notes[0],
+            format!("const dependency cycle: C{index} -> C{index}")
+        );
+    }
+}
+
+#[test]
+fn global_budget_counts_cached_names_once_and_resets_for_local_and_global_initializers() {
+    let chain = std::iter::repeat("1")
+        .take(5000)
+        .collect::<Vec<_>>()
+        .join("+");
+    let source = format!("const A=({chain});const B=A;const C=({chain});func f(){{const X=B}} ");
+    assert_eq!(
+        constant_value(&source, "A"),
+        (ConstValue::Int32(5000), 10_000)
+    );
+    assert_eq!(constant_value(&source, "B"), (ConstValue::Int32(5000), 1));
+    assert_eq!(constant_value(&source, "X"), (ConstValue::Int32(5000), 1));
+    for source in [
+        format!("const A={chain}+1"),
+        format!("const A=false&&({chain}==0)"),
+    ] {
+        let result = frontend(&source);
+        assert_eq!(codes(&result), ["N3202"]);
+        assert!(result.diagnostics()[0].notes[0].contains("10000"));
+        assert_eq!(
+            result
+                .sources
+                .slice(result.diagnostics()[0].primary.span)
+                .unwrap(),
+            "1"
+        );
+    }
+}
+
+#[test]
+fn global_const_operations_permissions_and_type_failures_reuse_p05() {
+    let fixture = frontend(include_str!(
+        "../../../docs/development-v0.1/fixtures/const-divzero.nova"
+    ));
+    assert_eq!(codes(&fixture), ["N3201"]);
+    assert_eq!(
+        (
+            fixture.diagnostics()[0].primary.span.start(),
+            fixture.diagnostics()[0].primary.span.end()
+        ),
+        (17, 22)
+    );
+    for (expression, value) in [
+        ("-2147483648", ConstValue::Int32(i32::MIN)),
+        ("2147483647", ConstValue::Int32(i32::MAX)),
+        ("7/-3", ConstValue::Int32(-2)),
+        ("-7%3", ConstValue::Int32(-1)),
+        ("1+2*3-4", ConstValue::Int32(3)),
+        ("1<2&&2>=2", ConstValue::Bool(true)),
+        ("false&&(1/0==0)", ConstValue::Bool(false)),
+        ("true||(1/0==0)", ConstValue::Bool(true)),
+    ] {
+        assert_eq!(
+            constant_value(&format!("const A={expression}"), "A").0,
+            value
+        );
+    }
+    for (source, code, excerpt) in [
+        ("const A=2147483647+1", "N3201", "2147483647+1"),
+        ("const A=-2147483648/-1", "N3201", "-2147483648/-1"),
+        ("const A=-2147483648%-1", "N3201", "-2147483648%-1"),
+        ("const A=1/0", "N3201", "1/0"),
+        ("const A=1%0", "N3201", "1%0"),
+        (
+            "const A=false&&f();func f()->bool{return true}",
+            "N3201",
+            "f()",
+        ),
+        ("const A=print(\"x\")", "N3201", "print(\"x\")"),
+        ("const A=\"{1}\"", "N3201", "\"{1}\""),
+        ("const A=f;func f(){}", "N1102", "f"),
+        ("const A:bool=1", "N2101", "1"),
+        ("const A=false&&(2147483648==0)", "N2102", "2147483648"),
+    ] {
+        let result = frontend(source);
+        assert_eq!(codes(&result), [code], "{source}");
+        assert_eq!(
+            result
+                .sources
+                .slice(result.diagnostics()[0].primary.span)
+                .unwrap(),
+            excerpt
+        );
+    }
+}
+
+#[test]
+fn public_global_resolution_kind_scope_reference_and_flags_are_verified() {
+    let source = "const A=B;const B=2;func f(){let X=A}";
+    for mutation in 0..4 {
+        let (hir, mut resolved, _) = pass(source).semantic.unwrap();
+        let global = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == "A")
+            .unwrap();
+        let DefinitionKind::GlobalConst(id) = resolved.definitions[global].kind else {
+            panic!("global")
+        };
+        match mutation {
+            0 => resolved.definitions[global].kind = DefinitionKind::Local(id),
+            1 => resolved.definitions[global].scope = nova_resolve::ScopeId(0),
+            2 => resolved.definitions[global].constant = false,
+            _ => resolved
+                .references
+                .iter_mut()
+                .find(|r| matches!(r, Some(Resolution::Definition(def)) if def.0 == global))
+                .map(|r| *r = None)
+                .unwrap(),
+        }
+        assert_eq!(check(&hir, &resolved), Err(CheckError::InvalidResolution));
+    }
+}
+
+#[test]
+fn every_three_node_dependency_graph_agrees_with_reachability_cycle_oracle() {
+    for bits in 0..512 {
+        let mut reach = [[false; 3]; 3];
+        let mut source = String::new();
+        for (i, row) in reach.iter_mut().enumerate() {
+            let mut terms = vec!["0".to_owned()];
+            for (j, edge) in row.iter_mut().enumerate() {
+                *edge = bits & (1 << (i * 3 + j)) != 0;
+                if *edge {
+                    terms.push(format!("C{j}"));
+                }
+            }
+            source.push_str(&format!("const C{i}={}\n", terms.join("+")));
+        }
+        // Independent transitive-closure oracle, not a second DFS/SCC implementation.
+        for k in 0..3 {
+            for i in 0..3 {
+                for j in 0..3 {
+                    reach[i][j] |= reach[i][k] && reach[k][j];
+                }
+            }
+        }
+        let count = (0..3)
+            .filter(|&i| reach[i][i] && !(0..i).any(|j| reach[i][j] && reach[j][i]))
+            .count();
+        let result = frontend(&source);
+        assert_eq!(result.diagnostics().len(), count, "{source}");
+        assert!(result
+            .diagnostics()
+            .iter()
+            .all(|d| d.code.to_string() == "N3202"));
+        let (_, resolved, checked) = result.semantic.unwrap();
+        for i in 0..3 {
+            let id = resolved
+                .definitions
+                .iter()
+                .position(|d| d.name == format!("C{i}"))
+                .unwrap();
+            let value = &checked.const_values[id];
+            if reach[i][i] {
+                assert_eq!(
+                    *value,
+                    ConstEvaluation::Failed {
+                        code: 3202,
+                        nodes: 0
+                    }
+                );
+            } else if (0..3).any(|j| reach[i][j] && reach[j][j]) {
+                assert_eq!(*value, ConstEvaluation::Invalid);
+            } else {
+                assert!(matches!(
+                    value,
+                    ConstEvaluation::Value {
+                        value: ConstValue::Int32(0),
+                        ..
+                    }
+                ));
+            }
+        }
+    }
+}

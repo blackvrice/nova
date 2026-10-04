@@ -312,6 +312,105 @@ fn tampered_const_values_counts_and_missing_tables_cannot_reach_mir() {
 }
 
 #[test]
+fn global_reads_are_constants_with_sources_and_no_initializer_bodies() {
+    let source = "const A=B*2+1;func f()->int{return A} const B=3;const S=\"한글\\0\";const U=();const T=true;func g(){const X=A;let Y=A+1;print(S)}";
+    let module = pass(source);
+    assert_eq!(module.bodies.len(), 2);
+    assert_eq!(execute(&module, "f", vec![]).0, Constant::Int32(7));
+    let f = body_named(&module, "f");
+    assert!(f.locals.is_empty());
+    assert!(f.blocks[0].statements.is_empty());
+    assert!(matches!(
+        &f.blocks[0].terminator.as_ref().unwrap().kind,
+        TerminatorKind::Return(Operand::Constant(Constant::Int32(7)))
+    ));
+    let g = body_named(&module, "g");
+    assert!(g
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .any(|s| matches!(
+            s.kind,
+            StatementKind::Assign(
+                _,
+                Rvalue::Binary(
+                    Symbol::Plus,
+                    Operand::Constant(Constant::Int32(7)),
+                    Operand::Constant(Constant::Int32(1))
+                )
+            )
+        )));
+    let only = pass("const A=B+1;const B=2");
+    assert!(only.bodies.is_empty() && only.callees.len() == 1);
+    assert_eq!(module, pass(source));
+}
+
+#[test]
+fn global_cycle_unused_failure_and_readonly_assignment_block_mir() {
+    for source in [
+        "const A=A;func f(){}",
+        "const A=false&&B;const B=A;func f(){}",
+        "const BAD=1/0;func f(){}",
+        "const A=1;func f(){A=2}",
+        "const A=missing;func f(){}",
+    ] {
+        assert_eq!(compile(source), Err(LoweringError::FrontendErrors));
+    }
+}
+
+#[test]
+fn global_value_type_count_and_resolution_tampering_cannot_reach_mir() {
+    let mut sources = SourceDatabase::default();
+    let file = sources
+        .add(
+            "test.nova",
+            "const A=B+1;func f()->int{return A} const B=2".into(),
+        )
+        .unwrap();
+    let lexed = lex(&sources, file).unwrap();
+    let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+    let hir = nova_hir::lower(&sources, &parsed.arena, parsed.root).unwrap();
+    for mutation in 0..6 {
+        let mut resolved = resolve(&hir);
+        let mut checked = check(&hir, &resolved).unwrap();
+        let index = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == "A")
+            .unwrap();
+        match mutation {
+            0 => {
+                checked.const_values[index] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Int32(4),
+                    nodes: 3,
+                }
+            }
+            1 => {
+                checked.const_values[index] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Int32(3),
+                    nodes: 2,
+                }
+            }
+            2 => checked.definition_types[index] = checked.types.intern(Type::Bool),
+            3 => resolved.definitions[index].scope = nova_resolve::ScopeId(0),
+            4 => {
+                let nova_resolve::DefinitionKind::GlobalConst(id) =
+                    resolved.definitions[index].kind
+                else {
+                    panic!("global")
+                };
+                resolved.definitions[index].kind = nova_resolve::DefinitionKind::Local(id);
+            }
+            _ => checked.const_values.clear(),
+        }
+        assert_eq!(
+            lower(&hir, &resolved, &checked, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+
+#[test]
 fn argument_and_operand_calls_run_in_source_order() {
     let module = pass("func a() -> int { return 1 } func b() -> int { return 2 } func sum(x:int,y:int)->int { return x+y } func f()->int { return sum(a(), b()) + a() }");
     assert_eq!(

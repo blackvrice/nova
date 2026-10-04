@@ -1,7 +1,10 @@
 # Stage B 단일 파일 전역 const·의존성 평가 착수안 — P06
 
-작성일: 2026-10-04. 상태: **Draft / 사용자 승인 대기**.
-이 문서는 검토용 제안이며 현재 Compiler에 적용하지 않았다.
+작성일: 2026-10-04. 상태: **Accepted / 2026-10-04 사용자 승인**.
+승인 근거: 사용자 답변 “P06 승인하고 전역 const 구현 진행”.
+이 최소 계약을 구현에 적용하며 현재 검증 상태는 [P06 구현 기록](GLOBAL_CONST_IMPLEMENTATION.md)을 따른다.
+print 충돌 정정 승인: 사용자 답변 “기존 함수 print 허용, 전역 const print만 거부 (권장)”.
+P02의 함수 print shadow 허용과 충돌하던 아래 root/prelude 설명을 이 답변에 따라 구체화했다.
 [P05 함수 내부 const](CONST_STAGE_B_PROPOSAL.md)의 값 타입·연산·checked 평가·예산을 재사용한다.
 [P01](PARSER_STAGE_A_PROPOSAL.md)~[P04](CONTROL_STAGE_B_PROPOSAL.md)의 승인 범위도 유지한다.
 전체 D06/D09/Stage B, module·다중 파일 또는 const function의 승인안은 아니다.
@@ -37,11 +40,14 @@
 1. top-level에는 기존 function과 `const name [: Type] = expression`을 섞어 선언할 수 있다.
    초기값은 필수이며 기존 normalized END/선택 세미콜론을 사용한다.
    top-level let/var·expression statement·runtime initializer는 계속 N1102다.
-2. builtin print와 모든 top-level function/const를 단일 root value namespace에 먼저 수집한다.
+2. 모든 top-level function/const를 단일 root value namespace에 먼저 수집한다.
+   builtin print는 기존 P02처럼 그 바깥 prelude scope에 둔다.
    전역 const의 initializer와 모든 function body는 파일 내 위치와 무관하게 모든 전역 const를 참조할 수 있다.
    전역 initializer에서 parameter/local binding은 보이지 않는다.
-3. 전역 const/function/print의 같은 이름 충돌은 N2002다. 뒤 선언 name Span을 primary,
-   앞 선언을 secondary로 삼고 builtin에는 기존처럼 source declaration Span을 만들지 않는다.
+3. 같은 root scope의 전역 const/function 이름 충돌은 N2002다. 뒤 선언 name Span을 primary,
+   앞 선언을 secondary로 삼는다. 추가로 전역 `const print`는 builtin 충돌 N2002이며,
+   builtin에는 source declaration Span을 만들지 않는다. 기존 사용자 `func print`의 prelude shadow는
+   P02와 정정 승인에 따라 허용한다. local print shadow도 기존 P02 정책이다.
    오류 복구의 namespace lookup은 최초 선언을 유지하며 중복 선언도 성공으로 처리하지 않는다.
 4. local parameter/let/var/const는 기존 P02 lexical shadow 규칙을 따른다.
    local initializer는 local declaration 등록 전 해석하므로 같은 이름의 전역 const가 있으면 이를 참조한다.
@@ -135,7 +141,7 @@
 
 ## 목표 프로그램·수용 계획
 
-아래는 **승인 후 구현할 수용 예제**다. 현재 Compiler의 실행 성공을 주장하지 않는다.
+아래는 P06 수용 예제다. 실제 실행 결과와 검증 범위는 구현 기록에 별도로 남긴다.
 
 ```nova
 const LIMIT: int32 = BASE * 2
@@ -179,6 +185,6 @@ const SAFE = false && (1 / 0 == 0)
 정적 skipped-edge 포함 cycle N3202·기존 initializer budget·불변 대입과 전용 EBNF다.
 전역 let/var/runtime initializer, module/import/visibility·다중 파일, const function,
 새 primitive/승격/aggregate, 보간 상수화·optimizer/query/cache, ownership/Drop 및 Linux Native는 후속이다.
-승인 전에는 accepted ledger와 Compiler/P05 grammar를 변경하지 않는다.
+이 최소 계약과 위 print 충돌 정정을 accepted ledger에 기록하고 구현에 적용한다. P05 grammar는 보존한다.
 보완팩의 top-level const-divzero Draft fixture는 승인 후 P06 구현 시험에서 별도로 다루며
 기존 fixture의 전체 D09 수용 상태를 자동으로 Accepted로 바꾸지 않는다.

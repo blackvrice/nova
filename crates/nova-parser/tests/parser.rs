@@ -389,9 +389,9 @@ fn local_const_bindings_keep_declaration_spans_and_classification() {
 }
 
 #[test]
-fn const_initializers_are_required_and_global_const_is_unsupported() {
+fn const_initializers_are_required_and_global_var_is_unsupported() {
     for (source, code) in [
-        ("const x=1\nfunc later(){}", "N1102"),
+        ("var x=1\nfunc later(){}", "N1102"),
         ("func f(){const x}\nfunc later(){}", "N1101"),
     ] {
         let (sources, _, parsed) = run(source);
@@ -399,6 +399,44 @@ fn const_initializers_are_required_and_global_const_is_unsupported() {
             .diagnostics
             .iter()
             .any(|d| d.code.to_string() == code));
+        assert!(parsed.arena.iter().any(|(_, n)| matches!(n.kind,
+            NodeKind::Function { name, .. } if sources.slice(name).unwrap() == "later")));
+    }
+}
+
+#[test]
+fn global_const_root_items_end_forms_and_annotation_are_preserved() {
+    let parsed = assert_pass(include_str!("../../../examples/global_constants.nova"));
+    let root = parsed.arena.get(parsed.root).unwrap();
+    assert_eq!(root.children.len(), 5);
+    assert!(matches!(
+        parsed.arena.get(root.children[0]).unwrap().kind,
+        NodeKind::Binding {
+            constant: true,
+            mutable: false,
+            has_type: true,
+            ..
+        }
+    ));
+    let (a_sources, _, a) = run("const A=1\nfunc f(){}\nconst B:()=()\n");
+    let (b_sources, _, b) = run("const A=1;func f(){}const B:()=()");
+    assert!(!a.has_errors() && !b.has_errors());
+    assert_eq!(shape(&a, &a_sources), shape(&b, &b_sources));
+}
+
+#[test]
+fn malformed_global_const_recovers_at_next_declaration() {
+    for source in [
+        "const A\nconst B=2\nfunc later(){}",
+        "const A=\nconst B=2\nfunc later(){}",
+        "const A=1 const B=2\nfunc later(){}",
+    ] {
+        let (sources, _, parsed) = run(source);
+        assert!(parsed.has_errors());
+        assert!(
+            parsed.arena.iter().any(|(_, n)| matches!(n.kind,
+            NodeKind::Binding { name, constant: true, .. } if sources.slice(name).unwrap() == "B"))
+        );
         assert!(parsed.arena.iter().any(|(_, n)| matches!(n.kind,
             NodeKind::Function { name, .. } if sources.slice(name).unwrap() == "later")));
     }
