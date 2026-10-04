@@ -37,6 +37,10 @@ Native 실행 전 arithmetic runtime, panic/print, entry/CLI/LLVM host 계약의
 [Native/CLI/Runtime](NATIVE_IMPLEMENTATION.md)과 Hello E2E를 구현·검증했다.
 다음은 Linux Native host 검증 및 Stage B 착수 범위 검토다.
 
+2026-10-04 Stage B 첫 범위로 [P04](CONTROL_STAGE_B_PROPOSAL.md)의 var/direct-name 대입,
+while/break/continue를 제안했다. 전용 EBNF와 진단·Native 수용 기준을 작성했고 사용자 승인을 기다린다.
+이 범위 완료는 Stage B 전체 완료가 아니다. 현재 로컬에는 Linux 실행 환경이 없어 Linux Native 검증은 후속이다.
+
 ## Backlog 경계
 
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,

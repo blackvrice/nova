@@ -88,6 +88,7 @@ function validateGrammar(filename) {
 }
 validateGrammar('GRAMMAR.ebnf');
 validateGrammar('GRAMMAR_STAGE_A.ebnf');
+validateGrammar('GRAMMAR_STAGE_B_CONTROL.ebnf');
 const parserProposal = manifest.accepted_proposals?.find(p => p.id === 'P01');
 assert(parserProposal?.approval_date === '2026-10-04' && parserProposal?.grammar === 'GRAMMAR_STAGE_A.ebnf', 'Missing P01 approval ledger');
 assert(fs.readFileSync(path.join(pack, 'PARSER_STAGE_A_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P01 status');

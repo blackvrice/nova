@@ -29,6 +29,9 @@ Stage A MIR은 원본 NOVA-081~083/091과 P02 평가 순서에 따라 구현했�
 Stage A Native 최소 계약은 [사용자 승인 P03](NATIVE_STAGE_A_PROPOSAL.md), CLI/LLVM/Runtime의 현재
 지원·제약과 실제 검증 증거는 [Native 구현 기록](NATIVE_IMPLEMENTATION.md)을 따른다.
 
+다음 Stage B 최소 범위는 [P04 가변 지역 변수·반복문 착수안](CONTROL_STAGE_B_PROPOSAL.md)과
+[전용 EBNF 초안](GRAMMAR_STAGE_B_CONTROL.ebnf)에 정리했다. **사용자 승인 대기**이며 아직 구현하지 않았다.
+
 ## 상태와 효력
 
 **작성 완료와 사양 승인, 구현 완료, 테스트 통과는 서로 다른 상태다.** 원본 Canonical

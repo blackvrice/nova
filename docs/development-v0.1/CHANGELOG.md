@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P04 Stage B 착수안 (Draft)
+
+- var/direct-name 대입/while/break/continue의 문법·의미·진단·MIR·Native 수용 기준 작성.
+- P01을 확장하는 30-production 전용 EBNF 초안 추가. N3004 불변 대상 대입 진단 제안.
+- 승인 ledger와 compiler는 유지. P04 사용자 승인 후 구현하며 전체 Stage B 승인이 아니다.
+
 ## 2026-10-04 — P03 Stage A Native
 
 - 사용자 답변 “P03 승인하고 Stage A Native 구현 진행”을 Accepted subset으로 기록.
