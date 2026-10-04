@@ -6,6 +6,8 @@
 
 [P07 고정 폭 정수·승격](INTEGER_STAGE_B_PROPOSAL.md) subset도 Accepted이며 [구현·검증 기록](INTEGER_IMPLEMENTATION.md)을 따른다. 기존 P06 source grammar를 재사용한다.
 
+[P08 char·scalar 비교·UTF-8 보간](CHAR_STAGE_B_PROPOSAL.md)과 [CHAR primary 전용 EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 Accepted이며 [구현·검증 기록](CHAR_IMPLEMENTATION.md)을 따른다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

@@ -4,6 +4,45 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn p08_char_source_failures_precede_tools_and_outputs() {
+    for (program, code) in [
+        ("func main(){print('a')}", "N2101"),
+        ("func main(){let x='a'+1}", "N2101"),
+        ("const C='\\u{D800}';func main(){}", "N1002"),
+        ("const C='ab';func main(){}", "N1002"),
+        ("func main(){if 'a' {}}", "N3001"),
+    ] {
+        let directory = directory();
+        let source = directory.join("bad.nova");
+        std::fs::write(&source, program).unwrap();
+        for command in ["check", "build", "run"] {
+            let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg(command)
+                .arg(&source)
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&directory)
+                .output()
+                .unwrap();
+            assert_eq!(result.status.code(), Some(1));
+            assert!(String::from_utf8(result.stderr).unwrap().contains(code));
+            assert!(!directory.join("target").exists());
+        }
+    }
+    let directory = directory();
+    let source = directory.join("characters.nova");
+    std::fs::write(&source, include_str!("../../../examples/characters.nova")).unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("check")
+        .arg(&source)
+        .env("NOVA_CLANG", "missing-clang")
+        .current_dir(&directory)
+        .output()
+        .unwrap();
+    assert!(result.status.success());
+    assert!(!directory.join("target").exists());
+}
+
+#[test]
 fn p07_integer_diagnostics_gate_tools_and_outputs() {
     for (program, code) in [
         ("func main(){let x:uint64=18446744073709551616}", "N2102"),

@@ -24,6 +24,135 @@ const INTEGER_CASES: [(&str, Type, i128, i128); 8] = [
 ];
 
 #[test]
+fn p08_char_binding_calls_returns_forward_const_and_scalar_comparisons() {
+    pass(include_str!("../../../examples/characters.nova"));
+    pass("func f(x:char)->char{var y:char=x;while y<'Z'{y='Z';continue};return (y)} func print(x:char)->char{return x} func g(){const print='a';let x=print}");
+    for value in [
+        0, 0x7f, 0x80, 0x7ff, 0x800, 0xd7ff, 0xe000, 0xffff, 0x10000, 0x10ffff, 0x378,
+    ] {
+        let source = format!(
+            "const A:char=B;const B='\\u{{{value:X}}}';func f(){{const C:char=(A);let x:char=C}}"
+        );
+        assert_eq!(
+            constant_value(&source, "A").0,
+            ConstValue::Char(char::from_u32(value).unwrap())
+        );
+    }
+    for (left, right) in [
+        ('a', 'a'),
+        ('a', 'b'),
+        ('\u{d7ff}', '\u{e000}'),
+        ('\u{10ffff}', '\0'),
+    ] {
+        for (op, expected) in [
+            ("==", left == right),
+            ("!=", left != right),
+            ("<", left < right),
+            ("<=", left <= right),
+            (">", left > right),
+            (">=", left >= right),
+        ] {
+            let source = format!("const A='\\u{{{:X}}}';const B='\\u{{{:X}}}';const C=A{op}B;func f(a:char,b:char)->bool{{return a{op}b}}", left as u32, right as u32);
+            assert_eq!(constant_value(&source, "C").0, ConstValue::Bool(expected));
+        }
+    }
+    assert_eq!(
+        constant_value("const C=false&&('a'<'b'&&1/0==0)", "C").0,
+        ConstValue::Bool(false)
+    );
+}
+
+#[test]
+fn p08_char_has_no_implicit_conversions_arithmetic_or_print_overload() {
+    for (ty, value) in INTEGER_CASES.iter().map(|(name, ..)| (*name, "1")).chain([
+        ("bool", "true"),
+        ("string", "\"a\""),
+        ("void", "()"),
+    ]) {
+        for source in [
+            format!("func f(){{let x:{ty}='a'}}"),
+            format!("func f(){{let x:char={value}}}"),
+            format!("func f(x:char){{var y:{ty}={value};y=x}}"),
+            format!("func f(x:{ty}){{var y:char='a';y=x}}"),
+            format!("func f()->{ty}{{return 'a'}}"),
+            format!("func f()->char{{return {value}}}"),
+            format!("func f(x:{ty}){{}} func g(){{f('a')}}"),
+            format!("func f(x:char){{}} func g(){{f({value})}}"),
+            format!("const A:{ty}='a'"),
+            format!("const A:char={value}"),
+        ] {
+            assert_eq!(codes(&frontend(&source)), ["N2101"], "{source}");
+        }
+        for op in ["==", "!=", "<", "<=", ">", ">="] {
+            for expr in [format!("'a'{op}{value}"), format!("{value}{op}'a'")] {
+                assert_eq!(
+                    codes(&frontend(&format!("func f(){{let x={expr}}}"))),
+                    ["N2101"],
+                    "{expr}"
+                );
+            }
+        }
+    }
+    for expr in [
+        "'a'+'b'",
+        "'a'-'b'",
+        "'a'*'b'",
+        "'a'/'b'",
+        "'a'%'b'",
+        "+'a'",
+        "-'a'",
+        "!'a'",
+        "'a'&&'b'",
+        "'a'||'b'",
+        "print('a')",
+    ] {
+        assert_eq!(
+            codes(&frontend(&format!("func f(){{{expr}}}"))),
+            ["N2101"],
+            "{expr}"
+        );
+    }
+    assert_eq!(
+        codes(&frontend("func f(){if 'a' {} while 'b' {}}")),
+        ["N3001", "N3001"]
+    );
+    assert_eq!(codes(&frontend("func f(){let a='a';a='b'}")), ["N3004"]);
+    assert_eq!(codes(&frontend("const print='a'")), ["N2002"]);
+}
+
+#[test]
+fn p08_char_const_permission_cycles_and_budget_include_skipped_nodes() {
+    for (source, code) in [
+        ("func f(){let a='a';const b=a}", "N3201"),
+        (
+            "func f()->char{return 'a'} const C=false&&(f()=='a')",
+            "N3201",
+        ),
+        ("const C=false&&('a'==1)", "N2101"),
+        ("const C=true||(C&&'a'=='a')", "N3202"),
+        ("const C=\"{'a'}\"", "N3201"),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code], "{source}");
+    }
+    let chain = std::iter::repeat("'a'=='a'")
+        .take(2500)
+        .collect::<Vec<_>>()
+        .join("&&");
+    assert_eq!(
+        constant_value(&format!("const C=({chain})"), "C"),
+        (ConstValue::Bool(true), 10000)
+    );
+    assert_eq!(
+        codes(&frontend(&format!("const C={chain}&&true"))),
+        ["N3202"]
+    );
+    assert_eq!(
+        codes(&frontend(&format!("const C=false&&({chain})"))),
+        ["N3202"]
+    );
+}
+
+#[test]
 fn p07_all_integer_literal_boundaries_aliases_and_exact_range_spans() {
     for (name, ty, min, max) in INTEGER_CASES {
         let f = pass(&format!(
@@ -414,7 +543,7 @@ fn parameter_and_return_expected_types_flow_into_expressions() {
 fn primitive_aliases_unknown_and_unsupported_types() {
     pass("func f(x: int32) -> int { return x } func main() -> void { let value: ()=(); return value }");
     assert_eq!(codes(&frontend("func f(x: Unknown) {}")), ["N2001"]);
-    for ty in ["char", "float", "double", "never"] {
+    for ty in ["float", "double", "never"] {
         assert_eq!(
             codes(&frontend(&format!("func f(x: {ty}) {{}}"))),
             ["N1102"],

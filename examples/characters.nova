@@ -1,0 +1,15 @@
+const FACE: char = '\u{1F642}'
+const LOW: char = '\u{D7FF}'
+const HIGH: char = '\u{E000}'
+const ORDERED = LOW < HIGH
+
+func echo(value: char) -> char {
+    return value
+}
+
+func main() {
+    var letter: char = 'A'
+    letter = '가'
+    let brace = '{'
+    print("letter={echo(letter)}, face={FACE}, brace={brace}, ordered={ORDERED}")
+}

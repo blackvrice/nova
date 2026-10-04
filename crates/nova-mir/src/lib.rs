@@ -47,6 +47,7 @@ pub enum Constant {
     Int32(i32),
     Integer(IntegerValue),
     Bool(bool),
+    Char(char),
     String(String),
     Unit,
 }
@@ -63,6 +64,7 @@ impl Constant {
             Self::Int32(_) => Type::Int32,
             Self::Integer(value) => value.kind().ty(),
             Self::Bool(_) => Type::Bool,
+            Self::Char(_) => Type::Char,
             Self::String(_) => Type::String,
             Self::Unit => Type::Unit,
         }

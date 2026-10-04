@@ -125,6 +125,23 @@ fn format_wide(mut magnitude: u64, negative: bool, file: u32, start: u32, end: u
     text.extend_from_slice(&buffer[position..]);
     retain(text, file, start, end)
 }
+/// Safety: out points to writable NovaString storage owned by generated code.
+#[no_mangle]
+pub unsafe extern "C" fn nova_format_char(
+    out: *mut NovaString,
+    value: u32,
+    file: u32,
+    start: u32,
+    end: u32,
+) {
+    let scalar =
+        char::from_u32(value).unwrap_or_else(|| fatal("invalid char scalar", file, start, end));
+    let mut buffer = [0u8; 4];
+    let encoded = scalar.encode_utf8(&mut buffer).as_bytes();
+    let mut text = allocate(encoded.len(), file, start, end);
+    text.extend_from_slice(encoded);
+    unsafe { out.write(retain(text, file, start, end)) }
+}
 #[no_mangle]
 pub unsafe extern "C" fn nova_format_i64(
     out: *mut NovaString,

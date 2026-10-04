@@ -349,6 +349,9 @@ impl Builder<'_> {
                         continue;
                     }
                     match &node.kind {
+                        HirKind::Character(value) => {
+                            self.values[id.0] = Some(Operand::Constant(Constant::Char(*value)))
+                        }
                         HirKind::String(text) => {
                             self.values[id.0] =
                                 Some(Operand::Constant(Constant::String(text.clone())))
@@ -377,6 +380,7 @@ impl Builder<'_> {
                                     ConstValue::Int32(value) => Constant::Int32(*value),
                                     ConstValue::Integer(value) => Constant::from_integer(*value),
                                     ConstValue::Bool(value) => Constant::Bool(*value),
+                                    ConstValue::Char(value) => Constant::Char(*value),
                                     ConstValue::String(value) => Constant::String(value.clone()),
                                     ConstValue::Unit => Constant::Unit,
                                 }));
@@ -480,6 +484,7 @@ impl Builder<'_> {
                             ConstValue::Int32(value) => Constant::Int32(*value),
                             ConstValue::Integer(value) => Constant::from_integer(*value),
                             ConstValue::Bool(value) => Constant::Bool(*value),
+                            ConstValue::Char(value) => Constant::Char(*value),
                             ConstValue::String(value) => Constant::String(value.clone()),
                             ConstValue::Unit => Constant::Unit,
                         })

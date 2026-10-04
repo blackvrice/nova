@@ -42,6 +42,130 @@ fn body_named<'a>(module: &'a Module, name: &str) -> &'a Body {
         .find(|body| module.callees[body.callee.0].name == name)
         .unwrap()
 }
+
+#[test]
+fn p08_char_constants_places_calls_and_sources_are_preserved() {
+    let module = pass(include_str!("../../../examples/characters.nova"));
+    assert!(module
+        .callees
+        .iter()
+        .any(|c| c.name == "echo" && c.parameters == [Type::Char] && c.return_type == Type::Char));
+    assert!(module
+        .bodies
+        .iter()
+        .flat_map(|b| &b.locals)
+        .any(|l| l.ty == Type::Char));
+    assert!(module.bodies.iter().flat_map(|b| &b.blocks).flat_map(|b| &b.statements).any(|s| matches!(&s.kind, StatementKind::Assign(_, Rvalue::Interpolate(parts)) if parts.contains(&Operand::Constant(Constant::Char('🙂'))))));
+    assert!(!module
+        .bodies
+        .iter()
+        .flat_map(|b| &b.blocks)
+        .flat_map(|b| &b.statements)
+        .any(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Widen(_, _)))));
+    for source in [
+        "func f(){print('a')}",
+        "func f(){let x='a'+1}",
+        "func f(){const x='a'=='b';x=false}",
+        "const C=true||(C&&'a'=='a')",
+    ] {
+        assert_eq!(compile(source), Err(LoweringError::FrontendErrors));
+    }
+}
+
+#[test]
+fn p08_mir_validator_rejects_char_arithmetic_mixed_types_and_widening() {
+    for op in [
+        Symbol::EqualEqual,
+        Symbol::BangEqual,
+        Symbol::Less,
+        Symbol::LessEqual,
+        Symbol::Greater,
+        Symbol::GreaterEqual,
+    ] {
+        let mut module = pass("func f(a:char,b:char)->bool{return a<b}");
+        let statement = &mut module.bodies[0].blocks[0].statements[0];
+        let StatementKind::Assign(_, value) = &mut statement.kind;
+        *value = Rvalue::Binary(
+            op,
+            Operand::Constant(Constant::Char('\u{d7ff}')),
+            Operand::Constant(Constant::Char('\u{e000}')),
+        );
+        assert!(validate(&module).is_empty());
+        let StatementKind::Assign(_, value) = &mut module.bodies[0].blocks[0].statements[0].kind;
+        *value = Rvalue::Binary(
+            op,
+            Operand::Constant(Constant::Char('a')),
+            Operand::Constant(Constant::Int32(97)),
+        );
+        error(&module, Violation::TypeMismatch);
+    }
+    for value in [
+        Rvalue::Binary(
+            Symbol::Plus,
+            Operand::Constant(Constant::Char('a')),
+            Operand::Constant(Constant::Char('b')),
+        ),
+        Rvalue::Unary(Symbol::Minus, Operand::Constant(Constant::Char('a'))),
+        Rvalue::Widen(Operand::Constant(Constant::Char('a')), Type::Int64),
+        Rvalue::Widen(Operand::Constant(Constant::Int32(97)), Type::Char),
+    ] {
+        let mut module = pass("func f(){let x='a'}");
+        let StatementKind::Assign(_, original) = &mut module.bodies[0].blocks[0].statements[0].kind;
+        *original = value;
+        error(&module, Violation::TypeMismatch);
+    }
+}
+
+#[test]
+fn p08_char_analysis_tampering_cannot_reach_mir() {
+    let mut sources = SourceDatabase::default();
+    let file = sources
+        .add("test.nova", "const C='a';func f()->char{return C}".into())
+        .unwrap();
+    let lexed = lex(&sources, file).unwrap();
+    let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+    let hir = nova_hir::lower(&sources, &parsed.arena, parsed.root).unwrap();
+    let resolved = resolve(&hir);
+    let id = hir
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::Character(_)))
+        .unwrap();
+    let def = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == "C")
+        .unwrap();
+    for mutation in 0..5 {
+        let mut checked = check(&hir, &resolved).unwrap();
+        match mutation {
+            0 => checked.type_table[id] = checked.types.intern(Type::Int32),
+            1 => checked.coercions[id] = Some(checked.types.intern(Type::Int64)),
+            2 => {
+                checked.const_values[def] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Char('b'),
+                    nodes: 1,
+                }
+            }
+            3 => {
+                checked.const_values[def] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Int32(97),
+                    nodes: 1,
+                }
+            }
+            _ => {
+                checked.const_values[def] = nova_typecheck::ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Char('a'),
+                    nodes: 2,
+                }
+            }
+        }
+        assert_eq!(
+            lower(&hir, &resolved, &checked, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
 fn error(module: &Module, violation: Violation) {
     assert!(
         validate(module).iter().any(|e| e.violation == violation),

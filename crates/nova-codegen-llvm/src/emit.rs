@@ -35,6 +35,17 @@ pub fn emit_ir(
     if expanded {
         emitter.output.push_str("declare void @nova_format_i64(ptr, i64, i32, i32, i32)\ndeclare void @nova_format_u64(ptr, i64, i32, i32, i32)\n");
     }
+    let char_used = mir.callees.iter().flat_map(|c| c.parameters.iter().copied().chain([c.return_type]))
+        .chain(mir.bodies.iter().flat_map(|b| b.locals.iter().map(|l| l.ty)))
+        .any(|ty| ty == Type::Char)
+        || mir.bodies.iter().flat_map(|b| &b.blocks).flat_map(|b| &b.statements).any(|s| {
+            matches!(&s.kind, StatementKind::Assign(_, Rvalue::Interpolate(parts)) if parts.iter().any(|p| matches!(p, Operand::Constant(Constant::Char(_)))))
+        });
+    if char_used {
+        emitter
+            .output
+            .push_str("declare void @nova_format_char(ptr, i32, i32, i32, i32)\n");
+    }
     emitter.output.push_str("declare void @nova_format_bool(ptr, i32)\ndeclare void @nova_concat(ptr, ptr, i64, i32, i32, i32)\n");
     for width in [8, 16, 32, 64] {
         for op in ["sadd", "ssub", "smul", "uadd", "usub", "umul"] {
@@ -80,7 +91,7 @@ fn ty(ty: Type) -> &'static str {
     match ty {
         Type::Int8 | Type::UInt8 => "i8",
         Type::Int16 | Type::UInt16 => "i16",
-        Type::Int32 | Type::UInt32 => "i32",
+        Type::Int32 | Type::UInt32 | Type::Char => "i32",
         Type::Int64 | Type::UInt64 => "i64",
         Type::Bool => "i1",
         Type::String => "%String",
@@ -146,6 +157,7 @@ impl Emitter<'_> {
             }
             Operand::Constant(Constant::Int32(value)) => (Type::Int32, value.to_string()),
             Operand::Constant(Constant::Bool(value)) => (Type::Bool, value.to_string()),
+            Operand::Constant(Constant::Char(value)) => (Type::Char, (*value as u32).to_string()),
             Operand::Constant(Constant::Unit) => (Type::Unit, "zeroinitializer".into()),
             Operand::Constant(Constant::String(text)) => {
                 let next = self.strings.len();
@@ -302,7 +314,8 @@ impl Emitter<'_> {
                                 self.instruction(format!("{sign}{op} {llvm} {left}, {right}"))
                             }
                             _ => {
-                                let unsigned = type_.integer().is_some_and(|kind| !kind.signed());
+                                let unsigned = type_ == Type::Char
+                                    || type_.integer().is_some_and(|kind| !kind.signed());
                                 let predicate = match op {
                                     Symbol::EqualEqual => "eq",
                                     Symbol::BangEqual => "ne",
@@ -354,6 +367,10 @@ impl Emitter<'_> {
                                 }
                                 Type::Int32 => self.line(format!(
                                     "call void @nova_format_int(ptr {pointer}, i32 {value}, {})",
+                                    Self::location(statement.source)
+                                )),
+                                Type::Char => self.line(format!(
+                                    "call void @nova_format_char(ptr {pointer}, i32 {value}, {})",
                                     Self::location(statement.source)
                                 )),
                                 type_ if type_.integer().is_some() => {

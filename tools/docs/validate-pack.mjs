@@ -91,6 +91,7 @@ validateGrammar('GRAMMAR_STAGE_A.ebnf');
 validateGrammar('GRAMMAR_STAGE_B_CONTROL.ebnf');
 validateGrammar('GRAMMAR_STAGE_B_CONST.ebnf');
 validateGrammar('GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf');
+validateGrammar('GRAMMAR_STAGE_B_CHAR.ebnf');
 const parserProposal = manifest.accepted_proposals?.find(p => p.id === 'P01');
 assert(parserProposal?.approval_date === '2026-10-04' && parserProposal?.grammar === 'GRAMMAR_STAGE_A.ebnf', 'Missing P01 approval ledger');
 assert(fs.readFileSync(path.join(pack, 'PARSER_STAGE_A_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P01 status');
@@ -132,6 +133,20 @@ assert(integerProposal?.approval_date === '2026-10-04' && integerProposal?.imple
 assert(!manifest.draft_proposals?.some(p => p.id === 'P07'), 'Accepted P07 still in draft ledger');
 assert(fs.readFileSync(path.join(pack, 'INTEGER_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P07 approval status');
 checks.push('P07 integer 승인 subset/날짜·P06 grammar 재사용·전체 D07 Draft 경계');
+
+const charProposal = manifest.accepted_proposals?.find(p => p.id === 'P08');
+assert(charProposal?.approval_date === '2026-10-04' && charProposal?.implementation_verified === true
+  && charProposal?.document === 'CHAR_STAGE_B_PROPOSAL.md'
+  && charProposal?.grammar === 'GRAMMAR_STAGE_B_CHAR.ebnf'
+  && charProposal?.grammar_change === true, 'Missing P08 approved char ledger');
+assert(!manifest.draft_proposals?.some(p => p.id === 'P08'), 'Accepted P08 still in draft ledger');
+assert(fs.readFileSync(path.join(pack, 'CHAR_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P08 approval status');
+const charGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_CHAR.ebnf'), 'utf8');
+assert(charGrammar.includes('Accepted by the user on 2026-10-04'), 'Invalid P08 grammar approval status');
+const compactGrammar = text => text.replace(/\(\*[\s\S]*?\*\)/g, '').replace(/\s+/g, '');
+const baseGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf'), 'utf8');
+assert(compactGrammar(charGrammar).replace('"INT"|"CHAR"|', '"INT"|') === compactGrammar(baseGrammar), 'P08 grammar changes more than the CHAR primary terminal');
+checks.push('P08 char 승인 subset/날짜·전용 EBNF는 CHAR primary만 추가·전체 D07 Draft 경계');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

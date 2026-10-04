@@ -7,6 +7,165 @@ static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[test]
 #[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p08_char_example_and_global_only_formatter_match_in_both_profiles() {
+    for profile in ["debug", "release"] {
+        for (source, expected) in [
+            (
+                include_str!("../../../examples/characters.nova"),
+                "letter=가, face=🙂, brace={, ordered=true\n",
+            ),
+            ("const C='🙂';func main(){print(\"{C}\")}", "🙂\n"),
+        ] {
+            let result = program_profile(source, profile);
+            assert!(
+                result.status.success(),
+                "{profile}: {}",
+                String::from_utf8_lossy(&result.stderr)
+            );
+            assert_eq!(result.stdout, expected.as_bytes());
+            assert!(result.stderr.is_empty());
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p08_char_utf8_controls_comparison_abi_order_and_string_lifetimes_are_native() {
+    let mut source = String::from("func echo(x:char)->char{return x} func left()->char{print(\"left\");return 'a'} func right()->char{print(\"right\");return 'b'} func main(){");
+    let mut expected = Vec::new();
+    for (i, value) in [
+        0u32, 0x7f, 0x80, 0x7ff, 0x800, 0xd7ff, 0xe000, 0xffff, 0x10000, 0x10ffff, 0x378, 10, 13,
+        9, 39, 34, 92, 123, 125,
+    ]
+    .iter()
+    .enumerate()
+    {
+        source.push_str(&format!("const c{i}:char='\\u{{{value:X}}}';var v{i}:char=echo(c{i});let old{i}=\"{{v{i}}}\";v{i}='x';print(old{i});print(\"{{v{i}}}\");"));
+        let scalar = char::from_u32(*value).unwrap();
+        expected.extend_from_slice(scalar.encode_utf8(&mut [0; 4]).as_bytes());
+        expected.extend_from_slice(b"\nx\n");
+    }
+    for (i, op) in ["==", "!=", "<", "<=", ">", ">="].iter().enumerate() {
+        for (j, (a, b)) in [
+            (0x61u32, 0x61u32),
+            (0x61, 0x62),
+            (0xd7ff, 0xe000),
+            (0x10ffff, 0),
+        ]
+        .iter()
+        .enumerate()
+        {
+            source.push_str(&format!("const c{i}_{j}='\\u{{{a:X}}}'{op}'\\u{{{b:X}}}';let a{i}_{j}=echo('\\u{{{a:X}}}');let b{i}_{j}=echo('\\u{{{b:X}}}');let r{i}_{j}=a{i}_{j}{op}b{i}_{j};print(\"{{c{i}_{j}}} {{r{i}_{j}}}\");"));
+            let value = match *op {
+                "==" => a == b,
+                "!=" => a != b,
+                "<" => a < b,
+                "<=" => a <= b,
+                ">" => a > b,
+                ">=" => a >= b,
+                _ => unreachable!(),
+            };
+            expected.extend_from_slice(format!("{value} {value}\n").as_bytes());
+        }
+    }
+    source.push_str("let ordered=left()<right();print(\"{ordered}\");var ch='a';while ch<'z'{ch='z';continue};print(\"{ch}\")}");
+    expected.extend_from_slice(b"left\nright\ntrue\nz\n");
+    for profile in ["debug", "release"] {
+        let result = program_profile(&source, profile);
+        assert!(
+            result.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, expected);
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires Windows x64 MSVC Rust linker"]
+fn p08_private_runtime_invalid_scalar_aborts_with_source_in_o0_o2() {
+    // Compile the actual runtime inside a module; the test supplies its link bridge.
+    // This exercises invalid ABI values without introducing a Nova source cast.
+    let runtime = include_str!("../runtime/stage_a.rs")
+        .lines()
+        .filter(|line| !line.starts_with("//!"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let source = format!(
+        r#"
+#[allow(dead_code)] mod runtime {{
+{runtime}
+pub unsafe fn print_value(value:NovaString) {{ unsafe {{nova_print(value.ptr,value.len,7,11,19)}} }}
+}}
+#[no_mangle] pub extern "C" fn nova_stage_a_entry() {{}}
+fn main() {{
+    let value:u32=std::env::args().nth(1).unwrap().parse().unwrap();
+    let mut out=std::mem::MaybeUninit::<runtime::NovaString>::uninit();
+    unsafe {{runtime::nova_format_char(out.as_mut_ptr(),value,7,11,19);runtime::print_value(out.assume_init());}}
+}}
+"#
+    );
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/runtime-char-tests")
+        .join(format!(
+            "{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+    std::fs::create_dir_all(&root).unwrap();
+    let path = root.join("harness.rs");
+    std::fs::write(&path, source).unwrap();
+    for level in ["0", "2"] {
+        let executable = root.join(format!("char-o{level}.exe"));
+        let compiler =
+            Command::new(std::env::var_os("NOVA_RUSTC").unwrap_or_else(|| "rustc".into()))
+                .arg(&path)
+                .args([
+                    "--edition=2021",
+                    "-Cpanic=abort",
+                    "-C",
+                    &format!("opt-level={level}"),
+                    "-o",
+                ])
+                .arg(&executable)
+                .output()
+                .unwrap();
+        assert!(
+            compiler.status.success(),
+            "{}",
+            String::from_utf8_lossy(&compiler.stderr)
+        );
+        for value in [
+            0u32, 0x7f, 0x80, 0x7ff, 0x800, 0xd7ff, 0xe000, 0xffff, 0x10000, 0x10ffff,
+        ] {
+            let result = Command::new(&executable)
+                .arg(value.to_string())
+                .output()
+                .unwrap();
+            assert!(result.status.success());
+            let mut expected = char::from_u32(value).unwrap().to_string().into_bytes();
+            expected.push(b'\n');
+            assert_eq!(result.stdout, expected);
+            assert!(result.stderr.is_empty());
+        }
+        for value in [0xd800u32, 0xdfff, 0x110000, u32::MAX] {
+            let result = Command::new(&executable)
+                .arg(value.to_string())
+                .output()
+                .unwrap();
+            assert!(!result.status.success());
+            assert!(result.stdout.is_empty());
+            assert_eq!(
+                result.stderr,
+                b"Nova panic: invalid char scalar at file#7:11..19\n"
+            );
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
 fn p07_example_and_all_width_arithmetic_abi_formatting_match_const_in_both_profiles() {
     let mut source = String::new();
     let cases = [
@@ -98,6 +257,10 @@ fn p07_all_width_abort_boundaries_have_exact_source_in_both_profiles() {
                 assert!(!result.status.success(), "{ty} {expr} {profile}");
                 assert!(result.stdout.is_empty());
                 let stderr = String::from_utf8(result.stderr).unwrap();
+                assert!(
+                    stderr.starts_with("Nova panic:"),
+                    "{ty} {expr} {profile}: {stderr}"
+                );
                 let mut lines = stderr.lines();
                 assert_eq!(
                     lines.next(),

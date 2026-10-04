@@ -18,6 +18,74 @@ fn kinds(result: &Lexed) -> Vec<TokenKind> {
         .collect()
 }
 
+#[test]
+fn p08_character_boundaries_escapes_and_errors_preserve_d04() {
+    for literal in [
+        r"'\0'",
+        r"'\n'",
+        r"'\r'",
+        r"'\t'",
+        r"'\\'",
+        r#"'\"'"#,
+        r"'\''",
+        "'{'",
+        "'}'",
+        "'가'",
+        "'🙂'",
+        r"'\u{7f}'",
+        r"'\u{80}'",
+        r"'\u{7ff}'",
+        r"'\u{800}'",
+        r"'\u{D7FF}'",
+        r"'\u{E000}'",
+        r"'\u{FFFF}'",
+        r"'\u{10000}'",
+        r"'\u{10FFFF}'",
+        r"'\u{0378}'",
+    ] {
+        let (sources, result) = scan(literal);
+        assert_lossless(literal, &sources, &result);
+        assert!(!result.has_errors(), "{literal}: {:?}", result.diagnostics);
+        assert_eq!(kinds(&result), [TokenKind::Character, TokenKind::Eof]);
+        assert_eq!(sources.slice(result.tokens[0].span).unwrap(), literal);
+        let normalized = normalize_ends(&scan(&format!("{literal}\nlet x=1")).1.tokens);
+        assert!(normalized
+            .iter()
+            .any(|t| matches!(t.kind, TokenKind::End(_))));
+    }
+    for (literal, code) in [
+        ("''", "N1002"),
+        ("'ab'", "N1002"),
+        ("'{{'", "N1002"),
+        ("'e\u{301}'", "N1002"),
+        (r"'\u{D800}'", "N1002"),
+        (r"'\u{DFFF}'", "N1002"),
+        (r"'\u{110000}'", "N1002"),
+        (r"'\u{}'", "N1002"),
+        (r"'\u{0000000}'", "N1002"),
+        (r"'\q'", "N1002"),
+        ("'\n'", "N1002"),
+        ("'a", "N1003"),
+    ] {
+        let (sources, result) = scan(literal);
+        assert_lossless(literal, &sources, &result);
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|d| d.code.to_string() == code),
+            "{literal}: {:?}",
+            result.diagnostics
+        );
+        // D04 recovery stops before a raw newline and keeps the rest lossless.
+        assert_eq!(
+            sources.slice(result.tokens[0].span).unwrap(),
+            if literal == "'\n'" { "'" } else { literal }
+        );
+        assert_eq!(result.tokens[0].kind, TokenKind::Error);
+    }
+}
+
 fn assert_lossless(text: &str, sources: &SourceDatabase, result: &Lexed) {
     let mut cursor = 0;
     let mut reconstructed = String::new();

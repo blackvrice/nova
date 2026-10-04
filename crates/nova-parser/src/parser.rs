@@ -571,6 +571,7 @@ impl<'a> Parser<'a> {
                 return self.node(NodeKind::Prefix(operator), start, vec![operand]);
             }
             TokenKind::Integer => NodeKind::Integer,
+            TokenKind::Character => NodeKind::Character,
             TokenKind::String => NodeKind::String,
             TokenKind::Identifier => NodeKind::Name,
             TokenKind::Keyword(Keyword::True) => NodeKind::Boolean(true),
@@ -713,7 +714,6 @@ fn unsupported(kind: TokenKind) -> bool {
     matches!(
         kind,
         TokenKind::Float
-            | TokenKind::Character
             | TokenKind::LeftBracket
             | TokenKind::Dot
             | TokenKind::Symbol(

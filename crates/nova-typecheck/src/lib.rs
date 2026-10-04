@@ -339,6 +339,7 @@ impl Checker<'_> {
                 match self.module.symbol(name).expect("type symbol exists") {
                     "int32" => Type::Int32,
                     "bool" => Type::Bool,
+                    "char" => Type::Char,
                     "string" => Type::String,
                     "int8" => Type::Int8,
                     "int16" => Type::Int16,
@@ -347,7 +348,7 @@ impl Checker<'_> {
                     "uint16" => Type::UInt16,
                     "uint32" => Type::UInt32,
                     "uint64" => Type::UInt64,
-                    "char" | "float32" | "float64" | "never" => {
+                    "float32" | "float64" | "never" => {
                         self.report(
                             1102,
                             node.span,
@@ -744,6 +745,7 @@ impl Checker<'_> {
         match &node.kind {
             HirKind::Error => self.set(id, Type::Error),
             HirKind::Integer(spelling) => self.literal(id, spelling, false, context),
+            HirKind::Character(_) => self.set(id, Type::Char),
             HirKind::String(_) => self.set(id, Type::String),
             HirKind::Boolean(_) => self.set(id, Type::Bool),
             HirKind::Unit => self.set(id, Type::Unit),
@@ -946,6 +948,7 @@ impl Checker<'_> {
                         | Symbol::GreaterEqual
                 );
                 let logical = matches!(op, Symbol::AndAnd | Symbol::OrOr);
+                let char_valid = left == Type::Char && right == Type::Char && comparison;
                 let bool_valid = left == Type::Bool
                     && right == Type::Bool
                     && (logical || matches!(op, Symbol::EqualEqual | Symbol::BangEqual));
@@ -961,7 +964,7 @@ impl Checker<'_> {
                     self.mismatch(node.children[0], expected, None);
                     self.mismatch(node.children[1], expected, None);
                     self.set(id, if comparison { Type::Bool } else { common.ty() });
-                } else if bool_valid {
+                } else if bool_valid || char_valid {
                     self.set(id, Type::Bool);
                 } else {
                     self.report(
@@ -1020,12 +1023,12 @@ impl Checker<'_> {
                 let value = node.children[0];
                 let actual = self.ty(self.result.type_table[value.0]);
                 if actual.integer().is_none()
-                    && !matches!(actual, Type::Bool | Type::String | Type::Error)
+                    && !matches!(actual, Type::Bool | Type::Char | Type::String | Type::Error)
                 {
                     self.report(
                         2101,
                         self.module.nodes()[value.0].span,
-                        "interpolation requires integer, Bool or String",
+                        "interpolation requires integer, Bool, Char or String",
                         None,
                     );
                     self.set(id, Type::Error);

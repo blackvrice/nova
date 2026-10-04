@@ -42,6 +42,35 @@ fn assert_spans(sources: &SourceDatabase, parsed: &Parsed) {
     }
 }
 
+#[test]
+fn p08_character_leaves_and_recovery_preserve_exact_spans() {
+    let (sources, lexed, parsed) =
+        run("func f(x:char)->char{let a='가';let b='{';return '\\u{1F642}'}");
+    assert!(!lexed.has_errors() && !parsed.has_errors());
+    let leaves = parsed
+        .arena
+        .iter()
+        .filter(|(_, n)| n.kind == NodeKind::Character)
+        .map(|(_, n)| {
+            assert!(n.children.is_empty());
+            sources.slice(n.span).unwrap()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(leaves, ["'가'", "'{'", "'\\u{1F642}'"]);
+    for literal in ["''", "'ab'", "'\\u{D800}'"] {
+        let (sources, lexed, parsed) =
+            run(&format!("func f(){{let a={literal}}} func later(){{}}"));
+        assert!(lexed.has_errors());
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert!(parsed.arena.iter().any(|(_, n)| matches!(n.kind, NodeKind::Function { name, .. } if sources.slice(name).unwrap() == "later")));
+    }
+    let source = "func f(){let x='🙂'} func later(){}";
+    for end in (0..=source.len()).filter(|&i| source.is_char_boundary(i)) {
+        run(&source[..end]);
+    }
+    assert_pass(include_str!("../../../examples/characters.nova"));
+}
+
 fn assert_pass(source: &str) -> Parsed {
     let (_, lexed, parsed) = run(source);
     assert!(!lexed.has_errors(), "{:?}", lexed.diagnostics);
@@ -297,7 +326,6 @@ fn unsupported_stage_features_are_not_silently_accepted() {
     for body in [
         "struct X {}",
         "let x=1.5",
-        "let x='a'",
         "let x=none",
         "let x=[1,2]",
         "let x=lambda () => 1",

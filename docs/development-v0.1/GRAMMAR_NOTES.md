@@ -49,6 +49,10 @@ Array/Option/Result의 source 선언은 B, 소유권·Generic 완성에는 C/D �
   Place/type/mode를 검사한다. user partial move는 여전히 금지다.
 - raw pointer/foreign 계약과 static/interface/generic constraint는 별도 의미 검사가 필요하다.
 
+P08 문자 리터럴은 사용자 승인 [char 계약](CHAR_STAGE_B_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)를 따른다.
+P06의 primary에 기존 CHAR terminal만 추가한 31-production grammar이며 Parser에 적용했다.
+타입·const·MIR·Native 검증은 [구현 기록](CHAR_IMPLEMENTATION.md)에 있다.
+
 ## 아직 보장하지 않는 것
 
 nonterminal 검사 통과는 grammar 무모호성 증명이나 실제 parser 테스트 통과가 아니다.

@@ -168,7 +168,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
 }
 
 fn value_type(ty: Type) -> bool {
-    ty.integer().is_some() || matches!(ty, Type::Unit | Type::Bool | Type::String)
+    ty.integer().is_some() || matches!(ty, Type::Unit | Type::Bool | Type::Char | Type::String)
 }
 fn successors(kind: &TerminatorKind) -> Vec<BlockId> {
     match kind {
@@ -276,12 +276,13 @@ impl Validator<'_> {
                     | Symbol::Minus
                     | Symbol::Star
                     | Symbol::Slash
-                    | Symbol::Percent
-                    | Symbol::Less
-                    | Symbol::LessEqual
-                    | Symbol::Greater
-                    | Symbol::GreaterEqual => integer,
-                    Symbol::EqualEqual | Symbol::BangEqual => integer || left == Some(Type::Bool),
+                    | Symbol::Percent => integer,
+                    Symbol::Less | Symbol::LessEqual | Symbol::Greater | Symbol::GreaterEqual => {
+                        integer || left == Some(Type::Char)
+                    }
+                    Symbol::EqualEqual | Symbol::BangEqual => {
+                        integer || matches!(left, Some(Type::Bool | Type::Char))
+                    }
                     _ => {
                         self.report(Violation::InvalidOperator);
                         return None;
@@ -301,7 +302,7 @@ impl Validator<'_> {
                 for part in parts {
                     let ty = self.operand_type(body, part);
                     if ty.and_then(Type::integer).is_none()
-                        && !matches!(ty, Some(Type::Bool | Type::String))
+                        && !matches!(ty, Some(Type::Bool | Type::Char | Type::String))
                     {
                         self.report(Violation::TypeMismatch);
                     }

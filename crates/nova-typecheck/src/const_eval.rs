@@ -60,6 +60,7 @@ pub(crate) fn evaluate(
         let node = &module.nodes()[id.0];
         let allowed = match node.kind {
             HirKind::Integer(_)
+            | HirKind::Character(_)
             | HirKind::Boolean(_)
             | HirKind::String(_)
             | HirKind::Unit
@@ -131,6 +132,7 @@ pub(crate) fn evaluate(
                 }
                 match &node.kind {
                     HirKind::String(text) => values.push(ConstValue::String(text.clone())),
+                    HirKind::Character(value) => values.push(ConstValue::Char(*value)),
                     HirKind::Boolean(value) => values.push(ConstValue::Bool(*value)),
                     HirKind::Unit => values.push(ConstValue::Unit),
                     HirKind::Name(_) => {
@@ -220,6 +222,17 @@ pub(crate) fn evaluate(
                     }
                 } else {
                     match (left, right) {
+                        (ConstValue::Char(left), ConstValue::Char(right)) => {
+                            ConstValue::Bool(match op {
+                                Symbol::EqualEqual => left == right,
+                                Symbol::BangEqual => left != right,
+                                Symbol::Less => left < right,
+                                Symbol::LessEqual => left <= right,
+                                Symbol::Greater => left > right,
+                                Symbol::GreaterEqual => left >= right,
+                                _ => unreachable!("typed char comparison"),
+                            })
+                        }
                         (ConstValue::Bool(left), ConstValue::Bool(right)) => {
                             ConstValue::Bool(match op {
                                 Symbol::EqualEqual => left == right,

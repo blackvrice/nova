@@ -49,6 +49,7 @@ pub enum HirKind {
     ExpressionStatement,
     Name(SymbolId),
     Integer(String),
+    Character(char),
     String(String),
     Boolean(bool),
     Unit,
@@ -264,6 +265,7 @@ pub fn lower(
             NodeKind::ExpressionStatement => HirKind::ExpressionStatement,
             NodeKind::Name => HirKind::Name(intern(node.span, &mut module, &mut interned)?),
             NodeKind::Integer => HirKind::Integer(sources.slice(node.span)?.into()),
+            NodeKind::Character => HirKind::Character(decode_character(sources.slice(node.span)?)?),
             NodeKind::String => {
                 let spelling = sources.slice(node.span)?;
                 let body = spelling
@@ -339,6 +341,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             kind,
             NodeKind::Name
                 | NodeKind::Integer
+                | NodeKind::Character
                 | NodeKind::String
                 | NodeKind::Boolean(_)
                 | NodeKind::Unit
@@ -430,6 +433,24 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
 }
 
 fn decode_text(text: &str) -> Result<String, LoweringError> {
+    decode_literal_body(text, false)
+}
+
+fn decode_character(spelling: &str) -> Result<char, LoweringError> {
+    let body = spelling
+        .strip_prefix('\'')
+        .and_then(|s| s.strip_suffix('\''))
+        .ok_or(LoweringError::MalformedAst)?;
+    let decoded = decode_literal_body(body, true)?;
+    let mut scalars = decoded.chars();
+    let scalar = scalars.next().ok_or(LoweringError::MalformedAst)?;
+    if scalars.next().is_some() {
+        return Err(LoweringError::MalformedAst);
+    }
+    Ok(scalar)
+}
+
+fn decode_literal_body(text: &str, character_literal: bool) -> Result<String, LoweringError> {
     let mut chars = text.chars().peekable();
     let mut output = String::new();
     while let Some(character) = chars.next() {
@@ -464,13 +485,14 @@ fn decode_text(text: &str) -> Result<String, LoweringError> {
                 }
                 _ => return Err(LoweringError::MalformedAst),
             },
-            c @ ('{' | '}') => {
+            c @ ('{' | '}') if !character_literal => {
                 if chars.next() != Some(c) {
                     return Err(LoweringError::MalformedAst);
                 }
                 c
             }
             '\r' | '\n' => return Err(LoweringError::MalformedAst),
+            '\'' if character_literal => return Err(LoweringError::MalformedAst),
             c => c,
         };
         output.push(decoded);

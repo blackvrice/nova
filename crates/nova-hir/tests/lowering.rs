@@ -22,6 +22,62 @@ fn lower_source(source: &str) -> nova_hir::Module {
 }
 
 #[test]
+fn p08_character_decoding_preserves_origin_without_string_brace_rules() {
+    let module = lower_source(
+        r#"func f(){let a='{';let b='}';let c='\'';let d='\0';let e='\u{1F642}';let f='\n';let g='\\';let h='\"';let i='\r';let j='\t'}"#,
+    );
+    let values = module
+        .nodes()
+        .iter()
+        .filter_map(|n| {
+            if let HirKind::Character(c) = n.kind {
+                assert!(matches!(n.origin, SourceOrigin::Source(_)));
+                assert!(n.children.is_empty());
+                Some(c)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        values,
+        ['{', '}', '\'', '\0', '🙂', '\n', '\\', '"', '\r', '\t']
+    );
+}
+
+#[test]
+fn p08_malformed_public_character_ast_is_rejected_without_panics() {
+    for literal in [
+        "a",
+        "'",
+        "''",
+        "'''",
+        "'ab'",
+        "'{{'",
+        "'\n'",
+        "'e\u{301}'",
+        r"'\q'",
+        r"'\u{}'",
+        r"'\u{D800}'",
+        r"'\u{110000}'",
+        r"'\u{0000000}'",
+    ] {
+        let mut sources = SourceDatabase::default();
+        let file = sources.add("api.nova", literal.into()).unwrap();
+        let span = Span::new(file, 0, literal.len()).unwrap();
+        let mut arena = Arena::default();
+        let value = arena.insert(NodeKind::Character, span, vec![]).unwrap();
+        let error = arena.insert(NodeKind::Error, span, vec![value]).unwrap();
+        let root = arena.insert(NodeKind::Root, span, vec![error]).unwrap();
+        assert_eq!(
+            lower(&sources, &arena, root),
+            Err(LoweringError::MalformedAst),
+            "{literal}"
+        );
+    }
+}
+
+#[test]
 fn hello_hir_snapshot() {
     let module = lower_source("func main() {\n    print(\"Hello, Nova\")\n}\n");
     assert_eq!(module.dump(), include_str!("snapshots/hello.hir"));

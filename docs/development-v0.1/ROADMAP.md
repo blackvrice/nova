@@ -59,7 +59,14 @@ MIR Constant lowering을 구현했다. [구현·검증 기록](GLOBAL_CONST_IMPL
 8종 정수와 alias·literal 문맥·checked 산술·const·MIR 변환·보간/private Runtime 상세와 수용 계획은
 사용자 “P07 승인하고 정수 타입·승격 구현 진행” 답변으로 Accepted다.
 타입 검사·const·MIR·LLVM·Runtime과 Windows O0/O2 검증은 [P07 구현 기록](INTEGER_IMPLEMENTATION.md)에 있다.
-기존 P06 grammar를 사용하며 float/char/cast·aggregate/module은 별도 후속으로 남긴다.
+P07은 기존 P06 grammar를 사용하며 float/cast·aggregate/module은 별도 후속으로 남긴다.
+
+[P08 char·scalar 비교·UTF-8 보간](CHAR_STAGE_B_PROPOSAL.md)은
+사용자 “P08 승인하고 char 구현 진행” 답변으로 Accepted다.
+D04의 기존 char token/escape를 AST·HIR·타입·const·MIR·Native로 연결했다.
+[전용 EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 P06 primary에 CHAR만 추가한다.
+[구현·검증 기록](CHAR_IMPLEMENTATION.md)에 Windows O0/O2와 Runtime scalar 경계 검증을 기록했다.
+float/숫자 cast·aggregate/module의 상세 동결은 별도 후속이다.
 
 ## Backlog 경계
 

@@ -32,6 +32,82 @@ fn integer_corpus() -> String {
     source
 }
 
+fn char_corpus() -> String {
+    let mut source = include_str!("../../../examples/characters.nova").to_owned();
+    for (i, op) in ["==", "!=", "<", "<=", ">", ">="].iter().enumerate() {
+        source.push_str(&format!(
+            "func compare{i}(a:char,b:char)->bool{{return a{op}b}}"
+        ));
+    }
+    source
+}
+
+#[test]
+fn p08_ir_uses_scalar_abi_unsigned_comparisons_and_char_formatter() {
+    let corpus = unit(&char_corpus());
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&corpus, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&corpus, target, true).unwrap());
+        assert!(ir
+            .text
+            .contains("define internal fastcc i32 @nova_fn_1(i32 %arg0)"));
+        for predicate in ["eq", "ne", "ult", "ule", "ugt", "uge"] {
+            assert!(ir.text.contains(&format!("icmp {predicate} i32")));
+        }
+        assert!(ir.text.contains("call void @nova_format_char"));
+        assert!(ir.text.contains("i32 128578"));
+        assert!(!ir.text.contains(" = sext ") && !ir.text.contains(" = sdiv "));
+        assert_eq!(ir.sources, corpus.mir().sources);
+        let global_only = unit("const C='🙂';func main(){print(\"{C}\")}");
+        let ir = emit_ir(&global_only, target, true).unwrap();
+        assert!(ir
+            .text
+            .contains("declare void @nova_format_char(ptr, i32, i32, i32, i32)"));
+    }
+}
+
+#[test]
+#[ignore = "requires real LLVM 21.1.8"]
+fn p08_real_llvm_verifies_char_for_coff_elf_o0_o2() {
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG")),
+    };
+    let corpus = unit(&char_corpus());
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-char-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for (target, extension) in [
+        (TargetSpec::WindowsX64Msvc, "obj"),
+        (TargetSpec::LinuxX64Gnu, "o"),
+    ] {
+        for (optimization, name) in [
+            (OptimizationLevel::None, "o0"),
+            (OptimizationLevel::Default, "o2"),
+        ] {
+            let output = root.join(format!("{name}.{extension}"));
+            backend
+                .codegen_unit(
+                    &corpus,
+                    &target,
+                    &CodegenOptions {
+                        object_path: output.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(output).unwrap();
+            assert!(bytes.len() > 100);
+            if extension == "o" {
+                assert_eq!(&bytes[..4], b"\x7fELF");
+            } else {
+                assert_eq!(&bytes[..2], &[0x64, 0x86]);
+            }
+        }
+    }
+}
+
 #[test]
 fn p07_ir_selects_width_sign_extension_guards_and_formatters() {
     let corpus = unit(&integer_corpus());

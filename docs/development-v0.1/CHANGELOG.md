@@ -1,5 +1,23 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P08 char 구현
+
+- 사용자 “P08 승인하고 char 구현 진행” 답변을 Accepted subset/전용 CHAR primary EBNF로 기록.
+- Character AST/HIR·Char 타입/const/MIR, 동일 타입 6종 비교·함수/대입·UTF-8 보간/private Runtime 연결.
+- String brace와 character brace를 구분하고 invalid Runtime scalar는 SourceInfo와 Abort로 거부.
+- [구현·검증 기록](CHAR_IMPLEMENTATION.md), [예제](../../examples/characters.nova), 17개 tests 추가.
+- 기본 187 + 실제 LLVM 4/Native 22 = 총 213 tests, fmt/clippy/all-features·문서 검증 통과.
+  첫 Native 실행의 기존 P07 Runtime 링크 실패와 104-case 재검증 통과는 구현 기록에 명시.
+- 원본·기존 EBNF·D04 Lexer/END·Hello snapshots·전체 D07 Draft 경계 보존.
+
+## 2026-10-04 — P08 char 착수안 (Draft)
+
+- char의 scalar 범위·동일 타입 비교·const·UTF-8 보간·private i32/u32 ABI와 formatter 제안.
+- D04 Lexer/escape/END 보존. character brace에 String brace doubling을 적용하지 않는 decode 경계 명시.
+- [P08 초안](CHAR_STAGE_B_PROPOSAL.md), [검토용 EBNF](GRAMMAR_STAGE_B_CHAR.ebnf) 작성.
+- Draft ledger/validator에 승인 대기·미구현·CHAR primary만의 변경 경계 검사 추가.
+- 기존 Compiler·P01~P07 accepted ledger·accepted EBNF·원본 사양은 보존.
+
 ## 2026-10-04 — P07 정수 타입·승격 구현
 
 - 사용자 “P07 승인하고 정수 타입·승격 구현 진행” 답변에 따라 P07 subset을 Accepted로 기록.
