@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-04 — P07 정수 타입·승격 착수안 (Draft)
+
+- int8~int64/uint8~uint64·Canonical alias, expected/peer literal 문맥과 전체 범위 lossless widening 제안.
+- 공통 정수 타입·폭별 checked Runtime/const·명시적 MIR conversion·정수 보간/private ABI 수용 계획 작성.
+- 기존 P06 source grammar 재사용, float/char/cast/전체 D07은 후속. Compiler·accepted ledger는 유지.
+- Draft ledger와 validator에 P07 승인 경계 검사 추가.
+
 ## 2026-10-04 — P06 단일 파일 전역 const 구현
 
 - 사용자 “P06 승인하고 전역 const 구현 진행” 답변을 Accepted subset으로 기록.

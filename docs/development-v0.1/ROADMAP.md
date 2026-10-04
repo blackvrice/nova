@@ -55,6 +55,10 @@ P02의 기존 함수 print shadow를 보존하고 전역 const print만 N2002로
 MIR Constant lowering을 구현했다. [구현·검증 기록](GLOBAL_CONST_IMPLEMENTATION.md)에 실제 Native 증거를 남겼다.
 다음은 Primitive 확장·숫자 승격·aggregate/module의 최소 상세 범위 검토다. const function도 별도 후속이다.
 
+다음 최소 범위를 [P07 고정 폭 정수·lossless 승격](INTEGER_STAGE_B_PROPOSAL.md)으로 구체화했다.
+8종 정수와 alias·literal 문맥·checked 산술·const·MIR 변환·보간/private Runtime 상세와 수용 계획은
+Draft/승인 대기다. 기존 P06 grammar를 사용하며 float/char/cast·aggregate/module은 별도 후속으로 남긴다.
+
 ## Backlog 경계
 
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,

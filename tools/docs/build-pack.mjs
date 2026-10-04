@@ -102,6 +102,7 @@ for (const row of rows) {
 fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 색인\n\n` +
   `148개 원본 주제를 빠짐없이 보완했다. 전체 상세는 Draft이며 D01~D05 Lexer, [P01 Parser](PARSER_STAGE_A_PROPOSAL.md), [P02 의미 검사](SEMANTICS_STAGE_A_PROPOSAL.md), [P03 Native](NATIVE_STAGE_A_PROPOSAL.md), [P04 가변 변수·반복문](CONTROL_STAGE_B_PROPOSAL.md), [P05 const](CONST_STAGE_B_PROPOSAL.md) subset은 Accepted다. 승인/구현/테스트 통과 상태를 구분한다.\n\n` +
   `[P06 단일 파일 전역 const](GLOBAL_CONST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf) subset도 Accepted이며 [구현·검증 기록](GLOBAL_CONST_IMPLEMENTATION.md)을 따른다.\n\n` +
+  `[P07 고정 폭 정수·승격](INTEGER_STAGE_B_PROPOSAL.md)은 Draft/승인 대기이며 미구현이다. 기존 P06 source grammar를 재사용한다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -128,6 +129,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P04', scope: 'Stage B initialized mutable locals direct assignment while break continue and N3004', approval_date: '2026-10-04', document: 'CONTROL_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_CONTROL.ebnf' },
     { id: 'P05', scope: 'Stage B local const restricted expressions checked evaluation and 10000 node budget', approval_date: '2026-10-04', document: 'CONST_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_CONST.ebnf' },
     { id: 'P06', scope: 'Stage B single-file global const forward references static dependency cycles and P05 evaluation', approval_date: '2026-10-04', document: 'GLOBAL_CONST_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf', print_name_policy: 'P02 function shadow retained; global const print is N2002' },
+  ],
+  draft_proposals: [
+    { id: 'P07', status: 'Draft', scope: 'Stage B fixed-width signed and unsigned integers contextual literals lossless widening checked arithmetic const MIR conversion and interpolation', document: 'INTEGER_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf', grammar_change: false, implementation_verified: false },
   ],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');

@@ -7,6 +7,11 @@ Stage A Int32 Literal 기본 타입·범위·직접 unary minus 처리는 사용
 후속 사용자 승인 [P03](NATIVE_STAGE_A_PROPOSAL.md)은 Stage A Int32 checked runtime 연산 부분에 적용한다.
 widening/float/cast/const 등 나머지는 Draft다.
 
+함수 내부/전역 const의 현재 Int32 subset은 사용자 승인 P05/P06을 따른다.
+다음 정수 확장 검토안은 [P07](INTEGER_STAGE_B_PROPOSAL.md)이다. 이 문서의 큰 숫자 모델 중
+fixed-width integer만 구체화하며 peer literal 문맥/공통 타입/변환·Runtime 상세도 제안했다.
+P07은 Draft/승인 대기이며 float/cast/전체 D07을 동결하거나 구현한 것이 아니다.
+
 ## 범위와 기본 타입
 
 intN: [-2^(N-1),2^(N-1)-1], uintN: [0,2^N-1]. byte=uint8, int=int32, uint=uint32.

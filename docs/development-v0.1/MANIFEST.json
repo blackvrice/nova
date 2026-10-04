@@ -53,6 +53,17 @@
       "print_name_policy": "P02 function shadow retained; global const print is N2002"
     }
   ],
+  "draft_proposals": [
+    {
+      "id": "P07",
+      "status": "Draft",
+      "scope": "Stage B fixed-width signed and unsigned integers contextual literals lossless widening checked arithmetic const MIR conversion and interpolation",
+      "document": "INTEGER_STAGE_B_PROPOSAL.md",
+      "grammar": "GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf",
+      "grammar_change": false,
+      "implementation_verified": false
+    }
+  ],
   "authored_date": "2026-10-03",
   "topics": [
     {

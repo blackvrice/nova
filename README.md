@@ -87,7 +87,9 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 8. [P06 단일 파일 전역 const](docs/development-v0.1/GLOBAL_CONST_STAGE_B_PROPOSAL.md)와
    [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf) 구현 완료:
    [구현·검증 기록](docs/development-v0.1/GLOBAL_CONST_IMPLEMENTATION.md).
-9. 후속 Stage B 기본 타입·aggregate/module 상세와 Linux Native host 검증.
+9. 다음 검토 대상: [P07 고정 폭 정수 타입·손실 없는 승격](docs/development-v0.1/INTEGER_STAGE_B_PROPOSAL.md).
+   Draft/승인 대기이며 현재 Compiler는 Int32만 지원합니다.
+10. 후속 float/char·aggregate/module 상세와 Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.
