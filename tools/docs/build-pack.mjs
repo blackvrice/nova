@@ -114,6 +114,7 @@ fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 �
   `[P08 char·scalar 비교·UTF-8 보간](CHAR_STAGE_B_PROPOSAL.md)과 [CHAR primary 전용 EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 Accepted이며 [구현·검증 기록](CHAR_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[P09 float·IEEE 결과·숫자 승격·보간](FLOAT_STAGE_B_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf)는 Accepted이며 [구현·검증 기록](FLOAT_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)는 Accepted이며 [구현·검증 기록](CAST_IMPLEMENTATION.md)을 따른다.\n\n` +
+  `[P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과 [검토용 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 Draft/승인 대기이며 Compiler에는 적용하지 않았다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -145,7 +146,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P09', approval_date: '2026-10-04', scope: 'Stage B binary32 binary64 contextual real literals lossless numeric promotion IEEE arithmetic canonical NaN const interpolation and private ABI', document: 'FLOAT_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_FLOAT.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P10', approval_date: '2026-10-05', scope: 'Stage B explicit checked numeric postfix casts integer ranges float rounding truncation const and private Native failure behavior', document: 'CAST_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_CAST.ebnf', grammar_change: true, implementation_verified: true },
   ],
-  draft_proposals: [],
+  draft_proposals: [
+    { id: 'P11', status: 'Draft', scope: 'Stage B root-relative multi-file direct function and global const item imports aliases visibility module graph and cross-file checking', document: 'MODULE_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_MODULE.ebnf', grammar_change: true, implementation_verified: false },
+  ],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);

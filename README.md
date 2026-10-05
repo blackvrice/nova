@@ -98,7 +98,10 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 12. [P10 명시적 숫자 cast](docs/development-v0.1/CAST_STAGE_B_PROPOSAL.md)와
     [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_CAST.ebnf) 구현 완료:
     [checked 변환·const·Native 검증 기록](docs/development-v0.1/CAST_IMPLEMENTATION.md), [예제](examples/casts.nova).
-13. 후속 float remainder·aggregate/module 상세와 Linux Native host 검증.
+13. 다음 검토 대상: [P11 Module·다중 파일 최소 계약](docs/development-v0.1/MODULE_STAGE_B_PROPOSAL.md),
+    [검토 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_MODULE.ebnf)와 [두 파일 Draft fixture](docs/development-v0.1/module-proposal-fixtures/README.md).
+    Draft/승인 대기이며 Compiler에는 미적용입니다.
+14. 후속 aggregate·float remainder/math API·Package·Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.

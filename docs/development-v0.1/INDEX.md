@@ -12,6 +12,8 @@
 
 [P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)는 Accepted이며 [구현·검증 기록](CAST_IMPLEMENTATION.md)을 따른다.
 
+[P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과 [검토용 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 Draft/승인 대기이며 Compiler에는 적용하지 않았다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

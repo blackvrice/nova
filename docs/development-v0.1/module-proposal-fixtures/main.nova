@@ -1,0 +1,7 @@
+use math::add as plus
+use math::OFFSET
+func twice(value:int)->int{return value+value}
+func main(){
+    let value=plus(OFFSET,2)
+    print("value={value}")
+}

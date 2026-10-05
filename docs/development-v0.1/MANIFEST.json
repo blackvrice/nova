@@ -89,7 +89,17 @@
       "implementation_verified": true
     }
   ],
-  "draft_proposals": [],
+  "draft_proposals": [
+    {
+      "id": "P11",
+      "status": "Draft",
+      "scope": "Stage B root-relative multi-file direct function and global const item imports aliases visibility module graph and cross-file checking",
+      "document": "MODULE_STAGE_B_PROPOSAL.md",
+      "grammar": "GRAMMAR_STAGE_B_MODULE.ebnf",
+      "grammar_change": true,
+      "implementation_verified": false
+    }
+  ],
   "authored_date": "2026-10-03",
   "topics": [
     {

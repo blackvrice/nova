@@ -61,6 +61,12 @@ IEEE rounding·NaN/Infinity/±0·const·private formatter의 [구현·검증 기
 [구현·검증 기록](CAST_IMPLEMENTATION.md)을 따른다.
 Bool/Char/String 변환·wrapping/saturating cast API와 전체 D07은 포함하지 않는다.
 
+다음 검토 대상은 [P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과
+[34-production 검토 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)다. **Draft/승인 대기·미구현**이다.
+root-relative 함수/const item import·alias·visibility·순환 함수 참조/const 순환 금지와
+[두 파일 Draft fixture](module-proposal-fixtures/README.md)를 검토한다.
+module alias/qualified value/reexport·package/aggregate와 전체 D06/D30은 제외한다.
+
 ## 상태와 효력
 
 **작성 완료와 사양 승인, 구현 완료, 테스트 통과는 서로 다른 상태다.** 원본 Canonical

@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-05 — P11 Module·다중 파일 착수안 (Draft)
+
+- 원본 파일 경로 module·순환 참조 허용/순환 초기화 금지 기준을 보존하는 [P11 최소 계약](MODULE_STAGE_B_PROPOSAL.md) 작성.
+- root-relative 직접 함수/const item import·alias·visibility·source root CLI·cross-file const/entry/source identity 제안.
+- 기존 P10 production을 유지하고 top-level use/visibility만 추가하는 34-production Draft EBNF와 두 파일 fixture 작성.
+- Draft ledger/미구현 상태·grammar 경계·fixture 데이터를 문서 validator에 추가. Compiler/accepted ledger에는 미적용.
+- module alias/qualified value/reexport·Package/aggregate·전체 D06/D30은 후속.
+
 ## 2026-10-05 — P10 숫자 cast 구현
 
 - 사용자 “P10 승인하고 숫자 cast 구현 진행”을 Accepted subset/전용 postfix EBNF에 기록.

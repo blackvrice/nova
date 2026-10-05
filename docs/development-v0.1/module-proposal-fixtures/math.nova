@@ -1,0 +1,4 @@
+use main::twice
+internal const OFFSET=20
+private const SECRET=1
+public func add(a:int,b:int)->int{return twice(a)+b}
