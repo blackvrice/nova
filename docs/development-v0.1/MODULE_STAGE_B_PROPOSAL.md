@@ -1,7 +1,8 @@
 # Stage B Module·다중 파일 최소 계약 — P11
 
-작성일: 2026-10-05. 상태: **Draft / 사용자 승인 대기**.
-검토용 제안이며 Compiler에 적용하지 않았다. D01~D05/P01~P10과 원본 Canonical을 보존한다.
+작성일: 2026-10-05. 상태: **Accepted / 2026-10-05 사용자 승인**.
+사용자 응답 “P11 승인하고 Module·다중 파일 구현 진행”으로 승인했다.
+[구현·검증 기록](MODULE_IMPLEMENTATION.md)을 따른다. D01~D05/P01~P10과 원본 Canonical을 보존한다.
 이번 범위는 하나의 source root에서 함수·전역 const를 가져오는 다중 파일 컴파일이다.
 전체 D06/Stage B·Package·재export·aggregate 승인이 아니다.
 
@@ -17,7 +18,7 @@
 - 현재 사양: 원본 NOVA-020은 파일 경로로 module 경로 결정, 순환 참조 허용, 순환 초기화 금지를 확정했다.
   NOVA-023은 타입·값·모듈 namespace 분리, nearest scope, 모호성의 임의 선택 금지를 요구한다.
   Lexer에는 use/as/public/internal/private/::가 있고 전체 Draft 문법은 use path as alias를 제안한다.
-  현재 Compiler는 단일 파일만 검사하며 use·visibility·qualified name을 N1102로 거부한다.
+  승인 전 Compiler는 단일 파일만 검사하며 use·visibility·qualified name을 N1102로 거부한다.
 - 발견된 문제: source root와 discovery, import 대상/alias scope, 기본 visibility, cross-file const/entry,
   서로 다른 파일의 ID/Span 및 private Native 이름을 연결하는 최소 계약이 없다.
 - 제안 변경: 아래 root-relative item import·가시성·graph·const·진단·CLI/Native 계약과
@@ -51,7 +52,7 @@
    도달한 논리 경로의 ASCII case-only 충돌 또는 한 physical file의 서로 다른 논리 module 경로는 N2002다.
    참조된 파일의 canonical path가 root 밖으로 나가면 N8001이다. junction/symlink를 통해서도 이 경계를 유지한다.
 5. 모듈 graph는 iteratively 발견하며 동일 module은 한 번만 등록한다. self/circular import를 무한 탐색하지 않는다.
-   entry 포함 최대 1,024개 module을 제안한다. 초과 시 추가 module을 요구한 use path에서 N8901이다.
+   entry 포함 최대 1,024개 module을 적용한다. 초과 시 추가 module을 요구한 use path에서 N8901이다.
    이 제한은 per-const 10,000-node 예산과 별개이며 전체 D30 정책을 동결하지 않는다.
 6. discovery 완료 후 entry FileId는 0, 나머지는 normalized root-relative path의 UTF-8 byte 순서로 할당한다.
    module/definition 수집 결과와 함수·const reference는 import 선언 순서/OS 열거 순서에 의존하지 않는다.
@@ -142,8 +143,9 @@
 
 ## 수용 fixture와 완료 기준
 
-[Draft fixture](module-proposal-fixtures/README.md)는 두 module 사이의 import cycle와 alias를 담고 있다.
-구현 뒤 main.nova의 출력은 `value=42` + LF이며 exit 0이어야 한다. 현재 Compiler 통과 증거가 아니다.
+[수용 fixture](module-proposal-fixtures/README.md)는 두 module 사이의 import cycle와 alias를 담고 있다.
+main.nova는 check exit 0, Native debug/release stdout `value=42` + LF 및 exit 0으로 검증했다.
+기계 기대값과 검증 명령은 fixture README 및 구현 기록에 있다.
 
 - Parser: use/alias/visibility, ::·as newline/END, missing target/alias/EOF, 모든 source truncation 및 후속 선언 recovery.
 - Discovery: nested root-relative path, 명시/기본 root, unused broken file 제외, 중복 module dedup,
@@ -154,12 +156,12 @@
   10,000-node 경계, private/undefined cascade suppression와 여러 파일 primary/secondary.
 - MIR/Codegen: HIR ownership·module/import/visibility/entry/const 변조 거부, source identity 보존,
   module마다 동명 함수와 entry isolation, LLVM COFF/ELF O0/O2 및 Windows Native 전체 회귀.
-- Native: Draft fixture exact stdout/exit, cross-file call/recursion/effect order·String lifetime,
+- Native: 수용 fixture exact stdout/exit, cross-file call/recursion/effect order·String lifetime,
   다른 파일의 checked arithmetic/cast Abort의 정확한 FileId/Span, 모든 실패에서 후속 효과 중단.
 - Cargo fmt/clippy/workspace test/all-features, Runtime rustfmt, 문서/EBNF/ledger 검증.
   문서 validator PASS와 언어 사양 승인·Compiler/Native 수용 통과를 구분한다.
 
-## 작성 단계 검증 — 2026-10-05
+## 승인 전 작성 단계 검증 — 2026-10-05
 
 문서 validator는 148개 원본/보완 hash·로컬 링크·34-production EBNF·기존 P10 production 보존,
 P11 Draft ledger/accepted 제외와 두 파일 fixture의 JSON/UTF-8/LF 데이터를 검사해 PASS했다.
@@ -173,4 +175,4 @@ reachable ModuleGraph/circular reference·cross-file P06 const cycle, Source ide
 source-root CLI·1,024 module 예산과 위 진단/검증, 전용 EBNF다.
 module alias/qualified value/type import·wildcard/reexport·package manifest/dependency·aggregate,
 ownership·public FFI·incremental cache·Linux Native와 전체 D06/D30은 후속이다.
-사용자 승인 전 Compiler와 accepted ledger/기존 accepted EBNF에는 적용하지 않는다.
+위 subset은 사용자 승인 후 Compiler와 accepted ledger에 적용했다. 제외한 의미는 계속 후속 승인 대상이다.

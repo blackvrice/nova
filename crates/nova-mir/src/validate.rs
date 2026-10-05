@@ -35,6 +35,20 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         block: None,
         source: None,
     };
+    if module.sources.get(module.entry.hir.0) != Some(&module.entry) {
+        validator.report(Violation::InvalidSource);
+    }
+    if let Some((callee, source)) = &module.entry_main {
+        if source.span.file() != module.entry.span.file()
+            || module.sources.get(source.hir.0) != Some(source)
+            || !module.callees.contains(callee)
+            || !module.bodies.iter().any(|body| {
+                body.source == *source && module.callees.get(body.callee.0) == Some(callee)
+            })
+        {
+            validator.report(Violation::InvalidCallee);
+        }
+    }
     let mut definitions = BTreeSet::new();
     for (index, source) in module.sources.iter().enumerate() {
         if source.hir.0 != index {
@@ -66,6 +80,16 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
             validator.report(Violation::InvalidCallee);
             continue;
         };
+        let actual_entry = !callee.builtin_print
+            && callee.name == "main"
+            && body.source.span.file() == module.entry.span.file();
+        let certified_entry = module
+            .entry_main
+            .as_ref()
+            .is_some_and(|(original, source)| original == callee && *source == body.source);
+        if actual_entry != certified_entry {
+            validator.report(Violation::InvalidCallee);
+        }
         owners[body.callee.0] += 1;
         if callee.builtin_print || body.entry.0 >= body.blocks.len() {
             validator.report(Violation::InvalidBody);

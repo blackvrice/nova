@@ -29,7 +29,7 @@ impl CodegenUnit {
             .callees
             .iter()
             .enumerate()
-            .filter(|(_, c)| !c.builtin_print && c.name == "main")
+            .filter(|(_, c)| self.mir.entry_definition() == Some(c.definition))
             .collect::<Vec<_>>();
         let fail = |code, message: &str, source| CodegenError::InvalidEntry {
             code,
@@ -40,7 +40,7 @@ impl CodegenUnit {
             return Err(fail(
                 2001,
                 "executable requires a user main function",
-                self.mir.sources.last().copied(),
+                Some(self.mir.entry_source()),
             ));
         }
         let (id, main) = mains[0];

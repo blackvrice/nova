@@ -17,12 +17,30 @@ impl AstNodeId {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Visibility {
+    Public,
+    Internal,
+    Private,
+}
+
 /// P01/P04/P05/P06 syntax. Child lists contain source-ordered IDs, never semantic IDs.
 /// The required child order for each construct is documented below.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NodeKind {
     /// Functions, global const bindings, and recovery errors in source order.
     Root,
+    /// Direct top-level declaration child.
+    Visible {
+        visibility: Visibility,
+        keyword: Span,
+    },
+    /// Path segment children; optional local binding alias.
+    Import {
+        alias: Option<Span>,
+        keyword: Span,
+    },
+    ImportSegment,
     Error,
     /// Parameters, optional return type, then body.
     Function {

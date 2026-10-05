@@ -1,5 +1,5 @@
-(* P11 Module item import subset: Draft, awaiting user approval.
-   Review extension of accepted P10. Only top-level items add use/visibility.
+(* P11 Module item import subset: Accepted by the user on 2026-10-05.
+   Extension of accepted P10. Only top-level items add use/visibility.
    No qualified value expression, module alias, reexport, or new END rules. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl ) }, "EOF" ;
 import_decl = "use", qualified_name, [ "as", "IDENT" ], end ;

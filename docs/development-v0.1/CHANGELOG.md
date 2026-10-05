@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-05 — P11 승인과 Module·다중 파일 구현
+
+- 사용자 “P11 승인하고 Module·다중 파일 구현 진행”으로 계약/34-production EBNF/ledger를 Accepted로 전환.
+- Driver의 reachable discovery·exact spelling·canonical root·hard link/junction physical identity·1,024-module 제한.
+- 파일별 AST root/SourceOrigin, bundle HIR/DefId·import alias/visibility와 cross-file const·entry/MIR 연결.
+- private/duplicate/undefined/const/root 오류의 원 FileId/Span과 frontend gate, Native private symbol/entry isolation 검증.
+- [현재 구현·검증 기록](MODULE_IMPLEMENTATION.md), [두 파일 fixture](module-proposal-fixtures/README.md).
+- 원본 148개 문서와 D01~D05/P01~P10 의미를 보존하며 Package/aggregate/qualified value/reexport는 제외.
+
 ## 2026-10-05 — P11 Module·다중 파일 착수안 (Draft)
 
 - 원본 파일 경로 module·순환 참조 허용/순환 초기화 금지 기준을 보존하는 [P11 최소 계약](MODULE_STAGE_B_PROPOSAL.md) 작성.

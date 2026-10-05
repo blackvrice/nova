@@ -1,6 +1,95 @@
 use nova_ast::{Arena, NodeKind};
 
 #[test]
+fn p11_public_ast_import_keyword_alias_and_path_spelling_are_validated() {
+    for (text, first, second, keyword, alias) in [
+        ("use ..::x", (4, 6), (8, 9), (0, 3), None),
+        ("use lib::x", (4, 7), (9, 10), (4, 7), None),
+        ("use lib::x as y", (4, 7), (9, 10), (0, 3), Some((4, 7))),
+        ("use lib::x as !", (4, 7), (9, 10), (0, 3), Some((14, 15))),
+    ] {
+        let mut sources = SourceDatabase::default();
+        let file = sources.add("api.nova", text.into()).unwrap();
+        let span = |range: (usize, usize)| Span::new(file, range.0, range.1).unwrap();
+        let whole = span((0, text.len()));
+        let mut arena = Arena::default();
+        let a = arena
+            .insert(NodeKind::ImportSegment, span(first), vec![])
+            .unwrap();
+        let b = arena
+            .insert(NodeKind::ImportSegment, span(second), vec![])
+            .unwrap();
+        let import = arena
+            .insert(
+                NodeKind::Import {
+                    keyword: span(keyword),
+                    alias: alias.map(span),
+                },
+                whole,
+                vec![a, b],
+            )
+            .unwrap();
+        let root = arena.insert(NodeKind::Root, whole, vec![import]).unwrap();
+        assert_eq!(
+            lower(&sources, &arena, root),
+            Err(LoweringError::MalformedAst),
+            "{text}"
+        );
+    }
+}
+
+#[test]
+fn p11_bundles_reject_duplicate_files_paths_and_empty_input() {
+    assert_eq!(
+        nova_hir::Module::bundle(vec![]),
+        Err(LoweringError::MalformedAst)
+    );
+    assert_eq!(
+        nova_hir::Module::bundle(vec![
+            ("a".into(), lower_source("func a(){}")),
+            ("b".into(), lower_source("func b(){}"))
+        ]),
+        Err(LoweringError::MalformedAst)
+    );
+    let mut sources = SourceDatabase::default();
+    let mut inputs = vec![];
+    for source in ["func a(){}", "func b(){}"] {
+        let file = sources.add("api.nova", source.into()).unwrap();
+        let lexed = lex(&sources, file).unwrap();
+        let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+        inputs.push((
+            "same".into(),
+            lower(&sources, &parsed.arena, parsed.root).unwrap(),
+        ));
+    }
+    assert_eq!(
+        nova_hir::Module::bundle(inputs),
+        Err(LoweringError::MalformedAst)
+    );
+    for paths in [
+        ["main", "lib", "LIB"],
+        ["main", "z", "a"],
+        ["main", "bad/path", "z"],
+    ] {
+        let mut sources = SourceDatabase::default();
+        let mut inputs = vec![];
+        for path in paths {
+            let file = sources.add("api.nova", "func f(){}".into()).unwrap();
+            let lexed = lex(&sources, file).unwrap();
+            let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+            inputs.push((
+                path.into(),
+                lower(&sources, &parsed.arena, parsed.root).unwrap(),
+            ));
+        }
+        assert_eq!(
+            nova_hir::Module::bundle(inputs),
+            Err(LoweringError::MalformedAst)
+        );
+    }
+}
+
+#[test]
 fn p09_public_ast_float_leaves_cannot_bypass_literal_spelling_contract() {
     for literal in [
         "inf", "NaN", "1", ".5", "1.", "1__0.0", "1_.0", "1.0_", "1e", "1e+", "1e_1", "0x1.0",

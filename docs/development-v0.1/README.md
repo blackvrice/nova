@@ -43,7 +43,7 @@ print 충돌 정정도 사용자 승인했고 현재 API·진단·검증 증거�
 
 [P07 고정 폭 정수 타입·손실 없는 승격](INTEGER_STAGE_B_PROPOSAL.md)은 사용자 승인으로 Accepted다.
 8종 정수·literal 문맥·checked 산술·const·MIR 변환·보간의 [구현·검증 기록](INTEGER_IMPLEMENTATION.md).
-float/cast 최소 범위는 P09/P10을 따르고 aggregate/module은 별도 후속 범위다.
+float/cast 최소 범위는 P09/P10을 따르고 module은 P11, aggregate는 별도 후속 범위다.
 
 [P08 char·Unicode scalar·보간 계약](CHAR_STAGE_B_PROPOSAL.md)과
 [31-production EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 2026-10-04 사용자 승인으로 Accepted다.
@@ -61,8 +61,9 @@ IEEE rounding·NaN/Infinity/±0·const·private formatter의 [구현·검증 기
 [구현·검증 기록](CAST_IMPLEMENTATION.md)을 따른다.
 Bool/Char/String 변환·wrapping/saturating cast API와 전체 D07은 포함하지 않는다.
 
-다음 검토 대상은 [P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과
-[34-production 검토 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)다. **Draft/승인 대기·미구현**이다.
+[P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과
+[34-production EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 2026-10-05 사용자 승인으로 Accepted다.
+[구현·검증 기록](MODULE_IMPLEMENTATION.md)과 [두 파일 수용 fixture](module-proposal-fixtures/README.md)를 따른다.
 root-relative 함수/const item import·alias·visibility·순환 함수 참조/const 순환 금지와
 [두 파일 Draft fixture](module-proposal-fixtures/README.md)를 검토한다.
 module alias/qualified value/reexport·package/aggregate와 전체 D06/D30은 제외한다.

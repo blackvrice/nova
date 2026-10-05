@@ -22,7 +22,7 @@ impl Checker<'_> {
     pub(super) fn check_globals(&mut self) {
         let mut globals = Vec::new();
         let mut indices = vec![None; self.resolved.definitions.len()];
-        for &node in &self.module.nodes()[self.module.root().0].children {
+        for node in self.module.items() {
             let Some(definition) = self.resolved.declaration_ids[node.0] else {
                 continue;
             };
@@ -45,7 +45,13 @@ impl Checker<'_> {
             .diagnostics
             .iter()
             .filter(|d| d.code == DiagnosticCode::new(2002).expect("approved duplicate code"))
-            .map(|d| (d.primary.span.start(), d.primary.span.end()))
+            .map(|d| {
+                (
+                    d.primary.span.file().as_u32(),
+                    d.primary.span.start(),
+                    d.primary.span.end(),
+                )
+            })
             .collect::<BTreeSet<_>>();
         for global in &mut globals {
             let mut seen = BTreeSet::new();
@@ -76,7 +82,9 @@ impl Checker<'_> {
             }
             global.invalid |= self.resolved.definitions[global.definition.0]
                 .span
-                .is_some_and(|span| duplicates.contains(&(span.start(), span.end())));
+                .is_some_and(|span| {
+                    duplicates.contains(&(span.file().as_u32(), span.start(), span.end()))
+                });
             if global.invalid {
                 global.edges.clear();
                 self.result.const_values[global.definition.0] = ConstEvaluation::Invalid;

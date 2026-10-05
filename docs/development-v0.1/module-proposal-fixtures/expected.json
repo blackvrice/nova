@@ -1,10 +1,10 @@
 {
   "proposal": "P11",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": ["main", "math"],
   "import_cycle_permitted": true,
-  "after_implementation": {"check_exit": 0, "native_exit": 0, "stdout": "value=42\n"}
+  "validated_result": {"check_exit": 0, "native_exit": 0, "stdout": "value=42\n"}
 }

@@ -20,6 +20,8 @@ binary32/64 literal·손실 없는 숫자 승격·IEEE 산술/비교·canonical 
 
 숫자 10종의 postfix as·operand literal 문맥 격리·checked 범위/직접 RN 반올림·float truncation·const N3201/Runtime Abort는 사용자 승인 [P10](../CAST_STAGE_B_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_B_CAST.ebnf)를 따른다. [구현·검증 기록](../CAST_IMPLEMENTATION.md). Bool/Char/unsafe cast와 전체 D07은 Draft다.
 
+root-relative 함수/전역 const item import·alias·internal/private/public·reachable graph·cross-file const·entry/source identity는 사용자 승인 [P11](../MODULE_STAGE_B_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_B_MODULE.ebnf)를 따른다. [구현·검증 기록](../MODULE_IMPLEMENTATION.md). module alias/qualified value/reexport/Package와 전체 D06/D30은 후속이다.
+
 ## Mapping 계약
 bool register i1, memory bool representation은 Layout; intN/uintN→iN; float/double→float/double; char→32-bit scalar storage를 D16에서 제안한다. string/Array/Enum/Class/view는 Layout/ABI 결과에 따라 lowered aggregate다.
 

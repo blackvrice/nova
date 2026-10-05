@@ -1,6 +1,7 @@
 //! Syntax lowering and source origins, independent of resolution and type checking.
+pub use nova_ast::Visibility;
 use nova_ast::{Arena, AstNode, AstNodeId, NodeKind};
-use nova_source::{SourceDatabase, SourceError, Span};
+use nova_source::{FileId, SourceDatabase, SourceError, Span};
 use nova_syntax::Symbol;
 use std::collections::HashMap;
 use std::fmt::{self, Write};
@@ -14,11 +15,23 @@ pub struct SymbolId(pub usize);
 pub enum SourceOrigin {
     Source(AstNodeId),
     ImplicitReturn(AstNodeId),
+    FileSource(FileId, AstNodeId),
+    FileImplicitReturn(FileId, AstNodeId),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HirKind {
     Module,
+    Visible {
+        visibility: Visibility,
+        keyword: Span,
+    },
+    Import {
+        alias: Option<SymbolId>,
+        alias_span: Option<Span>,
+        keyword: Span,
+    },
+    ImportSegment(SymbolId),
     Error,
     /// Children: parameters, canonical return type, body.
     Function {
@@ -78,8 +91,155 @@ pub struct Module {
     nodes: Vec<HirNode>,
     symbols: Vec<String>,
     root: HirId,
+    units: Vec<ModuleUnit>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ModuleUnit {
+    pub path: String,
+    pub root: HirId,
+    pub file: FileId,
+}
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ImportEdge {
+    pub from: usize,
+    pub to: usize,
+    pub source: HirId,
 }
 impl Module {
+    pub fn units(&self) -> &[ModuleUnit] {
+        &self.units
+    }
+    pub fn items(&self) -> impl Iterator<Item = HirId> + '_ {
+        self.units
+            .iter()
+            .flat_map(|unit| self.nodes[unit.root.0].children.iter().copied())
+            .map(|id| {
+                if matches!(self.nodes[id.0].kind, HirKind::Visible { .. }) {
+                    self.nodes[id.0].children[0]
+                } else {
+                    id
+                }
+            })
+    }
+    pub fn owner(&self, id: HirId) -> Option<usize> {
+        let node = self.node(id)?;
+        self.units
+            .iter()
+            .position(|unit| unit.file == node.span.file())
+    }
+    pub fn visibility(&self, id: HirId) -> Visibility {
+        let Some(unit) = self.owner(id) else {
+            return Visibility::Private;
+        };
+        self.nodes[self.units[unit].root.0]
+            .children
+            .iter()
+            .find_map(|&wrapper| match self.nodes[wrapper.0].kind {
+                HirKind::Visible { visibility, .. } if self.nodes[wrapper.0].children[0] == id => {
+                    Some(visibility)
+                }
+                _ => None,
+            })
+            .unwrap_or(Visibility::Internal)
+    }
+    pub fn import_path(&self, id: HirId) -> Option<Vec<&str>> {
+        let node = self.node(id)?;
+        if !matches!(node.kind, HirKind::Import { .. }) {
+            return None;
+        }
+        node.children
+            .iter()
+            .map(|&child| match self.node(child)?.kind {
+                HirKind::ImportSegment(symbol) => self.symbol(symbol),
+                _ => None,
+            })
+            .collect()
+    }
+    pub fn edges(&self) -> Vec<ImportEdge> {
+        self.items()
+            .filter_map(|id| {
+                let path = self.import_path(id)?;
+                let to_path = path[..path.len().checked_sub(1)?].join("::");
+                Some(ImportEdge {
+                    from: self.owner(id)?,
+                    to: self.units.iter().position(|u| u.path == to_path)?,
+                    source: id,
+                })
+            })
+            .collect()
+    }
+    /// Combine file-local HIR arenas without fabricating cross-file source parents.
+    /// Input order is entry first, then root-relative byte-sorted module paths.
+    pub fn bundle(inputs: Vec<(String, Module)>) -> Result<Self, LoweringError> {
+        if inputs.is_empty() || inputs.len() > 1024 {
+            return Err(LoweringError::MalformedAst);
+        }
+        let mut out = Self {
+            nodes: vec![],
+            symbols: vec![],
+            root: HirId(0),
+            units: vec![],
+        };
+        let multi = inputs.len() > 1;
+        let mut symbols = HashMap::new();
+        for (path, module) in inputs {
+            if module.units.len() != 1
+                || (!out.units.is_empty() && !path.split("::").all(identifier))
+                || (out.units.len() > 1
+                    && relative_path(&out.units.last().expect("unit").path) > relative_path(&path))
+                || out
+                    .units
+                    .iter()
+                    .any(|u| u.path.eq_ignore_ascii_case(&path) || u.file == module.units[0].file)
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+            let offset = out.nodes.len();
+            let mapping = module
+                .symbols
+                .iter()
+                .map(|s| intern_symbol(s, &mut out, &mut symbols))
+                .collect::<Vec<_>>();
+            for mut node in module.nodes {
+                for child in &mut node.children {
+                    child.0 += offset;
+                }
+                match &mut node.kind {
+                    HirKind::Function { name, .. }
+                    | HirKind::Parameter { name, .. }
+                    | HirKind::Binding { name, .. }
+                    | HirKind::Name(name)
+                    | HirKind::TypeName(name)
+                    | HirKind::ImportSegment(name) => *name = mapping[name.0],
+                    HirKind::Import {
+                        alias: Some(alias), ..
+                    } => *alias = mapping[alias.0],
+                    _ => {}
+                }
+                if multi {
+                    node.origin = match node.origin {
+                        SourceOrigin::Source(id) => SourceOrigin::FileSource(node.span.file(), id),
+                        SourceOrigin::ImplicitReturn(id) => {
+                            SourceOrigin::FileImplicitReturn(node.span.file(), id)
+                        }
+                        _ => return Err(LoweringError::MalformedAst),
+                    };
+                }
+                out.nodes.push(node);
+            }
+            let root = HirId(module.root.0 + offset);
+            if out.units.is_empty() {
+                out.root = root;
+            }
+            out.units.push(ModuleUnit {
+                path,
+                root,
+                file: module.units[0].file,
+            });
+        }
+        Ok(out)
+    }
+
     pub fn root(&self) -> HirId {
         self.root
     }
@@ -97,6 +257,24 @@ impl Module {
     }
     pub fn dump(&self) -> String {
         let mut output = String::new();
+        if self.units.len() > 1 {
+            for (index, unit) in self.units.iter().enumerate() {
+                let _ = writeln!(
+                    output,
+                    "module {index} {:?} root {} file {}",
+                    unit.path,
+                    unit.root.0,
+                    unit.file.as_u32()
+                );
+            }
+            for edge in self.edges() {
+                let _ = writeln!(
+                    output,
+                    "import {} -> {} @ {}",
+                    edge.from, edge.to, edge.source.0
+                );
+            }
+        }
         for (index, spelling) in self.symbols.iter().enumerate() {
             let _ = writeln!(output, "symbol {index} {spelling:?}");
         }
@@ -161,6 +339,50 @@ pub fn lower(
                 return Err(LoweringError::MalformedAst);
             }
         }
+        if node.kind == NodeKind::ImportSegment && !identifier(sources.slice(node.span)?) {
+            return Err(LoweringError::MalformedAst);
+        }
+        if let NodeKind::Import { alias, keyword } = node.kind {
+            if sources.slice(keyword)? != "use"
+                || !inside(node.span, keyword)
+                || alias.is_some_and(|span| !inside(node.span, span))
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+            if let Some(alias) = alias {
+                if !identifier(sources.slice(alias)?)
+                    || node
+                        .children
+                        .last()
+                        .and_then(|&id| arena.get(id))
+                        .is_some_and(|last| alias.start() < last.span.end())
+                {
+                    return Err(LoweringError::MalformedAst);
+                }
+            }
+            if node
+                .children
+                .first()
+                .and_then(|&id| arena.get(id))
+                .is_some_and(|first| first.span.start() < keyword.end())
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::Visible {
+            visibility,
+            keyword,
+        } = node.kind
+        {
+            let spelling = match visibility {
+                Visibility::Public => "public",
+                Visibility::Internal => "internal",
+                Visibility::Private => "private",
+            };
+            if sources.slice(keyword)? != spelling || !inside(node.span, keyword) {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
         if let NodeKind::Cast { keyword } = node.kind {
             if sources.slice(keyword)? != "as"
                 || keyword.file() != node.span.file()
@@ -188,6 +410,7 @@ pub fn lower(
         nodes: vec![],
         symbols: vec![],
         root: HirId(0),
+        units: vec![],
     };
     let mut interned = HashMap::<String, SymbolId>::new();
     let mut mapping = vec![];
@@ -223,6 +446,23 @@ pub fn lower(
         };
         let kind = match node.kind {
             NodeKind::Root => HirKind::Module,
+            NodeKind::Visible {
+                visibility,
+                keyword,
+            } => HirKind::Visible {
+                visibility,
+                keyword,
+            },
+            NodeKind::Import { alias, keyword } => HirKind::Import {
+                alias: alias
+                    .map(|span| intern(span, &mut module, &mut interned))
+                    .transpose()?,
+                alias_span: alias,
+                keyword,
+            },
+            NodeKind::ImportSegment => {
+                HirKind::ImportSegment(intern(node.span, &mut module, &mut interned)?)
+            }
             NodeKind::Error => HirKind::Error,
             NodeKind::Function { name, .. }
             | NodeKind::Parameter { name }
@@ -322,9 +562,30 @@ pub fn lower(
         mapping.push(hir);
     }
     module.root = mapping[root.index()];
+    module.units.push(ModuleUnit {
+        path: String::new(),
+        root: module.root,
+        file: root_node.span.file(),
+    });
     Ok(module)
 }
 
+fn relative_path(path: &str) -> String {
+    format!("{}.nova", path.replace("::", "/"))
+}
+
+fn identifier(text: &str) -> bool {
+    let mut chars = text.chars();
+    chars
+        .next()
+        .is_some_and(|c| c == '_' || unicode_ident::is_xid_start(c))
+        && chars.all(unicode_ident::is_xid_continue)
+        && nova_syntax::Keyword::from_spelling(text).is_none()
+}
+
+fn inside(parent: Span, child: Span) -> bool {
+    parent.file() == child.file() && parent.start() <= child.start() && child.end() <= parent.end()
+}
 fn float_spelling(text: &str) -> bool {
     fn digits(bytes: &[u8], at: &mut usize) -> bool {
         let start = *at;
@@ -429,6 +690,8 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             matches!(
                 k,
                 NodeKind::Function { .. }
+                    | NodeKind::Visible { .. }
+                    | NodeKind::Import { .. }
                     | NodeKind::Binding {
                         constant: true,
                         mutable: false,
@@ -451,6 +714,22 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                     .all(|k| matches!(k, NodeKind::Parameter { .. } | NodeKind::Error))
                 && (!has_return_type || ty(kinds[parameters]))
                 && matches!(kinds.last(), Some(NodeKind::Block | NodeKind::Error))
+        }
+        NodeKind::Visible { .. } => {
+            kinds.len() == 1
+                && matches!(
+                    kinds[0],
+                    NodeKind::Function { .. }
+                        | NodeKind::Binding {
+                            constant: true,
+                            mutable: false,
+                            ..
+                        }
+                        | NodeKind::Error
+                )
+        }
+        NodeKind::Import { .. } => {
+            kinds.len() >= 2 && kinds.iter().all(|k| *k == NodeKind::ImportSegment)
         }
         NodeKind::Parameter { .. } => kinds.len() == 1 && ty(kinds[0]),
         NodeKind::Binding { has_type, .. } => {

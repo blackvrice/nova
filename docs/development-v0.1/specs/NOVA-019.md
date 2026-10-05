@@ -18,6 +18,8 @@ Stage B 가변 지역 변수·반복문 최소 부분은 사용자 진행 요청
 
 단일 파일 전역 const·forward dependency/cycle 최소 부분은 사용자 승인 [P06](../GLOBAL_CONST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](../GRAMMAR_STAGE_B_GLOBAL_CONST.ebnf)를 따른다. [구현·검증 기록](../GLOBAL_CONST_IMPLEMENTATION.md). 함수 print shadow는 기존 P02대로 허용하고 전역 const print만 N2002다. module/const function/전체 D06·D09는 Draft다.
 
+root-relative 함수/전역 const item import·alias·internal/private/public·reachable graph·cross-file const·entry/source identity는 사용자 승인 [P11](../MODULE_STAGE_B_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_B_MODULE.ebnf)를 따른다. [구현·검증 기록](../MODULE_IMPLEMENTATION.md). module alias/qualified value/reexport/Package와 전체 D06/D30은 후속이다.
+
 ## 이름 해석
 먼저 module/type/function 선언을 수집한 뒤 body 참조를 해석한다. 타입·값·모듈 namespace를 분리하고 nearest lexical scope를 검색한다. 결과는 문자열 대신 DefId/LocalId resolution side table이다.
 

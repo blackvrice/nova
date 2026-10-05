@@ -55,6 +55,8 @@ pub fn lower(
         .collect::<Vec<_>>();
     let ty = |id| checked.types.get(id).ok_or(LoweringError::InvalidAnalysis);
     let mut result = Module {
+        entry: sources[hir.root().0],
+        entry_main: None,
         callees: vec![],
         bodies: vec![],
         sources,
@@ -84,13 +86,21 @@ pub fn lower(
             builtin_print: definition.kind == DefinitionKind::BuiltinPrint,
         });
     }
+    for callee in &result.callees {
+        let DefinitionKind::Function(id) = resolved.definitions[callee.definition.0].kind else {
+            continue;
+        };
+        if callee.name == "main" && result.sources[id.0].span.file() == result.entry.span.file() {
+            result.entry_main = Some((callee.clone(), result.sources[id.0]));
+        }
+    }
     // HIR IDs are module-wide and function trees are disjoint. Allocate the
     // expression result table once, rather than once per function.
     let mut values = vec![None; hir.nodes().len()];
-    for &id in &hir.nodes()[hir.root().0].children {
+    for id in hir.items() {
         if matches!(
             hir.nodes()[id.0].kind,
-            HirKind::Binding { constant: true, .. }
+            HirKind::Binding { constant: true, .. } | HirKind::Import { .. }
         ) {
             continue;
         }

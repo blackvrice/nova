@@ -208,15 +208,10 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         }
     }
     for (index, reference) in resolved.references.iter().enumerate() {
-        if let Some(reference) = reference {
-            let HirKind::Name(name) = module.nodes()[index].kind else {
-                return Err(CheckError::InvalidResolution);
-            };
-            if let Resolution::Definition(def) = reference {
-                if module.symbol(name) != Some(resolved.definitions[def.0].name.as_str()) {
-                    return Err(CheckError::InvalidResolution);
-                }
-            }
+        // An alias spelling differs from its original definition. Exact
+        // resolver recomputation above already verifies the target identity.
+        if reference.is_some() && !matches!(module.nodes()[index].kind, HirKind::Name(_)) {
+            return Err(CheckError::InvalidResolution);
         }
     }
     let mut types = TypeInterner::default();
@@ -301,7 +296,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     };
     checker.collect_signatures();
     checker.check_globals();
-    let items = module.nodes()[module.root().0].children.clone();
+    let items = module.items().collect::<Vec<_>>();
     for item in items {
         let node = &module.nodes()[item.0];
         let HirKind::Function { parameters, .. } = node.kind else {
@@ -333,7 +328,17 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         }
         checker.set(item, Type::Function);
     }
-    checker.set(module.root(), Type::Unit);
+    for (index, node) in module.nodes().iter().enumerate() {
+        if matches!(
+            node.kind,
+            HirKind::Module
+                | HirKind::Visible { .. }
+                | HirKind::Import { .. }
+                | HirKind::ImportSegment(_)
+        ) {
+            checker.set(HirId(index), Type::Unit);
+        }
+    }
     Ok(checker.result)
 }
 

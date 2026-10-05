@@ -5,6 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+unicode-ident.workspace = true
 nova-ast.workspace = true
 nova-source.workspace = true
 nova-syntax.workspace = true

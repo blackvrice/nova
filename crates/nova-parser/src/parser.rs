@@ -1,5 +1,5 @@
 use crate::{Parsed, ParserOptions, SyntheticToken};
-use nova_ast::{Arena, AstNodeId, NodeKind};
+use nova_ast::{Arena, AstNodeId, NodeKind, Visibility};
 use nova_diagnostics::{Diagnostic, DiagnosticCode, Label, Severity};
 use nova_source::{FileId, Span};
 use nova_syntax::{Keyword, Symbol, Token, TokenKind};
@@ -50,7 +50,14 @@ impl<'a> Parser<'a> {
                 continue;
             }
             let start = self.current().span.start();
-            if self.kind() == TokenKind::Keyword(Keyword::Func) {
+            if self.kind() == TokenKind::Keyword(Keyword::Use) {
+                items.push(self.import());
+            } else if matches!(
+                self.kind(),
+                TokenKind::Keyword(Keyword::Public | Keyword::Internal | Keyword::Private)
+            ) {
+                items.push(self.visible());
+            } else if self.kind() == TokenKind::Keyword(Keyword::Func) {
                 items.push(self.function());
             } else if self.kind() == TokenKind::Keyword(Keyword::Const) {
                 items.push(self.statement());
@@ -78,6 +85,76 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn import(&mut self) -> AstNodeId {
+        let keyword = self.bump().span;
+        let mut children = vec![];
+        loop {
+            let token = self.expect(TokenKind::Identifier);
+            if token.span.start() == token.span.end() {
+                break;
+            }
+            children.push(self.node(NodeKind::ImportSegment, token.span.start(), vec![]));
+            if !self.eat(TokenKind::Symbol(Symbol::ColonColon)) {
+                break;
+            }
+        }
+        let alias = if self.eat(TokenKind::Keyword(Keyword::As)) {
+            Some(self.expect(TokenKind::Identifier).span)
+        } else {
+            None
+        };
+        if children.len() < 2 {
+            self.report(1102, keyword, "P11 requires a direct module::item import");
+        }
+        if !self.at_end() && self.kind() != TokenKind::Eof {
+            self.report(
+                1102,
+                self.current().span,
+                "only direct item imports are supported",
+            );
+            self.recover_item_tail();
+        } else if self.at_end() {
+            self.bump();
+        }
+        self.node(
+            NodeKind::Import { alias, keyword },
+            keyword.start(),
+            children,
+        )
+    }
+    fn visible(&mut self) -> AstNodeId {
+        let token = self.bump();
+        let visibility = match token.kind {
+            TokenKind::Keyword(Keyword::Public) => Visibility::Public,
+            TokenKind::Keyword(Keyword::Private) => Visibility::Private,
+            _ => Visibility::Internal,
+        };
+        let child = match self.kind() {
+            TokenKind::Keyword(Keyword::Func) => self.function(),
+            TokenKind::Keyword(Keyword::Const) => self.statement(),
+            _ => {
+                self.report(
+                    if self.kind() == TokenKind::Keyword(Keyword::Use) {
+                        1102
+                    } else {
+                        1101
+                    },
+                    self.current().span,
+                    "visibility requires a direct function or global const declaration",
+                );
+                self.recover_item_tail();
+                self.node(NodeKind::Error, token.span.end(), vec![])
+            }
+        };
+        self.node(
+            NodeKind::Visible {
+                visibility,
+                keyword: token.span,
+            },
+            token.span.start(),
+            vec![child],
+        )
+    }
     fn current(&self) -> Token {
         self.tokens[self.cursor]
     }
@@ -188,9 +265,20 @@ impl<'a> Parser<'a> {
     fn recover_item(&mut self) {
         // Always consume the trigger before searching for the next declaration.
         self.bump();
+        self.recover_item_tail();
+    }
+    fn recover_item_tail(&mut self) {
         while !matches!(
             self.kind(),
-            TokenKind::Eof | TokenKind::Keyword(Keyword::Func | Keyword::Const)
+            TokenKind::Eof
+                | TokenKind::Keyword(
+                    Keyword::Func
+                        | Keyword::Const
+                        | Keyword::Use
+                        | Keyword::Public
+                        | Keyword::Internal
+                        | Keyword::Private
+                )
         ) {
             self.bump();
         }

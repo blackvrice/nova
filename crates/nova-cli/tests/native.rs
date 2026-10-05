@@ -5,6 +5,136 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
+fn module_program(main: &str, lib: &str, profile: &str) -> std::process::Output {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/native-module-tests")
+        .join(format!(
+            "{}-{}",
+            std::process::id(),
+            SEQUENCE.fetch_add(1, Ordering::Relaxed)
+        ));
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.canonicalize().unwrap();
+    std::fs::create_dir(root.join("bin")).unwrap();
+    std::fs::write(root.join("bin/main.nova"), main).unwrap();
+    std::fs::write(root.join("lib.nova"), lib).unwrap();
+    Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("run")
+        .arg(root.join("bin/main.nova"))
+        .arg("--source-root")
+        .arg(&root)
+        .args(["--profile", profile])
+        .current_dir(root)
+        .output()
+        .unwrap()
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p11_native_fixture_cycles_recursion_effect_order_string_lifetime_and_entry() {
+    for profile in ["debug", "release"] {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/native-module-tests")
+            .join(format!(
+                "{}-{}",
+                std::process::id(),
+                SEQUENCE.fetch_add(1, Ordering::Relaxed)
+            ));
+        std::fs::create_dir_all(&root).unwrap();
+        let root = root.canonicalize().unwrap();
+        for (name, text) in [
+            (
+                "main.nova",
+                include_str!("../../../docs/development-v0.1/module-proposal-fixtures/main.nova"),
+            ),
+            (
+                "math.nova",
+                include_str!("../../../docs/development-v0.1/module-proposal-fixtures/math.nova"),
+            ),
+        ] {
+            std::fs::write(root.join(name), text).unwrap();
+        }
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("run")
+            .arg(root.join("main.nova"))
+            .args(["--profile", profile])
+            .current_dir(root)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, b"value=42\n");
+        assert!(result.stderr.is_empty());
+        let main = r#"use lib::left;use lib::right;use lib::rec;use lib::echo;use lib::main as peer
+use lib::values;use lib::F;use lib::C;use lib::B;use lib::U
+func twice(n:int)->int{return n+n}
+func main(){let x=left()+right();var s="before";let saved=echo(s);s="after";print("{x} {rec(4)} {saved} {s} {peer(3)}");print(values(F,C,B,U))}"#;
+        let lib = r#"use bin::main::twice
+func left()->int{print("left");return 1}
+func right()->int{print("right");return 2}
+func rec(n:int)->int{if n==0{return 0}else{return 1+rec(n-1)}}
+func echo(s:string)->string{return "{s}"}
+func main(n:int)->int{return twice(n)}
+const F:double=7 as double;const C='🙂';const B=true;const U=()
+func values(x:double,c:char,b:bool,u:())->string{return "{x} {c} {b}"}"#;
+        let result = module_program(main, lib, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "left\nright\n3 4 before after 6\n7 🙂 true\n".as_bytes()
+        );
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p11_cross_file_checked_arithmetic_and_cast_abort_keep_exact_file_and_utf8_span() {
+    for (expression, body, reason) in [
+        (
+            "a+b",
+            "let a:int8=127;let b:int8=1;let x=a+b",
+            "integer overflow",
+        ),
+        (
+            "a as uint8",
+            "let a:int=300;let x=a as uint8",
+            "numeric cast out of range",
+        ),
+    ] {
+        let lib = format!("// 한글 🙂\r\npublic func fail(){{{body};print(\"unreachable\")}}\r\n");
+        let start = lib.find(expression).unwrap();
+        for profile in ["debug", "release"] {
+            let result = module_program(
+                "use lib::fail;func main(){fail();print(\"unreachable\")}",
+                &lib,
+                profile,
+            );
+            assert!(!result.status.success());
+            assert!(result.stdout.is_empty());
+            let stderr = String::from_utf8(result.stderr).unwrap();
+            assert_eq!(
+                stderr.lines().next(),
+                Some(
+                    format!(
+                        "Nova panic: {reason} at file#1:{start}..{}",
+                        start + expression.len()
+                    )
+                    .as_str()
+                ),
+                "{stderr}"
+            );
+        }
+    }
+}
+
 #[test]
 #[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
 fn p09_float_native_example_and_rational_operation_oracle_in_o0_o2() {

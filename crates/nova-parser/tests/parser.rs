@@ -4,6 +4,86 @@ use nova_parser::{parse, parse_with_options, ParseInputError, Parsed, ParserOpti
 use nova_source::{FileId, SourceDatabase, SourceError};
 use nova_syntax::{Symbol, TokenKind};
 
+#[test]
+fn p11_item_imports_aliases_visibility_and_existing_newline_rules() {
+    let source="use\nhelpers::\nmath::add\nas\nplus\npublic func f(){}\ninternal const C=1\nprivate func hidden(){}";
+    let (sources, lexed, parsed) = run(source);
+    assert!(!lexed.has_errors());
+    assert!(!parsed.has_errors(), "{:?}", parsed.diagnostics);
+    let imports = parsed
+        .arena
+        .iter()
+        .filter(|(_, n)| matches!(n.kind, NodeKind::Import { .. }))
+        .collect::<Vec<_>>();
+    assert_eq!(imports.len(), 1);
+    assert_eq!(imports[0].1.children.len(), 3);
+    let NodeKind::Import {
+        alias: Some(alias),
+        keyword,
+    } = imports[0].1.kind
+    else {
+        panic!("import alias")
+    };
+    assert_eq!(sources.slice(alias).unwrap(), "plus");
+    assert_eq!(sources.slice(keyword).unwrap(), "use");
+    assert_eq!(
+        parsed
+            .arena
+            .iter()
+            .filter(|(_, n)| matches!(n.kind, NodeKind::Visible { .. }))
+            .count(),
+        3
+    );
+}
+
+#[test]
+fn p11_excluded_import_forms_and_missing_tokens_recover_later_function() {
+    for prefix in [
+        "use lib",
+        "use lib::",
+        "use lib::x as",
+        "use lib::{x,y}",
+        "use lib::*",
+        "public use lib::x",
+        "public private const X=1",
+        "use lib::x as y ",
+    ] {
+        let source = format!("{prefix} func later(){{}}");
+        let (sources, _, parsed) = run(&source);
+        assert!(parsed.has_errors(), "{prefix}");
+        assert!(parsed.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function {name,..} if sources.slice(name).unwrap()=="later")),"{prefix}");
+    }
+    for source in [
+        "func main(){use lib::x}",
+        "func main(){lib::f()}",
+        "public use lib::x",
+    ] {
+        let (_, _, parsed) = run(source);
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.code.to_string() == "N1102"),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn p11_all_utf8_truncations_preserve_valid_source_ranges_without_panics() {
+    let source =
+        "use 도구::계산::합 as 더하기\npublic func main(){let x=더하기(1)}\nprivate const C=2";
+    for end in (0..=source.len()).filter(|&i| source.is_char_boundary(i)) {
+        let (sources, _, parsed) = run(&source[..end]);
+        for (_, node) in parsed.arena.iter() {
+            sources.slice(node.span).unwrap();
+        }
+        for d in parsed.diagnostics {
+            sources.slice(d.primary.span).unwrap();
+        }
+    }
+}
+
 fn run(source: &str) -> (SourceDatabase, Lexed, Parsed) {
     let mut sources = SourceDatabase::default();
     let file = sources.add("test.nova", source.into()).unwrap();

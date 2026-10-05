@@ -140,12 +140,22 @@ pub struct Body {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Module {
+    entry: SourceInfo,
+    entry_main: Option<(Callee, SourceInfo)>,
     pub callees: Vec<Callee>,
     pub bodies: Vec<Body>,
     /// An immutable provenance table retained for independent MIR validation.
     pub sources: Vec<SourceInfo>,
 }
 impl Module {
+    pub fn entry_definition(&self) -> Option<DefId> {
+        self.entry_main
+            .as_ref()
+            .map(|(callee, _)| callee.definition)
+    }
+    pub fn entry_source(&self) -> SourceInfo {
+        self.entry
+    }
     /// Deterministic, versioned debug representation, not a serialized ABI.
     pub fn dump(&self) -> String {
         let mut text = String::from("nova-mir v1 (abstract-runtime)\n");

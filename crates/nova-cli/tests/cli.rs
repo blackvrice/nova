@@ -4,6 +4,121 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn p11_module_failures_gate_tools_and_preserve_outputs_for_all_commands() {
+    for (main, lib, code) in [
+        ("use missing::C;func main(){}", "const C=1", "N2001"),
+        (
+            "use lib::C;func main(){let x=C}",
+            "private const C=1",
+            "N2004",
+        ),
+        (
+            "use lib::C;const A=false&&C;func main(){}",
+            "use main::A;const C=A",
+            "N3202",
+        ),
+        ("use lib::C;func main(){}", "const C=300 as uint8", "N3201"),
+        ("use lib::C;use lib::C;func main(){}", "const C=1", "N2002"),
+        (
+            "use lib::C;func main(){}",
+            "const C=1;func unused(){let x=missing}",
+            "N2001",
+        ),
+        ("use lib::C;func main(){}", "const C=1", "N8001"),
+    ] {
+        let root = directory();
+        let source = root.join("main.nova");
+        let output = root.join("keep.exe");
+        std::fs::write(&source, main).unwrap();
+        std::fs::write(
+            root.join("lib.nova"),
+            if code == "N8001" {
+                &[0xff][..]
+            } else {
+                lib.as_bytes()
+            },
+        )
+        .unwrap();
+        std::fs::write(&output, b"keep").unwrap();
+        for command in ["check", "build", "run"] {
+            let mut process = Command::new(env!("CARGO_BIN_EXE_nova"));
+            process
+                .arg(command)
+                .arg(&source)
+                .args(["--source-root"])
+                .arg(&root)
+                .env("NOVA_CLANG", "missing-clang")
+                .env("NOVA_RUSTC", "missing-rustc")
+                .current_dir(&root);
+            if command == "build" {
+                process.arg("-o").arg(&output);
+            }
+            let result = process.output().unwrap();
+            assert_eq!(result.status.code(), Some(1));
+            let stderr = String::from_utf8(result.stderr).unwrap();
+            assert!(stderr.contains(code), "{stderr}");
+            assert!(!root.join("target").exists());
+            assert_eq!(std::fs::read(&output).unwrap(), b"keep");
+        }
+    }
+}
+
+#[test]
+fn p11_source_root_usage_and_nested_entry_check_without_native_tools() {
+    let root = directory();
+    std::fs::create_dir(root.join("bin")).unwrap();
+    std::fs::create_dir(root.join("helpers")).unwrap();
+    let source = root.join("bin/main.nova");
+    std::fs::write(&source, "use helpers::math::C;func main(){let c=C}").unwrap();
+    std::fs::write(root.join("helpers/math.nova"), "public const C=1").unwrap();
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("check")
+        .arg(&source)
+        .arg("--source-root")
+        .arg(&root)
+        .env("NOVA_CLANG", "missing")
+        .current_dir(&root)
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert!(!root.join("target").exists());
+    for command in ["check", "build", "run"] {
+        for flags in [
+            vec!["--source-root"],
+            vec!["--source-root", ".", "--source-root", "."],
+        ] {
+            let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg(command)
+                .arg(&source)
+                .args(flags)
+                .current_dir(&root)
+                .output()
+                .unwrap();
+            assert_eq!(result.status.code(), Some(2));
+            assert!(!root.join("target").exists());
+        }
+    }
+    let source = root.join("fragment.nova");
+    std::fs::write(&source, "use helpers::math::C;func f(){}").unwrap();
+    for command in ["build", "run"] {
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg(command)
+            .arg(&source)
+            .env("NOVA_CLANG", "missing")
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert_eq!(result.status.code(), Some(1));
+        assert!(String::from_utf8(result.stderr).unwrap().contains("N2001"));
+        assert!(!root.join("target").exists());
+    }
+}
+
+#[test]
 fn p09_float_failures_precede_tools_and_preserve_existing_output() {
     for (program, code) in [
         ("func main(){let x:float=1}", "N2101"),

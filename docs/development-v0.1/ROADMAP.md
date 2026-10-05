@@ -79,13 +79,14 @@ float/숫자 cast 최소 계약은 아래 P09/P10을 따르고 aggregate/module�
 [P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)는 사용자 승인으로 Accepted이며 구현했다.
 [전용 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)는 P09 postfix에 `as type`만 추가한다.
 checked narrowing·직접 RN 반올림·truncation 후 범위 검사·finite narrowing 실패와 const/Runtime
-진단의 [구현·검증 기록](CAST_IMPLEMENTATION.md). 후속은 aggregate/module 최소 계약의 정의·검토와
+진단의 [구현·검증 기록](CAST_IMPLEMENTATION.md). 후속은 aggregate 최소 계약의 정의·검토와
 float remainder/math API, Linux Native host 실행 검증이다. 전체 D07 승인을 의미하지 않는다.
 
-다음 작업은 [P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)의 검토다.
-[전용 Draft EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 top-level use/visibility만 추가한다.
-root-relative 함수/전역 const item import·alias·가시성·reachable graph·cross-file const/entry/source identity를 제안한다.
-P11은 Draft/사용자 승인 대기이며 Compiler와 accepted ledger에는 적용하지 않았다.
+[P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)은 2026-10-05 사용자 승인 후 구현했다.
+[전용 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 top-level use/visibility만 추가한다.
+root-relative 함수/전역 const import·alias·가시성·reachable graph·cross-file const/entry/source identity와
+[구현·검증 증거](MODULE_IMPLEMENTATION.md)를 따른다. module alias/qualified value/reexport/Package와 전체 D06/D30은 후속이다.
+다음 구현 후보는 Stage B aggregate의 최소 계약 정리와 사용자 승인이다.
 
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,
 hosted .NET/JVM/Python, self-hosting은 별도 버전/범위 검토. Stage A의 Advanced Optimization,

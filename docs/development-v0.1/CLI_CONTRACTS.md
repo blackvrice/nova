@@ -24,6 +24,14 @@ output은 명시 -o 또는 workspace target/<triple>/<profile> 후보다. 이름
 cache key와 artifact metadata에 반영한다. 중간 생성 실패 시 partial output를 성공 산출물로
 등록하지 않는다. supported emit는 해당 단계가 구현된 경우만 허용한다.
 
+## P11 승인된 다중 파일 옵션
+
+check/build/run에 `--source-root <directory>`를 선택적으로 사용한다. 기본은 entry의 부모다.
+entry FileId 0과 도달한 import 파일만 전체 frontend/MIR에서 검사한다.
+가시성·const 순환·읽기·UTF-8·root/1,024-module 오류는 exit 1이며 도구/출력 생성 전에 거부한다.
+옵션 중복/값 누락은 exit 2다. [P11](MODULE_STAGE_B_PROPOSAL.md)과 [검증 기록](MODULE_IMPLEMENTATION.md).
+Package manifest/dependency와 qualified value/reexport는 제외한다.
+
 ## stream과 exit
 
 human diagnostics stderr, requested dump stdout; run child stdout/stderr는 그대로 연결.

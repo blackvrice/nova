@@ -29,7 +29,7 @@ fn execute(args: Vec<OsString>) -> Result<u8, Failure> {
         return Ok(0);
     }
     if args.len() == 1 && (args[0] == "--help" || args[0] == "help") {
-        println!("nova check <file.nova>\nnova build <file.nova> [-o <new-path>] [--profile debug|release]\nnova run <file.nova> [--profile debug|release]\nNOVA_CLANG / NOVA_RUSTC select native tools.");
+        println!("nova check <file.nova> [--source-root <directory>]\nnova build <file.nova> [-o <new-path>] [--profile debug|release] [--source-root <directory>]\nnova run <file.nova> [--profile debug|release] [--source-root <directory>]\nNOVA_CLANG / NOVA_RUSTC select native tools.");
         return Ok(0);
     }
     if args.len() < 2 {
@@ -47,6 +47,7 @@ fn execute(args: Vec<OsString>) -> Result<u8, Failure> {
         return Err((2, "input must be a .nova file".into()));
     }
     let mut output = None;
+    let mut source_root = None;
     let mut optimization = OptimizationLevel::None;
     let mut profile_seen = false;
     let mut remaining = args[2..].iter();
@@ -56,6 +57,8 @@ fn execute(args: Vec<OsString>) -> Result<u8, Failure> {
             .ok_or((2, "option requires a value".into()))?;
         if flag == "-o" && command == "build" && output.is_none() {
             output = Some(PathBuf::from(value));
+        } else if flag == "--source-root" && source_root.is_none() {
+            source_root = Some(PathBuf::from(value));
         } else if flag == "--profile" && command != "check" && !profile_seen {
             optimization = if value == "debug" {
                 OptimizationLevel::None
@@ -69,7 +72,7 @@ fn execute(args: Vec<OsString>) -> Result<u8, Failure> {
             return Err((2, "unsupported or repeated option".into()));
         }
     }
-    let unit = frontend(&source, command != "check")?;
+    let unit = frontend(&source, command != "check", source_root.as_deref())?;
     if command == "check" {
         return Ok(0);
     }
@@ -168,22 +171,17 @@ fn backend_error(error: CodegenError) -> Failure {
     };
     (code, error.to_string())
 }
-fn frontend(path: &Path, executable: bool) -> Result<CodegenUnit, Failure> {
-    let text = fs::read_to_string(path).map_err(|e| (1, format!("{}: {e}", path.display())))?;
-    let mut sources = SourceDatabase::default();
-    let file = sources
-        .add(path.to_string_lossy().into_owned(), text)
-        .map_err(|e| (1, e.to_string()))?;
-    let lexed = nova_lexer::lex(&sources, file).map_err(|e| (1, e.to_string()))?;
-    let parsed = nova_parser::parse(&sources, file, &nova_lexer::normalize_ends(&lexed.tokens))
-        .map_err(|e| (101, e.to_string()))?;
-    let mut diagnostics = lexed.diagnostics.clone();
-    diagnostics.extend(parsed.diagnostics.iter().cloned());
-    if lexed.has_errors() || parsed.has_errors() {
-        return Err((1, render(&sources, &diagnostics)?));
-    }
-    let hir =
-        nova_hir::lower(&sources, &parsed.arena, parsed.root).map_err(|e| (101, e.to_string()))?;
+fn frontend(
+    path: &Path,
+    executable: bool,
+    source_root: Option<&Path>,
+) -> Result<CodegenUnit, Failure> {
+    let loaded = nova_driver::load(path, source_root)
+        .map_err(|e| (if e.code == 101 { 101 } else { 1 }, e.to_string()))?;
+    let sources = loaded.sources;
+    let Some(hir) = loaded.module else {
+        return Err((1, render(&sources, &loaded.diagnostics)?));
+    };
     let resolved = nova_resolve::resolve(&hir);
     let checked = nova_typecheck::check(&hir, &resolved).map_err(|e| {
         let code = if e == nova_typecheck::CheckError::UnsupportedFloatHost {

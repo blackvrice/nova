@@ -175,15 +175,15 @@ assert(castGrammar.includes('Accepted by the user on 2026-10-05'), 'Invalid P10 
 assert(compactGrammar(castGrammar).replace('|"as",type', '') === compactGrammar(floatGrammar), 'P10 grammar changes more than the as type postfix');
 checks.push('P10 숫자 cast 승인 subset/날짜·전용 EBNF는 as type postfix만 추가·전체 D07 Draft 경계');
 
-const moduleProposal = manifest.draft_proposals?.find(p => p.id === 'P11');
-assert(moduleProposal?.status === 'Draft' && moduleProposal?.implementation_verified === false
+const moduleProposal = manifest.accepted_proposals?.find(p => p.id === 'P11');
+assert(moduleProposal?.approval_date === '2026-10-05' && moduleProposal?.implementation_verified === true
   && moduleProposal?.document === 'MODULE_STAGE_B_PROPOSAL.md'
   && moduleProposal?.grammar === 'GRAMMAR_STAGE_B_MODULE.ebnf'
-  && moduleProposal?.grammar_change === true, 'Missing P11 module draft ledger');
-assert(!manifest.accepted_proposals?.some(p => p.id === 'P11'), 'Unapproved P11 in accepted ledger');
-assert(fs.readFileSync(path.join(pack, 'MODULE_STAGE_B_PROPOSAL.md'), 'utf8').includes('Draft / 사용자 승인 대기'), 'Invalid P11 draft status');
+  && moduleProposal?.grammar_change === true, 'Missing P11 approved module ledger');
+assert(!manifest.draft_proposals?.some(p => p.id === 'P11'), 'Accepted P11 still in draft ledger');
+assert(fs.readFileSync(path.join(pack, 'MODULE_STAGE_B_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-05 사용자 승인'), 'Invalid P11 approval status');
 const moduleGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_MODULE.ebnf'), 'utf8');
-assert(moduleGrammar.includes('Draft, awaiting user approval'), 'Invalid P11 grammar draft status');
+assert(moduleGrammar.includes('Accepted by the user on 2026-10-05'), 'Invalid P11 grammar approval status');
 const productions = text => new Map([...text.replace(/\(\*[\s\S]*?\*\)/g, '').matchAll(/^\s*([a-z][a-z_0-9]*)\s*=([\s\S]*?);/gm)]
   .map(m => [m[1], m[2].replace(/\s+/g, '')]));
 const castProductions = productions(castGrammar), moduleProductions = productions(moduleGrammar);
@@ -197,12 +197,12 @@ assert(moduleProductions.get('qualified_name') === '"IDENT",{"::","IDENT"}', 'P1
 assert(moduleProductions.get('visibility') === '"public"|"internal"|"private"', 'P11 invalid visibility grammar');
 const moduleFixtureRoot = path.join(pack, 'module-proposal-fixtures');
 const moduleFixture = JSON.parse(fs.readFileSync(path.join(moduleFixtureRoot, 'expected.json'), 'utf8'));
-assert(moduleFixture.proposal === 'P11' && moduleFixture.status === 'Draft' && moduleFixture.implementation_verified === false, 'P11 fixture incorrectly marked implemented');
+assert(moduleFixture.proposal === 'P11' && moduleFixture.status === 'Accepted' && moduleFixture.implementation_verified === true, 'P11 fixture acceptance status missing');
 assert(moduleFixture.entry === 'main.nova' && moduleFixture.source_root === '.'
   && JSON.stringify(moduleFixture.reachable_modules) === '["main","math"]'
   && moduleFixture.import_cycle_permitted === true, 'P11 fixture graph mismatch');
-assert(moduleFixture.after_implementation?.check_exit === 0 && moduleFixture.after_implementation?.native_exit === 0
-  && moduleFixture.after_implementation?.stdout === 'value=42\n', 'P11 fixture expected result mismatch');
+assert(moduleFixture.validated_result?.check_exit === 0 && moduleFixture.validated_result?.native_exit === 0
+  && moduleFixture.validated_result?.stdout === 'value=42\n', 'P11 fixture expected result mismatch');
 for (const name of ['main.nova', 'math.nova']) {
   const bytes = fs.readFileSync(path.join(moduleFixtureRoot, name));
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
@@ -210,7 +210,7 @@ for (const name of ['main.nova', 'math.nova']) {
 }
 assert(fs.readFileSync(path.join(moduleFixtureRoot, 'main.nova'), 'utf8').includes('use math::add as plus')
   && fs.readFileSync(path.join(moduleFixtureRoot, 'math.nova'), 'utf8').includes('use main::twice'), 'P11 missing fixture cyclic import/alias');
-checks.push('P11 Module Draft/미구현·accepted ledger 제외·기존 P10 production 보존·34-production EBNF와 Draft 2-file fixture 데이터 (컴파일 실행 아님)');
+checks.push('P11 Module 승인 subset/날짜·accepted ledger·기존 P10 production 보존·34-production EBNF와 수용 2-file fixture 데이터 (컴파일 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

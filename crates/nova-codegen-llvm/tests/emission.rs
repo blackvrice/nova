@@ -5,6 +5,81 @@ use nova_codegen_llvm::{
     LlvmBackend,
 };
 use nova_source::SourceDatabase;
+
+fn module_corpus() -> CodegenUnit {
+    let mut sources = SourceDatabase::default();
+    let mut inputs = vec![];
+    for (path,source) in [
+        ("main", "use math::sum as plus;use math::main as helper;func twice(n:int)->int{return n+n};func main(){let v=plus(20,2);print(\"{v} {helper(1)}\")}"),
+        ("math", "use main::twice;private const C=1;public func sum(a:int,b:int)->int{return twice(a)+b};func main(n:int)->int{return n+C}"),
+    ] {
+        let file=sources.add(format!("{path}.nova"),source.into()).unwrap();let lexed=nova_lexer::lex(&sources,file).unwrap();let parsed=nova_parser::parse(&sources,file,&nova_lexer::normalize_ends(&lexed.tokens)).unwrap();assert!(!lexed.has_errors()&&!parsed.has_errors());inputs.push((path.into(),nova_hir::lower(&sources,&parsed.arena,parsed.root).unwrap()));
+    }
+    let hir = nova_hir::Module::bundle(inputs).unwrap();
+    let resolved = nova_resolve::resolve(&hir);
+    let checked = nova_typecheck::check(&hir, &resolved).unwrap();
+    assert!(!checked.has_errors(), "{:?}", checked.diagnostics);
+    CodegenUnit::new(nova_mir::lower(&hir, &resolved, &checked, false).unwrap()).unwrap()
+}
+
+#[test]
+fn p11_module_callees_have_distinct_private_symbols_and_entry_file_identity() {
+    let unit = module_corpus();
+    let entry = unit.executable_entry().unwrap();
+    assert_eq!(
+        unit.mir()
+            .bodies
+            .iter()
+            .find(|b| b.callee == entry)
+            .unwrap()
+            .source
+            .span
+            .file()
+            .as_u32(),
+        0
+    );
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&unit, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&unit, target, true).unwrap());
+        assert_eq!(ir.text.matches("define internal fastcc ").count(), 4);
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 via NOVA_CLANG"]
+fn p11_real_llvm_bundle_coff_elf_o0_o2() {
+    let unit = module_corpus();
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG")),
+    };
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-p11-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
+            let object_path = root.join(format!("{}-{optimization:?}.obj", target.triple()));
+            backend
+                .codegen_unit(
+                    &unit,
+                    &target,
+                    &CodegenOptions {
+                        object_path: object_path.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(object_path).unwrap();
+            assert!(bytes.len() > 100);
+            if target == TargetSpec::WindowsX64Msvc {
+                assert_eq!(&bytes[..2], b"\x64\x86");
+            } else {
+                assert_eq!(&bytes[..4], b"\x7fELF");
+            }
+        }
+    }
+}
 fn unit(source: &str) -> CodegenUnit {
     let mut sources = SourceDatabase::default();
     let file = sources.add("test.nova", source.into()).unwrap();

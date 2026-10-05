@@ -1,8 +1,8 @@
 //! P02 lexical name resolution. HIR identities and scopes remain immutable afterwards.
 use nova_diagnostics::{Diagnostic, DiagnosticCode, Label, Severity};
-use nova_hir::{HirId, HirKind, Module};
+use nova_hir::{HirId, HirKind, Module, Visibility};
 use nova_source::Span;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,6 +31,8 @@ pub struct Definition {
 pub struct Scope {
     pub parent: Option<ScopeId>,
     pub definitions: BTreeMap<String, DefId>,
+    pub failed_imports: BTreeSet<String>,
+    pub import_spans: BTreeMap<String, Span>,
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Resolution {
@@ -84,6 +86,8 @@ pub fn resolve(module: &Module) -> Resolved {
         scopes: vec![Scope {
             parent: None,
             definitions: BTreeMap::new(),
+            failed_imports: BTreeSet::new(),
+            import_spans: BTreeMap::new(),
         }],
         node_scopes: vec![None; size],
         declaration_ids: vec![None; size],
@@ -101,10 +105,18 @@ pub fn resolve(module: &Module) -> Resolved {
     result.scopes[0]
         .definitions
         .insert("print".into(), DefId(0));
-    let root_scope = new_scope(&mut result, ScopeId(0));
-    result.node_scopes[module.root().0] = Some(root_scope);
-    let items = &module.nodes()[module.root().0].children;
-    for &item in items {
+    let scopes = module
+        .units()
+        .iter()
+        .map(|unit| {
+            let scope = new_scope(&mut result, ScopeId(0));
+            result.node_scopes[unit.root.0] = Some(scope);
+            scope
+        })
+        .collect::<Vec<_>>();
+    let items = module.items().collect::<Vec<_>>();
+    for &item in &items {
+        let root_scope = scopes[module.owner(item).expect("file ownership")];
         if let HirKind::Function {
             name, name_span, ..
         } = module.nodes()[item.0].kind
@@ -151,7 +163,132 @@ pub fn resolve(module: &Module) -> Resolved {
             }
         }
     }
-    for &item in items {
+    // Capture direct declarations before any alias is inserted. Reexports do
+    // not accidentally become eligible according to import processing order.
+    let direct = scopes
+        .iter()
+        .map(|scope| result.scopes[scope.0].definitions.clone())
+        .collect::<Vec<_>>();
+    for &item in &items {
+        let node = &module.nodes()[item.0];
+        let HirKind::Import {
+            alias, alias_span, ..
+        } = node.kind
+        else {
+            continue;
+        };
+        let owner = module.owner(item).expect("import owner");
+        let scope = scopes[owner];
+        result.node_scopes[item.0] = Some(scope);
+        let path = module.import_path(item).expect("validated import path");
+        let name = alias
+            .and_then(|symbol| module.symbol(symbol))
+            .unwrap_or(path[path.len() - 1]);
+        let binding_span =
+            alias_span.unwrap_or(module.nodes()[node.children.last().expect("path").0].span);
+        let target_path = path[..path.len() - 1].join("::");
+        let target = module
+            .units()
+            .iter()
+            .position(|unit| unit.path == target_path);
+        let definition =
+            target.and_then(|target| direct[target].get(path[path.len() - 1]).copied());
+        if let Some(previous) = result.scopes[scope.0].definitions.get(name).copied() {
+            let previous_span = result.scopes[scope.0]
+                .import_spans
+                .get(name)
+                .copied()
+                .or(result.definitions[previous.0].span);
+            let (primary, secondary) = match previous_span {
+                Some(previous)
+                    if previous.file() == binding_span.file()
+                        && previous.start() > binding_span.start() =>
+                {
+                    (previous, Some(binding_span))
+                }
+                _ => (binding_span, previous_span),
+            };
+            result.diagnostics.push(diagnostic(
+                2002,
+                primary,
+                &format!("duplicate import binding {name}"),
+                secondary,
+            ));
+            continue;
+        }
+        if result.scopes[scope.0].failed_imports.contains(name) {
+            result.diagnostics.push(diagnostic(
+                2002,
+                binding_span,
+                &format!("duplicate import binding {name}"),
+                result.scopes[scope.0].import_spans.get(name).copied(),
+            ));
+            continue;
+        }
+        let reexport = target.is_some_and(|target| {
+            module.nodes()[module.units()[target].root.0]
+                .children
+                .iter()
+                .any(|&id| {
+                    let HirKind::Import { alias, .. } = module.nodes()[id.0].kind else {
+                        return false;
+                    };
+                    let imported = module.import_path(id).expect("import path");
+                    alias
+                        .and_then(|symbol| module.symbol(symbol))
+                        .unwrap_or(imported[imported.len() - 1])
+                        == path[path.len() - 1]
+                })
+        });
+        let failure = if let Some(def) = definition {
+            let declaration = &result.definitions[def.0];
+            let id = match declaration.kind {
+                DefinitionKind::Function(id) | DefinitionKind::GlobalConst(id) => id,
+                _ => unreachable!("direct declaration"),
+            };
+            if target != Some(owner) && module.visibility(id) == Visibility::Private {
+                Some(diagnostic(
+                    2004,
+                    node.span,
+                    "import target is private",
+                    declaration.span,
+                ))
+            } else if name == "print" && declaration.constant {
+                Some(diagnostic(
+                    2002,
+                    binding_span,
+                    "const import print conflicts with builtin print",
+                    declaration.span,
+                ))
+            } else {
+                None
+            }
+        } else {
+            Some(diagnostic(
+                if reexport { 1102 } else { 2001 },
+                node.span,
+                if reexport {
+                    "importing another import alias is not supported"
+                } else {
+                    "undefined module or direct import target"
+                },
+                None,
+            ))
+        };
+        result.scopes[scope.0]
+            .import_spans
+            .insert(name.into(), binding_span);
+        if let Some(failure) = failure {
+            result.diagnostics.push(failure);
+            result.scopes[scope.0].failed_imports.insert(name.into());
+        } else {
+            result.scopes[scope.0]
+                .definitions
+                .insert(name.into(), definition.expect("valid import"));
+        }
+    }
+    for &item in &items {
+        let root_scope = scopes[module.owner(item).expect("file ownership")];
         let node = &module.nodes()[item.0];
         let mut pending;
         result.node_scopes[item.0] = Some(root_scope);
@@ -232,17 +369,24 @@ pub fn resolve(module: &Module) -> Resolved {
                             found = Some(*def);
                             break;
                         }
+                        if result.scopes[scope.0].failed_imports.contains(spelling) {
+                            break;
+                        }
                         current = result.scopes[scope.0].parent;
                     }
                     result.references[id.0] = Some(if let Some(def) = found {
                         Resolution::Definition(def)
                     } else {
-                        result.diagnostics.push(diagnostic(
-                            2001,
-                            node.span,
-                            &format!("undefined name {spelling}"),
-                            None,
-                        ));
+                        if !current.is_some_and(|scope| {
+                            result.scopes[scope.0].failed_imports.contains(spelling)
+                        }) {
+                            result.diagnostics.push(diagnostic(
+                                2001,
+                                node.span,
+                                &format!("undefined name {spelling}"),
+                                None,
+                            ));
+                        }
                         Resolution::Error
                     });
                 }
@@ -269,6 +413,8 @@ fn new_scope(result: &mut Resolved, parent: ScopeId) -> ScopeId {
     result.scopes.push(Scope {
         parent: Some(parent),
         definitions: BTreeMap::new(),
+        failed_imports: BTreeSet::new(),
+        import_spans: BTreeMap::new(),
     });
     id
 }

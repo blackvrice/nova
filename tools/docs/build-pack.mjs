@@ -96,7 +96,9 @@ for (const row of rows) {
     ([10, 14, 15, 16, 25, 26, 32, 73, 74, 75, 76, 77, 81, 87, 91, 93, 94, 95, 96, 97, 114, 116, 125, 136].includes(row.number)
       ? `binary32/64 literal·손실 없는 숫자 승격·IEEE 산술/비교·canonical NaN·const·최단 fixed decimal 보간·private ABI는 사용자 승인 [P09](../FLOAT_STAGE_B_PROPOSAL.md)와 [FLOAT primary EBNF](../GRAMMAR_STAGE_B_FLOAT.ebnf)를 따른다. [구현·검증 기록](../FLOAT_IMPLEMENTATION.md). float IEEE 결과는 const 실패가 아니며 INT checked 정책은 유지한다. 숫자 cast는 P10, float remainder/math API·전체 D07은 Draft다.\n\n` : '') +
     ([14, 15, 16, 25, 26, 73, 74, 75, 76, 77, 78, 81, 87, 91, 93, 94, 95, 96, 97, 114, 116, 136].includes(row.number)
-      ? `숫자 10종의 postfix as·operand literal 문맥 격리·checked 범위/직접 RN 반올림·float truncation·const N3201/Runtime Abort는 사용자 승인 [P10](../CAST_STAGE_B_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_B_CAST.ebnf)를 따른다. [구현·검증 기록](../CAST_IMPLEMENTATION.md). Bool/Char/unsafe cast와 전체 D07은 Draft다.\n\n` : '') + body.trim() + '\n';
+      ? `숫자 10종의 postfix as·operand literal 문맥 격리·checked 범위/직접 RN 반올림·float truncation·const N3201/Runtime Abort는 사용자 승인 [P10](../CAST_STAGE_B_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_B_CAST.ebnf)를 따른다. [구현·검증 기록](../CAST_IMPLEMENTATION.md). Bool/Char/unsafe cast와 전체 D07은 Draft다.\n\n` : '') +
+    ([14, 16, 19, 20, 21, 22, 23, 24, 32, 70, 73, 74, 75, 76, 77, 78, 81, 87, 91, 93, 94, 95, 96, 97, 125, 136].includes(row.number)
+      ? `root-relative 함수/전역 const item import·alias·internal/private/public·reachable graph·cross-file const·entry/source identity는 사용자 승인 [P11](../MODULE_STAGE_B_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_B_MODULE.ebnf)를 따른다. [구현·검증 기록](../MODULE_IMPLEMENTATION.md). module alias/qualified value/reexport/Package와 전체 D06/D30은 후속이다.\n\n` : '') + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -114,7 +116,7 @@ fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 �
   `[P08 char·scalar 비교·UTF-8 보간](CHAR_STAGE_B_PROPOSAL.md)과 [CHAR primary 전용 EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 Accepted이며 [구현·검증 기록](CHAR_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[P09 float·IEEE 결과·숫자 승격·보간](FLOAT_STAGE_B_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_B_FLOAT.ebnf)는 Accepted이며 [구현·검증 기록](FLOAT_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[P10 명시적 숫자 cast](CAST_STAGE_B_PROPOSAL.md)와 [전용 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)는 Accepted이며 [구현·검증 기록](CAST_IMPLEMENTATION.md)을 따른다.\n\n` +
-  `[P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과 [검토용 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 Draft/승인 대기이며 Compiler에는 적용하지 않았다.\n\n` +
+  `[P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 Accepted이며 [구현·검증 기록](MODULE_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -145,10 +147,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P08', approval_date: '2026-10-04', scope: 'Stage B Unicode scalar char literals type comparison const UTF-8 interpolation and private scalar ABI', document: 'CHAR_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_CHAR.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P09', approval_date: '2026-10-04', scope: 'Stage B binary32 binary64 contextual real literals lossless numeric promotion IEEE arithmetic canonical NaN const interpolation and private ABI', document: 'FLOAT_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_FLOAT.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P10', approval_date: '2026-10-05', scope: 'Stage B explicit checked numeric postfix casts integer ranges float rounding truncation const and private Native failure behavior', document: 'CAST_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_CAST.ebnf', grammar_change: true, implementation_verified: true },
+    { id: 'P11', approval_date: '2026-10-05', scope: 'Stage B root-relative multi-file direct function and global const item imports aliases visibility module graph and cross-file checking', document: 'MODULE_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_MODULE.ebnf', grammar_change: true, implementation_verified: true },
   ],
-  draft_proposals: [
-    { id: 'P11', status: 'Draft', scope: 'Stage B root-relative multi-file direct function and global const item imports aliases visibility module graph and cross-file checking', document: 'MODULE_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_MODULE.ebnf', grammar_change: true, implementation_verified: false },
-  ],
+  draft_proposals: [],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);

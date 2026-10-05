@@ -17,6 +17,7 @@ dependencies = [
  "nova-codegen",
  "nova-codegen-llvm",
  "nova-diagnostics",
+ "nova-driver",
  "nova-hir",
  "nova-lexer",
  "nova-mir",
@@ -68,6 +69,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "nova-driver"
+version = "0.1.0"
+dependencies = [
+ "nova-ast",
+ "nova-codegen",
+ "nova-diagnostics",
+ "nova-hir",
+ "nova-lexer",
+ "nova-mir",
+ "nova-parser",
+ "nova-resolve",
+ "nova-source",
+ "nova-typecheck",
+]
+
+[[package]]
 name = "nova-hir"
 version = "0.1.0"
 dependencies = [
@@ -76,6 +93,7 @@ dependencies = [
  "nova-parser",
  "nova-source",
  "nova-syntax",
+ "unicode-ident",
 ]
 
 [[package]]
