@@ -14,6 +14,8 @@
 
 [P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 Accepted이며 [구현·검증 기록](MODULE_IMPLEMENTATION.md)을 따른다.
 
+[P12 Copy struct 최소 계약](STRUCT_STAGE_B_PROPOSAL.md)과 [37-production EBNF](GRAMMAR_STAGE_B_STRUCT.ebnf), [수용 fixture](struct-proposal-fixtures/README.md)는 Draft/승인 대기이며 미구현이다. 전체 D06/D10/D12/D16/D30 승인이 아니다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

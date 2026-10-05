@@ -1,0 +1,2 @@
+struct P { let x: int }
+func main() { let p = P() }

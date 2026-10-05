@@ -1,0 +1,3 @@
+struct A { let x: int }
+struct B { let x: int }
+func main() { let a: A = B(1) }

@@ -1,0 +1,11 @@
+public struct Pair {
+    public var x: int
+    public let y: int
+}
+public struct Box {
+    public var pair: Pair
+    public let tag: char
+}
+public func shifted(p: Pair) -> Pair {
+    return Pair(p.x + 1, p.y)
+}

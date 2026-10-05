@@ -103,7 +103,8 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
 13. [P11 Module·다중 파일 최소 계약](docs/development-v0.1/MODULE_STAGE_B_PROPOSAL.md)과
     [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_MODULE.ebnf) 구현 완료:
     [구현·검증 기록](docs/development-v0.1/MODULE_IMPLEMENTATION.md), [두 파일 수용 fixture](docs/development-v0.1/module-proposal-fixtures/README.md).
-14. 후속 aggregate·float remainder/math API·Package·Linux Native host 검증.
+14. [P12 Copy struct 최소 계약](docs/development-v0.1/STRUCT_STAGE_B_PROPOSAL.md)·[전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_STRUCT.ebnf)·[수용 fixture](docs/development-v0.1/struct-proposal-fixtures/README.md) 작성: Draft/승인 대기, 미구현.
+15. 후속 Move field·init/Drop·Enum/Tuple/Array·float remainder/math API·Package·Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.

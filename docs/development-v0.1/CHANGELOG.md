@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-05 — P12 Copy struct 착수안 (Draft)
+
+- 원본 value semantics·명시적 let/var·재귀 값 금지·namespace 분리를 보존하는 [P12 최소 계약](STRUCT_STAGE_B_PROPOSAL.md) 작성.
+- Copy field·위치 인수 생성·type import·가시성·field 경로 대입·const·private layout/ABI와 자원 제한 제안.
+- P11의 세 production만 변경하고 세 production을 추가하는 37-production Draft EBNF 작성.
+- 두 파일 Copy/const/함수 예제와 부정 10사례의 예상 진단·UTF-8 Span, Draft ledger와 validator 작성.
+- 승인 전 Compiler/accepted ledger는 보존. String field·init/Drop·일반 Move/borrow와 전체 D06/D10/D12/D16/D30은 후속.
+
 ## 2026-10-05 — P11 승인과 Module·다중 파일 구현
 
 - 사용자 “P11 승인하고 Module·다중 파일 구현 진행”으로 계약/34-production EBNF/ledger를 Accepted로 전환.

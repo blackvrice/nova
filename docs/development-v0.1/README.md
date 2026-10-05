@@ -109,3 +109,8 @@ P10 숫자 cast·범위 검사·const 평가와 Windows x64 O0/O2 실행도 구�
 Linux Native link/run과 일반 ABI/ownership/Package는 후속이다.
 frontend/MIR pass는 Native 실행 성공이 아니다. P03 Windows x64 Stage A Native는 실제 검증했다.
 일반 Arithmetic/출력/ABI 전체 정책은 Draft이며 P03 subset만 승인했다.
+
+[P12 Copy struct 최소 계약](STRUCT_STAGE_B_PROPOSAL.md)·[전용 EBNF](GRAMMAR_STAGE_B_STRUCT.ebnf)·
+[두 파일 수용 fixture](struct-proposal-fixtures/README.md)는 Draft/사용자 승인 대기다.
+nominal Copy field·위치 인수 생성·type import·field 읽기/대입·const·private ABI와 제한을 제안했다.
+승인 전에는 Compiler와 accepted ledger에 적용하지 않는다. String field·init/Drop·일반 Move/borrow는 후속이다.

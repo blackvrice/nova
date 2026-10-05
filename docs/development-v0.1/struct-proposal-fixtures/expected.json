@@ -1,0 +1,118 @@
+{
+  "proposal": "P12",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "geometry"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "original=21, snapshot=20, shifted=21, tag=🙂\n"
+  },
+  "negative_cases": [
+    {
+      "name": "string-field",
+      "source": "string-field.nova",
+      "expected_diagnostic": "N1102",
+      "primary": {
+        "start": 23,
+        "end": 29
+      },
+      "primary_text": "string"
+    },
+    {
+      "name": "recursive-field",
+      "source": "recursive-field.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 24,
+        "end": 28
+      },
+      "primary_text": "Node"
+    },
+    {
+      "name": "immutable-root",
+      "source": "immutable-root.nova",
+      "expected_diagnostic": "N3004",
+      "primary": {
+        "start": 52,
+        "end": 53
+      },
+      "primary_text": "p"
+    },
+    {
+      "name": "immutable-field",
+      "source": "immutable-field.nova",
+      "expected_diagnostic": "N3004",
+      "primary": {
+        "start": 54,
+        "end": 55
+      },
+      "primary_text": "x"
+    },
+    {
+      "name": "constructor-arity",
+      "source": "constructor-arity.nova",
+      "expected_diagnostic": "N2201",
+      "primary": {
+        "start": 46,
+        "end": 49
+      },
+      "primary_text": "P()"
+    },
+    {
+      "name": "missing-field",
+      "source": "missing-field.nova",
+      "expected_diagnostic": "N2001",
+      "primary": {
+        "start": 62,
+        "end": 63
+      },
+      "primary_text": "y"
+    },
+    {
+      "name": "nominal-mismatch",
+      "source": "nominal-mismatch.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 73,
+        "end": 77
+      },
+      "primary_text": "B(1)"
+    },
+    {
+      "name": "shadowed-constructor",
+      "source": "shadowed-constructor.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 57,
+        "end": 61
+      },
+      "primary_text": "P(2)"
+    },
+    {
+      "name": "aggregate-interpolation",
+      "source": "aggregate-interpolation.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 60,
+        "end": 61
+      },
+      "primary_text": "p"
+    },
+    {
+      "name": "user-init",
+      "source": "user-init.nova",
+      "expected_diagnostic": "N1102",
+      "primary": {
+        "start": 11,
+        "end": 15
+      },
+      "primary_text": "init"
+    }
+  ]
+}
