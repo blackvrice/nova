@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P13 Accepted / P14 및 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P14 Accepted / 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -118,8 +118,10 @@ nominal Copy field·위치 인수 생성·type import·field 읽기/대입·cons
 [P13 Copy Tuple](TUPLE_STAGE_B_PROPOSAL.md)·[40-production EBNF](GRAMMAR_STAGE_B_TUPLE.ebnf)·
 [두 파일 fixture](tuple-proposal-fixtures/README.md)는 2026-10-07 사용자 승인으로 Accepted다.
 구조적 Copy 타입·numeric selector subspan·혼합 가변 경로·const·private ABI와 자원 한도를 구현했다.
-[구현·검증 기록](TUPLE_IMPLEMENTATION.md)과 [사용자 실행 명령](../../TESTING.md)을 제공한다. Array·Enum/match·일반 Move element는 후속이다.
+[구현·검증 기록](TUPLE_IMPLEMENTATION.md)과 [사용자 실행 명령](../../TESTING.md)을 제공한다. Array·일반 Move element는 후속이다.
 
-다음 검토 대상은 [P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md),
-[48-production EBNF](GRAMMAR_STAGE_B_ENUM.ebnf), [두 파일·부정 16사례](enum-proposal-fixtures/README.md)다.
-상태 Draft / 사용자 승인 대기 / 미구현이며 현재 실행 가능한 기능은 P13까지다.
+[P14 Copy Enum·statement match](ENUM_STAGE_B_PROPOSAL.md)는 2026-10-07 사용자 승인 후 구현했다.
+[48-production EBNF](GRAMMAR_STAGE_B_ENUM.ebnf), [두 파일·부정 16사례 fixture](enum-proposal-fixtures/README.md),
+[구현·검증 기록](ENUM_IMPLEMENTATION.md)과 [사용자 실행 명령](../../TESTING.md)을 제공한다.
+Enum/Bool의 유한 coverage·Copy payload·const·private tagged ABI를 지원한다.
+Array·Option/Result·guard/nested pattern·일반 Move/borrow/Drop과 전체 D06/D08/D09/D10/D12/D16/D25/D30은 후속이다.

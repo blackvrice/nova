@@ -14,6 +14,7 @@ pub enum DefinitionKind {
     BuiltinPrint,
     Function(HirId),
     Struct(HirId),
+    Enum(HirId),
     GlobalConst(HirId),
     Parameter(HirId),
     Local(HirId),
@@ -136,7 +137,9 @@ pub fn resolve(module: &Module) -> Resolved {
                 name_span,
                 item,
             );
-        } else if let HirKind::Struct { name, name_span } = module.nodes()[item.0].kind {
+        } else if let HirKind::Struct { name, name_span } | HirKind::Enum { name, name_span } =
+            module.nodes()[item.0].kind
+        {
             let spelling = module.symbol(name).expect("struct name");
             if primitive_name(spelling) {
                 result.diagnostics.push(diagnostic(
@@ -150,7 +153,11 @@ pub fn resolve(module: &Module) -> Resolved {
                 &mut result,
                 root_scope,
                 spelling,
-                DefinitionKind::Struct(item),
+                if matches!(module.nodes()[item.0].kind, HirKind::Enum { .. }) {
+                    DefinitionKind::Enum(item)
+                } else {
+                    DefinitionKind::Struct(item)
+                },
                 name_span,
                 item,
             );
@@ -231,6 +238,7 @@ pub fn resolve(module: &Module) -> Resolved {
                 let d = &result.definitions[def.0];
                 let id = match d.kind {
                     DefinitionKind::Struct(id)
+                    | DefinitionKind::Enum(id)
                     | DefinitionKind::Function(id)
                     | DefinitionKind::GlobalConst(id) => id,
                     _ => unreachable!(),
@@ -470,6 +478,26 @@ pub fn resolve(module: &Module) -> Resolved {
             };
             result.node_scopes[id.0] = Some(scope);
             match node.kind {
+                HirKind::Arm => {
+                    let arm_scope = new_scope(&mut result, scope);
+                    result.node_scopes[id.0] = Some(arm_scope);
+                    let pattern = node.children[0];
+                    result.node_scopes[pattern.0] = Some(arm_scope);
+                    for &binder in &module.nodes()[pattern.0].children {
+                        result.node_scopes[binder.0] = Some(arm_scope);
+                        if let HirKind::Binder { name, name_span } = module.nodes()[binder.0].kind {
+                            declare(
+                                &mut result,
+                                arm_scope,
+                                module.symbol(name).expect("binder symbol"),
+                                DefinitionKind::Local(binder),
+                                name_span,
+                                binder,
+                            );
+                        }
+                    }
+                    pending.push(Work::Body(node.children[1], arm_scope));
+                }
                 HirKind::Name(name) => {
                     let spelling = module.symbol(name).expect("reference symbol exists");
                     let mut current = Some(scope);
@@ -548,7 +576,7 @@ fn declare(
     node: HirId,
 ) {
     let id = DefId(result.definitions.len());
-    let bindings = if matches!(kind, DefinitionKind::Struct(_)) {
+    let bindings = if matches!(kind, DefinitionKind::Struct(_) | DefinitionKind::Enum(_)) {
         &mut result.scopes[scope.0].types
     } else {
         &mut result.scopes[scope.0].definitions

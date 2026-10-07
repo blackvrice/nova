@@ -25,7 +25,47 @@ pub fn emit_ir(
         None
     };
     let mut emitter=Emitter {mir,output:format!("; Nova Stage A / P03 / LLVM 21.1.8\nsource_filename = \"nova-stage-a\"\ntarget triple = \"{}\"\n%String = type {{ ptr, i64 }}\n",target.triple()),strings:BTreeMap::new(),sequence:0};
+    for (eid, shape) in &mir.enums {
+        let payload_align = shape
+            .variants
+            .iter()
+            .map(|v| v.layout.as_ref().expect("layout").align)
+            .max()
+            .unwrap_or(1);
+        let payload_size = shape
+            .variants
+            .iter()
+            .map(|v| v.layout.as_ref().expect("layout").size)
+            .max()
+            .unwrap_or(0);
+        let storage = format!(
+            "[{} x i{}]",
+            payload_size.div_ceil(payload_align),
+            payload_align * 8
+        );
+        let _ = writeln!(
+            emitter.output,
+            "%nova_enum_{} = type {{ i32, {storage} }}",
+            eid.0
+        );
+        for (at, variant) in shape.variants.iter().enumerate() {
+            let fields = variant
+                .fields
+                .iter()
+                .map(|f| ty(f.ty))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let _ = writeln!(
+                emitter.output,
+                "%nova_variant_{}_{} = type {{ {fields} }}",
+                eid.0, at
+            );
+        }
+    }
     for (id, shape) in &mir.structs {
+        if mir.enums.contains_key(&nova_types::EnumId(id.0)) {
+            continue;
+        }
         let fields = shape
             .fields
             .iter()
@@ -121,6 +161,7 @@ pub fn emit_ir(
 }
 fn ty(ty: Type) -> String {
     match ty {
+        Type::Enum(id) => format!("%nova_enum_{}", id.0),
         Type::Struct(id) | Type::Tuple(id) => format!("%nova_struct_{}", id.0),
         Type::Int8 | Type::UInt8 => "i8".into(),
         Type::Int16 | Type::UInt16 => "i16".into(),
@@ -202,6 +243,13 @@ impl Emitter<'_> {
             ),
             Operand::Constant(Constant::Bool(value)) => (Type::Bool, value.to_string()),
             Operand::Constant(Constant::Char(value)) => (Type::Char, (*value as u32).to_string()),
+            Operand::Constant(Constant::Enum(v, fields)) => {
+                let fields = fields
+                    .iter()
+                    .map(|f| self.operand(body, &Operand::Constant(f.clone())))
+                    .collect::<Vec<_>>();
+                (Type::Enum(v.enumeration), self.enum_value(*v, fields))
+            }
             Operand::Constant(Constant::Struct(id, fields) | Constant::Tuple(id, fields)) => {
                 let mut value = String::from("zeroinitializer");
                 for (index, field) in fields.iter().enumerate() {
@@ -224,6 +272,28 @@ impl Emitter<'_> {
                 )
             }
         }
+    }
+    fn enum_value(
+        &mut self,
+        variant: nova_types::VariantId,
+        fields: Vec<(Type, String)>,
+    ) -> String {
+        let t = ty(Type::Enum(variant.enumeration));
+        let scratch = format!("%enum.tmp.{}", variant.enumeration.0);
+        // Initialize opaque storage before any whole-value Copy. Only active
+        // payload fields are ever interpreted with their semantic LLVM types.
+        self.line(format!("store {t} zeroinitializer, ptr {scratch}"));
+        let tag = self.instruction(format!("getelementptr {t}, ptr {scratch}, i32 0, i32 0"));
+        self.line(format!("store i32 {}, ptr {tag}", variant.index));
+        let storage = self.instruction(format!("getelementptr {t}, ptr {scratch}, i32 0, i32 1"));
+        for (at, (ft, value)) in fields.into_iter().enumerate() {
+            let field = self.instruction(format!(
+                "getelementptr %nova_variant_{}_{}, ptr {storage}, i32 0, i32 {at}",
+                variant.enumeration.0, variant.index
+            ));
+            self.line(format!("store {} {value}, ptr {field}", ty(ft)));
+        }
+        self.instruction(format!("load {t}, ptr {scratch}"))
     }
     fn guard(&mut self, condition: &str, reason: i32, source: SourceInfo) {
         let label = self.next();
@@ -397,6 +467,47 @@ impl Emitter<'_> {
             return_ty(signature.return_type),
             body.callee.0
         );
+        // Scratch storage is shared per used Enum schema, never allocated in a loop.
+        let mut used = std::collections::BTreeSet::new();
+        let mut pending = body
+            .locals
+            .iter()
+            .map(|l| l.ty)
+            .chain(signature.parameters.iter().copied())
+            .chain([signature.return_type])
+            .filter_map(Type::aggregate)
+            .collect::<Vec<_>>();
+        for block in &body.blocks {
+            if let Some(Terminator {
+                kind: TerminatorKind::Call { callee, .. },
+                ..
+            }) = &block.terminator
+            {
+                pending.extend(
+                    self.mir.callees[callee.0]
+                        .parameters
+                        .iter()
+                        .copied()
+                        .filter_map(Type::aggregate),
+                );
+            }
+        }
+        while let Some(id) = pending.pop() {
+            if !used.insert(id) {
+                continue;
+            }
+            pending.extend(
+                self.mir.structs[&id]
+                    .fields
+                    .iter()
+                    .filter_map(|f| f.ty.aggregate()),
+            );
+        }
+        for id in used {
+            if self.mir.enums.contains_key(&nova_types::EnumId(id.0)) {
+                self.line(format!("%enum.tmp.{} = alloca %nova_enum_{}", id.0, id.0));
+            }
+        }
         // All allocas are hoisted so a future cyclic CFG does not grow the stack.
         for (id, local) in body.locals.iter().enumerate() {
             self.line(format!("%p{id} = alloca {}", ty(local.ty)));
@@ -451,6 +562,29 @@ impl Emitter<'_> {
                 self.source(statement.source);
                 let StatementKind::Assign(Place(destination), rvalue) = &statement.kind;
                 let result = match rvalue {
+                    Rvalue::Enum(v, fields) => {
+                        let fields = fields
+                            .iter()
+                            .map(|f| self.operand(body, f))
+                            .collect::<Vec<_>>();
+                        Some((Type::Enum(v.enumeration), self.enum_value(*v, fields)))
+                    }
+                    Rvalue::EnumPayload(receiver, v, at) => {
+                        let (t, value) = self.operand(body, receiver);
+                        let scratch = format!("%enum.tmp.{}", v.enumeration.0);
+                        self.line(format!("store {} {value}, ptr {scratch}", ty(t)));
+                        let storage = self.instruction(format!(
+                            "getelementptr {}, ptr {scratch}, i32 0, i32 1",
+                            ty(t)
+                        ));
+                        let field = self.instruction(format!(
+                            "getelementptr %nova_variant_{}_{}, ptr {storage}, i32 0, i32 {at}",
+                            v.enumeration.0, v.index
+                        ));
+                        let ft = self.mir.enums[&v.enumeration].variants[v.index].fields[*at].ty;
+                        let value = self.instruction(format!("load {}, ptr {field}", ty(ft)));
+                        Some((ft, value))
+                    }
                     Rvalue::Aggregate(id, fields) => {
                         let mut v = String::from("zeroinitializer");
                         for (index, field) in fields.iter().enumerate() {
@@ -703,6 +837,44 @@ impl Emitter<'_> {
             let terminator = block.terminator.as_ref().expect("verified terminator");
             self.source(terminator.source);
             match &terminator.kind {
+                TerminatorKind::Match { scrutinee, arms } => {
+                    let (t, value) = self.operand(body, scrutinee);
+                    let (tag, tag_ty, domain) = if let Type::Enum(e) = t {
+                        (
+                            self.instruction(format!("extractvalue {} {value}, 0", ty(t))),
+                            "i32",
+                            self.mir.enums[&e].variants.len(),
+                        )
+                    } else {
+                        (value, "i1", 2)
+                    };
+                    let mut targets = vec![None; domain];
+                    for (pattern, block) in arms {
+                        match pattern {
+                            MatchPattern::Variant(v) => targets[v.index] = Some(*block),
+                            MatchPattern::Bool(b) => targets[usize::from(*b)] = Some(*block),
+                            MatchPattern::Wildcard => {
+                                for target in &mut targets {
+                                    if target.is_none() {
+                                        *target = Some(*block);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    self.line(format!(
+                        "switch {tag_ty} {tag}, label %match.invalid.{bb} ["
+                    ));
+                    for (at, target) in targets.iter().enumerate() {
+                        self.line(format!(
+                            "  {tag_ty} {at}, label %bb{}",
+                            target.expect("exhaustive match").0
+                        ));
+                    }
+                    self.line("]");
+                    let _ = writeln!(self.output, "match.invalid.{bb}:");
+                    self.line("unreachable");
+                }
                 TerminatorKind::Goto(target) => self.line(format!("br label %bb{}", target.0)),
                 TerminatorKind::Branch {
                     condition,

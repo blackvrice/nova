@@ -56,6 +56,16 @@ pub fn lower(
     let mut result = Module {
         entry: sources[hir.root().0],
         structs: checked.structs.clone(),
+        enums: checked.enums.clone(),
+        enums_original: checked.enums.clone(),
+        variant_provenance: checked
+            .variants
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &v)| v.map(|v| (i, v)))
+            .collect(),
+        binder_provenance: BTreeMap::new(),
+        match_provenance: BTreeMap::new(),
         structs_original: checked.structs.clone(),
         tuple_ids: checked.tuple_ids.clone(),
         callee_provenance: vec![],
@@ -114,6 +124,28 @@ pub fn lower(
     }
     result.callee_provenance = result.callees.clone();
     for (index, node) in hir.nodes().iter().enumerate() {
+        if matches!(node.kind, HirKind::Match { .. }) {
+            let mut patterns = vec![];
+            for &arm in &node.children[1..] {
+                let pattern = hir.nodes()[arm.0].children[0];
+                let info = checked.patterns[pattern.0].ok_or(LoweringError::InvalidAnalysis)?;
+                patterns.push(info);
+                if let nova_typecheck::MatchPattern::Variant(v) = info {
+                    for (at, &binder) in hir.nodes()[pattern.0].children.iter().enumerate() {
+                        if matches!(hir.nodes()[binder.0].kind, HirKind::Binder { .. }) {
+                            result.binder_provenance.insert(binder.0, (v, at));
+                        }
+                    }
+                }
+            }
+            if !checked.exhaustive_matches.contains(&index) {
+                return Err(LoweringError::InvalidAnalysis);
+            }
+            result.match_provenance.insert(
+                index,
+                (ty(checked.type_table[node.children[0].0])?, patterns),
+            );
+        }
         if node.kind == HirKind::Tuple {
             result.constructor_provenance.insert(
                 index,
@@ -158,6 +190,7 @@ pub fn lower(
             HirKind::Binding { constant: true, .. }
                 | HirKind::Import { .. }
                 | HirKind::Struct { .. }
+                | HirKind::Enum { .. }
         ) {
             continue;
         }
@@ -187,6 +220,7 @@ pub fn lower(
             values: &mut values,
             current: None,
             loops: vec![],
+            match_falls: Default::default(),
         };
         builder.current = Some(builder.block());
         for &parameter in &hir.nodes()[id.0].children[..parameters] {
@@ -240,6 +274,21 @@ enum Work {
         condition: BlockId,
         exit: BlockId,
     },
+    Match(HirId),
+    ArmEntry {
+        arm: HirId,
+        block: BlockId,
+        snapshot: Place,
+        join: BlockId,
+    },
+    ArmDone {
+        arm: HirId,
+        join: BlockId,
+    },
+    MatchDone {
+        id: HirId,
+        join: BlockId,
+    },
     If(HirId),
     AfterThen {
         id: HirId,
@@ -270,6 +319,7 @@ struct Builder<'a> {
     current: Option<BlockId>,
     /// Active lexical loops: continue condition and break exit.
     loops: Vec<(BlockId, BlockId)>,
+    match_falls: std::collections::BTreeSet<usize>,
 }
 impl Builder<'_> {
     fn block(&mut self) -> BlockId {
@@ -348,6 +398,10 @@ impl Builder<'_> {
                                 work.push(Work::Expression(value));
                             }
                         }
+                        HirKind::Match { .. } => {
+                            work.push(Work::Match(id));
+                            work.push(Work::Expression(node.children[0]));
+                        }
                         HirKind::If => {
                             work.push(Work::If(id));
                             work.push(Work::Expression(node.children[0]));
@@ -386,6 +440,78 @@ impl Builder<'_> {
                             work.push(Work::Expression(node.children[0]))
                         }
                         _ => return Err(LoweringError::InvalidAnalysis),
+                    }
+                }
+                Work::Match(id) => {
+                    let node = &self.hir.nodes()[id.0];
+                    let expression = node.children[0];
+                    let snapshot = Place(self.local(expression, None)?);
+                    self.assign(snapshot, Rvalue::Use(self.value(expression)?), expression)?;
+                    let join = self.block();
+                    let mut arms = vec![];
+                    let mut entries = vec![];
+                    for &arm in &node.children[1..] {
+                        let pattern = self.hir.nodes()[arm.0].children[0];
+                        let block = self.block();
+                        arms.push((
+                            self.checked.patterns[pattern.0]
+                                .ok_or(LoweringError::InvalidAnalysis)?,
+                            block,
+                        ));
+                        entries.push(Work::ArmEntry {
+                            arm,
+                            block,
+                            snapshot,
+                            join,
+                        });
+                    }
+                    self.end(
+                        TerminatorKind::Match {
+                            scrutinee: Operand::Place(snapshot),
+                            arms,
+                        },
+                        id,
+                    )?;
+                    work.push(Work::MatchDone { id, join });
+                    work.extend(entries.into_iter().rev());
+                }
+                Work::ArmEntry {
+                    arm,
+                    block,
+                    snapshot,
+                    join,
+                } => {
+                    self.current = Some(block);
+                    let pattern = self.hir.nodes()[arm.0].children[0];
+                    if let Some(nova_typecheck::MatchPattern::Variant(v)) =
+                        self.checked.patterns[pattern.0]
+                    {
+                        for (at, &binder) in self.hir.nodes()[pattern.0].children.iter().enumerate()
+                        {
+                            if let Some(def) = self.resolved.declaration_ids[binder.0] {
+                                let local = self.local(binder, Some(def))?;
+                                self.declarations.insert(def.0, local);
+                                self.assign(
+                                    Place(local),
+                                    Rvalue::EnumPayload(Operand::Place(snapshot), v, at),
+                                    binder,
+                                )?;
+                            }
+                        }
+                    }
+                    work.push(Work::ArmDone { arm, join });
+                    work.push(Work::Statement(self.hir.nodes()[arm.0].children[1]));
+                }
+                Work::ArmDone { arm, join } => {
+                    if self.current.is_some() {
+                        self.match_falls.insert(join.0);
+                        self.end(TerminatorKind::Goto(join), arm)?;
+                    }
+                }
+                Work::MatchDone { id, join } => {
+                    self.current = Some(join);
+                    if !self.match_falls.remove(&join.0) {
+                        self.end(TerminatorKind::Unreachable, id)?;
                     }
                 }
                 Work::Convert(id) => {
@@ -470,6 +596,11 @@ impl Builder<'_> {
                             work.push(Work::Logical(id));
                             work.push(Work::Expression(node.children[0]));
                         }
+                        HirKind::VariantPath { .. } => {
+                            let v = self.checked.variants[id.0]
+                                .ok_or(LoweringError::InvalidAnalysis)?;
+                            self.values[id.0] = Some(Operand::Constant(Constant::Enum(v, vec![])));
+                        }
                         HirKind::Call => {
                             // Callee identity is statically resolved; it is not a function value.
                             work.push(Work::FinishExpression(id));
@@ -539,6 +670,13 @@ impl Builder<'_> {
                         ),
                         HirKind::InterpolatedString => Rvalue::Interpolate(
                             node.children
+                                .iter()
+                                .map(|&c| self.value(c))
+                                .collect::<Result<_, _>>()?,
+                        ),
+                        HirKind::Call if self.checked.variants[id.0].is_some() => Rvalue::Enum(
+                            self.checked.variants[id.0].expect("variant"),
+                            node.children[1..]
                                 .iter()
                                 .map(|&c| self.value(c))
                                 .collect::<Result<_, _>>()?,

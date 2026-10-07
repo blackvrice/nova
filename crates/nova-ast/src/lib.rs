@@ -66,6 +66,30 @@ pub enum NodeKind {
     TupleProjection {
         index: Span,
     },
+    Enum {
+        name: Span,
+    },
+    Variant {
+        name: Span,
+    },
+    VariantPath {
+        owner: Span,
+        name: Span,
+    },
+    Match {
+        keyword: Span,
+    },
+    Arm,
+    PatternVariant {
+        owner: Span,
+        name: Span,
+        arguments: bool,
+    },
+    PatternBoolean(bool),
+    Wildcard,
+    Binder {
+        name: Span,
+    },
     Tuple,
     TupleType,
     NamedType,

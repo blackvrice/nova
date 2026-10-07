@@ -14,7 +14,7 @@
 
 2026-10-07 사용자 “P13 승인하고 Copy Tuple 구현 진행”으로 [P13 Copy Tuple 최소 계약](TUPLE_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](TUPLE_IMPLEMENTATION.md)을 따른다. Structural identity·numeric selector subspan·혼합 가변 경로·const·private ABI와 자원 한도 subset에만 적용하며 전체 D09/D10/D12/D16은 계속 Draft다.
 
-2026-10-07 다음 [P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md)은 Draft / 미승인 / 미구현이다. Qualified variant·Copy binder·Enum/Bool coverage·const 생성·private tagged ABI와 자원 한도만 제안하며 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.
+2026-10-07 사용자 “P14 승인하고 Copy Enum·match 구현 진행”으로 [P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](ENUM_IMPLEMENTATION.md)을 따른다. Qualified variant·Copy binder·Enum/Bool coverage·const 생성·private tagged ABI와 자원 한도 subset이며 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.
 
 ## 공통 승인 계약
 

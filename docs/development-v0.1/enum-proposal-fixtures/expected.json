@@ -1,19 +1,13 @@
 {
   "proposal": "P14",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "events"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "make\nsum=30, code=7, flag=true\noriginal=empty\nok\n",
-    "stderr": ""
-  },
   "negative_cases": [
     {
       "name": "missing_variant",
@@ -175,5 +169,11 @@
         "end": 83
       }
     }
-  ]
+  ],
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "make\nsum=30, code=7, flag=true\noriginal=empty\nok\n",
+    "stderr": ""
+  }
 }

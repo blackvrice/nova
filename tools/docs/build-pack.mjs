@@ -102,9 +102,9 @@ for (const row of rows) {
     ([14, 16, 19, 20, 23, 24, 25, 27, 31, 33, 51, 73, 74, 75, 76, 77, 78, 81, 83, 87, 91, 93, 94, 95, 96, 97, 136].includes(row.number)
       ? `nominal Copy struct·위치 생성·type import·가변 field 경로·const·private layout/ABI와 자원 제한은 사용자 승인 [P12](../STRUCT_STAGE_B_PROPOSAL.md)와 [37-production EBNF](../GRAMMAR_STAGE_B_STRUCT.ebnf)를 따른다. [구현·검증 기록](../STRUCT_IMPLEMENTATION.md). String field·init/Drop·일반 Move/borrow와 전체 D06/D10/D12/D16/D30은 후속이다.\n\n` : '') +
     ([14, 16, 25, 27, 29, 32, 33, 51, 73, 74, 75, 76, 77, 78, 81, 83, 87, 91, 93, 94, 95, 96, 97, 136].includes(row.number)
-      ? `structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·private aggregate ABI와 자원 제한은 사용자 승인 [P13](../TUPLE_STAGE_B_PROPOSAL.md)와 [40-production EBNF](../GRAMMAR_STAGE_B_TUPLE.ebnf)를 따른다. [구현·검증 기록](../TUPLE_IMPLEMENTATION.md). Array/Enum/일반 Move element와 전체 D09/D10/D12/D16은 후속이다.\n\n` : '') +
+      ? `structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·private aggregate ABI와 자원 제한은 사용자 승인 [P13](../TUPLE_STAGE_B_PROPOSAL.md)와 [40-production EBNF](../GRAMMAR_STAGE_B_TUPLE.ebnf)를 따른다. [구현·검증 기록](../TUPLE_IMPLEMENTATION.md). Array/일반 Move element와 전체 D09/D10/D12/D16은 후속이다.\n\n` : '') +
     ([14, 16, 25, 27, 29, 32, 33, 47, 48, 51, 73, 74, 75, 76, 77, 78, 81, 83, 87, 91, 93, 94, 95, 96, 97, 136].includes(row.number)
-      ? `Copy Enum·qualified variant·Enum/Bool statement match·coverage/binder·const·private tagged ABI의 다음 최소 계약은 [P14 Draft](../ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](../GRAMMAR_STAGE_B_ENUM.ebnf), [제안 fixture](../enum-proposal-fixtures/README.md)에 있다. 사용자 승인 전 미구현이며 전체 D06/D08/D09/D10/D12/D16/D25/D30은 계속 Draft다.\n\n` : '') + body.trim() + '\n';
+      ? `사용자 승인한 Copy Enum·qualified variant·Enum/Bool statement match·coverage/binder·const·private tagged ABI는 [P14](../ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](../GRAMMAR_STAGE_B_ENUM.ebnf), [수용 fixture](../enum-proposal-fixtures/README.md), [구현 기록](../ENUM_IMPLEMENTATION.md)을 따른다. 전체 D06/D08/D09/D10/D12/D16/D25/D30은 계속 Draft다.\n\n` : '') + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -125,7 +125,7 @@ fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 �
   `[P11 Module·다중 파일 최소 계약](MODULE_STAGE_B_PROPOSAL.md)과 [전용 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 Accepted이며 [구현·검증 기록](MODULE_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[P12 Copy struct 최소 계약](STRUCT_STAGE_B_PROPOSAL.md)과 [37-production EBNF](GRAMMAR_STAGE_B_STRUCT.ebnf), [수용 fixture](struct-proposal-fixtures/README.md)는 Accepted이며 [구현·검증 기록](STRUCT_IMPLEMENTATION.md)을 따른다. 전체 D06/D10/D12/D16/D30 승인이 아니다.\n\n` +
   `[P13 Copy Tuple 최소 계약](TUPLE_STAGE_B_PROPOSAL.md), [40-production EBNF](GRAMMAR_STAGE_B_TUPLE.ebnf), [수용 fixture](tuple-proposal-fixtures/README.md)는 Accepted이며 [구현 기록](TUPLE_IMPLEMENTATION.md)을 따른다. 전체 D09/D10/D12/D16 승인이 아니다.\n\n` +
-  `[P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](GRAMMAR_STAGE_B_ENUM.ebnf), [수용 fixture](enum-proposal-fixtures/README.md)는 Draft / 미승인 / 미구현이다. P13까지의 승인과 분리한다.\n\n` +
+  `[P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](GRAMMAR_STAGE_B_ENUM.ebnf), [수용 fixture](enum-proposal-fixtures/README.md)는 Accepted / 구현 완료이며 [구현 기록](ENUM_IMPLEMENTATION.md)을 따른다. 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -159,10 +159,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P11', approval_date: '2026-10-05', scope: 'Stage B root-relative multi-file direct function and global const item imports aliases visibility module graph and cross-file checking', document: 'MODULE_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_MODULE.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P12', status: 'Accepted', approval_date: '2026-10-05', scope: 'Stage B nominal Copy structs positional construction type imports field reads mutable paths const private aggregate ABI and resource bounds', document: 'STRUCT_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_STRUCT.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P13', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B structural Copy tuples selector token subspans mixed mutation paths const private aggregate ABI and resource bounds', document: 'TUPLE_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_TUPLE.ebnf', grammar_change: true, implementation_verified: true },
+    { id: 'P14', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B nominal Copy enums qualified variants Enum and Bool statement match Copy binders exhaustive coverage const construction private tagged ABI and resource bounds', document: 'ENUM_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_ENUM.ebnf', grammar_change: true, implementation_verified: true },
   ],
-  draft_proposals: [
-    { id: 'P14', status: 'Draft', authored_date: '2026-10-07', scope: 'Stage B nominal Copy enums qualified variants Enum and Bool statement match Copy binders exhaustive coverage const construction private tagged ABI and resource bounds', document: 'ENUM_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_ENUM.ebnf', grammar_change: true, implementation_verified: false },
-  ],
+  draft_proposals: [],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);

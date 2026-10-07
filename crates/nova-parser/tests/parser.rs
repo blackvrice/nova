@@ -53,11 +53,7 @@ fn p11_excluded_import_forms_and_missing_tokens_recover_later_function() {
         assert!(parsed.has_errors(), "{prefix}");
         assert!(parsed.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function {name,..} if sources.slice(name).unwrap()=="later")),"{prefix}");
     }
-    for source in [
-        "func main(){use lib::x}",
-        "func main(){lib::f()}",
-        "public use lib::x",
-    ] {
+    for source in ["func main(){use lib::x}", "public use lib::x"] {
         let (_, _, parsed) = run(source);
         assert!(
             parsed
@@ -67,6 +63,14 @@ fn p11_excluded_import_forms_and_missing_tokens_recover_later_function() {
             "{source}"
         );
     }
+    // P14 admits IDENT::IDENT syntactically. Only an Enum type/variant
+    // resolves successfully; module-qualified values remain a semantic error.
+    let (_, _, parsed) = run("func main(){lib::f()}");
+    assert!(!parsed.has_errors());
+    assert!(parsed
+        .arena
+        .iter()
+        .any(|(_, n)| matches!(n.kind, NodeKind::VariantPath { .. })));
 }
 
 #[test]
@@ -959,4 +963,34 @@ fn p13_bad_selector_spellings_and_tuple_recovery_are_bounded() {
     let deep = format!("func f(p:{}int{}){{}}", "(".repeat(140), ",)".repeat(140));
     let (_, _, parsed) = run(&deep);
     assert!(parsed.has_errors());
+}
+
+#[test]
+fn p14_enum_match_syntax_utf8_truncation_and_recovery() {
+    let source="enum E{Empty;Data(int8,(int,bool));}func f(){match E::Data(1,(2,true)){E::Empty=>{},E::Data(x,_)=>{print(\"🙂{x}\")}}}func later(){}";
+    let (_, lexed, parsed) = run(source);
+    assert!(!lexed.has_errors());
+    assert!(!parsed.has_errors(), "{:?}", parsed.diagnostics);
+    for at in (0..=source.len()).filter(|&at| source.is_char_boundary(at)) {
+        let (_, _, p) = run(&source[..at]);
+        assert!(p.arena.iter().count() <= source.len() * 2);
+    }
+    for bad in [
+        "enum E{}",
+        "enum E{A();}",
+        "enum E{public A;}",
+        "enum E{A=1;}",
+        "func f(){match true{true if false=>{},false=>{}}}",
+        "func f(){let x=match true{true=>{}}}",
+    ] {
+        let (_, _, p) = run(&format!("{bad}func later(){{}}"));
+        assert!(p.has_errors(), "{bad}");
+        assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function{name,..} if n.span.start()>=bad.len() && name.start()>bad.len())),"{bad}\n{:?}",p.diagnostics);
+    }
+    let deep = format!(
+        "func f(){{{}{} }}",
+        "match true{_=>{".repeat(140),
+        "}}".repeat(140)
+    );
+    assert!(run(&deep).2.has_errors());
 }

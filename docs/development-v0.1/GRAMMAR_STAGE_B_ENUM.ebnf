@@ -1,4 +1,4 @@
-(* P14 Copy Enum and statement match: Draft, user approval required.
+(* P14 Copy Enum and statement match: Accepted by user 2026-10-07.
    Extends accepted P13: three productions plus eight new productions.
    Semantics, Copy coverage and private tagged ABI follow ENUM_STAGE_B_PROPOSAL.md. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl | enum_decl ) }, "EOF" ;

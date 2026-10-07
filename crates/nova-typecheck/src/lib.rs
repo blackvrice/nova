@@ -1,5 +1,7 @@
 //! P02 single-file semantic checking. Successful checking is not native execution.
 mod aggregates;
+mod enums;
+pub use enums::MatchPattern;
 mod const_eval;
 mod global_consts;
 pub use const_eval::{ConstEvaluation, CONST_NODE_LIMIT};
@@ -24,6 +26,10 @@ pub struct Signature {
 pub struct Checked {
     pub types: TypeInterner,
     pub structs: nova_types::StructRegistry,
+    pub enums: nova_types::EnumRegistry,
+    pub variants: Vec<Option<nova_types::VariantId>>,
+    pub patterns: Vec<Option<MatchPattern>>,
+    pub exhaustive_matches: std::collections::BTreeSet<usize>,
     pub tuple_ids: std::collections::BTreeSet<nova_types::StructId>,
     pub tuple_origins: std::collections::BTreeMap<nova_types::StructId, HirId>,
     pub field_sources: std::collections::BTreeMap<nova_types::StructId, Vec<HirId>>,
@@ -118,6 +124,7 @@ impl fmt::Display for CheckError {
 impl std::error::Error for CheckError {}
 
 struct Checker<'a> {
+    attempted_variants: std::collections::BTreeSet<usize>,
     type_syntax_seen: std::collections::BTreeSet<usize>,
     tuple_shapes: std::collections::HashMap<Vec<Type>, nova_types::StructId>,
     tuple_shape_sources: std::collections::HashMap<Vec<Type>, HirId>,
@@ -147,6 +154,7 @@ enum Work {
     Enter(HirId, Context),
     Exit(HirId, Context),
     AssignmentValue(HirId, Context),
+    MatchArms(HirId, Context),
     Peer {
         literal: HirId,
         typed: HirId,
@@ -187,6 +195,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 continue;
             }
             DefinitionKind::Function(id)
+            | DefinitionKind::Enum(id)
             | DefinitionKind::Struct(id)
             | DefinitionKind::GlobalConst(id)
             | DefinitionKind::Parameter(id)
@@ -196,7 +205,9 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             return Err(CheckError::InvalidResolution);
         };
         let name = match (definition.kind, &node.kind) {
-            (DefinitionKind::Struct(_), HirKind::Struct { name, .. })
+            (DefinitionKind::Enum(_), HirKind::Enum { name, .. })
+            | (DefinitionKind::Local(_), HirKind::Binder { name, .. })
+            | (DefinitionKind::Struct(_), HirKind::Struct { name, .. })
             | (DefinitionKind::Function(_), HirKind::Function { name, .. })
             | (DefinitionKind::Parameter(_), HirKind::Parameter { name, .. })
             | (DefinitionKind::Local(_), HirKind::Binding { name, .. }) => name,
@@ -240,6 +251,10 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     let result = Checked {
         types,
         structs: Default::default(),
+        enums: Default::default(),
+        variants: vec![None; size],
+        patterns: vec![None; size],
+        exhaustive_matches: Default::default(),
         tuple_ids: Default::default(),
         tuple_origins: Default::default(),
         field_sources: Default::default(),
@@ -285,6 +300,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 flags
             });
     let mut checker = Checker {
+        attempted_variants: Default::default(),
         type_syntax_seen: Default::default(),
         tuple_shapes: Default::default(),
         tuple_shape_sources: Default::default(),
@@ -515,6 +531,9 @@ impl Checker<'_> {
                         return_span: Some(self.module.nodes()[id.0].span),
                     });
                 }
+                DefinitionKind::Enum(_) => {
+                    self.result.definition_types[index] = self.result.types.intern(Type::Unit);
+                }
                 DefinitionKind::Parameter(id) => {
                     let ty_id = self.module.nodes()[id.0].children[0];
                     // Function signatures have already visited parameter syntax.
@@ -608,6 +627,23 @@ impl Checker<'_> {
                     ));
                     continue;
                 }
+                Work::MatchArms(id, cx) => {
+                    self.prepare_match(id);
+                    for &arm in self.module.nodes()[id.0].children[1..].iter().rev() {
+                        if self.module.nodes()[arm.0].kind == HirKind::Arm {
+                            pending.push(Work::Enter(
+                                self.module.nodes()[arm.0].children[1],
+                                Context {
+                                    expected: None,
+                                    expected_span: None,
+                                    direct_callee: false,
+                                    ..cx
+                                },
+                            ));
+                        }
+                    }
+                    continue;
+                }
                 Work::AssignmentValue(id, cx) => {
                     let n = &self.module.nodes()[id.0];
                     let expected = if self.assignment_target(n.children[0]) {
@@ -638,6 +674,18 @@ impl Checker<'_> {
             let node = &self.module.nodes()[id.0];
             pending.push(Work::Exit(id, context));
             match node.kind {
+                HirKind::Match { .. } => {
+                    pending.push(Work::MatchArms(id, context));
+                    pending.push(Work::Enter(
+                        node.children[0],
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: false,
+                            ..context
+                        },
+                    ));
+                }
                 HirKind::Assignment => {
                     let target = node.children[0];
                     pending.push(Work::AssignmentValue(id, context));
@@ -700,6 +748,35 @@ impl Checker<'_> {
                                 expected: Some(context.return_type),
                                 expected_span: context.return_span,
                                 direct_callee: false,
+                                ..context
+                            },
+                        ));
+                    }
+                }
+                HirKind::Call
+                    if matches!(
+                        self.module.nodes()[node.children[0].0].kind,
+                        HirKind::VariantPath { .. }
+                    ) =>
+                {
+                    let head = node.children[0];
+                    let variant = self.resolve_variant(head);
+                    self.result.variants[id.0] = variant;
+                    for (at, &child) in node.children.iter().enumerate().rev() {
+                        let expected = variant
+                            .and_then(|v| self.result.enums.get(&v.enumeration))
+                            .and_then(|s| {
+                                s.variants[variant.expect("variant").index]
+                                    .fields
+                                    .get(at.saturating_sub(1))
+                            })
+                            .map(|f| self.result.types.intern(f.ty));
+                        pending.push(Work::Enter(
+                            child,
+                            Context {
+                                expected: if at == 0 { None } else { expected },
+                                expected_span: None,
+                                direct_callee: at == 0,
                                 ..context
                             },
                         ));
@@ -921,6 +998,25 @@ impl Checker<'_> {
     fn finish(&mut self, id: HirId, context: Context) {
         let node = &self.module.nodes()[id.0];
         match &node.kind {
+            HirKind::Match { .. } => {
+                let flows = node.children[1..]
+                    .iter()
+                    .filter(|a| self.module.nodes()[a.0].kind == HirKind::Arm)
+                    .map(|a| self.flow[self.module.nodes()[a.0].children[1].0])
+                    .collect::<Vec<_>>();
+                if self.result.exhaustive_matches.contains(&id.0) && !flows.is_empty() {
+                    self.flow[id.0] = if flows.iter().all(|f| *f == Flow::Return) {
+                        Flow::Return
+                    } else if flows.iter().all(|f| *f != Flow::Fallthrough) {
+                        Flow::Jump
+                    } else {
+                        Flow::Fallthrough
+                    };
+                }
+                self.set(id, Type::Unit);
+            }
+            HirKind::VariantPath { .. } => self.finish_variant(id, context.direct_callee),
+            HirKind::Call if self.result.variants[id.0].is_some() => self.finish_variant_call(id),
             HirKind::Error => self.set(id, Type::Error),
             HirKind::Integer(spelling) => self.literal(id, spelling, false, context),
             HirKind::Float(spelling) => {

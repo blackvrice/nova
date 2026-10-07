@@ -737,3 +737,39 @@ fn p13_real_llvm_tuple_coff_elf_o0_o2() {
         }
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 via NOVA_CLANG"]
+fn p14_real_llvm_enum_coff_elf_o0_o2() {
+    let corpus=include_str!("../../../examples/enums.nova").to_owned()+"struct Empty{} enum Z{Nothing; Data(Empty,(),bool,char,float,double,uint64);}func echo(e:Z)->Z{return e}func more(){let e=echo(Z::Data(Empty(),(),true,'🙂',0.5,-0.0,18446744073709551615));match e{Z::Nothing=>{},Z::Data(_,_,b,c,f,d,u)=>{print(\"{b} {c} {f} {d} {u}\")}}}";
+    let unit = unit(&corpus);
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").unwrap()),
+    };
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-p14-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
+            let path = root.join(format!("{}-{optimization:?}.obj", target.triple()));
+            backend
+                .codegen_unit(
+                    &unit,
+                    &target,
+                    &CodegenOptions {
+                        object_path: path.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(path).unwrap();
+            assert!(if target == TargetSpec::WindowsX64Msvc {
+                bytes.starts_with(b"\x64\x86")
+            } else {
+                bytes.starts_with(b"\x7fELF")
+            });
+        }
+    }
+}

@@ -2239,3 +2239,313 @@ fn p13_documented_negative_fixtures_have_exact_codes_and_byte_spans() {
         let span=result.diagnostics()[0].primary.span;assert_eq!((span.start(),span.end()),(start,end),"{source}");
     }
 }
+
+#[test]
+fn p14_documented_negative_fixtures_preserve_exact_code_and_byte_spans() {
+    for (source, code, start, end) in [
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/missing_variant.nova"
+            ),
+            "N3101",
+            66,
+            71,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/duplicate_arm.nova"
+            ),
+            "N3102",
+            91,
+            95,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/after_wildcard.nova"
+            ),
+            "N3102",
+            85,
+            89,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/invalid_scrutinee.nova"
+            ),
+            "N2101",
+            55,
+            56,
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/enum-proposal-fixtures/wrong_enum.nova"),
+            "N2101",
+            90,
+            94,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/unknown_variant.nova"
+            ),
+            "N2001",
+            74,
+            81,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/payload_arity.nova"
+            ),
+            "N2201",
+            84,
+            94,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/immutable_binder.nova"
+            ),
+            "N3004",
+            97,
+            98,
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/enum-proposal-fixtures/binder_scope.nova"),
+            "N2001",
+            109,
+            110,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/string_payload.nova"
+            ),
+            "N1102",
+            46,
+            52,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/recursive_value.nova"
+            ),
+            "N2101",
+            46,
+            47,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/duplicate_binder.nova"
+            ),
+            "N2002",
+            100,
+            101,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/duplicate_variant.nova"
+            ),
+            "N2002",
+            47,
+            48,
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/enum-proposal-fixtures/nullary_call.nova"),
+            "N2201",
+            71,
+            77,
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/enum-proposal-fixtures/missing_bool.nova"),
+            "N3101",
+            49,
+            54,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/guard_unsupported.nova"
+            ),
+            "N1102",
+            81,
+            83,
+        ),
+    ] {
+        let result = frontend(source);
+        assert!(
+            result
+                .diagnostics()
+                .iter()
+                .any(|d| d.code.to_string() == code
+                    && (d.primary.span.start(), d.primary.span.end()) == (start, end)),
+            "{source}\n{:?}",
+            result.diagnostics()
+        );
+        assert!(!result.passed());
+    }
+}
+#[test]
+fn p14_copy_nominal_context_scope_flow_and_const_semantics() {
+    pass("enum E{A(int8,(int,bool));B;} const C=E::A(7,(20,true));func f(e:E)->int{match e{E::A(x,t)=>{var y=x;y=y+1;return t.0},E::B=>{return 0}}}func main(){var e=C;let old=e;e=E::B;match old{E::A(x,_)=>{print(\"{x}\")},_=>{}}}");
+    pass("func f(b:bool)->int{match b{false=>{return 1},true=>{return 2}}}func g(){var n=0;while n<3{n=n+1;match n==2{true=>{continue},false=>{if n==3{break}}}}}");
+    pass("enum E{A(int);}func f(){let E=1;let x=E::A(2);let outer=3;match x{E::A(outer)=>{print(\"{outer}\")}}}");
+    for (source, code) in [
+        ("enum E{A;}enum F{A;}func f(){let x:E=F::A}", "N2101"),
+        ("enum E{A;}func f(){let x=E::A==E::A}", "N2101"),
+        ("enum E{A;}func f(){let x=E::A.0}", "N2101"),
+        ("enum E{A;}func f(){print(\"{E::A}\")}", "N2101"),
+        ("enum E{A(int8);}func f(){let x=E::A(128)}", "N2102"),
+        (
+            "enum E{A(int);}func f(){match E::A(1){E::A(x)=>{let x=2}}}",
+            "N2002",
+        ),
+        (
+            "func f(b:bool)->int{match b{true=>{return 1},false=>{}}}",
+            "N3003",
+        ),
+        ("enum E{A(int);}const C=E::A(1/0);func f(){}", "N3201"),
+        (
+            "enum E{A(bool);}const C=E::A(false&&D);const D= C==C;func f(){}",
+            "N3202",
+        ),
+        ("enum E{A((S,));}struct S{let e:E}func f(){}", "N2101"),
+    ] {
+        let result = frontend(source);
+        assert!(
+            codes(&result).contains(&code.into()),
+            "{source}\n{:?}",
+            result.diagnostics()
+        );
+    }
+    let (value, nodes) = constant_value("enum E{A;}const X=E::A;func f(){}", "X");
+    assert!(matches!(value,ConstValue::Enum(_,ref fields) if fields.is_empty()));
+    assert_eq!(nodes, 1);
+    let (value, nodes) =
+        constant_value("enum E{A(int8,bool);}const X=E::A(7,true);func f(){}", "X");
+    assert!(matches!(value,ConstValue::Enum(_,ref fields) if fields[0].ty()==Type::Int8));
+    assert_eq!(nodes, 3);
+}
+#[test]
+fn p14_enum_layout_has_independent_union_alignment_oracle() {
+    let (_, _, c) =
+        pass("struct Empty{}enum E{A;B(uint8,uint64,Empty,());C(char,bool);}func f(){}")
+            .semantic
+            .unwrap();
+    let (eid, shape) = c.enums.iter().next().unwrap();
+    let l = c.structs[&nova_types::StructId(eid.0)]
+        .layout
+        .as_ref()
+        .unwrap();
+    assert_eq!((l.size, l.align, l.depth, l.occurrences), (24, 8, 2, 6));
+    assert_eq!(
+        shape.variants[1].layout.as_ref().unwrap().offsets,
+        [0, 8, 16, 16]
+    );
+    assert_eq!(shape.variants[2].layout.as_ref().unwrap().offsets, [0, 4]);
+}
+
+#[test]
+fn p14_enum_resource_boundaries_and_const_node_budget() {
+    let types = vec!["int"; 1024].join(",");
+    let values = vec!["1"; 1024].join(",");
+    pass(&format!(
+        "enum E{{A({types});}}func f(){{let x=E::A({values})}}"
+    ));
+    let bad = frontend(&format!("enum E{{A({types},int);}}func f(){{}}"));
+    assert!(codes(&bad).contains(&"N8901".into()));
+    let diagnostic = bad
+        .diagnostics()
+        .iter()
+        .find(|d| d.code.to_string() == "N8901")
+        .unwrap();
+    assert_eq!(
+        diagnostic.primary.span.start(),
+        format!("enum E{{A({types},").len()
+    );
+    assert!(diagnostic.notes.iter().any(|n| n.contains("1024")));
+
+    let variants = (0..1024).map(|i| format!("V{i};")).collect::<String>();
+    pass(&format!(
+        "enum E{{{variants}}}func f(e:E){{match e{{_=>{{}}}}}}"
+    ));
+    assert!(
+        codes(&frontend(&format!("enum E{{{variants}OVER;}}func f(){{}}")))
+            .contains(&"N8901".into())
+    );
+    let declarations = (0..1024)
+        .map(|i| format!("enum E{i}{{A;}}"))
+        .collect::<String>();
+    pass(&format!("{declarations}func f(){{}}"));
+    assert!(codes(&frontend(&format!(
+        "{declarations}enum OVER{{A;}}func f(){{}}"
+    )))
+    .contains(&"N8901".into()));
+    let mut chain = "enum E0{A;}".to_string();
+    for i in 1..128 {
+        chain += &format!("enum E{i}{{A(E{});}}", i - 1);
+    }
+    pass(&format!("{chain}func f(){{}}"));
+    assert!(codes(&frontend(&format!(
+        "{chain}enum E128{{A(E127);}}func f(){{}}"
+    )))
+    .contains(&"N8901".into()));
+    let mut tree = "enum E0{A;}".to_string();
+    for i in 1..16 {
+        tree += &format!("enum E{i}{{A(E{0},E{0});}}", i - 1);
+    }
+    pass(&format!("{tree}func f(){{}}"));
+    assert!(codes(&frontend(&format!(
+        "{tree}enum E16{{A(E15);B(E15);}}func f(){{}}"
+    )))
+    .contains(&"N8901".into()));
+    // Enum constructor contributes one node and no separate qualified-path node.
+    let sum = vec!["0"; 5000].join("+");
+    let (_, n) = constant_value(
+        &format!("enum E{{A(int);}}const C=E::A({sum});func f(){{}}"),
+        "C",
+    );
+    assert_eq!(n, 10000);
+    assert!(codes(&frontend(&format!(
+        "enum E{{A(int);}}const C=E::A({sum}+0);func f(){{}}"
+    )))
+    .contains(&"N3202".into()));
+    let arms = (0..1026).map(|_| "_=>{},").collect::<String>();
+    let r = frontend(&format!("func f(){{match true{{{arms}}}}}"));
+    assert!(codes(&r).contains(&"N8901".into()));
+}
+
+#[test]
+fn p14_module_alias_identity_visibility_and_unused_cross_file_cycles() {
+    let (_,_,c) = p12_bundle(&[
+        ("main","use lib::Event as E;use lib::make;func f(){let E=1;let e:E=make();match e{E::A(x)=>{print(\"{x.value}\")},E::B=>{}}}"),
+        ("lib","private struct Hidden{public let value:int}public enum Event{A(Hidden);B;}public func make()->Event{return Event::A(Hidden(1))}"),
+    ]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    for (main, lib, code) in [
+        (
+            "use lib::f;func main(){lib::f()}",
+            "public func f(){}",
+            "N2001",
+        ),
+        (
+            "use lib::Event;func f(){}",
+            "private enum Event{A;}",
+            "N2004",
+        ),
+        (
+            "use lib::Event;func f(e:Event){match e{Event::A(x)=>{print(\"{x.value}\")}}}",
+            "private struct Hidden{private let value:int}public enum Event{A(Hidden);}",
+            "N2004",
+        ),
+        (
+            "use lib::B;public enum A{V((B,));}func f(){}",
+            "use main::A;public struct B{let next:A}",
+            "N2101",
+        ),
+        (
+            "use lib::Event;const A=Event::V(B);use lib::B;func f(){}",
+            "use main::A;public enum Event{V(bool);}public const B=false && A==A",
+            "N3202",
+        ),
+    ] {
+        let (_, _, c) = p12_bundle(&[("main", main), ("lib", lib)]);
+        assert!(
+            c.diagnostics.iter().any(|d| d.code.to_string() == code),
+            "{main} / {lib}: {:?}",
+            c.diagnostics
+        );
+    }
+}

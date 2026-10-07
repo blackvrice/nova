@@ -16,7 +16,14 @@ impl Checker<'_> {
     }
     pub(super) fn struct_type_name(&mut self, id: HirId, name: SymbolId) -> Type {
         if let Some(def) = self.type_definition(id, name) {
-            return Type::Struct(StructId(def.0));
+            return if matches!(
+                self.resolved.definitions[def.0].kind,
+                DefinitionKind::Enum(_)
+            ) {
+                Type::Enum(nova_types::EnumId(def.0))
+            } else {
+                Type::Struct(StructId(def.0))
+            };
         }
         let owner = self.module.owner(id).expect("type owner");
         let scope =
@@ -92,6 +99,7 @@ impl Checker<'_> {
                             | Type::Unit
                             | Type::Struct(_)
                             | Type::Tuple(_)
+                            | Type::Enum(_)
                             | Type::Error
                     )
                 {
@@ -125,6 +133,7 @@ impl Checker<'_> {
             self.result.field_sources.insert(sid, sources);
             self.set(id, Type::Unit);
         }
+        self.collect_enums(&mut invalid);
         // Include signature/local annotations before visiting the mixed aggregate graph.
         for (index, node) in self.module.nodes().iter().enumerate() {
             if node.kind == HirKind::TupleType {
@@ -157,7 +166,14 @@ impl Checker<'_> {
                             invalid.insert(sid);
                             continue;
                         }
-                        match struct_layout(fields, &self.result.structs) {
+                        let computed = if let Some(enumeration) =
+                            self.result.enums.get_mut(&nova_types::EnumId(sid.0))
+                        {
+                            nova_types::enum_layout(enumeration, &self.result.structs)
+                        } else {
+                            struct_layout(fields, &self.result.structs)
+                        };
+                        match computed {
                             Ok(layout) => {
                                 self.result.structs.get_mut(&sid).expect("shape").layout =
                                     Some(layout)
@@ -167,6 +183,9 @@ impl Checker<'_> {
                                 let span = self.aggregate_span(sid);
                                 let source = self.result.field_sources[&sid].get(field).copied();
                                 self.report(8901, span, "aggregate layout limit: depth 128, size 1048576, expanded fields 65536", source.map(|f| self.module.nodes()[f.0].span));
+                                if !self.result.enums.is_empty() {
+                                    self.result.diagnostics.last_mut().expect("layout diagnostic").notes.push("mixed aggregate limits: depth 128, size 1048576, expanded fields 65536".into());
+                                }
                             }
                         }
                     }
@@ -243,7 +262,12 @@ impl Checker<'_> {
             } else if !ty.numeric()
                 && !matches!(
                     ty,
-                    Type::Unit | Type::Bool | Type::Char | Type::Struct(_) | Type::Tuple(_)
+                    Type::Unit
+                        | Type::Bool
+                        | Type::Char
+                        | Type::Struct(_)
+                        | Type::Tuple(_)
+                        | Type::Enum(_)
                 )
             {
                 self.report(

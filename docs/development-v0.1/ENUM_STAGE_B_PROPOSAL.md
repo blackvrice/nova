@@ -1,6 +1,8 @@
 # Stage B Copy Enum·statement match 최소 계약 — P14
 
-작성일: 2026-10-07. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일: 2026-10-07. 상태: **Accepted / 구현 완료**.
+사용자 “P14 승인하고 Copy Enum·match 구현 진행”으로 2026-10-07 승인했다.
+현재 구현·검증 증거는 [ENUM_IMPLEMENTATION.md](ENUM_IMPLEMENTATION.md)를 따른다.
 기존 D01~D05/P01~P13·Canonical·원본 148개 문서를 보존한다.
 승인 범위는 아래 subset이며 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.
 
@@ -128,7 +130,7 @@ Lexer의 기존 token/최장 일치/END 정규화와 P13 numeric selector subspa
 ## 수용 기준·진단·승인 경계
 
 [두 파일·부정 fixture](enum-proposal-fixtures/README.md)에 source와 proposed stdout/code/UTF-8 byte Span을 작성했다.
-현재 기대값은 미구현 제안 데이터이며 Compiler 통과/Native 실행 증거가 아니다.
+기대값은 Compiler 진단과 Windows Native debug/release 실행으로 검증했다. 문서 validator 자체는 실행 증거가 아니다.
 
 | 상황 | 진단·primary |
 |---|---|
@@ -152,10 +154,10 @@ unused mixed recursion·layout 독립 oracle·모든 상한의 직전/초과, �
 destructuring assignment·variant 직접 import·module alias/qualified value·public ABI·niche optimization.
 Bool match 외 scalar pattern과 전체 D08/D12/D25 정책은 동결하지 않는다.
 
-승인 전 Compiler/Runtime/accepted ledger에는 이 의미를 적용하지 않는다.
-현재 구현된 P13 직접 실행 명령과 이번 제안의 승인 후 실행 명령은 [TESTING.md](../../TESTING.md)에 구분한다.
+승인한 P14 subset을 Compiler와 accepted ledger에 적용했다. Runtime scalar 정책은 유지한다.
+P14 직접 실행 명령과 예상 출력은 [TESTING.md](../../TESTING.md)에 제공한다.
 
-## 초안 준비 검증 기록
+## 초안 준비 검증 기록 (승인 전의 역사적 기록)
 
 2026-10-07 문서 validator PASS: 원본 148개 SHA-256 보존, 48개 production의 중복/참조/도달성,
 Draft ledger와 16개 부정 source의 UTF-8 byte Span·기대값 데이터 유효성을 확인했다.

@@ -374,6 +374,9 @@ fn execute(module: &Module, name: &str, args: Vec<Constant>) -> (Constant, Vec<S
                     current = *target;
                 }
                 TerminatorKind::Unreachable => panic!("reachable orphan join"),
+                TerminatorKind::Match { .. } => {
+                    panic!("tag dispatch is outside this arithmetic interpreter corpus")
+                }
             }
         }
     }
@@ -1373,4 +1376,189 @@ fn p13_malformed_deep_tuple_constant_conversion_and_gate_are_iterative() {
     assert!(!validate(&module).is_empty());
     drop(module);
     drop(value);
+}
+
+#[test]
+fn p14_match_validation_rejects_inactive_stale_and_redirected_payload_reads() {
+    let source =
+        "enum E{A(int);B(int);}func f(v:E)->int{match v{E::A(x)=>{return x},E::B(y)=>{return y}}}";
+    let module = pass(source);
+    assert!(validate(&module).is_empty());
+    for change in 0..4 {
+        let mut m = pass(source);
+        let body = &mut m.bodies[0];
+        let bb = body
+            .blocks
+            .iter()
+            .position(|b| {
+                b.statements.iter().any(|s| {
+                    matches!(
+                        s.kind,
+                        StatementKind::Assign(_, Rvalue::EnumPayload(_, _, _))
+                    )
+                })
+            })
+            .unwrap();
+        let stmt = body.blocks[bb]
+            .statements
+            .iter()
+            .position(|s| {
+                matches!(
+                    s.kind,
+                    StatementKind::Assign(_, Rvalue::EnumPayload(_, _, _))
+                )
+            })
+            .unwrap();
+        let StatementKind::Assign(_, Rvalue::EnumPayload(Operand::Place(snapshot), v, _)) =
+            body.blocks[bb].statements[stmt].kind.clone()
+        else {
+            panic!()
+        };
+        match change {
+            0 => {
+                if let StatementKind::Assign(_, Rvalue::EnumPayload(_, v, _)) =
+                    &mut body.blocks[bb].statements[stmt].kind
+                {
+                    v.index = 1;
+                }
+            }
+            1 => {
+                let original = body.blocks[bb].statements[stmt].source;
+                body.blocks[bb].statements.insert(
+                    stmt,
+                    Statement {
+                        kind: StatementKind::Assign(
+                            snapshot,
+                            Rvalue::Use(Operand::Constant(Constant::Enum(
+                                nova_types::VariantId {
+                                    enumeration: v.enumeration,
+                                    index: 1,
+                                },
+                                vec![Constant::Int32(2)],
+                            ))),
+                        ),
+                        source: original,
+                    },
+                );
+            }
+            2 => {
+                for block in &mut body.blocks {
+                    if let Some(Terminator {
+                        kind: TerminatorKind::Match { arms, .. },
+                        ..
+                    }) = &mut block.terminator
+                    {
+                        let a = arms[0].1;
+                        arms[0].1 = arms[1].1;
+                        arms[1].1 = a;
+                    }
+                }
+            }
+            _ => {
+                if let StatementKind::Assign(_, Rvalue::EnumPayload(receiver, _, _)) =
+                    &mut body.blocks[bb].statements[stmt].kind
+                {
+                    *receiver = Operand::Place(Place(body.parameters[0]));
+                }
+            }
+        }
+        assert!(
+            validate(&m)
+                .iter()
+                .any(|e| e.violation == Violation::InactivePayload),
+            "change {change}: {:?}",
+            validate(&m)
+        );
+    }
+    let mut bad = pass("enum E{A(int);}func f(){let e=E::A(1)}");
+    let rv = bad.bodies[0]
+        .blocks
+        .iter_mut()
+        .flat_map(|b| &mut b.statements)
+        .find_map(|s| {
+            let StatementKind::Assign(_, rv) = &mut s.kind;
+            matches!(rv, Rvalue::Enum(..)).then_some(rv)
+        })
+        .unwrap();
+    let Rvalue::Enum(variant, fields) = rv.clone() else {
+        panic!()
+    };
+    *rv = Rvalue::Aggregate(nova_types::StructId(variant.enumeration.0), fields);
+    assert!(validate(&bad)
+        .iter()
+        .any(|e| e.violation == Violation::InvalidType));
+    let mut bad = pass(source);
+    let rv = bad.bodies[0]
+        .blocks
+        .iter_mut()
+        .flat_map(|b| &mut b.statements)
+        .find_map(|s| {
+            let StatementKind::Assign(_, rv) = &mut s.kind;
+            matches!(rv, Rvalue::EnumPayload(..)).then_some(rv)
+        })
+        .unwrap();
+    let Rvalue::EnumPayload(receiver, variant, at) = rv.clone() else {
+        panic!()
+    };
+    *rv = Rvalue::Project(
+        receiver,
+        nova_types::FieldId {
+            structure: nova_types::StructId(variant.enumeration.0),
+            index: at,
+        },
+    );
+    assert!(validate(&bad)
+        .iter()
+        .any(|e| e.violation == Violation::InvalidType));
+    let mut m = pass(source);
+    m.enums.values_mut().next().unwrap().variants[0].name = "bad".into();
+    assert!(validate(&m)
+        .iter()
+        .any(|e| e.violation == Violation::InvalidType));
+    let mut m = pass(source);
+    for b in &mut m.bodies[0].blocks {
+        if let Some(Terminator {
+            kind: TerminatorKind::Match { arms, .. },
+            ..
+        }) = &mut b.terminator
+        {
+            arms.pop();
+        }
+    }
+    assert!(!validate(&m).is_empty());
+}
+#[test]
+fn p14_mixed_enum_constants_convert_validate_and_drop_without_host_recursion() {
+    let mut malformed = pass("enum E{A(int);}func main(){let e=E::A(1)}");
+    let enumeration = *malformed.enums.keys().next().unwrap();
+    std::thread::Builder::new()
+        .stack_size(64 * 1024)
+        .spawn(move || {
+            let v = nova_types::VariantId {
+                enumeration,
+                index: 0,
+            };
+            let mut value = nova_types::ConstValue::Int32(1);
+            for _ in 0..30000 {
+                value = nova_types::ConstValue::Enum(v, vec![value]);
+            }
+            let converted = Constant::from_const(&value);
+            drop(value);
+            let target = malformed.bodies[0]
+                .blocks
+                .iter_mut()
+                .flat_map(|b| &mut b.statements)
+                .find_map(|s| {
+                    let StatementKind::Assign(_, rv) = &mut s.kind;
+                    matches!(rv, Rvalue::Enum(..)).then_some(rv)
+                })
+                .unwrap();
+            *target = Rvalue::Use(Operand::Constant(converted));
+            assert!(!validate(&malformed).is_empty());
+            drop(malformed);
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    pass("enum E{A;B((int,bool));}struct P{var e:E}func f(){var p=P(E::A);p.e=E::B((1,true));let t=(p.e,);match t.0{E::A=>{},E::B(x)=>{print(\"{x.0}\")}}}");
 }

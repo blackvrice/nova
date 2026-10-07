@@ -1,0 +1,36 @@
+private struct Pair {
+    public let x: int
+    public let y: int
+}
+public enum Event {
+    Empty
+    Data(Pair, (int8, bool))
+}
+public const BASE: Event = Event::Data(Pair(10, 20), (7, true))
+public func make() -> Event {
+    print("make")
+    return BASE
+}
+
+
+func main() {
+    var original = make()
+    let snapshot = original
+    original = Event::Empty
+    var result: int = 0
+    match snapshot {
+        Event::Empty => { print("empty") }
+        Event::Data(pair, meta) => {
+            result = pair.x + pair.y
+            print("sum={result}, code={meta.0}, flag={meta.1}")
+        }
+    }
+    match original {
+        Event::Empty => { print("original=empty") },
+        Event::Data(_, _) => { print("original=data") },
+    }
+    match result == 30 {
+        true => { print("ok") }
+        false => { print("bad") }
+    }
+}

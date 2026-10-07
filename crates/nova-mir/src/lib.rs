@@ -1,5 +1,6 @@
 //! Stage A non-SSA MIR. Arithmetic and formatting remain abstract Nova operations.
 //! This IR is not permission to select a runtime overflow, print, or ABI policy.
+pub use nova_typecheck::MatchPattern;
 mod lower;
 mod validate;
 
@@ -55,17 +56,23 @@ pub enum Constant {
     Unit,
     Struct(StructId, Vec<Constant>),
     Tuple(StructId, Vec<Constant>),
+    Enum(nova_types::VariantId, Vec<Constant>),
 }
 impl Constant {
     pub fn from_const(value: &ConstValue) -> Self {
         enum Work<'a> {
             Value(&'a ConstValue),
             Aggregate(StructId, usize, bool),
+            Enumeration(nova_types::VariantId, usize),
         }
         let mut work = vec![Work::Value(value)];
         let mut values = vec![];
         while let Some(task) = work.pop() {
             match task {
+                Work::Enumeration(id, count) => {
+                    let fields = values.split_off(values.len() - count);
+                    values.push(Self::Enum(id, fields));
+                }
                 Work::Aggregate(id, count, tuple) => {
                     let fields = values.split_off(values.len() - count);
                     values.push(if tuple {
@@ -82,6 +89,10 @@ impl Constant {
                     ConstValue::Char(v) => values.push(Self::Char(*v)),
                     ConstValue::String(v) => values.push(Self::String(v.clone())),
                     ConstValue::Unit => values.push(Self::Unit),
+                    ConstValue::Enum(id, fields) => {
+                        work.push(Work::Enumeration(*id, fields.len()));
+                        work.extend(fields.iter().rev().map(Work::Value));
+                    }
                     ConstValue::Struct(id, fields) | ConstValue::Tuple(id, fields) => {
                         work.push(Work::Aggregate(
                             *id,
@@ -113,6 +124,7 @@ impl Constant {
             Self::Unit => Type::Unit,
             Self::Struct(id, _) => Type::Struct(*id),
             Self::Tuple(id, _) => Type::Tuple(*id),
+            Self::Enum(id, _) => Type::Enum(id.enumeration),
         }
     }
 }
@@ -123,6 +135,8 @@ pub enum Operand {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Rvalue {
+    Enum(nova_types::VariantId, Vec<Operand>),
+    EnumPayload(Operand, nova_types::VariantId, usize),
     Use(Operand),
     Aggregate(StructId, Vec<Operand>),
     Project(Operand, FieldId),
@@ -151,6 +165,10 @@ pub struct Statement {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TerminatorKind {
+    Match {
+        scrutinee: Operand,
+        arms: Vec<(nova_typecheck::MatchPattern, BlockId)>,
+    },
     Goto(BlockId),
     Branch {
         condition: Operand,
@@ -190,6 +208,11 @@ pub struct Body {
 pub struct Module {
     entry: SourceInfo,
     pub structs: StructRegistry,
+    pub enums: nova_types::EnumRegistry,
+    enums_original: nova_types::EnumRegistry,
+    variant_provenance: std::collections::BTreeMap<usize, nova_types::VariantId>,
+    binder_provenance: std::collections::BTreeMap<usize, (nova_types::VariantId, usize)>,
+    match_provenance: std::collections::BTreeMap<usize, (Type, Vec<nova_typecheck::MatchPattern>)>,
     structs_original: StructRegistry,
     tuple_ids: std::collections::BTreeSet<StructId>,
     callee_provenance: Vec<Callee>,
@@ -205,7 +228,9 @@ pub struct Module {
 }
 impl Module {
     pub fn aggregate_type(&self, id: StructId) -> Type {
-        if self.tuple_ids.contains(&id) {
+        if self.enums_original.contains_key(&nova_types::EnumId(id.0)) {
+            Type::Enum(nova_types::EnumId(id.0))
+        } else if self.tuple_ids.contains(&id) {
             Type::Tuple(id)
         } else {
             Type::Struct(id)
@@ -250,11 +275,15 @@ impl Module {
 impl Drop for Constant {
     fn drop(&mut self) {
         let mut pending = match self {
-            Self::Struct(_, fields) | Self::Tuple(_, fields) => std::mem::take(fields),
+            Self::Struct(_, fields) | Self::Tuple(_, fields) | Self::Enum(_, fields) => {
+                std::mem::take(fields)
+            }
             _ => return,
         };
         while let Some(mut value) = pending.pop() {
-            if let Self::Struct(_, fields) | Self::Tuple(_, fields) = &mut value {
+            if let Self::Struct(_, fields) | Self::Tuple(_, fields) | Self::Enum(_, fields) =
+                &mut value
+            {
                 pending.append(fields);
             }
         }

@@ -1251,3 +1251,107 @@ fn p13_tuple_element_checked_failure_has_exact_utf8_source_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p14_copy_enum_native_fixture_and_effect_order_o0_o2() {
+    for profile in ["debug", "release"] {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/native-enum-tests")
+            .join(format!(
+                "{}-{}",
+                std::process::id(),
+                SEQUENCE.fetch_add(1, Ordering::Relaxed)
+            ));
+        std::fs::create_dir_all(&root).unwrap();
+        let root = root.canonicalize().unwrap();
+        for (name, source) in [
+            (
+                "main.nova",
+                include_str!("../../../docs/development-v0.1/enum-proposal-fixtures/main.nova"),
+            ),
+            (
+                "events.nova",
+                include_str!("../../../docs/development-v0.1/enum-proposal-fixtures/events.nova"),
+            ),
+        ] {
+            std::fs::write(root.join(name), source).unwrap();
+        }
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("run")
+            .arg(root.join("main.nova"))
+            .args(["--profile", profile])
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "make\nsum=30, code=7, flag=true\noriginal=empty\nok\n".as_bytes()
+        );
+        assert!(result.stderr.is_empty());
+        let source = r#"struct Z{} enum E{Empty;Data(int8,int16,double,char,(),Z);}
+func first()->int8{print("first");return 1}func second()->int16{print("second");return 2}func echo(v:E)->E{return v}
+func main(){var holder=(echo(E::Data(first(),second(),2.5,'🙂',(),Z())),);let snapshot=holder;holder.0=E::Empty;var sum=0;
+match snapshot.0{E::Empty=>{print("bad")},E::Data(a,b,d,c,_,_)=>{let old=a;holder.0=E::Data(9,9,9.0,'x',(),Z());sum=a+b;print("{old} {sum} {d} {c}")}}
+while sum<5{sum=sum+1;match sum==4{true=>{continue},false=>{match holder.0{E::Empty=>{},E::Data(_,_,_,_,_,_)=>{break}}}}}print("{sum}")}"#;
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, "first\nsecond\n1 3 2.5 🙂\n5\n".as_bytes());
+        assert!(result.stderr.is_empty());
+        let source = r#"enum Widths{Empty;Data(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double,bool,char);}
+const C=Widths::Data(-128,255,-32768,65535,-2147483648,4294967295,-9223372036854775808,18446744073709551615,0.5,-0.0,true,'🙂')
+func echo(v:Widths)->Widths{return v}func main(){match echo(C){Widths::Empty=>{},Widths::Data(a,b,c,d,e,f,g,h,i,j,k,l)=>{print("{a} {b} {c} {d} {e} {f} {g} {h} {i} {j} {k} {l}")}}}"#;
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout,"-128 255 -32768 65535 -2147483648 4294967295 -9223372036854775808 18446744073709551615 0.5 -0 true 🙂\n".as_bytes());
+        assert!(result.stderr.is_empty());
+        // Payload-free enums, Unit-only payload, two nested nominal sums and
+        // all-return arms verify default tag alignment and return CFG joins.
+        let source = r#"enum Inner{A;B;}enum Outer{No;Yes(Inner,());}func score(v:Outer)->int{match v{Outer::No=>{return 0},Outer::Yes(i,_)=>{match i{Inner::A=>{return 1},Inner::B=>{return 2}}}}}func main(){print("{score(Outer::Yes(Inner::B,()))} {score(Outer::No)}")}"#;
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, b"2 0\n");
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p14_enum_payload_checked_failure_has_exact_utf8_source_o0_o2() {
+    let source = "// 한글 🙂\nenum E{A(int8);B;}func main(){match E::A(127){E::A(x)=>{let n=x+1;print(\"unreachable\")},E::B=>{}}}";
+    let start = source.find("x+1").unwrap();
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(!result.status.success());
+        assert!(result.stdout.is_empty());
+        let stderr = String::from_utf8(result.stderr).unwrap();
+        assert_eq!(
+            stderr.lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#0:{start}..{}",
+                    start + 3
+                )
+                .as_str()
+            ),
+            "{stderr}"
+        );
+    }
+}

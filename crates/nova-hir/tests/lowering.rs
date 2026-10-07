@@ -119,7 +119,8 @@ fn lower_source(source: &str) -> nova_hir::Module {
     let file = sources.add("test.nova", source.into()).unwrap();
     let lexed = lex(&sources, file).unwrap();
     let parsed = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
-    let first = lower(&sources, &parsed.arena, parsed.root).unwrap();
+    let first = lower(&sources, &parsed.arena, parsed.root)
+        .unwrap_or_else(|e| panic!("{source:?}: {e:?}; {:?}", parsed.arena));
     let second = lower(&sources, &parsed.arena, parsed.root).unwrap();
     assert_eq!(first, second);
     for (index, node) in first.nodes().iter().enumerate() {
@@ -550,5 +551,55 @@ fn p13_public_ast_numeric_selector_subspans_are_validated() {
                 Err(LoweringError::MalformedAst)
             );
         }
+    }
+}
+
+#[test]
+fn p14_public_ast_pattern_metadata_cannot_bypass_validation() {
+    for case in 0..3 {
+        let text = "E::A(x) true";
+        let mut sources = SourceDatabase::default();
+        let file = sources.add("api.nova", text.into()).unwrap();
+        let span = |a, b| Span::new(file, a, b).unwrap();
+        let mut arena = Arena::default();
+        let binder = arena
+            .insert(NodeKind::Binder { name: span(5, 6) }, span(5, 6), vec![])
+            .unwrap();
+        let (kind, range, children) = match case {
+            0 => (
+                NodeKind::PatternVariant {
+                    owner: span(0, 1),
+                    name: span(3, 4),
+                    arguments: false,
+                },
+                span(0, 7),
+                vec![binder],
+            ),
+            1 => (NodeKind::PatternBoolean(false), span(8, 12), vec![]),
+            _ => (
+                NodeKind::PatternVariant {
+                    owner: span(0, 1),
+                    name: span(2, 4),
+                    arguments: true,
+                },
+                span(0, 7),
+                vec![binder],
+            ),
+        };
+        let pattern = arena.insert(kind, range, children).unwrap();
+        let error = arena
+            .insert(NodeKind::Error, span(0, text.len()), vec![pattern])
+            .unwrap();
+        let root = arena
+            .insert(NodeKind::Root, span(0, text.len()), vec![error])
+            .unwrap();
+        assert_eq!(
+            lower(&sources, &arena, root),
+            Err(LoweringError::MalformedAst)
+        );
+    }
+    let source = "enum E{A(int);B;}func f(){match E::A(1){E::A(x)=>{print(\"🙂{x}\")},E::B=>{}}}";
+    for at in (0..=source.len()).filter(|&at| source.is_char_boundary(at)) {
+        lower_source(&source[..at]);
     }
 }

@@ -28,9 +28,9 @@ binary32/64 literal·손실 없는 숫자 승격·IEEE 산술/비교·canonical 
 
 nominal Copy struct·위치 생성·type import·가변 field 경로·const·private layout/ABI와 자원 제한은 사용자 승인 [P12](../STRUCT_STAGE_B_PROPOSAL.md)와 [37-production EBNF](../GRAMMAR_STAGE_B_STRUCT.ebnf)를 따른다. [구현·검증 기록](../STRUCT_IMPLEMENTATION.md). String field·init/Drop·일반 Move/borrow와 전체 D06/D10/D12/D16/D30은 후속이다.
 
-structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·private aggregate ABI와 자원 제한은 사용자 승인 [P13](../TUPLE_STAGE_B_PROPOSAL.md)와 [40-production EBNF](../GRAMMAR_STAGE_B_TUPLE.ebnf)를 따른다. [구현·검증 기록](../TUPLE_IMPLEMENTATION.md). Array/Enum/일반 Move element와 전체 D09/D10/D12/D16은 후속이다.
+structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·private aggregate ABI와 자원 제한은 사용자 승인 [P13](../TUPLE_STAGE_B_PROPOSAL.md)와 [40-production EBNF](../GRAMMAR_STAGE_B_TUPLE.ebnf)를 따른다. [구현·검증 기록](../TUPLE_IMPLEMENTATION.md). Array/일반 Move element와 전체 D09/D10/D12/D16은 후속이다.
 
-Copy Enum·qualified variant·Enum/Bool statement match·coverage/binder·const·private tagged ABI의 다음 최소 계약은 [P14 Draft](../ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](../GRAMMAR_STAGE_B_ENUM.ebnf), [제안 fixture](../enum-proposal-fixtures/README.md)에 있다. 사용자 승인 전 미구현이며 전체 D06/D08/D09/D10/D12/D16/D25/D30은 계속 Draft다.
+사용자 승인한 Copy Enum·qualified variant·Enum/Bool statement match·coverage/binder·const·private tagged ABI는 [P14](../ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](../GRAMMAR_STAGE_B_ENUM.ebnf), [수용 fixture](../enum-proposal-fixtures/README.md), [구현 기록](../ENUM_IMPLEMENTATION.md)을 따른다. 전체 D06/D08/D09/D10/D12/D16/D25/D30은 계속 Draft다.
 
 ## 타입 검사
 양방향 검사: 기대 타입이 있으면 check, 없으면 synthesize. TypeInterner는 Unit/Never/Primitive/Named/Tuple/Array/Function/GenericParam/Error를 구분한다. alias와 nullable 정규화는 unification 전에 수행한다.

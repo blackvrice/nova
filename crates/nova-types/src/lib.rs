@@ -4,6 +4,8 @@ pub use aggregate::{
     layout as struct_layout, FieldId, StructField, StructId, StructLayout, StructRegistry,
     StructShape,
 };
+mod enumeration;
+pub use enumeration::{enum_layout, EnumId, EnumRegistry, EnumShape, EnumVariant, VariantId};
 mod float;
 mod integer;
 pub use float::{
@@ -30,11 +32,13 @@ pub enum Type {
     Function,
     Struct(StructId),
     Tuple(StructId),
+    Enum(EnumId),
 }
 impl Type {
     pub const fn aggregate(self) -> Option<StructId> {
         match self {
             Self::Struct(id) | Self::Tuple(id) => Some(id),
+            Self::Enum(id) => Some(StructId(id.0)),
             _ => None,
         }
     }
@@ -99,6 +103,7 @@ pub enum ConstValue {
     Unit,
     Struct(StructId, Vec<ConstValue>),
     Tuple(StructId, Vec<ConstValue>),
+    Enum(VariantId, Vec<ConstValue>),
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CastError {
@@ -144,6 +149,7 @@ impl ConstValue {
             Self::Unit => Type::Unit,
             Self::Struct(id, _) => Type::Struct(*id),
             Self::Tuple(id, _) => Type::Tuple(*id),
+            Self::Enum(id, _) => Type::Enum(id.enumeration),
         }
     }
     pub fn from_integer(value: IntegerValue) -> Self {
@@ -208,11 +214,15 @@ impl TypeInterner {
 impl Drop for ConstValue {
     fn drop(&mut self) {
         let mut pending = match self {
-            Self::Struct(_, fields) | Self::Tuple(_, fields) => std::mem::take(fields),
+            Self::Struct(_, fields) | Self::Tuple(_, fields) | Self::Enum(_, fields) => {
+                std::mem::take(fields)
+            }
             _ => return,
         };
         while let Some(mut value) = pending.pop() {
-            if let Self::Struct(_, fields) | Self::Tuple(_, fields) = &mut value {
+            if let Self::Struct(_, fields) | Self::Tuple(_, fields) | Self::Enum(_, fields) =
+                &mut value
+            {
                 pending.append(fields);
             }
         }

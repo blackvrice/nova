@@ -9,6 +9,7 @@ pub enum Violation {
     InvalidBody,
     InvalidLocal,
     InvalidType,
+    InactivePayload,
     MissingTerminator,
     InvalidTarget,
     InvalidOperator,
@@ -35,7 +36,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         block: None,
         source: None,
     };
-    if module.structs != module.structs_original {
+    if module.enums != module.enums_original || module.structs != module.structs_original {
         validator.report(Violation::InvalidType);
     }
     if module.sources.get(module.entry.hir.0) != Some(&module.entry) {
@@ -149,6 +150,14 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
                 }
                 let key = statement.source.hir.0;
                 match value {
+                    Rvalue::Enum(v, _) if module.variant_provenance.get(&key) != Some(v) => {
+                        validator.report(Violation::InvalidSource);
+                    }
+                    Rvalue::EnumPayload(_, v, at)
+                        if module.binder_provenance.get(&key) != Some(&(*v, *at)) =>
+                    {
+                        validator.report(Violation::InvalidSource);
+                    }
                     Rvalue::Aggregate(id, _)
                         if module.constructor_provenance.get(&key) != Some(id) =>
                     {
@@ -189,6 +198,52 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
                 }
             }
             match &terminator.kind {
+                TerminatorKind::Match { scrutinee, arms } => {
+                    let actual = validator.operand_type(body, scrutinee);
+                    let patterns = arms.iter().map(|(p, _)| *p).collect::<Vec<_>>();
+                    if !module
+                        .match_provenance
+                        .get(&terminator.source.hir.0)
+                        .is_some_and(|(t, p)| Some(*t) == actual && p == &patterns)
+                    {
+                        validator.report(Violation::InvalidSource);
+                    }
+                    let domain = match actual {
+                        Some(Type::Bool) => 2,
+                        Some(Type::Enum(e)) => module.enums.get(&e).map_or(0, |s| s.variants.len()),
+                        _ => 0,
+                    };
+                    let mut covered = vec![false; domain];
+                    for (p, _) in arms {
+                        match p {
+                            nova_typecheck::MatchPattern::Wildcard => {
+                                if covered.iter().all(|b| *b) {
+                                    validator.report(Violation::InvalidArguments);
+                                }
+                                covered.fill(true);
+                            }
+                            nova_typecheck::MatchPattern::Bool(b) if actual == Some(Type::Bool) => {
+                                if covered[usize::from(*b)] {
+                                    validator.report(Violation::InvalidArguments);
+                                }
+                                covered[usize::from(*b)] = true;
+                            }
+                            nova_typecheck::MatchPattern::Variant(v)
+                                if actual == Some(Type::Enum(v.enumeration))
+                                    && v.index < domain =>
+                            {
+                                if covered[v.index] {
+                                    validator.report(Violation::InvalidArguments);
+                                }
+                                covered[v.index] = true;
+                            }
+                            _ => validator.report(Violation::InvalidType),
+                        }
+                    }
+                    if domain == 0 || !covered.iter().all(|b| *b) {
+                        validator.report(Violation::InvalidArguments);
+                    }
+                }
                 TerminatorKind::Branch { condition, .. } => {
                     let ty = validator.operand_type(body, condition);
                     validator.same_type(Some(Type::Bool), ty);
@@ -224,6 +279,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
             }
         }
         validator.check_initialization(body);
+        validator.check_enum_proofs(body);
     }
     validator.body = None;
     validator.block = None;
@@ -239,11 +295,15 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
 fn value_type(ty: Type, module: &Module) -> bool {
     ty.numeric()
         || matches!(ty, Type::Unit | Type::Bool | Type::Char | Type::String)
-        || matches!(ty,Type::Struct(id) | Type::Tuple(id) if module.aggregate_type(id) == ty && module.structs.get(&id).is_some_and(|s|s.layout.is_some()))
+        || ty.aggregate().is_some_and(|id| {
+            module.aggregate_type(id) == ty
+                && module.structs.get(&id).is_some_and(|s| s.layout.is_some())
+        })
 }
 fn successors(kind: &TerminatorKind) -> Vec<BlockId> {
     match kind {
         TerminatorKind::Goto(target) | TerminatorKind::Call { target, .. } => vec![*target],
+        TerminatorKind::Match { arms, .. } => arms.iter().map(|(_, b)| *b).collect(),
         TerminatorKind::Branch {
             then_block,
             else_block,
@@ -301,6 +361,26 @@ impl Validator<'_> {
                     if v.ty() != expected {
                         self.report(Violation::TypeMismatch);
                     }
+                    if let Constant::Enum(variant, fields) = v {
+                        if let Some(shape) = self
+                            .module
+                            .enums
+                            .get(&variant.enumeration)
+                            .and_then(|s| s.variants.get(variant.index))
+                        {
+                            if fields.len() != shape.fields.len() {
+                                self.report(Violation::InvalidArguments);
+                            }
+                            work.extend(
+                                fields
+                                    .iter()
+                                    .zip(&shape.fields)
+                                    .map(|(v, f)| (v, f.ty, depth + 1)),
+                            );
+                        } else {
+                            self.report(Violation::InvalidType);
+                        }
+                    }
                     if let Constant::Struct(id, fields) | Constant::Tuple(id, fields) = v {
                         if v.ty() != self.module.aggregate_type(*id) {
                             self.report(Violation::InvalidType);
@@ -333,8 +413,45 @@ impl Validator<'_> {
     }
     fn rvalue_type(&mut self, body: &Body, value: &Rvalue) -> Option<Type> {
         match value {
+            Rvalue::Enum(v, fields) => {
+                let expected = self
+                    .module
+                    .enums
+                    .get(&v.enumeration)
+                    .and_then(|s| s.variants.get(v.index))
+                    .map(|v| v.fields.iter().map(|f| f.ty).collect::<Vec<_>>());
+                if let Some(expected) = expected {
+                    if fields.len() != expected.len() {
+                        self.report(Violation::InvalidArguments);
+                    }
+                    for (&ty, op) in expected.iter().zip(fields) {
+                        let actual = self.operand_type(body, op);
+                        self.same_type(Some(ty), actual);
+                    }
+                } else {
+                    self.report(Violation::InvalidType);
+                }
+                Some(Type::Enum(v.enumeration))
+            }
+            Rvalue::EnumPayload(receiver, v, at) => {
+                let actual = self.operand_type(body, receiver);
+                self.same_type(Some(Type::Enum(v.enumeration)), actual);
+                let field = self
+                    .module
+                    .enums
+                    .get(&v.enumeration)
+                    .and_then(|s| s.variants.get(v.index))
+                    .and_then(|v| v.fields.get(*at));
+                if field.is_none() {
+                    self.report(Violation::InvalidType);
+                }
+                field.map(|f| f.ty)
+            }
             Rvalue::Use(operand) => self.operand_type(body, operand),
             Rvalue::Aggregate(id, fields) => {
+                if matches!(self.module.aggregate_type(*id), Type::Enum(_)) {
+                    self.report(Violation::InvalidType);
+                }
                 if let Some(shape) = self.module.structs.get(id) {
                     let expected = shape.fields.iter().map(|f| f.ty).collect::<Vec<_>>();
                     if expected.len() != fields.len() {
@@ -350,6 +467,9 @@ impl Validator<'_> {
                 Some(self.module.aggregate_type(*id))
             }
             Rvalue::Project(receiver, field) => {
+                if matches!(self.module.aggregate_type(field.structure), Type::Enum(_)) {
+                    self.report(Violation::InvalidType);
+                }
                 let recv = self.operand_type(body, receiver);
                 self.same_type(Some(self.module.aggregate_type(field.structure)), recv);
                 match self
@@ -372,6 +492,9 @@ impl Validator<'_> {
                     self.report(Violation::InvalidArguments);
                 }
                 for field in path {
+                    if matches!(self.module.aggregate_type(field.structure), Type::Enum(_)) {
+                        self.report(Violation::InvalidType);
+                    }
                     self.same_type(Some(self.module.aggregate_type(field.structure)), ty);
                     ty = match self
                         .module
@@ -492,6 +615,93 @@ impl Validator<'_> {
         }
     }
 
+    fn check_enum_proofs(&mut self, body: &Body) {
+        use std::collections::BTreeMap;
+        type Facts = BTreeMap<usize, nova_types::VariantId>;
+        if body.entry.0 >= body.blocks.len() {
+            return;
+        }
+        let mut incoming: Vec<Option<Facts>> = vec![None; body.blocks.len()];
+        incoming[body.entry.0] = Some(Facts::new());
+        let mut queue = VecDeque::from([body.entry]);
+        while let Some(block) = queue.pop_front() {
+            let mut facts = incoming[block.0].clone().expect("queued block");
+            for statement in &body.blocks[block.0].statements {
+                let StatementKind::Assign(place, _) = &statement.kind;
+                facts.remove(&place.0 .0);
+            }
+            let Some(term) = &body.blocks[block.0].terminator else {
+                continue;
+            };
+            if let TerminatorKind::Call { destination, .. } = &term.kind {
+                facts.remove(&destination.0 .0);
+            }
+            for target in successors(&term.kind) {
+                if target.0 >= incoming.len() {
+                    continue;
+                }
+                let mut edge = facts.clone();
+                if let TerminatorKind::Match {
+                    scrutinee: Operand::Place(receiver),
+                    arms,
+                } = &term.kind
+                {
+                    // Merge facts independently for every dispatch edge, including
+                    // multiple cases redirected to one block by a transformation.
+                    let variants = arms
+                        .iter()
+                        .filter(|(_, b)| *b == target)
+                        .map(|(p, _)| match p {
+                            nova_typecheck::MatchPattern::Variant(v) => Some(*v),
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>();
+                    edge.remove(&receiver.0 .0);
+                    if let Some(Some(v)) = variants.first() {
+                        if variants.iter().all(|other| *other == Some(*v)) {
+                            edge.insert(receiver.0 .0, *v);
+                        }
+                    }
+                }
+                let next = if target == body.entry {
+                    Facts::new()
+                } else if let Some(old) = &incoming[target.0] {
+                    old.iter()
+                        .filter(|(local, v)| edge.get(local) == Some(v))
+                        .map(|(&l, &v)| (l, v))
+                        .collect()
+                } else {
+                    edge
+                };
+                if incoming[target.0].as_ref() != Some(&next) {
+                    incoming[target.0] = Some(next);
+                    queue.push_back(target);
+                }
+            }
+        }
+        for (index, block) in body.blocks.iter().enumerate() {
+            let Some(mut facts) = incoming[index].clone() else {
+                continue;
+            };
+            self.block = Some(BlockId(index));
+            for statement in &block.statements {
+                self.source = Some(statement.source);
+                let StatementKind::Assign(place, value) = &statement.kind;
+                if let Rvalue::EnumPayload(receiver, variant, _) = value {
+                    let proven = match receiver {
+                        Operand::Place(p) => facts.get(&p.0 .0) == Some(variant),
+                        Operand::Constant(Constant::Enum(v, _)) => v == variant,
+                        _ => false,
+                    };
+                    if !proven {
+                        self.report(Violation::InactivePayload);
+                    }
+                }
+                facts.remove(&place.0 .0);
+            }
+        }
+    }
+
     fn check_initialization(&mut self, body: &Body) {
         let count = body.blocks.len();
         if body.entry.0 >= count {
@@ -575,7 +785,8 @@ impl Validator<'_> {
                 self.source = Some(statement.source);
                 let StatementKind::Assign(place, value) = &statement.kind;
                 match value {
-                    Rvalue::Use(op)
+                    Rvalue::EnumPayload(op, _, _)
+                    | Rvalue::Use(op)
                     | Rvalue::Project(op, _)
                     | Rvalue::Unary(_, op)
                     | Rvalue::Widen(op, _)
@@ -589,7 +800,9 @@ impl Validator<'_> {
                         self.read(&state, receiver);
                         self.read(&state, value);
                     }
-                    Rvalue::Aggregate(_, parts) | Rvalue::Interpolate(parts) => {
+                    Rvalue::Enum(_, parts)
+                    | Rvalue::Aggregate(_, parts)
+                    | Rvalue::Interpolate(parts) => {
                         for part in parts {
                             self.read(&state, part);
                         }
@@ -600,9 +813,9 @@ impl Validator<'_> {
             if let Some(term) = &body.blocks[index].terminator {
                 self.source = Some(term.source);
                 match &term.kind {
-                    TerminatorKind::Return(op) | TerminatorKind::Branch { condition: op, .. } => {
-                        self.read(&state, op)
-                    }
+                    TerminatorKind::Match { scrutinee: op, .. }
+                    | TerminatorKind::Return(op)
+                    | TerminatorKind::Branch { condition: op, .. } => self.read(&state, op),
                     TerminatorKind::Call { arguments, .. } => {
                         for op in arguments {
                             self.read(&state, op);

@@ -61,6 +61,37 @@ pub enum HirKind {
         index: SymbolId,
         index_span: Span,
     },
+    Enum {
+        name: SymbolId,
+        name_span: Span,
+    },
+    Variant {
+        name: SymbolId,
+        name_span: Span,
+    },
+    VariantPath {
+        owner: SymbolId,
+        owner_span: Span,
+        name: SymbolId,
+        name_span: Span,
+    },
+    Match {
+        keyword: Span,
+    },
+    Arm,
+    PatternVariant {
+        owner: SymbolId,
+        owner_span: Span,
+        name: SymbolId,
+        name_span: Span,
+        arguments: bool,
+    },
+    PatternBoolean(bool),
+    Wildcard,
+    Binder {
+        name: SymbolId,
+        name_span: Span,
+    },
     Tuple,
     TupleType,
     TypeName(SymbolId),
@@ -227,6 +258,9 @@ impl Module {
                 match &mut node.kind {
                     HirKind::Function { name, .. }
                     | HirKind::Struct { name, .. }
+                    | HirKind::Enum { name, .. }
+                    | HirKind::Variant { name, .. }
+                    | HirKind::Binder { name, .. }
                     | HirKind::Field { name, .. }
                     | HirKind::Projection { name, .. }
                     | HirKind::Parameter { name, .. }
@@ -235,6 +269,11 @@ impl Module {
                     | HirKind::TupleProjection { index: name, .. }
                     | HirKind::TypeName(name)
                     | HirKind::ImportSegment(name) => *name = mapping[name.0],
+                    HirKind::VariantPath { owner, name, .. }
+                    | HirKind::PatternVariant { owner, name, .. } => {
+                        *owner = mapping[owner.0];
+                        *name = mapping[name.0];
+                    }
                     HirKind::Import {
                         alias: Some(alias), ..
                     } => *alias = mapping[alias.0],
@@ -378,9 +417,37 @@ pub fn lower(
         }
         if let NodeKind::Struct { name }
         | NodeKind::Field { name, .. }
+        | NodeKind::Enum { name }
+        | NodeKind::Variant { name }
+        | NodeKind::Binder { name }
         | NodeKind::Projection { name } = node.kind
         {
             if !inside(node.span, name) || !identifier(sources.slice(name)?) {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::VariantPath { owner, name }
+        | NodeKind::PatternVariant { owner, name, .. } = node.kind
+        {
+            if !inside(node.span, owner)
+                || !inside(node.span, name)
+                || owner.end() > name.start()
+                || !identifier(sources.slice(owner)?)
+                || !identifier(sources.slice(name)?)
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::Match { keyword } = node.kind {
+            if !inside(node.span, keyword) || sources.slice(keyword)? != "match" {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if node.kind == NodeKind::Wildcard && sources.slice(node.span)? != "_" {
+            return Err(LoweringError::MalformedAst);
+        }
+        if let NodeKind::PatternBoolean(value) = node.kind {
+            if sources.slice(node.span)? != if value { "true" } else { "false" } {
                 return Err(LoweringError::MalformedAst);
             }
         }
@@ -539,6 +606,39 @@ pub fn lower(
                     parameters,
                 }
             }
+            NodeKind::Enum { name } => HirKind::Enum {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+            },
+            NodeKind::Variant { name } => HirKind::Variant {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+            },
+            NodeKind::Binder { name } => HirKind::Binder {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+            },
+            NodeKind::VariantPath { owner, name } => HirKind::VariantPath {
+                owner: intern(owner, &mut module, &mut interned)?,
+                owner_span: owner,
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+            },
+            NodeKind::PatternVariant {
+                owner,
+                name,
+                arguments,
+            } => HirKind::PatternVariant {
+                owner: intern(owner, &mut module, &mut interned)?,
+                owner_span: owner,
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+                arguments,
+            },
+            NodeKind::Match { keyword } => HirKind::Match { keyword },
+            NodeKind::Arm => HirKind::Arm,
+            NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
+            NodeKind::Wildcard => HirKind::Wildcard,
             NodeKind::Struct { name } => HirKind::Struct {
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
@@ -738,7 +838,8 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
     let expr = |kind: NodeKind| {
         matches!(
             kind,
-            NodeKind::Name
+            NodeKind::VariantPath { .. }
+                | NodeKind::Name
                 | NodeKind::Integer
                 | NodeKind::Float
                 | NodeKind::Character
@@ -763,6 +864,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 k,
                 NodeKind::Function { .. }
                     | NodeKind::Struct { .. }
+                    | NodeKind::Enum { .. }
                     | NodeKind::Visible { .. }
                     | NodeKind::Import { .. }
                     | NodeKind::Binding {
@@ -794,6 +896,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                     kinds[0],
                     NodeKind::Function { .. }
                         | NodeKind::Struct { .. }
+                        | NodeKind::Enum { .. }
                         | NodeKind::Binding {
                             constant: true,
                             mutable: false,
@@ -804,6 +907,41 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         }
         NodeKind::Import { .. } => {
             kinds.len() >= 2 && kinds.iter().all(|k| *k == NodeKind::ImportSegment)
+        }
+        NodeKind::Enum { .. } => kinds
+            .iter()
+            .all(|k| matches!(k, NodeKind::Variant { .. } | NodeKind::Error)),
+        NodeKind::Variant { .. } => kinds.iter().all(|k| ty(*k)),
+        NodeKind::VariantPath { .. }
+        | NodeKind::Binder { .. }
+        | NodeKind::PatternBoolean(_)
+        | NodeKind::Wildcard => kinds.is_empty(),
+        NodeKind::PatternVariant { arguments, .. } => {
+            (arguments || kinds.is_empty())
+                && kinds.iter().all(|k| {
+                    matches!(
+                        k,
+                        NodeKind::Binder { .. } | NodeKind::Wildcard | NodeKind::Error
+                    )
+                })
+        }
+        NodeKind::Match { .. } => {
+            !kinds.is_empty()
+                && expr(kinds[0])
+                && kinds[1..]
+                    .iter()
+                    .all(|k| matches!(k, NodeKind::Arm | NodeKind::Error))
+        }
+        NodeKind::Arm => {
+            kinds.len() == 2
+                && matches!(
+                    kinds[0],
+                    NodeKind::PatternVariant { .. }
+                        | NodeKind::PatternBoolean(_)
+                        | NodeKind::Wildcard
+                        | NodeKind::Error
+                )
+                && matches!(kinds[1], NodeKind::Block | NodeKind::Error)
         }
         NodeKind::Struct { .. } => kinds
             .iter()
@@ -857,6 +995,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 NodeKind::Binding { .. }
                     | NodeKind::Assignment
                     | NodeKind::While
+                    | NodeKind::Match { .. }
                     | NodeKind::Break
                     | NodeKind::Continue
                     | NodeKind::Return

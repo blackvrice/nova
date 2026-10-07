@@ -63,6 +63,8 @@ impl<'a> Parser<'a> {
                 items.push(self.function());
             } else if self.kind() == TokenKind::Keyword(Keyword::Struct) {
                 items.push(self.structure());
+            } else if self.kind() == TokenKind::Keyword(Keyword::Enum) {
+                items.push(self.enum_declaration());
             } else if self.kind() == TokenKind::Keyword(Keyword::Const) {
                 items.push(self.statement());
             } else {
@@ -137,6 +139,7 @@ impl<'a> Parser<'a> {
             TokenKind::Keyword(Keyword::Func) => self.function(),
             TokenKind::Keyword(Keyword::Const) => self.statement(),
             TokenKind::Keyword(Keyword::Struct) => self.structure(),
+            TokenKind::Keyword(Keyword::Enum) => self.enum_declaration(),
             _ => {
                 self.report(
                     if self.kind() == TokenKind::Keyword(Keyword::Use) {
@@ -160,6 +163,206 @@ impl<'a> Parser<'a> {
             vec![child],
         )
     }
+    fn enum_declaration(&mut self) -> AstNodeId {
+        let start = self.bump().span.start();
+        let name = self.expect(TokenKind::Identifier).span;
+        self.open(TokenKind::LeftBrace);
+        let mut variants = vec![];
+        while !matches!(
+            self.kind(),
+            TokenKind::RightBrace
+                | TokenKind::Eof
+                | TokenKind::Keyword(Keyword::Func | Keyword::Enum | Keyword::Struct)
+        ) {
+            if self.at_end() {
+                self.bump();
+                continue;
+            }
+            if self.kind() != TokenKind::Identifier {
+                self.report(
+                    1102,
+                    self.current().span,
+                    "expected a positional Copy variant",
+                );
+                self.recover_statement();
+                if self.kind() != TokenKind::RightBrace && !self.at_end() {
+                    self.bump();
+                }
+                continue;
+            }
+            let v = self.bump().span;
+            let mut payload = vec![];
+            if self.kind() == TokenKind::LeftParen {
+                self.open(TokenKind::LeftParen);
+                if self.kind() == TokenKind::RightParen {
+                    self.report(
+                        1102,
+                        self.current().span,
+                        "nullary variant declarations omit parentheses",
+                    );
+                }
+                while !matches!(
+                    self.kind(),
+                    TokenKind::RightParen | TokenKind::RightBrace | TokenKind::Eof
+                ) {
+                    let before = self.cursor;
+                    payload.push(self.type_node());
+                    if !self.eat(TokenKind::Comma) || before == self.cursor {
+                        break;
+                    }
+                }
+                self.close(TokenKind::RightParen);
+            }
+            variants.push(self.node(NodeKind::Variant { name: v }, v.start(), payload));
+            if self.at_end() {
+                self.bump();
+            } else if self.kind() != TokenKind::RightBrace {
+                self.report(
+                    if unsupported(self.kind()) { 1102 } else { 1101 },
+                    self.current().span,
+                    "expected variant END",
+                );
+                self.recover_statement();
+            }
+        }
+        self.close(TokenKind::RightBrace);
+        if variants.is_empty() {
+            self.report(1102, name, "empty enums are outside P14");
+        }
+        self.node(
+            if name.start() == name.end() {
+                NodeKind::Error
+            } else {
+                NodeKind::Enum { name }
+            },
+            start,
+            variants,
+        )
+    }
+
+    fn match_statement(&mut self) -> AstNodeId {
+        let keyword = self.bump().span;
+        if !self.enter() {
+            self.recover_statement();
+            return self.node(NodeKind::Error, keyword.start(), vec![]);
+        }
+        let value = self.expression(0);
+        self.open(TokenKind::LeftBrace);
+        let mut children = vec![value];
+        while !matches!(
+            self.kind(),
+            TokenKind::RightBrace | TokenKind::Eof | TokenKind::Keyword(Keyword::Func)
+        ) {
+            if self.at_end() {
+                self.bump();
+                continue;
+            }
+            let before = self.cursor;
+            let start = self.current().span.start();
+            let pattern = self.pattern();
+            if self.kind() != TokenKind::Symbol(Symbol::FatArrow) {
+                self.report(
+                    1102,
+                    self.current().span,
+                    "guards and nested patterns are outside P14",
+                );
+                while !matches!(
+                    self.kind(),
+                    TokenKind::Symbol(Symbol::FatArrow) | TokenKind::RightBrace | TokenKind::Eof
+                ) && !self.at_end()
+                {
+                    self.bump();
+                }
+            }
+            self.expect(TokenKind::Symbol(Symbol::FatArrow));
+            let body = self.block();
+            children.push(self.node(NodeKind::Arm, start, vec![pattern, body]));
+            if !self.eat(TokenKind::Comma) && !self.at_end() && self.kind() != TokenKind::RightBrace
+            {
+                self.report(1101, self.current().span, "expected arm END or comma");
+                self.recover_statement();
+            }
+            if before == self.cursor {
+                self.bump();
+            }
+        }
+        self.close(TokenKind::RightBrace);
+        self.depth -= 1;
+        self.node(NodeKind::Match { keyword }, keyword.start(), children)
+    }
+
+    fn pattern(&mut self) -> AstNodeId {
+        let token = self.current();
+        let start = token.span.start();
+        if let TokenKind::Keyword(Keyword::True | Keyword::False) = token.kind {
+            self.bump();
+            return self.node(
+                NodeKind::PatternBoolean(token.kind == TokenKind::Keyword(Keyword::True)),
+                start,
+                vec![],
+            );
+        }
+        if token.kind == TokenKind::Identifier {
+            self.bump();
+            if self.text.get(token.span.start()..token.span.end()) == Some("_") {
+                return self.node(NodeKind::Wildcard, start, vec![]);
+            }
+            self.expect(TokenKind::Symbol(Symbol::ColonColon));
+            let name = self.expect(TokenKind::Identifier).span;
+            if name.start() == name.end() {
+                return self.node(NodeKind::Error, start, vec![]);
+            }
+            let arguments = self.kind() == TokenKind::LeftParen;
+            let mut binders = vec![];
+            if arguments {
+                self.open(TokenKind::LeftParen);
+                while !matches!(
+                    self.kind(),
+                    TokenKind::RightParen
+                        | TokenKind::RightBrace
+                        | TokenKind::Eof
+                        | TokenKind::Symbol(Symbol::FatArrow)
+                ) {
+                    let before = self.cursor;
+                    let b = self.expect(TokenKind::Identifier).span;
+                    if b.start() != b.end() {
+                        let kind = if self.text.get(b.start()..b.end()) == Some("_") {
+                            NodeKind::Wildcard
+                        } else {
+                            NodeKind::Binder { name: b }
+                        };
+                        binders.push(self.node(kind, b.start(), vec![]));
+                    }
+                    if !self.eat(TokenKind::Comma) || before == self.cursor {
+                        break;
+                    }
+                }
+                self.close(TokenKind::RightParen);
+            }
+            return self.node(
+                NodeKind::PatternVariant {
+                    owner: token.span,
+                    name,
+                    arguments,
+                },
+                start,
+                binders,
+            );
+        }
+        self.report(
+            1102,
+            token.span,
+            "only Enum/Bool and wildcard patterns are supported",
+        );
+        if !matches!(
+            self.kind(),
+            TokenKind::RightBrace | TokenKind::Eof | TokenKind::Symbol(Symbol::FatArrow)
+        ) {
+            self.bump();
+        }
+        self.node(NodeKind::Error, start, vec![])
+    }
+
     fn structure(&mut self) -> AstNodeId {
         let start = self.bump().span.start();
         let name = self.expect(TokenKind::Identifier).span;
@@ -673,6 +876,9 @@ impl<'a> Parser<'a> {
         if self.kind() == TokenKind::Keyword(Keyword::While) {
             return self.while_statement();
         }
+        if self.kind() == TokenKind::Keyword(Keyword::Match) {
+            return self.match_statement();
+        }
         let id = match self.kind() {
             TokenKind::Keyword(Keyword::Let | Keyword::Var | Keyword::Const) => {
                 let keyword = self.bump().kind;
@@ -853,6 +1059,20 @@ impl<'a> Parser<'a> {
             TokenKind::Float => NodeKind::Float,
             TokenKind::Character => NodeKind::Character,
             TokenKind::String => NodeKind::String,
+            TokenKind::Identifier
+                if self
+                    .tokens
+                    .get(self.cursor + 1)
+                    .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::ColonColon)) =>
+            {
+                let owner = self.bump().span;
+                self.bump();
+                let name = self.expect(TokenKind::Identifier).span;
+                if name.start() == name.end() {
+                    return self.node(NodeKind::Error, start, vec![]);
+                }
+                return self.node(NodeKind::VariantPath { owner, name }, start, vec![]);
+            }
             TokenKind::Identifier => NodeKind::Name,
             TokenKind::Keyword(Keyword::True) => NodeKind::Boolean(true),
             TokenKind::Keyword(Keyword::False) => NodeKind::Boolean(false),

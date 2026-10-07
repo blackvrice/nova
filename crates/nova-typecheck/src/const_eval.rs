@@ -87,12 +87,16 @@ pub(crate) fn evaluate(
                 | Symbol::OrOr,
             ) => true,
             HirKind::Projection { .. } | HirKind::TupleProjection { .. } | HirKind::Tuple => true,
-            HirKind::Call => checked.calls[id.0].is_some_and(|d| {
-                matches!(
-                    resolved.definitions[d.0].kind,
-                    nova_resolve::DefinitionKind::Struct(_)
-                )
-            }),
+            HirKind::VariantPath { .. } => checked.variants[id.0].is_some(),
+            HirKind::Call => {
+                checked.variants[id.0].is_some()
+                    || checked.calls[id.0].is_some_and(|d| {
+                        matches!(
+                            resolved.definitions[d.0].kind,
+                            nova_resolve::DefinitionKind::Struct(_)
+                        )
+                    })
+            }
             HirKind::Name(_) => matches!(resolved.references[id.0],
                 Some(Resolution::Definition(def)) if resolved.definitions[def.0].constant
                     && matches!(checked.const_values[def.0], ConstEvaluation::Value { .. })),
@@ -127,9 +131,12 @@ pub(crate) fn evaluate(
         match task {
             Work::Aggregate(id) => {
                 let tuple = module.nodes()[id.0].kind == HirKind::Tuple;
-                let count = module.nodes()[id.0].children.len() - usize::from(!tuple);
+                let count = module.nodes()[id.0].children.len()
+                    - usize::from(module.nodes()[id.0].kind == HirKind::Call);
                 let fields = values.split_off(values.len() - count);
-                if tuple {
+                if let Some(variant) = checked.variants[id.0] {
+                    values.push(ConstValue::Enum(variant, fields));
+                } else if tuple {
                     let sid = checked
                         .types
                         .get(checked.type_table[id.0])
@@ -197,6 +204,10 @@ pub(crate) fn evaluate(
                         };
                         values.push(value.clone());
                     }
+                    HirKind::VariantPath { .. } => values.push(ConstValue::Enum(
+                        checked.variants[id.0].expect("variant"),
+                        vec![],
+                    )),
                     HirKind::Call => {
                         work.push(Work::Aggregate(id));
                         work.extend(node.children[1..].iter().rev().copied().map(Work::Evaluate));

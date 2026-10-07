@@ -44,7 +44,8 @@ pub fn layout(fields: &[StructField], types: &StructRegistry) -> Result<StructLa
     };
     for (index, field) in fields.iter().enumerate() {
         let (size, align, depth, occurrences) = match field.ty {
-            Type::Struct(id) | Type::Tuple(id) => {
+            t if t.aggregate().is_some() => {
+                let id = t.aggregate().ok_or(index)?;
                 let l = types
                     .get(&id)
                     .and_then(|s| s.layout.as_ref())

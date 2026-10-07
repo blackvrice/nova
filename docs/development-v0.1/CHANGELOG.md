@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P14 승인과 Copy Enum·statement match 구현
+
+- 사용자 “P14 승인하고 Copy Enum·match 구현 진행”을 계약·48-production EBNF·accepted ledger에 기록.
+- nominal Copy Enum·type alias import·Enum/Bool coverage·불변 binder·const·private tagged ABI 구현.
+- 독립 MIR active-tag CFG proof와 stale/wrong/retargeted payload gate, resource/layout oracle 검증.
+- 기본 276개·실제 LLVM 10개·Windows Native 36개, 부정 16사례 code/UTF-8 Span 검증.
+- [구현 기록](ENUM_IMPLEMENTATION.md), [예제](../../examples/enums.nova), [사용자 실행 명령](../../TESTING.md) 제공.
+- 원본 148개 보존. Array·Option/Result·일반 Move/borrow/Drop·guard/nested pattern은 후속.
+
 ## 2026-10-07 — P14 Copy Enum·statement match 착수안 (Draft)
 
 - nominal Copy Enum·qualified variant·type import·Enum/Bool statement match와 immutable Copy binder 제안.
