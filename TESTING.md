@@ -55,3 +55,11 @@ cargo test -p nova-cli --test native p13_ -- --ignored --test-threads=1
 
 Native tests는 격리된 target 경로에 실행 파일을 만들고 실행한다. ELF object 검증은 Linux Native 실행 검증이 아니다.
 앞으로 기능 구현 완료 보고에는 새 예제의 check/debug/release 명령·예상 출력·기능별 테스트 명령을 함께 제공한다.
+
+## 다음 제안 — P14 Copy Enum·statement match
+
+[계약](docs/development-v0.1/ENUM_STAGE_B_PROPOSAL.md)과
+[수용 예제·예상 출력](docs/development-v0.1/enum-proposal-fixtures/README.md)는 Draft / 미구현이다.
+P14 승인·구현 전에는 이 예제가 check/run에 성공하지 않는다.
+현재는 위 P13 예제와 자동 테스트를 실행할 수 있다.
+P14 승인 후 실행할 check/debug/release 명령은 수용 예제 README에 미리 작성했다.

@@ -18,6 +18,8 @@
 
 [P13 Copy Tuple 최소 계약](TUPLE_STAGE_B_PROPOSAL.md), [40-production EBNF](GRAMMAR_STAGE_B_TUPLE.ebnf), [수용 fixture](tuple-proposal-fixtures/README.md)는 Accepted이며 [구현 기록](TUPLE_IMPLEMENTATION.md)을 따른다. 전체 D09/D10/D12/D16 승인이 아니다.
 
+[P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](GRAMMAR_STAGE_B_ENUM.ebnf), [수용 fixture](enum-proposal-fixtures/README.md)는 Draft / 미승인 / 미구현이다. P13까지의 승인과 분리한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

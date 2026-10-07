@@ -1,0 +1,3 @@
+// P14 부정 사례: UTF-8 위치
+enum E { A(int, int); }
+func main() { match E::A(1, 2) { E::A(x, x) => {} } }

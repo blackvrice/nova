@@ -1,0 +1,24 @@
+use events::Event as E
+use events::make
+
+func main() {
+    var original = make()
+    let snapshot = original
+    original = E::Empty
+    var result: int = 0
+    match snapshot {
+        E::Empty => { print("empty") }
+        E::Data(pair, meta) => {
+            result = pair.x + pair.y
+            print("sum={result}, code={meta.0}, flag={meta.1}")
+        }
+    }
+    match original {
+        E::Empty => { print("original=empty") },
+        E::Data(_, _) => { print("original=data") },
+    }
+    match result == 30 {
+        true => { print("ok") }
+        false => { print("bad") }
+    }
+}

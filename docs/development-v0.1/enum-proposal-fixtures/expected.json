@@ -1,0 +1,179 @@
+{
+  "proposal": "P14",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "events"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "make\nsum=30, code=7, flag=true\noriginal=empty\nok\n",
+    "stderr": ""
+  },
+  "negative_cases": [
+    {
+      "name": "missing_variant",
+      "source": "missing_variant.nova",
+      "expected_diagnostic": "N3101",
+      "primary_text": "match",
+      "primary": {
+        "start": 66,
+        "end": 71
+      }
+    },
+    {
+      "name": "duplicate_arm",
+      "source": "duplicate_arm.nova",
+      "expected_diagnostic": "N3102",
+      "primary_text": "E::A",
+      "primary": {
+        "start": 91,
+        "end": 95
+      }
+    },
+    {
+      "name": "after_wildcard",
+      "source": "after_wildcard.nova",
+      "expected_diagnostic": "N3102",
+      "primary_text": "E::A",
+      "primary": {
+        "start": 85,
+        "end": 89
+      }
+    },
+    {
+      "name": "invalid_scrutinee",
+      "source": "invalid_scrutinee.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "1",
+      "primary": {
+        "start": 55,
+        "end": 56
+      }
+    },
+    {
+      "name": "wrong_enum",
+      "source": "wrong_enum.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "F::A",
+      "primary": {
+        "start": 90,
+        "end": 94
+      }
+    },
+    {
+      "name": "unknown_variant",
+      "source": "unknown_variant.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "Missing",
+      "primary": {
+        "start": 74,
+        "end": 81
+      }
+    },
+    {
+      "name": "payload_arity",
+      "source": "payload_arity.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "E::A(x, y)",
+      "primary": {
+        "start": 84,
+        "end": 94
+      }
+    },
+    {
+      "name": "immutable_binder",
+      "source": "immutable_binder.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "x",
+      "primary": {
+        "start": 97,
+        "end": 98
+      }
+    },
+    {
+      "name": "binder_scope",
+      "source": "binder_scope.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "x",
+      "primary": {
+        "start": 109,
+        "end": 110
+      }
+    },
+    {
+      "name": "string_payload",
+      "source": "string_payload.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "string",
+      "primary": {
+        "start": 46,
+        "end": 52
+      }
+    },
+    {
+      "name": "recursive_value",
+      "source": "recursive_value.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "E",
+      "primary": {
+        "start": 46,
+        "end": 47
+      }
+    },
+    {
+      "name": "duplicate_binder",
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "x",
+      "primary": {
+        "start": 100,
+        "end": 101
+      }
+    },
+    {
+      "name": "duplicate_variant",
+      "source": "duplicate_variant.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "A",
+      "primary": {
+        "start": 47,
+        "end": 48
+      }
+    },
+    {
+      "name": "nullary_call",
+      "source": "nullary_call.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "E::A()",
+      "primary": {
+        "start": 71,
+        "end": 77
+      }
+    },
+    {
+      "name": "missing_bool",
+      "source": "missing_bool.nova",
+      "expected_diagnostic": "N3101",
+      "primary_text": "match",
+      "primary": {
+        "start": 49,
+        "end": 54
+      }
+    },
+    {
+      "name": "guard_unsupported",
+      "source": "guard_unsupported.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "if",
+      "primary": {
+        "start": 81,
+        "end": 83
+      }
+    }
+  ]
+}

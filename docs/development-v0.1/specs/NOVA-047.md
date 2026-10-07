@@ -10,6 +10,8 @@
 
 이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
+Copy Enum·qualified variant·Enum/Bool statement match·coverage/binder·const·private tagged ABI의 다음 최소 계약은 [P14 Draft](../ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](../GRAMMAR_STAGE_B_ENUM.ebnf), [제안 fixture](../enum-proposal-fixtures/README.md)에 있다. 사용자 승인 전 미구현이며 전체 D06/D08/D09/D10/D12/D16/D25/D30은 계속 Draft다.
+
 ## Exhaustiveness
 bool/Enum/Option/Result/tuple 조합은 constructor coverage로 검사한다. integer/string의 임의 값 공간에는 wildcard가 필요하다. guard가 있는 arm은 exhaustive coverage 증명으로 사용하지 않는 초안을 제안한다.
 

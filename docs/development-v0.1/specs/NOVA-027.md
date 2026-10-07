@@ -14,6 +14,8 @@ nominal Copy struct·위치 생성·type import·가변 field 경로·const·pri
 
 structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·private aggregate ABI와 자원 제한은 사용자 승인 [P13](../TUPLE_STAGE_B_PROPOSAL.md)와 [40-production EBNF](../GRAMMAR_STAGE_B_TUPLE.ebnf)를 따른다. [구현·검증 기록](../TUPLE_IMPLEMENTATION.md). Array/Enum/일반 Move element와 전체 D09/D10/D12/D16은 후속이다.
 
+Copy Enum·qualified variant·Enum/Bool statement match·coverage/binder·const·private tagged ABI의 다음 최소 계약은 [P14 Draft](../ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](../GRAMMAR_STAGE_B_ENUM.ebnf), [제안 fixture](../enum-proposal-fixtures/README.md)에 있다. 사용자 승인 전 미구현이며 전체 D06/D08/D09/D10/D12/D16/D25/D30은 계속 Draft다.
+
 ## 값/Handle 구분
 Struct는 값 의미, Class는 정체성을 가진 owned handle, Enum은 하나의 활성 variant와 payload다. 모든 필드는 let/var를 명시하고 직접 재귀 값 포함은 금지한다. Option/Result는 특별 null sentinel가 아닌 일반 Enum 의미다.
 

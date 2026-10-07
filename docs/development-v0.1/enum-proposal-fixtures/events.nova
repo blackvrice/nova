@@ -1,0 +1,13 @@
+private struct Pair {
+    public let x: int
+    public let y: int
+}
+public enum Event {
+    Empty
+    Data(Pair, (int8, bool))
+}
+public const BASE: Event = Event::Data(Pair(10, 20), (7, true))
+public func make() -> Event {
+    print("make")
+    return BASE
+}

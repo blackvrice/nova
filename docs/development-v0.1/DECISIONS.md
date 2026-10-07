@@ -14,6 +14,8 @@
 
 2026-10-07 사용자 “P13 승인하고 Copy Tuple 구현 진행”으로 [P13 Copy Tuple 최소 계약](TUPLE_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](TUPLE_IMPLEMENTATION.md)을 따른다. Structural identity·numeric selector subspan·혼합 가변 경로·const·private ABI와 자원 한도 subset에만 적용하며 전체 D09/D10/D12/D16은 계속 Draft다.
 
+2026-10-07 다음 [P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md)은 Draft / 미승인 / 미구현이다. Qualified variant·Copy binder·Enum/Bool coverage·const 생성·private tagged ABI와 자원 한도만 제안하며 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

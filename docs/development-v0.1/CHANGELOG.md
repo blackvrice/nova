@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P14 Copy Enum·statement match 착수안 (Draft)
+
+- nominal Copy Enum·qualified variant·type import·Enum/Bool statement match와 immutable Copy binder 제안.
+- N3101/N3102 Error·coverage/flow·활성 tag proof·const 생성·private union layout/ABI·자원 한도 구체화.
+- P13 세 production 확장/여덟 추가: 48-production EBNF, 두 파일·부정 16사례 proposed code/UTF-8 Span 작성.
+- Draft ledger·기계 validator·승인 후 사용자 실행 명령 추가. Compiler/Runtime/기존 accepted ledger와 원본 148개 보존.
+- 검증 결과는 VALIDATION.md와 P14 초안 준비 검증 기록으로 구분하며 제안 source의 실행 성공을 주장하지 않는다.
+
 ## 2026-10-07 — P13 승인과 Copy Tuple 구현
 
 - 사용자 “P13 승인하고 Copy Tuple 구현 진행”을 계약·40-production EBNF·accepted ledger에 기록.

@@ -325,6 +325,72 @@ assert(fs.readFileSync(path.join(tupleFixtureRoot, 'main.nova'), 'utf8').include
   && fs.readFileSync(path.join(tupleFixtureRoot, 'tuples.nova'), 'utf8').includes('public const START: ((int, int), bool)'), 'P13 missing nested/one-tuple/const fixture');
 checks.push('P13 Accepted/승인·구현 ledger·P12 네 production 확장/세 production 추가·40-production EBNF·두 파일/부정 10사례 UTF-8 Span·검증 결과 데이터 (컴파일 실행 아님)');
 
+const enumProposal = manifest.draft_proposals?.find(p => p.id === 'P14');
+assert(enumProposal?.status === 'Draft' && enumProposal?.implementation_verified === false
+  && enumProposal?.authored_date === '2026-10-07' && enumProposal?.grammar_change === true
+  && enumProposal?.document === 'ENUM_STAGE_B_PROPOSAL.md'
+  && enumProposal?.grammar === 'GRAMMAR_STAGE_B_ENUM.ebnf', 'P14 missing draft/unimplemented ledger');
+assert(!manifest.accepted_proposals?.some(p => p.id === 'P14'), 'P14 must not be approved before user decision');
+assert(fs.readFileSync(path.join(pack, 'ENUM_STAGE_B_PROPOSAL.md'), 'utf8')
+  .includes('Draft / 사용자 승인 대기 / 미구현'), 'P14 invalid proposal status');
+validateGrammar('GRAMMAR_STAGE_B_ENUM.ebnf');
+const enumGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_ENUM.ebnf'), 'utf8');
+assert(enumGrammar.includes('Draft, user approval required'), 'P14 invalid grammar status');
+const enumProductions = productions(enumGrammar);
+for (const [name, value] of tupleProductions) {
+  if (!['program', 'statement', 'primary_expr'].includes(name)) {
+    assert(enumProductions.get(name) === value, `P14 changes existing ${name}`);
+  }
+}
+assert(enumProductions.size === tupleProductions.size + 8, 'P14 must add exactly eight productions');
+assert(enumProductions.get('program') === '{"END"|import_decl|[visibility],(function_decl|global_const_decl|struct_decl|enum_decl)},"EOF"', 'P14 invalid top-level grammar');
+assert(enumProductions.get('statement') === 'if_stmt|while_stmt|match_stmt|simple_statement', 'P14 invalid statement grammar');
+assert(enumProductions.get('primary_expr') === tupleProductions.get('primary_expr').replace('|interpolated_string', '|variant_path|interpolated_string'), 'P14 changes primary beyond variant path');
+const newEnumProductions = {
+  enum_decl: '"enum","IDENT","{",{"END"|variant_decl},"}"',
+  variant_decl: '"IDENT",["(",payload_types,")"],end',
+  payload_types: 'type,{",",type},[","]',
+  variant_path: '"IDENT","::","IDENT"',
+  match_stmt: '"match",expression,"{",{"END"|match_arm},"}"',
+  match_arm: 'pattern,"=>",block,(end|",")',
+  pattern: 'variant_path,["(",pattern_arguments,")"]|"true"|"false"|"_"',
+  pattern_arguments: '"IDENT",{",","IDENT"},[","]',
+};
+for (const [name, value] of Object.entries(newEnumProductions)) {
+  assert(enumProductions.get(name) === value, `P14 invalid ${name} grammar`);
+}
+const enumFixtureRoot = path.join(pack, 'enum-proposal-fixtures');
+const enumFixture = JSON.parse(fs.readFileSync(path.join(enumFixtureRoot, 'expected.json'), 'utf8'));
+assert(enumFixture.proposal === 'P14' && enumFixture.status === 'Draft'
+  && enumFixture.implementation_verified === false && !enumFixture.validated_result, 'P14 fixture must remain proposed/unverified');
+assert(enumFixture.entry === 'main.nova' && enumFixture.source_root === '.'
+  && JSON.stringify(enumFixture.reachable_modules) === '["main","events"]', 'P14 fixture graph mismatch');
+assert(enumFixture.proposed_result?.check_exit === 0 && enumFixture.proposed_result?.native_exit === 0
+  && enumFixture.proposed_result?.stderr === ''
+  && enumFixture.proposed_result?.stdout === 'make\nsum=30, code=7, flag=true\noriginal=empty\nok\n', 'P14 proposed result mismatch');
+assert(enumFixture.negative_cases?.length === 16
+  && new Set(enumFixture.negative_cases.map(c => c.name)).size === 16, 'P14 negative fixture set mismatch');
+for (const name of ['main.nova', 'events.nova', ...enumFixture.negative_cases.map(c => c.source)]) {
+  assert(path.basename(name) === name && name.endsWith('.nova'), `P14 invalid filename ${name}`);
+  const bytes = fs.readFileSync(path.join(enumFixtureRoot, name));
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  assert(text.endsWith('\n') && !text.includes('\r'), `P14 fixture encoding/newline ${name}`);
+}
+for (const c of enumFixture.negative_cases) {
+  assert(knownCodes.has(c.expected_diagnostic), `P14 unknown diagnostic ${c.name}`);
+  const bytes = fs.readFileSync(path.join(enumFixtureRoot, c.source));
+  const boundaries = new Set([0]);
+  let offset = 0;
+  for (const char of bytes.toString('utf8')) { offset += Buffer.byteLength(char); boundaries.add(offset); }
+  const { start, end } = c.primary;
+  assert(start >= 0 && start < end && end <= bytes.length && boundaries.has(start) && boundaries.has(end), `P14 invalid byte span ${c.name}`);
+  assert(bytes.subarray(start, end).toString('utf8') === c.primary_text, `P14 unexpected span text ${c.name}`);
+}
+assert(fs.readFileSync(path.join(enumFixtureRoot, 'main.nova'), 'utf8').includes('use events::Event as E')
+  && fs.readFileSync(path.join(enumFixtureRoot, 'main.nova'), 'utf8').includes('E::Data(pair, meta)')
+  && fs.readFileSync(path.join(enumFixtureRoot, 'events.nova'), 'utf8').includes('public const BASE: Event'), 'P14 missing Copy/import/const fixture data');
+checks.push('P14 Draft/미승인·미구현 ledger·P13 세 production 확장/여덟 추가·48-production EBNF·두 파일/부정 16사례 UTF-8 Span·제안 기대값 데이터 (컴파일 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

@@ -1,0 +1,53 @@
+(* P14 Copy Enum and statement match: Draft, user approval required.
+   Extends accepted P13: three productions plus eight new productions.
+   Semantics, Copy coverage and private tagged ABI follow ENUM_STAGE_B_PROPOSAL.md. *)
+program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl | enum_decl ) }, "EOF" ;
+import_decl = "use", qualified_name, [ "as", "IDENT" ], end ;
+qualified_name = "IDENT", { "::", "IDENT" } ;
+visibility = "public" | "internal" | "private" ;
+global_const_decl = "const", "IDENT", [ ":", type ], "=", expression, end ;
+function_decl = "func", "IDENT", "(", [ parameters ], ")", [ "->", type ], block ;
+parameters = parameter, { ",", parameter }, [ "," ] ;
+parameter = "IDENT", ":", type ;
+type = "IDENT" | "(", ")" | tuple_type ;
+block = "{", { "END" | statement }, "}" ;
+statement = if_stmt | while_stmt | match_stmt | simple_statement ;
+simple_statement = ( binding | assignment | return_stmt | break_stmt | continue_stmt | expression ), end ;
+binding = ( "let" | "var" | "const" ), "IDENT", [ ":", type ], "=", expression ;
+assignment = field_path, "=", expression ;
+return_stmt = "return", [ expression ] ;
+break_stmt = "break" ;
+continue_stmt = "continue" ;
+if_stmt = "if", expression, block, [ "else", ( if_stmt | block ) ] ;
+while_stmt = "while", expression, block ;
+expression = or_expr ;
+or_expr = and_expr, { "||", and_expr } ;
+and_expr = compare_expr, { "&&", compare_expr } ;
+compare_expr = add_expr, [ compare_op, add_expr ] ;
+compare_op = "==" | "!=" | "<" | "<=" | ">" | ">=" ;
+add_expr = mul_expr, { ( "+" | "-" ), mul_expr } ;
+mul_expr = prefix_expr, { ( "*" | "/" | "%" ), prefix_expr } ;
+prefix_expr = ( "+" | "-" | "!" ), prefix_expr | postfix_expr ;
+postfix_expr = primary_expr, { "(", [ arguments ], ")" | "as", type | ".", ( "IDENT" | tuple_index ) } ;
+arguments = expression, { ",", expression }, [ "," ] ;
+primary_expr = "INT" | "FLOAT" | "CHAR" | "STRING" | "true" | "false" | "IDENT"
+             | "(", ")" | "(", expression, ")" | tuple_expr | variant_path | interpolated_string ;
+interpolated_string = "STRING_START", { "STRING_TEXT" | interpolation }, "STRING_END" ;
+interpolation = "INTERP_START", expression, "INTERP_END" ;
+end = "END" | boundary ;
+boundary = ? zero-width only immediately before closing brace or EOF ? ;
+struct_decl = "struct", "IDENT", "{", { "END" | field_decl }, "}" ;
+field_decl = [ visibility ], ( "let" | "var" ), "IDENT", ":", type, end ;
+field_path = "IDENT", { ".", ( "IDENT" | tuple_index ) } ;
+tuple_type = "(", type, ",", [ type, { ",", type }, [ "," ] ], ")" ;
+tuple_expr = "(", expression, ",", [ expression, { ",", expression }, [ "," ] ], ")" ;
+tuple_index = ? canonical ASCII decimal 0 or [1-9][0-9]*, selector-context decimal FLOAT splits into two indexes and Dot using original byte subspans ? ;
+
+enum_decl = "enum", "IDENT", "{", { "END" | variant_decl }, "}" ;
+variant_decl = "IDENT", [ "(", payload_types, ")" ], end ;
+payload_types = type, { ",", type }, [ "," ] ;
+variant_path = "IDENT", "::", "IDENT" ;
+match_stmt = "match", expression, "{", { "END" | match_arm }, "}" ;
+match_arm = pattern, "=>", block, ( end | "," ) ;
+pattern = variant_path, [ "(", pattern_arguments, ")" ] | "true" | "false" | "_" ;
+pattern_arguments = "IDENT", { ",", "IDENT" }, [ "," ] ;

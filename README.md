@@ -168,3 +168,7 @@ cargo run -p nova-cli -- run examples/floats.nova --profile release
 
 출력은 `Hello, Nova` 뒤 LF이며 정상 종료는 0입니다. `-o`는 기존 파일을 덮어쓰지 않습니다.
 GitHub clone에는 LLVM binary가 포함되지 않습니다. 설치·시험 방법은 Native 구현 기록을 확인하세요.
+
+다음 개발 계약 [P14 Copy Enum·statement match](docs/development-v0.1/ENUM_STAGE_B_PROPOSAL.md)는
+Draft / 사용자 승인 대기 / 미구현이다. 현재 지원 기능은 P13까지이며
+[P14 수용 예제](docs/development-v0.1/enum-proposal-fixtures/README.md)는 승인 후 구현 검증용이다.
