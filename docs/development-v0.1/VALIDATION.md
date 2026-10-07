@@ -5,7 +5,7 @@
 결과: **PASS**
 
 - 148개 NOVA ID 연속성/중복/원본·보완 SHA-256/상태/본문 섹션
-- 2250개 로컬 Markdown 링크/코드 fence/D·T 참조
+- 2274개 로컬 Markdown 링크/코드 fence/D·T 참조
 - 30개 결정 (Accepted 5 / Draft 25), 60개 수용 묶음, 42개 진단 코드 유일성/영역
 - GRAMMAR.ebnf: 94개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_A.ebnf: 26개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
@@ -17,6 +17,7 @@
 - GRAMMAR_STAGE_B_CAST.ebnf: 31개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_B_MODULE.ebnf: 34개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_B_STRUCT.ebnf: 37개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
+- GRAMMAR_STAGE_B_TUPLE.ebnf: 40개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - P01 Stage A Parser 승인 범위/날짜와 전용 EBNF 기록
 - P02 Stage A 의미 검사 승인 범위/날짜 기록
 - P03 Stage A Native 승인 subset/날짜 기록
@@ -29,6 +30,7 @@
 - P10 숫자 cast 승인 subset/날짜·전용 EBNF는 as type postfix만 추가·전체 D07 Draft 경계
 - P11 Module 승인 subset/날짜·accepted ledger·기존 P10 production 보존·34-production EBNF와 수용 2-file fixture 데이터 (컴파일 실행 아님)
 - P12 Accepted/승인·구현 ledger·P11의 세 production 변경/세 production 추가·37-production EBNF·두 파일/부정 10사례 UTF-8 Span·검증 결과 데이터 (컴파일 실행 아님)
+- P13 Draft/미승인·미구현 ledger·P12 네 production 확장/세 production 추가·40-production EBNF·두 파일/부정 10사례 UTF-8 Span·기대값 데이터 (컴파일 실행 아님)
 - 20개 예제 sidecar/UTF-8 byte Span/등록 code 검사 (컴파일 실행 아님)
 
 ## 검증의 범위

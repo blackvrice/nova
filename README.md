@@ -3,7 +3,7 @@
 개발 전에 읽을 [전체 개발 문서 보완팩](docs/development-v0.1/README.md)을 작성했습니다.
 148개 주제별 문서와 구체 EBNF, 30건 결정 초안, API/schema, 수용 테스트 계획을 포함합니다.
 D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 지역 const, P06 전역 const, P07 고정 폭 정수·승격, P08 char, P09 float, P10 숫자 cast, P11 Module, P12 Copy struct 최소 계약은 Accepted이며,
-나머지 상세는 Draft입니다.
+나머지 상세는 Draft입니다. 직접 실행할 [예제·테스트 명령](TESTING.md)을 제공합니다.
 
 Nova 컴파일러의 Stage A와 Stage B 제어 흐름·지역/전역 const·고정 폭 정수·char·float·cast·Module·Copy struct 구현입니다. 언어 사양은 `docs/`의 원본
 Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다.
@@ -104,7 +104,8 @@ NOVA-002와 사용자 Stage 순서에 따라 언어 수준 Stage C 작업으로 
     [전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_MODULE.ebnf) 구현 완료:
     [구현·검증 기록](docs/development-v0.1/MODULE_IMPLEMENTATION.md), [두 파일 수용 fixture](docs/development-v0.1/module-proposal-fixtures/README.md).
 14. [P12 Copy struct 최소 계약](docs/development-v0.1/STRUCT_STAGE_B_PROPOSAL.md)·[전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_STRUCT.ebnf)·[수용 fixture](docs/development-v0.1/struct-proposal-fixtures/README.md) 구현 완료: [검증 기록](docs/development-v0.1/STRUCT_IMPLEMENTATION.md), [예제](examples/structs.nova).
-15. 후속 Move field·init/Drop·Enum/Tuple/Array·float remainder/math API·Package·Linux Native host 검증.
+15. [P13 Copy Tuple 최소 계약](docs/development-v0.1/TUPLE_STAGE_B_PROPOSAL.md)·[전용 EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_TUPLE.ebnf)·[수용 fixture](docs/development-v0.1/tuple-proposal-fixtures/README.md): Draft/승인 대기, 미구현.
+16. 후속 Move field·init/Drop·Enum/Tuple/Array·float remainder/math API·Package·Linux Native host 검증.
 
 제공된 NOVA-014는 일반 요구사항을 담고 있지만 실제 EBNF Production은 없습니다.
 Stage A는 별도로 사용자 승인된 `GRAMMAR_STAGE_A.ebnf`를 따릅니다.

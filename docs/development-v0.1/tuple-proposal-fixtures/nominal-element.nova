@@ -1,0 +1,5 @@
+struct A { let x: int }
+struct B { let x: int }
+func main() {
+    let t: (A,) = (B(1),)
+}

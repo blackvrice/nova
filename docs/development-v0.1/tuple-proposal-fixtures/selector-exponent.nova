@@ -1,0 +1,4 @@
+func main() {
+    let t = ((1,), true)
+    let x = t.0.1e2
+}

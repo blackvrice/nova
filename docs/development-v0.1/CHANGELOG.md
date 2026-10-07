@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P13 Copy Tuple 착수안 (Draft)과 사용자 테스트 안내
+
+- structural Copy Tuple·위치 element·numeric projection·혼합 가변 경로·const·private ABI와 자원 제한 제안.
+- P12의 네 production 확장·세 production 추가로 40-production Draft EBNF, 두 파일/부정 10사례 기대값 작성.
+- longest-match Lexer를 보존하는 selector 문맥 token subspan 정책과 정확한 진단 위치 제안.
+- Draft ledger/validator와 [직접 실행할 명령](../../TESTING.md) 추가. 승인 전 Compiler/accepted ledger에는 미적용.
+- 문서 validator·기존 기본 252개 tests·fmt/clippy/all-features PASS. 기존 P12 안내 예제의 check/debug/release 실제 실행 확인.
+  P13 수용 테스트는 미구현이며 opt-in LLVM/Native 전체는 이번 문서 변경에서 재실행하지 않았다.
+
 ## 2026-10-07 — P12 승인과 Copy struct 구현
 
 - 사용자 “P12 승인하고 Copy struct 구현 진행”의 2026-10-05 승인을 계약/37-production EBNF/ledger에 기록.

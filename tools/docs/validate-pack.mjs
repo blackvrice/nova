@@ -96,6 +96,7 @@ validateGrammar('GRAMMAR_STAGE_B_FLOAT.ebnf');
 validateGrammar('GRAMMAR_STAGE_B_CAST.ebnf');
 validateGrammar('GRAMMAR_STAGE_B_MODULE.ebnf');
 validateGrammar('GRAMMAR_STAGE_B_STRUCT.ebnf');
+validateGrammar('GRAMMAR_STAGE_B_TUPLE.ebnf');
 const parserProposal = manifest.accepted_proposals?.find(p => p.id === 'P01');
 assert(parserProposal?.approval_date === '2026-10-04' && parserProposal?.grammar === 'GRAMMAR_STAGE_A.ebnf', 'Missing P01 approval ledger');
 assert(fs.readFileSync(path.join(pack, 'PARSER_STAGE_A_PROPOSAL.md'), 'utf8').includes('Accepted / 2026-10-04 사용자 승인'), 'Invalid P01 status');
@@ -267,6 +268,62 @@ assert(fs.readFileSync(path.join(structFixtureRoot, 'main.nova'), 'utf8').includ
   && fs.readFileSync(path.join(structFixtureRoot, 'main.nova'), 'utf8').includes('original.pair.x = original.pair.x + 1')
   && fs.readFileSync(path.join(structFixtureRoot, 'geometry.nova'), 'utf8').includes('public struct Pair'), 'P12 missing Copy/import fixture data');
 checks.push('P12 Accepted/승인·구현 ledger·P11의 세 production 변경/세 production 추가·37-production EBNF·두 파일/부정 10사례 UTF-8 Span·검증 결과 데이터 (컴파일 실행 아님)');
+
+const tupleProposal = manifest.draft_proposals?.find(p => p.id === 'P13');
+assert(tupleProposal?.status === 'Draft' && tupleProposal?.implementation_verified === false
+  && tupleProposal?.grammar_change === true && !tupleProposal?.approval_date
+  && tupleProposal?.document === 'TUPLE_STAGE_B_PROPOSAL.md'
+  && tupleProposal?.grammar === 'GRAMMAR_STAGE_B_TUPLE.ebnf', 'P13 missing Draft/unimplemented ledger');
+assert(!manifest.accepted_proposals?.some(p => p.id === 'P13'), 'P13 must not be accepted without user approval');
+assert(fs.readFileSync(path.join(pack, 'TUPLE_STAGE_B_PROPOSAL.md'), 'utf8')
+  .includes('Draft / 사용자 승인 대기'), 'P13 invalid proposal status');
+const tupleGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_TUPLE.ebnf'), 'utf8');
+assert(tupleGrammar.includes('Draft, not approved or implemented'), 'P13 invalid grammar status');
+const tupleProductions = productions(tupleGrammar);
+for (const [name, value] of structProductions) {
+  if (!['type', 'primary_expr', 'postfix_expr', 'field_path'].includes(name)) {
+    assert(tupleProductions.get(name) === value, `P13 changes existing ${name}`);
+  }
+}
+assert(tupleProductions.size === structProductions.size + 3, 'P13 must add exactly three productions');
+assert(tupleProductions.get('type') === '"IDENT"|"(",")"|tuple_type', 'P13 invalid type grammar');
+assert(tupleProductions.get('primary_expr') === '"INT"|"FLOAT"|"CHAR"|"STRING"|"true"|"false"|"IDENT"|"(",")"|"(",expression,")"|tuple_expr|interpolated_string', 'P13 invalid primary grammar');
+assert(tupleProductions.get('postfix_expr') === 'primary_expr,{"(",[arguments],")"|"as",type|".",("IDENT"|tuple_index)}', 'P13 invalid projection grammar');
+assert(tupleProductions.get('field_path') === '"IDENT",{".",("IDENT"|tuple_index)}', 'P13 invalid target grammar');
+assert(tupleProductions.get('tuple_type') === '"(",type,",",[type,{",",type},[","]],")"', 'P13 invalid tuple type grammar');
+assert(tupleProductions.get('tuple_expr') === '"(",expression,",",[expression,{",",expression},[","]],")"', 'P13 invalid tuple expression grammar');
+assert(tupleProductions.get('tuple_index')?.includes('canonicalASCIIdecimal0or[1-9][0-9]*')
+  && tupleProductions.get('tuple_index')?.includes('originalbytesubspans'), 'P13 missing selector lexical contract');
+const tupleFixtureRoot = path.join(pack, 'tuple-proposal-fixtures');
+const tupleFixture = JSON.parse(fs.readFileSync(path.join(tupleFixtureRoot, 'expected.json'), 'utf8'));
+assert(tupleFixture.proposal === 'P13' && tupleFixture.status === 'Draft'
+  && tupleFixture.implementation_verified === false && !tupleFixture.validated_result, 'P13 fixture must remain unverified Draft');
+assert(tupleFixture.entry === 'main.nova' && tupleFixture.source_root === '.'
+  && JSON.stringify(tupleFixture.reachable_modules) === '["main","tuples"]', 'P13 fixture graph mismatch');
+assert(tupleFixture.proposed_result?.check_exit === 0 && tupleFixture.proposed_result?.native_exit === 0
+  && tupleFixture.proposed_result?.stdout === 'original=21, snapshot=20, shifted=21, one=7, tag=🙂\n', 'P13 proposed result mismatch');
+assert(tupleFixture.negative_cases?.length === 10
+  && new Set(tupleFixture.negative_cases.map(c => c.name)).size === 10, 'P13 negative fixture set mismatch');
+for (const name of ['main.nova', 'tuples.nova', ...tupleFixture.negative_cases.map(c => c.source)]) {
+  assert(path.basename(name) === name && name.endsWith('.nova'), `P13 invalid filename ${name}`);
+  const bytes = fs.readFileSync(path.join(tupleFixtureRoot, name));
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  assert(text.endsWith('\n') && !text.includes('\r'), `P13 fixture encoding/newline ${name}`);
+}
+for (const c of tupleFixture.negative_cases) {
+  assert(knownCodes.has(c.expected_diagnostic), `P13 unknown diagnostic ${c.name}`);
+  const bytes = fs.readFileSync(path.join(tupleFixtureRoot, c.source));
+  const boundaries = new Set([0]);
+  let offset = 0;
+  for (const char of bytes.toString('utf8')) { offset += Buffer.byteLength(char); boundaries.add(offset); }
+  const { start, end } = c.primary;
+  assert(start >= 0 && start < end && end <= bytes.length && boundaries.has(start) && boundaries.has(end), `P13 invalid byte span ${c.name}`);
+  assert(bytes.subarray(start, end).toString('utf8') === c.primary_text, `P13 unexpected span text ${c.name}`);
+}
+assert(fs.readFileSync(path.join(tupleFixtureRoot, 'main.nova'), 'utf8').includes('original.items.0.1 = original.items.0.1 + 1')
+  && fs.readFileSync(path.join(tupleFixtureRoot, 'main.nova'), 'utf8').includes('let one: (int8,) = (7,)')
+  && fs.readFileSync(path.join(tupleFixtureRoot, 'tuples.nova'), 'utf8').includes('public const START: ((int, int), bool)'), 'P13 missing nested/one-tuple/const fixture');
+checks.push('P13 Draft/미승인·미구현 ledger·P12 네 production 확장/세 production 추가·40-production EBNF·두 파일/부정 10사례 UTF-8 Span·기대값 데이터 (컴파일 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

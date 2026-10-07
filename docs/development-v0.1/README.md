@@ -114,3 +114,8 @@ frontend/MIR pass는 Native 실행 성공이 아니다. P03 Windows x64 Stage A 
 [두 파일 수용 fixture](struct-proposal-fixtures/README.md)는 2026-10-05 사용자 승인으로 Accepted다.
 nominal Copy field·위치 인수 생성·type import·field 읽기/대입·const·private ABI와 제한을 구현했다.
 [구현·검증 기록](STRUCT_IMPLEMENTATION.md)을 따른다. String field·init/Drop·일반 Move/borrow는 후속이다.
+
+[P13 Copy Tuple](TUPLE_STAGE_B_PROPOSAL.md)·[40-production EBNF](GRAMMAR_STAGE_B_TUPLE.ebnf)·
+[두 파일 fixture](tuple-proposal-fixtures/README.md)는 다음 Stage B Draft/승인 대기다.
+구조적 Copy 타입·numeric selector subspan·혼합 가변 경로·const·private ABI와 자원 한도를 제안한다.
+승인 전 Compiler에는 적용하지 않는다. [사용자 실행 명령](../../TESTING.md)은 현재 P12 기능까지 검증 가능한 안내다.

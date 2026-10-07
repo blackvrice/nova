@@ -108,7 +108,17 @@
       "implementation_verified": true
     }
   ],
-  "draft_proposals": [],
+  "draft_proposals": [
+    {
+      "id": "P13",
+      "status": "Draft",
+      "scope": "Stage B structural Copy tuples selector token subspans mixed mutation paths const private aggregate ABI and resource bounds",
+      "document": "TUPLE_STAGE_B_PROPOSAL.md",
+      "grammar": "GRAMMAR_STAGE_B_TUPLE.ebnf",
+      "grammar_change": true,
+      "implementation_verified": false
+    }
+  ],
   "authored_date": "2026-10-03",
   "topics": [
     {

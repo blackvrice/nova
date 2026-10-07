@@ -1,0 +1,11 @@
+use tuples::Packet
+use tuples::shifted
+use tuples::START
+func main() {
+    var original = Packet(START, '🙂')
+    let snapshot = original
+    original.items.0.1 = original.items.0.1 + 1
+    let next = shifted(snapshot.items)
+    let one: (int8,) = (7,)
+    print("original={original.items.0.1}, snapshot={snapshot.items.0.1}, shifted={next.0.1}, one={one.0}, tag={snapshot.tag}")
+}

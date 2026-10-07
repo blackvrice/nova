@@ -1,0 +1,118 @@
+{
+  "proposal": "P13",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "tuples"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "original=21, snapshot=20, shifted=21, one=7, tag=🙂\n"
+  },
+  "negative_cases": [
+    {
+      "name": "immutable-root",
+      "source": "immutable-root.nova",
+      "expected_diagnostic": "N3004",
+      "primary": {
+        "start": 37,
+        "end": 38
+      },
+      "primary_text": "t"
+    },
+    {
+      "name": "immutable-field",
+      "source": "immutable-field.nova",
+      "expected_diagnostic": "N3004",
+      "primary": {
+        "start": 76,
+        "end": 80
+      },
+      "primary_text": "pair"
+    },
+    {
+      "name": "index-range",
+      "source": "index-range.nova",
+      "expected_diagnostic": "N2001",
+      "primary": {
+        "start": 55,
+        "end": 56
+      },
+      "primary_text": "9"
+    },
+    {
+      "name": "arity-mismatch",
+      "source": "arity-mismatch.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 38,
+        "end": 42
+      },
+      "primary_text": "(1,)"
+    },
+    {
+      "name": "element-mismatch",
+      "source": "element-mismatch.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 43,
+        "end": 44
+      },
+      "primary_text": "2"
+    },
+    {
+      "name": "nominal-element",
+      "source": "nominal-element.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 81,
+        "end": 85
+      },
+      "primary_text": "B(1)"
+    },
+    {
+      "name": "string-element",
+      "source": "string-element.nova",
+      "expected_diagnostic": "N1102",
+      "primary": {
+        "start": 27,
+        "end": 33
+      },
+      "primary_text": "\"text\""
+    },
+    {
+      "name": "selector-exponent",
+      "source": "selector-exponent.nova",
+      "expected_diagnostic": "N1102",
+      "primary": {
+        "start": 53,
+        "end": 58
+      },
+      "primary_text": "0.1e2"
+    },
+    {
+      "name": "aggregate-interpolation",
+      "source": "aggregate-interpolation.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 48,
+        "end": 49
+      },
+      "primary_text": "t"
+    },
+    {
+      "name": "recursive-tuple-field",
+      "source": "recursive-tuple-field.nova",
+      "expected_diagnostic": "N2101",
+      "primary": {
+        "start": 23,
+        "end": 24
+      },
+      "primary_text": "A"
+    }
+  ]
+}

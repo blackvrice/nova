@@ -94,3 +94,8 @@ root-relative 함수/전역 const import·alias·가시성·reachable graph·cro
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,
 hosted .NET/JVM/Python, self-hosting은 별도 버전/범위 검토. Stage A의 Advanced Optimization,
 borrow checker/generalized factory 등은 앞당겨 구현하지 않는다.
+
+[P13 Copy Tuple](TUPLE_STAGE_B_PROPOSAL.md)·[40-production EBNF](GRAMMAR_STAGE_B_TUPLE.ebnf)·
+[두 파일 fixture](tuple-proposal-fixtures/README.md)는 다음 Stage B Draft/승인 대기다.
+구조적 Copy 타입·numeric selector subspan·혼합 가변 경로·const·private ABI와 자원 한도를 제안한다.
+승인 전 Compiler에는 적용하지 않는다. [사용자 실행 명령](../../TESTING.md)은 현재 P12 기능까지 검증 가능한 안내다.
