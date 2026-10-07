@@ -1,0 +1,4 @@
+func main() { let result=(count)(depth:3) }
+func count(depth:int8)->int8 {
+    if depth==0 { return 0 } else { return count(depth:depth-1) }
+}

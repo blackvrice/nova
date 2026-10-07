@@ -1,0 +1,196 @@
+{
+  "proposal": "P17",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "helpers"
+  ],
+  "positive_cases": [
+    {
+      "source": "function_print_shadow.nova",
+      "proposed_result": { "check_exit": 0, "native_exit": 0, "stdout": "", "stderr": "" }
+    },
+    {
+      "source": "forward_recursive_grouped.nova",
+      "proposed_result": { "check_exit": 0, "native_exit": 0, "stdout": "", "stderr": "" }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "unknown_label",
+      "source": "unknown_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "other",
+      "primary": {
+        "start": 35,
+        "end": 40
+      }
+    },
+    {
+      "name": "duplicate_label",
+      "source": "duplicate_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 43,
+        "end": 48
+      }
+    },
+    {
+      "name": "positional_collision",
+      "source": "positional_collision.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 37,
+        "end": 42
+      }
+    },
+    {
+      "name": "positional_after_named",
+      "source": "positional_after_named.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "1",
+      "primary": {
+        "start": 42,
+        "end": 43
+      }
+    },
+    {
+      "name": "missing_argument",
+      "source": "missing_argument.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "f(b:2)",
+      "primary": {
+        "start": 36,
+        "end": 42
+      }
+    },
+    {
+      "name": "excess_positional",
+      "source": "excess_positional.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "2",
+      "primary": {
+        "start": 33,
+        "end": 34
+      }
+    },
+    {
+      "name": "wrong_expected_type",
+      "source": "wrong_expected_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "1",
+      "primary": {
+        "start": 42,
+        "end": 43
+      }
+    },
+    {
+      "name": "mapped_literal_range",
+      "source": "mapped_literal_range.nova",
+      "expected_diagnostic": "N2102",
+      "primary_text": "128",
+      "primary": {
+        "start": 47,
+        "end": 50
+      }
+    },
+    {
+      "name": "builtin_label",
+      "source": "builtin_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 18,
+        "end": 23
+      }
+    },
+    {
+      "name": "struct_label",
+      "source": "struct_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "x",
+      "primary": {
+        "start": 42,
+        "end": 43
+      }
+    },
+    {
+      "name": "enum_label",
+      "source": "enum_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 40,
+        "end": 45
+      }
+    },
+    {
+      "name": "sum_label",
+      "source": "sum_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 52,
+        "end": 57
+      }
+    },
+    {
+      "name": "unresolved_callee",
+      "source": "unresolved_callee.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "missing",
+      "primary": {
+        "start": 12,
+        "end": 19
+      },
+      "forbidden_diagnostics": [
+        "N2201",
+        "N2101"
+      ]
+    },
+    {
+      "name": "unicode_unknown",
+      "source": "unicode_unknown.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "가운데",
+      "primary": {
+        "start": 58,
+        "end": 67
+      }
+    },
+    {
+      "name": "const_call",
+      "source": "const_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "f(value:1)",
+      "primary": {
+        "start": 47,
+        "end": 57
+      }
+    },
+    {
+      "name": "private_import",
+      "source": "private_import.nova",
+      "expected_diagnostic": "N2004",
+      "primary_text": "helpers::hidden",
+      "primary": {
+        "start": 4,
+        "end": 19
+      },
+      "forbidden_diagnostics": [
+        "N2201"
+      ]
+    }
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "right\nleft\nreverse=702\npositional\nnamed\nmixed=102\nsecond\nfirst\ntext=first/second\nunit=3\nunicode=304\nminimum=-12500\ncopy=4/5\noption=7\nleaf\nlater\nafter\nsuccess=102\nleaf\nerror=-1\nbefore\nleaf\nprior-error=-1\nshort=false\n",
+    "stderr": ""
+  }
+}

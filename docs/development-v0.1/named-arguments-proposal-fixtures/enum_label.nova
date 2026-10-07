@@ -1,0 +1,1 @@
+enum E{A(int8);} func main(){let e=E::A(value:1)}

@@ -1,0 +1,7 @@
+public func combine(left:int8,right:int16)->int32 { return (left as int32)*100+(right as int32) }
+public func probe(tag:string,value:int8)->int8 { print(tag); return value }
+public func fetch(ok:bool)->Result<int8,int8> {
+    print("leaf")
+    if ok { return Result::Success(2) } else { return Result::Error(-1) }
+}
+private func hidden(value:int8)->int8 { return value }

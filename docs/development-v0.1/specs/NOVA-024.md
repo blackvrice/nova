@@ -22,6 +22,8 @@ root-relative 함수/전역 const item import·alias·internal/private/public·r
 
 nominal Copy struct·위치 생성·type import·가변 field 경로·const·private layout/ABI와 자원 제한은 사용자 승인 [P12](../STRUCT_STAGE_B_PROPOSAL.md)와 [37-production EBNF](../GRAMMAR_STAGE_B_STRUCT.ebnf)를 따른다. [구현·검증 기록](../STRUCT_IMPLEMENTATION.md). String field·init/Drop·일반 Move/borrow와 전체 D06/D10/D12/D16/D30은 후속이다.
 
+다음 함수 이름 인수·parameter mapping·source-order snapshot/try·진단 계약은 [P17 Draft](../NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](../GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf), [제안 수용 fixture](../named-arguments-proposal-fixtures/README.md)에 있다. 미승인/미구현이며 기본 인수·overload·named constructor와 전체 D11/D16/D25/D30 승인이 아니다.
+
 ## 충돌/Shadow 구분
 duplicate는 같은 scope/namespace의 충돌, shadow는 다른 nested scope의 동일 이름이다. overload는 signature 규칙을 만족하는 함수만 묶으며 반환 타입만 다른 함수는 duplicate다.
 

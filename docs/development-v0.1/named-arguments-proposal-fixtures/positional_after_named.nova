@@ -1,0 +1,1 @@
+func f(a:int8,b:int8){} func main(){f(b:2,1)}

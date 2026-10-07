@@ -1,0 +1,2 @@
+func f(value:int8)->int8{return value} const x=f(value:1)
+func main(){}

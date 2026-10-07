@@ -1,0 +1,2 @@
+use helpers::hidden
+func main(){hidden(value:1)}

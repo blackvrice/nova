@@ -137,3 +137,8 @@ try·exists·method API·Array·String/Move payload·사용자 Generic·일반 b
 [구현 기록](TRY_IMPLEMENTATION.md)과 [사용자 실행 명령](../../TESTING.md)을 제공한다.
 Prefix 결합·operand 문맥 격리·정확한 E·Copy snapshot·Error 조기 반환·const N3201·Source/CFG 검증을 지원한다.
 Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09/D10/D12/D16/D23/D25는 후속이다.
+
+[P17 함수 이름 인수](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf)·
+[두 파일·부정 16사례 제안 fixture](named-arguments-proposal-fixtures/README.md)는 **Draft / 승인 대기 / 미구현**이다.
+사용자 함수의 parameter 이름 대응·source-order 평가/parameter-order 전달·mapped 타입/try 검증을 다음 최소 범위로 제안한다.
+기본 인수·overload·named constructor·Array·일반 Move/Drop은 포함하지 않는다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.

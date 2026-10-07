@@ -520,6 +520,78 @@ assert(tryMain.includes('use effects::Failure as F')
   'P16 missing effect/snapshot/nested/short-circuit proposal data');
 checks.push('P16 Accepted/승인·구현 ledger·P15 prefix_expr 한 production 확장·51-production EBNF·두 파일/부정 18사례 UTF-8 Span·const/cascade·검증 19줄 출력 데이터 (문서 validator는 Compiler/Native 실행 아님)');
 
+const namedProposal = manifest.draft_proposals?.find(p => p.id === 'P17');
+assert(namedProposal?.status === 'Draft' && namedProposal?.implementation_verified === false
+  && namedProposal?.document === 'NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md'
+  && namedProposal?.grammar === 'GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf'
+  && !namedProposal?.approval_date && !manifest.accepted_proposals?.some(p => p.id === 'P17'),
+  'P17 must remain unapproved/unimplemented Draft');
+assert(fs.readFileSync(path.join(pack, 'NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md'), 'utf8')
+  .includes('Draft / 사용자 승인 대기 / 미구현'), 'P17 invalid proposal status');
+validateGrammar('GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf');
+const namedGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf'), 'utf8');
+assert(namedGrammar.includes('Draft, not approved or implemented'), 'P17 invalid grammar status');
+const namedProductions = productions(namedGrammar);
+assert(namedProductions.size === 52 && tryProductions.size === 51, 'P17 must add exactly one production');
+for (const [name, value] of tryProductions) {
+  if (name !== 'arguments') assert(namedProductions.get(name) === value, `P17 changes existing ${name}`);
+}
+assert(namedProductions.get('arguments') === 'argument,{",",argument},[","]'
+  && namedProductions.get('argument') === '["IDENT",":"],expression', 'P17 invalid argument grammar');
+const namedRoot = path.join(pack, 'named-arguments-proposal-fixtures');
+const namedFixture = JSON.parse(fs.readFileSync(path.join(namedRoot, 'expected.json'), 'utf8'));
+assert(namedFixture.proposal === 'P17' && namedFixture.status === 'Draft'
+  && namedFixture.implementation_verified === false && !namedFixture.validated_result,
+  'P17 fixture must remain proposed data');
+assert(namedFixture.entry === 'main.nova' && namedFixture.source_root === '.'
+  && JSON.stringify(namedFixture.reachable_modules) === '["main","helpers"]', 'P17 fixture graph mismatch');
+const namedOutput = 'right\nleft\nreverse=702\npositional\nnamed\nmixed=102\nsecond\nfirst\ntext=first/second\nunit=3\nunicode=304\nminimum=-12500\ncopy=4/5\noption=7\nleaf\nlater\nafter\nsuccess=102\nleaf\nerror=-1\nbefore\nleaf\nprior-error=-1\nshort=false\n';
+assert(namedFixture.proposed_result?.check_exit === 0 && namedFixture.proposed_result?.native_exit === 0
+  && namedFixture.proposed_result?.stdout === namedOutput && namedFixture.proposed_result?.stderr === '',
+  'P17 proposed output mismatch');
+assert(namedFixture.negative_cases?.length === 16
+  && new Set(namedFixture.negative_cases.map(c => c.name)).size === 16
+  && new Set(namedFixture.negative_cases.map(c => c.source)).size === 16, 'P17 negative set mismatch');
+assert(namedFixture.positive_cases?.length === 2
+  && JSON.stringify(namedFixture.positive_cases.map(c => c.source))
+    === '["function_print_shadow.nova","forward_recursive_grouped.nova"]', 'P17 positive set mismatch');
+for (const c of namedFixture.positive_cases) {
+  assert(c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
+    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '' && !c.validated_result,
+    `P17 invalid positive proposed result ${c.source}`);
+}
+for (const name of [namedFixture.entry, 'helpers.nova', ...namedFixture.positive_cases.map(c => c.source),
+  ...namedFixture.negative_cases.map(c => c.source)]) {
+  assert(path.basename(name) === name && name.endsWith('.nova'), `P17 invalid filename ${name}`);
+  const text = fs.readFileSync(path.join(namedRoot, name), 'utf8');
+  assert(text.endsWith('\n') && !text.includes('\r'), `P17 fixture encoding/newline ${name}`);
+}
+for (const c of namedFixture.negative_cases) {
+  assert(knownCodes.has(c.expected_diagnostic), `P17 unknown diagnostic ${c.name}`);
+  const bytes = fs.readFileSync(path.join(namedRoot, c.source));
+  const boundaries = new Set([0]);
+  let offset = 0;
+  for (const scalar of bytes.toString('utf8')) { offset += Buffer.byteLength(scalar); boundaries.add(offset); }
+  const { start, end } = c.primary;
+  assert(start < end && start >= 0 && end <= bytes.length && boundaries.has(start) && boundaries.has(end),
+    `P17 invalid byte span ${c.name}`);
+  assert(bytes.subarray(start, end).toString('utf8') === c.primary_text, `P17 unexpected span text ${c.name}`);
+  for (const code of c.forbidden_diagnostics ?? []) {
+    assert(knownCodes.has(code) && code !== c.expected_diagnostic, `P17 invalid cascade expectation ${c.name}`);
+  }
+}
+const namedUndefined = namedFixture.negative_cases.find(c => c.name === 'unresolved_callee');
+assert(namedUndefined?.forbidden_diagnostics?.includes('N2201')
+  && namedUndefined?.forbidden_diagnostics?.includes('N2101'), 'P17 missing ErrorType cascade data');
+const namedMain = fs.readFileSync(path.join(namedRoot, 'main.nova'), 'utf8');
+assert(namedMain.includes('use helpers::combine as joined')
+  && namedMain.includes('right:try fetch(ok:flag),left:traced(value:1,tag:"later")')
+  && namedMain.includes('left:traced(value:1,tag:"before"),right:try fetch(ok:false)')
+  && namedMain.includes('korean(뒤:4,앞:3)') && namedMain.includes('right:300,left:-128')
+  && namedMain.includes('optional(value:Option::Some(7))') && namedMain.includes('false &&'),
+  'P17 missing mapping/effect/try/Unicode/context proposal data');
+checks.push('P17 Draft/미승인·미구현 ledger·P16 arguments 확장/argument 추가·52-production EBNF·두 파일/정상 2·부정 16사례 UTF-8 Span·cascade·제안 24줄 출력 데이터 (Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

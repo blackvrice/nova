@@ -14,6 +14,8 @@ Stage A Parser 구문/복구는 사용자 승인 [P01](../PARSER_STAGE_A_PROPOSA
 
 Stage A 단일 파일 의미 검사는 사용자 승인 [P02](../SEMANTICS_STAGE_A_PROPOSAL.md)가 우선한다. runtime/전체 타입/미래 Stage의 추가 상세는 Draft다.
 
+다음 함수 이름 인수·parameter mapping·source-order snapshot/try·진단 계약은 [P17 Draft](../NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](../GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf), [제안 수용 fixture](../named-arguments-proposal-fixtures/README.md)에 있다. 미승인/미구현이며 기본 인수·overload·named constructor와 전체 D11/D16/D25/D30 승인이 아니다.
+
 ## Function signature
 FunctionId, ReceiverMode, ParameterMode, ReturnType/ownership, Effects를 포함한다. modifier 부재는 Read, change는 exclusive loan, take는 이전이다. 인수는 소스 순서로 평가하고 return type만으로 overload하지 않는다.
 

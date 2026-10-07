@@ -3,6 +3,14 @@
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
 현재 개발 완료 기능은 P16 Copy try·Result 오류 전파까지다.
 
+## 다음 개발 준비 — 함수 이름 인수 (P17 Draft)
+
+[P17 계약](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)과
+[제안 fixture·구현 후 실행 명령/24줄 기대 출력](docs/development-v0.1/named-arguments-proposal-fixtures/README.md)을 준비했다.
+이름 인수는 현재 미승인·미구현이다. 아래 P16 명령은 현재 실행 가능하다.
+문서 데이터 검사는 `node tools/docs/validate-pack.mjs`로 실행하며 기대 결과는 **PASS**다.
+이 검사는 P17 프로그램의 compile/Native 성공 검사가 아니다.
+
 ## 현재 기능 실행 — Copy try·Result 오류 전파
 
 ```powershell

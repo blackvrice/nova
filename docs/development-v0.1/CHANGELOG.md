@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P17 함수 이름 인수 착수안 (Draft)
+
+- [최소 계약](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md): 사용자 함수 parameter mapping·mixed 순서·source-order snapshot/parameter-order 전달·mapped 문맥·try effect·Source/MIR 검증.
+- [52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf)는 P16 arguments를 확장하고 argument 한 production을 추가하며 기존 50개를 보존한다.
+- [두 파일·부정 16사례](named-arguments-proposal-fixtures/README.md)에 UTF-8 primary Span·cascade 금지·제안 24줄 stdout·구현 후 명령을 기록했다.
+- Draft ledger/색인/영향 문서/validator를 연결한다. accepted P01~P16와 Compiler/Runtime은 보존한다.
+- 기본 인수·overload·named constructor·Array·일반 Move/Drop과 전체 D11/D16/D25/D30은 제외한다.
+
 ## 2026-10-07 — P16 Copy try·Result 오류 전파 구현
 
 - 사용자 “P16 승인하고 Copy try 구현 진행” 답변으로 P16을 Accepted 처리했다.
