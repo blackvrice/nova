@@ -3006,3 +3006,69 @@ fn p16_const_cycles_and_normal_path_return_remain_required() {
     );
     assert!(codes(&r).contains(&"N3003".into()));
 }
+
+#[test]
+fn p17_diagnostics_exact_spans_mapping_and_error_cascades() {
+    for (source,code,start,end) in [
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/unknown_label.nova"), "N2201", 35, 40),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/duplicate_label.nova"), "N2201", 43, 48),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/positional_collision.nova"), "N2201", 37, 42),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/positional_after_named.nova"), "N2201", 42, 43),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/missing_argument.nova"), "N2201", 36, 42),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/excess_positional.nova"), "N2201", 33, 34),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/wrong_expected_type.nova"), "N2101", 42, 43),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/mapped_literal_range.nova"), "N2102", 47, 50),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/builtin_label.nova"), "N2201", 18, 23),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/struct_label.nova"), "N2201", 42, 43),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/enum_label.nova"), "N2201", 40, 45),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/sum_label.nova"), "N2201", 52, 57),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/unresolved_callee.nova"), "N2001", 12, 19),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/unicode_unknown.nova"), "N2201", 58, 67),
+        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/const_call.nova"), "N3201", 47, 57),
+    ] {
+        let result=frontend(source);assert!(!result.passed(),"{source}");
+        assert!(result.diagnostics().iter().any(|d|d.code.to_string()==code&&d.primary.span.start()==start&&d.primary.span.end()==end),"{source} {:?}",result.diagnostics());
+    }
+    for source in [
+        "func main(){missing(value:1)}",
+        "func f(a:int8){}func main(){f(unknown:1000)}",
+    ] {
+        let result = frontend(source);
+        assert!(!codes(&result).iter().any(|c| c == "N2101" || c == "N2102"));
+    }
+    assert_eq!(codes(&frontend("func main(){missing(value:1)}")), ["N2001"]);
+    assert_eq!(
+        codes(&frontend(
+            "func f(a:int8,b:int8){}func main(){f(unknown:1)}"
+        )),
+        ["N2201"]
+    );
+    assert_eq!(
+        codes(&frontend("func f(a:int8){}func main(){let f=1;f(a:1)}")),
+        ["N2101"]
+    );
+}
+#[test]
+fn p17_context_forward_shadow_alias_spelling_and_const_are_preserved() {
+    for source in [
+        include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/function_print_shadow.nova"),
+        include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/forward_recursive_grouped.nova"),
+        "func f(a:int8?,b:(int8,bool),c:Result<char,()>){ }func main(){f(c:Result::Success('🙂'),b:(1,true),a:none)}",
+        "func f(int:int8,int32:int16,float:float,double:double,_:bool){}func main(){f(int32:300,int:1,double:1e100,float:0.5,_:true)}",
+    ] { pass(source); }
+    for source in [
+        "func f(a:int8)->int8{return a}func main(){const x=f(a:1)}",
+        "func f(a:int8)->bool{return true}func main(){const x=false&&f(a:1)}",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N3201"]);
+    }
+    let (hir, _, checked) = pass("func f(a:int8,b:int16){}func main(){f(b:300,a:-128)}")
+        .semantic
+        .unwrap();
+    let mapping = checked.named_calls.iter().flatten().next().unwrap();
+    assert_eq!(mapping.parameters, [1, 0]);
+    assert!(matches!(
+        hir.nodes()[mapping.arguments[0].0].kind,
+        HirKind::NamedArgument { .. }
+    ));
+}

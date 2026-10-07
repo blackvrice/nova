@@ -1484,3 +1484,83 @@ fn p16_try_success_checked_failure_keeps_exact_utf8_span_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p17_native_named_fixture_context_effects_try_and_private_abi_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/named-arguments-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected=b"right\nleft\nreverse=702\npositional\nnamed\nmixed=102\nsecond\nfirst\ntext=first/second\nunit=3\nunicode=304\nminimum=-12500\ncopy=4/5\noption=7\nleaf\nlater\nafter\nsuccess=102\nleaf\nerror=-1\nbefore\nleaf\nprior-error=-1\nshort=false\n";
+    for profile in ["debug", "release"] {
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("run")
+            .arg(fixtures.join("main.nova"))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .args(["--profile", profile])
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, expected);
+        assert!(result.stderr.is_empty());
+        for name in [
+            "function_print_shadow.nova",
+            "forward_recursive_grouped.nova",
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert!(r.stdout.is_empty() && r.stderr.is_empty());
+        }
+        let source = r#"struct S{let n:int8;let c:char}func takeValue(s:S,t:(int8,char),u:(),r:Result<int8,bool>)->int8{print("{s.n} {s.c} {t.0} {t.1}");match r{Result::Success(n)=>{return n},Result::Error(_)=>{return 0}}}func make()->S{print("struct");return S(3,'🙂')}func numbers(a:float,b:double,c:uint64,d:int16){print("{a} {b} {c} {d}")}func main(){let n=takeValue(r:Result::Success(7),u:(),t:(2,'가'),s:make());print("value={n}");numbers(d:300,c:18446744073709551615,b:1e100,a:0.5)}"#;
+        let r = program_profile(source, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stderr.is_empty());
+        assert_eq!(
+            String::from_utf8(r.stdout).unwrap(),
+            format!(
+                "struct\n3 🙂 2 가\nvalue=7\n0.5 1{} 18446744073709551615 300\n",
+                "0".repeat(100)
+            )
+        );
+        let main = r#"use lib::compute as renamed;func main(){let n=renamed(right:2,left:1);print("{n}")}"#;
+        let lib="private func hidden(a:int8,b:int8)->int8{return a+a+b}public func compute(left:int8,right:int8)->int8{return hidden(b:right,a:left)}";
+        let r = module_program(main, lib, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"4\n");
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p17_native_named_argument_overflow_preserves_effect_order_and_span_o0_o2() {
+    let source="// 한글 🙂\nfunc first()->int8{print(\"first\");return 1}func second()->int8{print(\"second\");return 127}func joined(left:int8,right:int8){print(\"callee\")}func main(){joined(right:first(),left:second()+1)}";
+    let start = source.find("second()+1").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert!(!r.status.success());
+        assert_eq!(r.stdout, b"first\nsecond\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#0:{start}..{}",
+                    start + 10
+                )
+                .as_str()
+            )
+        );
+    }
+}

@@ -429,7 +429,7 @@ fn unsupported_stage_features_are_not_silently_accepted() {
         "struct X {}",
         "let x=[1,2]",
         "let x=lambda () => 1",
-        "let x=f(name: 1)",
+        // Named calls are accepted by P17 and covered below.
         "let x=f<int>(1)",
         "(x)=1",
         "for x in xs { print(1) }",
@@ -1086,4 +1086,46 @@ fn p16_prefix_precedence_keyword_spans_and_utf8_recovery() {
         .iter()
         .any(|d| d.code.to_string() == "N1102" && d.message.contains("nesting limit")));
     assert!(run("func f(){let x=try }").2.has_errors());
+}
+
+#[test]
+fn p17_named_argument_spans_order_recovery_and_nesting() {
+    let source="// 🙂\nfunc f(){let x=g(2,뒤 /* nested /* x */ */ : h(value:3),앞:\n1,);print(\"{g(value:1)}\")}";
+    let (db, lexed, parsed) = run(source);
+    assert!(
+        !lexed.has_errors() && !parsed.has_errors(),
+        "{:?}",
+        parsed.diagnostics
+    );
+    let names = parsed
+        .arena
+        .iter()
+        .filter_map(|(_, n)| match n.kind {
+            NodeKind::NamedArgument { name, colon } => {
+                assert_eq!(db.slice(colon).unwrap(), ":");
+                assert_eq!(n.children.len(), 1);
+                Some(db.slice(name).unwrap())
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(names, ["value", "뒤", "앞", "value"]);
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        run(&source[..at]);
+    }
+    for source in [
+        "func f(){g(value:)} func later(){}",
+        "func f(){g(value:1,,)} func later(){}",
+        "func f(){g(return:1)} func later(){}",
+    ] {
+        let (db, _, p) = run(source);
+        assert!(p.has_errors());
+        assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function {name,..} if db.slice(name).unwrap()=="later")));
+    }
+    let deep = format!(
+        "func f(){{let x={}1{}}}",
+        "g(value:".repeat(140),
+        ")".repeat(140)
+    );
+    assert!(run(&deep).2.has_errors());
 }

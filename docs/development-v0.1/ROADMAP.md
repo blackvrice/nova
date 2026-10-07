@@ -119,6 +119,7 @@ Prefix 결합·operand 문맥 격리·정확한 E·Copy snapshot·Error 조기 �
 Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09/D10/D12/D16/D23/D25는 후속이다.
 
 [P17 함수 이름 인수](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf)·
-[두 파일·부정 16사례 제안 fixture](named-arguments-proposal-fixtures/README.md)는 **Draft / 승인 대기 / 미구현**이다.
-사용자 함수의 parameter 이름 대응·source-order 평가/parameter-order 전달·mapped 타입/try 검증을 다음 최소 범위로 제안한다.
+[두 파일·부정 16사례 수용 fixture](named-arguments-proposal-fixtures/README.md)는 **Accepted / 구현 완료**다.
+[구현 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
+사용자 함수의 parameter 이름 대응·source-order snapshot/parameter-order 전달·mapped 타입/try 검증을 구현했다.
 기본 인수·overload·named constructor·Array·일반 Move/Drop은 포함하지 않는다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.

@@ -713,3 +713,65 @@ fn p16_try_errors_gate_native_tools_and_preserve_existing_outputs() {
         }
     }
 }
+
+#[test]
+fn p17_fixture_checks_and_invalid_labels_gate_all_build_commands() {
+    let dir = directory();
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/named-arguments-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "function_print_shadow.nova",
+        "forward_recursive_grouped.nova",
+    ] {
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("check")
+            .arg(fixtures.join(name))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert!(result.stdout.is_empty() && result.stderr.is_empty());
+    }
+    let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("check")
+        .arg(fixtures.join("private_import.nova"))
+        .arg("--source-root")
+        .arg(&fixtures)
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(result.status.code(), Some(1));
+    let error = String::from_utf8(result.stderr).unwrap();
+    assert!(
+        error.contains("N2004") && error.contains("bytes 0..20"),
+        "{error}"
+    );
+    assert!(!error.contains("N2201"));
+    let bad = dir.join("bad.nova");
+    std::fs::write(&bad, "func f(a:int8){}func main(){f(other:1)}").unwrap();
+    for command in ["check", "build", "run"] {
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg(command)
+            .arg(&bad)
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert_eq!(result.status.code(), Some(1));
+        assert!(result.stdout.is_empty());
+        let error = String::from_utf8(result.stderr).unwrap();
+        assert!(error.contains("N2201"), "{error}");
+        assert!(!error.contains("N8201"));
+    }
+    assert!(!dir.join("target").exists());
+}

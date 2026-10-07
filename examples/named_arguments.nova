@@ -1,0 +1,46 @@
+// P17: source-order evaluation, parameter-order passing, and try.
+func joined(left:int8,right:int16)->int32 { return (left as int32)*100+(right as int32) }
+func traced(tag:string,value:int8)->int8 { print(tag); return value }
+func fetch(ok:bool)->Result<int8,int8> {
+    print("leaf")
+    if ok { return Result::Success(2) } else { return Result::Error(-1) }
+}
+struct Pair { let x:int8; let y:int8; }
+enum Choice { One(Pair); }
+func keep(value:Choice)->Choice { return value }
+func optional(value:int8?)->int8? { return value }
+func text(first:string,second:string) { print("text={first}/{second}") }
+func stringValue(tag:string)->string { print(tag); return tag }
+func unit(value:(),count:int8) { print("unit={count}") }
+func korean(앞:int8,뒤:int8)->int16 { return (앞 as int16)*100+(뒤 as int16) }
+func pipeline(flag:bool)->Result<int32,int8> {
+    let n=joined(right:try fetch(ok:flag),left:traced(value:1,tag:"later"))
+    print("after")
+    return Result::Success(n)
+}
+func prior()->Result<int32,int8> {
+    let n=joined(left:traced(value:1,tag:"before"),right:try fetch(ok:false))
+    print("unreachable")
+    return Result::Success(n)
+}
+func main() {
+    let reverse=joined(right:traced(value:2,tag:"right"),left:traced(tag:"left",value:7))
+    print("reverse={reverse}")
+    let mixed=joined(traced(value:1,tag:"positional"),right:traced(value:2,tag:"named"))
+    print("mixed={mixed}")
+    text(second:stringValue(tag:"second"),first:stringValue(tag:"first"))
+    unit(count:3,value:())
+    let 한글=korean(뒤:4,앞:3)
+    print("unicode={한글}")
+    let minimum=joined(right:300,left:-128)
+    print("minimum={minimum}")
+    let copy=keep(value:Choice::One(Pair(4,5)))
+    match copy { Choice::One(p)=>{ print("copy={p.x}/{p.y}") } }
+    let option=optional(value:Option::Some(7))
+    match option { Option::Some(n)=>{ print("option={n}") },none=>{} }
+    match pipeline(true) { Result::Success(n)=>{ print("success={n}") },Result::Error(_)=>{} }
+    match pipeline(false) { Result::Success(_)=>{},Result::Error(e)=>{ print("error={e}") } }
+    match prior() { Result::Success(_)=>{},Result::Error(e)=>{ print("prior-error={e}") } }
+    let short=false && (joined(right:2,left:traced(tag:"skipped",value:1))==102)
+    print("short={short}")
+}

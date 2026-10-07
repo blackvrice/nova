@@ -100,6 +100,14 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
     if module.callees != module.callee_provenance {
         validator.report(Violation::InvalidCallee);
     }
+    let body_ids = module
+        .bodies
+        .iter()
+        .map(|b| b.callee.0)
+        .collect::<BTreeSet<_>>();
+    if module.named_bodies.keys().any(|id| !body_ids.contains(id)) {
+        validator.report(Violation::InvalidBody);
+    }
     let mut definitions = module.structs.keys().map(|s| s.0).collect::<BTreeSet<_>>();
     for (index, source) in module.sources.iter().enumerate() {
         if source.hir.0 != index {
@@ -175,6 +183,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
             }
         }
         validator.check_tries(body);
+        validator.check_named_calls(body);
         for (block_index, block) in body.blocks.iter().enumerate() {
             validator.block = Some(BlockId(block_index));
             for statement in &block.statements {
@@ -680,6 +689,97 @@ impl Validator<'_> {
                     }
                 }
                 Some(Type::String)
+            }
+        }
+    }
+
+    fn check_named_calls(&mut self, body: &Body) {
+        let module = self.module;
+        if let Some(original) = module.named_bodies.get(&body.callee.0) {
+            if original != body {
+                self.report(Violation::InvalidSource);
+            }
+        }
+        let mut writes = vec![0usize; body.locals.len()];
+        for block in &body.blocks {
+            for statement in &block.statements {
+                let StatementKind::Assign(place, _) = statement.kind;
+                if let Some(n) = writes.get_mut(place.0 .0) {
+                    *n += 1;
+                }
+            }
+            if let Some(Terminator {
+                kind: TerminatorKind::Call { destination, .. },
+                ..
+            }) = &block.terminator
+            {
+                if let Some(n) = writes.get_mut(destination.0 .0) {
+                    *n += 1;
+                }
+            }
+        }
+        for (_, c) in module
+            .named_calls
+            .range((body.callee.0, 0)..=(body.callee.0, usize::MAX))
+        {
+            self.source = Some(c.source);
+            self.block = Some(c.block);
+            let TerminatorKind::Call {
+                callee, arguments, ..
+            } = &c.call.kind
+            else {
+                self.report(Violation::InvalidArguments);
+                continue;
+            };
+            let Some(signature) = module.callees.get(callee.0) else {
+                self.report(Violation::InvalidCallee);
+                continue;
+            };
+            if signature.definition != c.mapping.callee
+                || signature.builtin_print
+                || module.sources.get(c.source.hir.0) != Some(&c.source)
+                || body
+                    .blocks
+                    .get(c.block.0)
+                    .and_then(|b| b.terminator.as_ref())
+                    != Some(&c.call)
+                || c.snapshots.len() != arguments.len()
+                || c.mapping.parameters.len() != arguments.len()
+                || c.mapping.arguments.len() != arguments.len()
+                || signature.parameters.len() != arguments.len()
+            {
+                self.report(Violation::InvalidArguments);
+                continue;
+            }
+            let mut seen = vec![false; arguments.len()];
+            for (source, ((block, at, snapshot), argument)) in
+                c.snapshots.iter().zip(&c.mapping.arguments).enumerate()
+            {
+                let parameter = c.mapping.parameters[source];
+                let StatementKind::Assign(place, Rvalue::Use(_)) = &snapshot.kind else {
+                    self.report(Violation::InvalidArguments);
+                    continue;
+                };
+                let valid = seen.get_mut(parameter).is_some_and(|s| {
+                    let valid = !*s;
+                    *s = true;
+                    valid
+                }) && module.sources.get(argument.0) == Some(&snapshot.source)
+                    && snapshot.source.span.file() == c.source.span.file()
+                    && snapshot.source.span.start() >= c.source.span.start()
+                    && snapshot.source.span.end() <= c.source.span.end()
+                    && body.blocks.get(block.0).and_then(|b| b.statements.get(*at))
+                        == Some(snapshot)
+                    && writes.get(place.0 .0) == Some(&1)
+                    && arguments.get(parameter) == Some(&Operand::Place(*place))
+                    && body.locals.get(place.0 .0).is_some_and(|l| {
+                        l.definition.is_none()
+                            && l.source == snapshot.source
+                            && signature.parameters.get(parameter) == Some(&l.ty)
+                    });
+                if !valid {
+                    self.report(Violation::InvalidArguments);
+                }
             }
         }
     }

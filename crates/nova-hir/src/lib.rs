@@ -132,6 +132,11 @@ pub enum HirKind {
     },
     Binary(Symbol),
     Call,
+    NamedArgument {
+        name: SymbolId,
+        name_span: Span,
+        colon: Span,
+    },
     Cast {
         keyword: Span,
     },
@@ -274,6 +279,7 @@ impl Module {
                     | HirKind::Field { name, .. }
                     | HirKind::Projection { name, .. }
                     | HirKind::Parameter { name, .. }
+                    | HirKind::NamedArgument { name, .. }
                     | HirKind::Binding { name, .. }
                     | HirKind::Name(name)
                     | HirKind::TupleProjection { index: name, .. }
@@ -412,6 +418,44 @@ pub fn lower(
             {
                 return Err(LoweringError::MalformedAst);
             }
+        }
+        if let NodeKind::NamedArgument { name, colon } = node.kind {
+            let value = arena
+                .get(*node.children.first().ok_or(LoweringError::MalformedAst)?)
+                .ok_or(LoweringError::MalformedAst)?;
+            if !inside(node.span, name)
+                || !inside(node.span, colon)
+                || !identifier(sources.slice(name)?)
+                || sources.slice(colon)? != ":"
+                || name.start() != node.span.start()
+                || name.end() > colon.start()
+                || colon.end() > value.span.start()
+                || value.span.end() != node.span.end()
+                || !type_punctuation(
+                    sources.slice(Span::new(node.span.file(), name.end(), colon.start())?)?,
+                    &[""],
+                )
+                || !type_punctuation(
+                    sources.slice(Span::new(
+                        node.span.file(),
+                        colon.end(),
+                        value.span.start(),
+                    )?)?,
+                    &[""],
+                )
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if node.kind == NodeKind::Call
+            && node.children.windows(2).any(|pair| {
+                arena
+                    .get(pair[0])
+                    .zip(arena.get(pair[1]))
+                    .is_some_and(|(a, b)| a.span.end() > b.span.start())
+            })
+        {
+            return Err(LoweringError::MalformedAst);
         }
         if let NodeKind::TupleProjection { index } = node.kind {
             let digits = sources.slice(index)?;
@@ -802,6 +846,11 @@ pub fn lower(
             NodeKind::Try { keyword } => HirKind::Try { keyword },
             NodeKind::Binary(op) => HirKind::Binary(op),
             NodeKind::Call => HirKind::Call,
+            NodeKind::NamedArgument { name, colon } => HirKind::NamedArgument {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+                colon,
+            },
             NodeKind::Cast { keyword } => HirKind::Cast { keyword },
             NodeKind::InterpolatedString => HirKind::InterpolatedString,
             NodeKind::Interpolation => HirKind::Interpolation,
@@ -1106,10 +1155,17 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::Group
         | NodeKind::Prefix(_)
         | NodeKind::Try { .. }
+        | NodeKind::NamedArgument { .. }
         | NodeKind::Interpolation => kinds.len() == 1 && expr(kinds[0]),
         NodeKind::Binary(_) => kinds.len() == 2 && kinds.iter().all(|k| expr(*k)),
         NodeKind::Cast { .. } => kinds.len() == 2 && expr(kinds[0]) && ty(kinds[1]),
-        NodeKind::Call => !kinds.is_empty() && kinds.iter().all(|k| expr(*k)),
+        NodeKind::Call => {
+            !kinds.is_empty()
+                && expr(kinds[0])
+                && kinds[1..]
+                    .iter()
+                    .all(|k| expr(*k) || matches!(k, NodeKind::NamedArgument { .. }))
+        }
         NodeKind::InterpolatedString => kinds.iter().all(|k| {
             matches!(
                 k,

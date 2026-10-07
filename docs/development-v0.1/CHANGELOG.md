@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P17 함수 이름 인수 구현
+
+- 사용자 “P17 승인하고 이름 인수 구현 진행”으로 P17을 Accepted 처리했다.
+- AST/HIR source metadata·parameter mapping/type context·MIR source-order snapshot/parameter-order 전달·try 보존과 위조 gate를 구현했다.
+- 기본 9개·LLVM 1개·Native 2개 테스트와 독립 예제/명령을 추가했다. [구현 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
+- private import Draft 기대값은 기존 P11 N2004 전체 import Span 0..20으로 정정했다. resolver/LLVM/Runtime 의미는 보존했다.
+- 기존 P01~P16/원본 148개 보존. 기본 인수·overload·named constructor·일반 Move/Drop과 전체 D11/D16/D25/D30은 후속이다.
+
 ## 2026-10-07 — P17 함수 이름 인수 착수안 (Draft)
 
 - [최소 계약](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md): 사용자 함수 parameter mapping·mixed 순서·source-order snapshot/parameter-order 전달·mapped 문맥·try effect·Source/MIR 검증.

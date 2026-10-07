@@ -2,8 +2,8 @@
 
 개발 전에 읽을 [전체 개발 문서 보완팩](docs/development-v0.1/README.md)을 작성했습니다.
 148개 주제별 문서와 구체 EBNF, 30건 결정 초안, API/schema, 수용 테스트 계획을 포함합니다.
-D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 지역 const, P06 전역 const, P07 고정 폭 정수·승격, P08 char, P09 float, P10 숫자 cast, P11 Module, P12 Copy struct, P13 Copy Tuple, P14 Copy Enum·match, P15 Copy Option·Result, P16 Copy try 최소 계약은 Accepted이며,
-나머지 상세는 Draft입니다. 다음 [P17 함수 이름 인수](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)는 승인 대기/미구현입니다. 직접 실행할 [예제·테스트 명령](TESTING.md)을 제공합니다.
+D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 지역 const, P06 전역 const, P07 고정 폭 정수·승격, P08 char, P09 float, P10 숫자 cast, P11 Module, P12 Copy struct, P13 Copy Tuple, P14 Copy Enum·match, P15 Copy Option·Result, P16 Copy try, P17 함수 이름 인수 최소 계약은 Accepted이며,
+나머지 상세는 Draft입니다. [P17 함수 이름 인수](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)는 구현·검증 완료입니다. 직접 실행할 [예제·테스트 명령](TESTING.md)을 제공합니다.
 
 Nova 컴파일러의 Stage A와 Stage B 제어 흐름·지역/전역 const·고정 폭 정수·char·float·cast·Module·Copy struct·Copy Tuple·Copy Enum/match 구현입니다. 언어 사양은 `docs/`의 원본
 Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다.
@@ -183,3 +183,9 @@ Copy payload·T?·문맥/none·match·const·private ABI를 지원한다. try는
 [P16 Copy try·Result 오류 전파](docs/development-v0.1/TRY_STAGE_B_PROPOSAL.md)는 Accepted / 구현 완료다.
 [구현 기록](docs/development-v0.1/TRY_IMPLEMENTATION.md)·[51-production 문법](docs/development-v0.1/GRAMMAR_STAGE_B_TRY.ebnf)·[두 파일·부정 18사례](docs/development-v0.1/try-proposal-fixtures/README.md)와
 [독립 예제](examples/try_result.nova)·[직접 실행 명령](TESTING.md)을 제공한다.
+
+[P17 함수 이름 인수](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)는 Accepted / 구현 완료다.
+`f(right:2,left:1)`과 leading positional/named 혼합, import alias·Unicode label·mapped 타입 문맥을 지원한다.
+인수는 소스 순서로 한 번씩 평가·snapshot한 뒤 매개변수 순서로 전달한다. try Error는 뒤 인수와 호출을 건너뛴다.
+[구현 기록](docs/development-v0.1/NAMED_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제](examples/named_arguments.nova)·[직접 실행 명령](TESTING.md)을 제공한다.
+기본 인수·overload·named constructor·메서드 호출은 후속이다.

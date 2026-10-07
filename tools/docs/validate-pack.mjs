@@ -520,17 +520,17 @@ assert(tryMain.includes('use effects::Failure as F')
   'P16 missing effect/snapshot/nested/short-circuit proposal data');
 checks.push('P16 Accepted/승인·구현 ledger·P15 prefix_expr 한 production 확장·51-production EBNF·두 파일/부정 18사례 UTF-8 Span·const/cascade·검증 19줄 출력 데이터 (문서 validator는 Compiler/Native 실행 아님)');
 
-const namedProposal = manifest.draft_proposals?.find(p => p.id === 'P17');
-assert(namedProposal?.status === 'Draft' && namedProposal?.implementation_verified === false
+const namedProposal = manifest.accepted_proposals?.find(p => p.id === 'P17');
+assert(namedProposal?.status === 'Accepted' && namedProposal?.implementation_verified === true
+  && namedProposal?.approval_date === '2026-10-07'
   && namedProposal?.document === 'NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md'
   && namedProposal?.grammar === 'GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf'
-  && !namedProposal?.approval_date && !manifest.accepted_proposals?.some(p => p.id === 'P17'),
-  'P17 must remain unapproved/unimplemented Draft');
+  && !manifest.draft_proposals?.some(p => p.id === 'P17'), 'P17 invalid Accepted ledger');
 assert(fs.readFileSync(path.join(pack, 'NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md'), 'utf8')
-  .includes('Draft / 사용자 승인 대기 / 미구현'), 'P17 invalid proposal status');
+  .includes('Accepted / 사용자 승인 / 구현 완료'), 'P17 invalid proposal status');
 validateGrammar('GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf');
 const namedGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf'), 'utf8');
-assert(namedGrammar.includes('Draft, not approved or implemented'), 'P17 invalid grammar status');
+assert(namedGrammar.includes('Accepted by user on 2026-10-07'), 'P17 invalid grammar status');
 const namedProductions = productions(namedGrammar);
 assert(namedProductions.size === 52 && tryProductions.size === 51, 'P17 must add exactly one production');
 for (const [name, value] of tryProductions) {
@@ -540,15 +540,15 @@ assert(namedProductions.get('arguments') === 'argument,{",",argument},[","]'
   && namedProductions.get('argument') === '["IDENT",":"],expression', 'P17 invalid argument grammar');
 const namedRoot = path.join(pack, 'named-arguments-proposal-fixtures');
 const namedFixture = JSON.parse(fs.readFileSync(path.join(namedRoot, 'expected.json'), 'utf8'));
-assert(namedFixture.proposal === 'P17' && namedFixture.status === 'Draft'
-  && namedFixture.implementation_verified === false && !namedFixture.validated_result,
-  'P17 fixture must remain proposed data');
+assert(namedFixture.proposal === 'P17' && namedFixture.status === 'Accepted'
+  && namedFixture.implementation_verified === true && namedFixture.approval_date === '2026-10-07',
+  'P17 invalid verified fixture status');
 assert(namedFixture.entry === 'main.nova' && namedFixture.source_root === '.'
   && JSON.stringify(namedFixture.reachable_modules) === '["main","helpers"]', 'P17 fixture graph mismatch');
 const namedOutput = 'right\nleft\nreverse=702\npositional\nnamed\nmixed=102\nsecond\nfirst\ntext=first/second\nunit=3\nunicode=304\nminimum=-12500\ncopy=4/5\noption=7\nleaf\nlater\nafter\nsuccess=102\nleaf\nerror=-1\nbefore\nleaf\nprior-error=-1\nshort=false\n';
-assert(namedFixture.proposed_result?.check_exit === 0 && namedFixture.proposed_result?.native_exit === 0
-  && namedFixture.proposed_result?.stdout === namedOutput && namedFixture.proposed_result?.stderr === '',
-  'P17 proposed output mismatch');
+assert(namedFixture.validated_result?.check_exit === 0 && namedFixture.validated_result?.native_exit === 0
+  && namedFixture.validated_result?.stdout === namedOutput && namedFixture.validated_result?.stderr === '',
+  'P17 verified output mismatch');
 assert(namedFixture.negative_cases?.length === 16
   && new Set(namedFixture.negative_cases.map(c => c.name)).size === 16
   && new Set(namedFixture.negative_cases.map(c => c.source)).size === 16, 'P17 negative set mismatch');
@@ -556,9 +556,9 @@ assert(namedFixture.positive_cases?.length === 2
   && JSON.stringify(namedFixture.positive_cases.map(c => c.source))
     === '["function_print_shadow.nova","forward_recursive_grouped.nova"]', 'P17 positive set mismatch');
 for (const c of namedFixture.positive_cases) {
-  assert(c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
-    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '' && !c.validated_result,
-    `P17 invalid positive proposed result ${c.source}`);
+  assert(c.validated_result?.check_exit === 0 && c.validated_result?.native_exit === 0
+    && c.validated_result?.stdout === '' && c.validated_result?.stderr === '',
+    `P17 invalid positive validated result ${c.source}`);
 }
 for (const name of [namedFixture.entry, 'helpers.nova', ...namedFixture.positive_cases.map(c => c.source),
   ...namedFixture.negative_cases.map(c => c.source)]) {
@@ -590,7 +590,10 @@ assert(namedMain.includes('use helpers::combine as joined')
   && namedMain.includes('korean(뒤:4,앞:3)') && namedMain.includes('right:300,left:-128')
   && namedMain.includes('optional(value:Option::Some(7))') && namedMain.includes('false &&'),
   'P17 missing mapping/effect/try/Unicode/context proposal data');
-checks.push('P17 Draft/미승인·미구현 ledger·P16 arguments 확장/argument 추가·52-production EBNF·두 파일/정상 2·부정 16사례 UTF-8 Span·cascade·제안 24줄 출력 데이터 (Compiler/Native 실행 아님)');
+const namedPrivate = namedFixture.negative_cases.find(c => c.name === 'private_import');
+assert(namedPrivate?.primary?.start === 0 && namedPrivate?.primary?.end === 20
+  && namedPrivate?.primary_text === 'use helpers::hidden\n', 'P17 must preserve P11 whole-import N2004 Span');
+checks.push('P17 Accepted/승인·구현 ledger·P16 arguments 확장/argument 추가·52-production EBNF·두 파일/정상 2·부정 16사례 UTF-8 Span·cascade·검증 24줄 출력 metadata (Compiler/Native 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

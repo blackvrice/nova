@@ -134,8 +134,13 @@ pub enum NodeKind {
     },
     /// Left, then right operand.
     Binary(Symbol),
-    /// Callee, followed by positional arguments.
+    /// Callee, followed by source-ordered expressions or named argument wrappers.
     Call,
+    /// One expression child; label is syntax, not a value reference.
+    NamedArgument {
+        name: Span,
+        colon: Span,
+    },
     /// Value, then target type; keyword preserves the source spelling.
     Cast {
         keyword: Span,

@@ -1,7 +1,7 @@
 {
   "proposal": "P17",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
@@ -11,11 +11,21 @@
   "positive_cases": [
     {
       "source": "function_print_shadow.nova",
-      "proposed_result": { "check_exit": 0, "native_exit": 0, "stdout": "", "stderr": "" }
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
     },
     {
       "source": "forward_recursive_grouped.nova",
-      "proposed_result": { "check_exit": 0, "native_exit": 0, "stdout": "", "stderr": "" }
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
     }
   ],
   "negative_cases": [
@@ -177,17 +187,18 @@
       "name": "private_import",
       "source": "private_import.nova",
       "expected_diagnostic": "N2004",
-      "primary_text": "helpers::hidden",
+      "primary_text": "use helpers::hidden\n",
       "primary": {
-        "start": 4,
-        "end": 19
+        "start": 0,
+        "end": 20
       },
       "forbidden_diagnostics": [
         "N2201"
       ]
     }
   ],
-  "proposed_result": {
+  "approval_date": "2026-10-07",
+  "validated_result": {
     "check_exit": 0,
     "native_exit": 0,
     "stdout": "right\nleft\nreverse=702\npositional\nnamed\nmixed=102\nsecond\nfirst\ntext=first/second\nunit=3\nunicode=304\nminimum=-12500\ncopy=4/5\noption=7\nleaf\nlater\nafter\nsuccess=102\nleaf\nerror=-1\nbefore\nleaf\nprior-error=-1\nshort=false\n",

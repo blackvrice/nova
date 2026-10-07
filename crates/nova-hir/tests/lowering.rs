@@ -691,3 +691,51 @@ fn p16_try_public_ast_shape_spelling_and_keyword_boundaries_are_checked() {
         lower_source(&source[..at]);
     }
 }
+
+#[test]
+fn p17_named_argument_source_metadata_and_external_ast_are_checked() {
+    let source = "func f(){g(뒤 /*x*/ : 1,앞:2)}";
+    let hir = lower_source(source);
+    let names = hir
+        .nodes()
+        .iter()
+        .filter_map(|n| match n.kind {
+            HirKind::NamedArgument { name, .. } => Some(hir.symbol(name).unwrap()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(names, ["뒤", "앞"]);
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        lower_source(&source[..at]);
+    }
+    for (text, name, colon, child, count, valid) in [
+        ("x:1", (0, 1), (1, 2), (2, 3), 1, true),
+        ("x:1", (0, 1), (0, 1), (2, 3), 1, false),
+        ("x:1", (1, 2), (1, 2), (2, 3), 1, false),
+        ("xx:1", (0, 1), (2, 3), (3, 4), 1, false),
+        ("x:1", (0, 1), (1, 2), (2, 3), 0, false),
+        ("x:1", (0, 1), (1, 2), (2, 3), 2, false),
+    ] {
+        let mut db = SourceDatabase::default();
+        let file = db.add("api", text.into()).unwrap();
+        let span = |r: (usize, usize)| Span::new(file, r.0, r.1).unwrap();
+        let whole = span((0, text.len()));
+        let mut arena = Arena::default();
+        let value = arena
+            .insert(NodeKind::Integer, span(child), vec![])
+            .unwrap();
+        let arg = arena
+            .insert(
+                NodeKind::NamedArgument {
+                    name: span(name),
+                    colon: span(colon),
+                },
+                whole,
+                vec![value; count],
+            )
+            .unwrap();
+        let error = arena.insert(NodeKind::Error, whole, vec![arg]).unwrap();
+        let root = arena.insert(NodeKind::Root, whole, vec![error]).unwrap();
+        assert_eq!(lower(&db, &arena, root).is_ok(), valid, "{text}");
+    }
+}

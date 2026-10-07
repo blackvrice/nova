@@ -1,8 +1,9 @@
 # Stage B 함수 이름 인수 최소 계약 — P17
 
-작성일: 2026-10-07. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일/승인일/구현일: 2026-10-07. 상태: **Accepted / 사용자 승인 / 구현 완료**.
+사용자 “P17 승인하고 이름 인수 구현 진행” 답변으로 승인했다. [구현·검증 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
 기존 D01~D05/P01~P16·Canonical·원본 148개 문서를 보존한다.
-전체 D11/D16/D25/D30 승인이 아니다. 승인 전에 Compiler에 적용하지 않는다.
+전체 D11/D16/D25/D30 승인이 아니다. 아래 P17 subset만 Compiler에 적용했다.
 
 ## Specification Change Proposal
 
@@ -11,7 +12,7 @@
   [P02](SEMANTICS_STAGE_A_PROPOSAL.md), [P11 Module](MODULE_STAGE_B_PROPOSAL.md),
   [P12 생성](STRUCT_STAGE_B_PROPOSAL.md), [P15](OPTION_RESULT_STAGE_B_PROPOSAL.md),
   [P16 try](TRY_STAGE_B_PROPOSAL.md), [결정](DECISIONS.md).
-- 현재 확정 의미: 인수는 소스 순서로 평가한다. 현재 함수 호출은 위치 인수만 지원한다.
+- 변경 전 확정 의미: 인수는 소스 순서로 평가하며 함수 호출은 위치 인수만 지원했다.
   원본은 이름 인수를 테스트 대상으로 정하지만 이름의 대응·중복·혼합·미지원 callee 진단을 구체화하지 않는다.
 - 발견된 문제: 호출 인수를 선언 순서로 재배열해 평가하면 effect와 try 조기 반환 의미가 바뀐다.
   기존 TypeChecker의 위치별 expected type과 MIR의 위치별 전달을 그대로 사용할 수 없다.
@@ -122,10 +123,10 @@ let b=join(1, right:2)
 
 [두 파일 fixture](named-arguments-proposal-fixtures/README.md)·[기대값](named-arguments-proposal-fixtures/expected.json)은
 import alias·source-order effect·mixed arguments·Unicode label·mapped literal/Option 문맥·Copy aggregate·String·Unit·
-try 성공/실패·private 이름 대응·constructor 거부와 cascade 억제의 **제안** 데이터다.
-Draft이고 `implementation_verified:false`이며 현재 compiler의 pass 결과가 아니다.
+try 성공/실패·private 이름 대응·constructor 거부와 cascade 억제의 **검증된 수용** 데이터다.
+Accepted / `implementation_verified:true`이며 Compiler와 Windows Native O0/O2로 검증했다.
 
-구현 후 검증할 항목:
+구현·검증한 항목:
 
 - Parser AST/HIR dump와 label/colon byte Span, trailing comma·보간·중첩·UTF-8 truncation/복구.
 - forward/import/recursive/grouped/direct call·shadow·private·label/value namespace·완전 대응.
@@ -137,9 +138,9 @@ Draft이고 `implementation_verified:false`이며 현재 compiler의 pass 결과
 
 미포함: 기본 인수·외부 label 문법·overload·메서드/receiver·사용자 Generic·함수 값·Closure,
 named Struct/Enum/Option/Result 생성·Array·일반 Move/borrow/Drop·public ABI/FFI와 전체 D11/D16/D25/D30.
-승인 후 P17 subset만 Compiler·accepted ledger에 적용한다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.
+승인한 P17 subset만 Compiler·accepted ledger에 적용했다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.
 
-## 초안 준비 검증 — 2026-10-07
+## 초안 준비 당시 검증 — 2026-10-07 (과거 기록)
 
 - 문서 build/validator PASS: 148개 원본 hash·로컬 링크·Draft ledger·52개 production과 기존 50개 보존·
   정상 2/부정 16사례·UTF-8 byte Span·cascade 금지·제안 24줄 stdout metadata를 검사했다.
@@ -155,4 +156,4 @@ named Struct/Enum/Option/Result 생성·Array·일반 Move/borrow/Drop·public A
 - ignored `target/`에서 P16 위치 인수와 명시적 temporaries만 사용한 대조 프로그램의 check 및
   Windows Native debug/release를 실행했다. check 출력 없음·exit 0, Native는 제안과 같은 24줄 LF·stderr 없음·exit 0이다.
   이는 기존 연산·출력 계산의 대조 검증이며 **P17 이름 인수 source의 compile/Native 통과 증거가 아니다**.
-  tracked 이름 인수 fixture는 Draft/`implementation_verified:false`로 유지한다.
+  당시 tracked 이름 인수 fixture는 Draft/`implementation_verified:false`였다. 현재 검증은 [구현 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다.

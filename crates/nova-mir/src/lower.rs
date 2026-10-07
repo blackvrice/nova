@@ -74,6 +74,8 @@ pub fn lower(
         binder_provenance: BTreeMap::new(),
         match_provenance: BTreeMap::new(),
         try_certificates: BTreeMap::new(),
+        named_calls: BTreeMap::new(),
+        named_bodies: BTreeMap::new(),
         try_controls: BTreeMap::new(),
         structs_original: checked.structs.clone(),
         tuple_ids: checked.tuple_ids.clone(),
@@ -231,6 +233,8 @@ pub fn lower(
             loops: vec![],
             match_falls: Default::default(),
             tries: vec![],
+            named_snapshots: BTreeMap::new(),
+            named_calls: vec![],
         };
         builder.current = Some(builder.block());
         for &parameter in &hir.nodes()[id.0].children[..parameters] {
@@ -276,6 +280,15 @@ pub fn lower(
                     .map(|c| ((c.callee.0, c.source.hir.0), c)),
             );
         }
+        if !builder.named_calls.is_empty() {
+            result.named_bodies.insert(callee.0, builder.body.clone());
+            result.named_calls.extend(
+                builder
+                    .named_calls
+                    .into_iter()
+                    .map(|c| ((callee.0, c.source.hir.0), c)),
+            );
+        }
         result.bodies.push(builder.body);
     }
     let errors = validate(&result);
@@ -291,6 +304,10 @@ enum Work {
     Expression(HirId),
     Convert(HirId),
     FinishExpression(HirId),
+    SnapshotArgument {
+        call: HirId,
+        argument: HirId,
+    },
     Try(HirId),
     Binding(HirId),
     Assignment(HirId),
@@ -353,6 +370,8 @@ struct Builder<'a> {
     loops: Vec<(BlockId, BlockId)>,
     match_falls: std::collections::BTreeSet<usize>,
     tries: Vec<TryCertificate>,
+    named_snapshots: BTreeMap<usize, Vec<(BlockId, usize, Statement)>>,
+    named_calls: Vec<NamedCallCertificate>,
 }
 impl Builder<'_> {
     fn block(&mut self) -> BlockId {
@@ -646,13 +665,20 @@ impl Builder<'_> {
                         HirKind::Call => {
                             // Callee identity is statically resolved; it is not a function value.
                             work.push(Work::FinishExpression(id));
-                            work.extend(
-                                node.children[1..]
-                                    .iter()
-                                    .rev()
-                                    .copied()
-                                    .map(Work::Expression),
-                            );
+                            if self.checked.named_calls[id.0].is_some() {
+                                for &argument in node.children[1..].iter().rev() {
+                                    work.push(Work::SnapshotArgument { call: id, argument });
+                                    work.push(Work::Expression(argument));
+                                }
+                            } else {
+                                work.extend(
+                                    node.children[1..]
+                                        .iter()
+                                        .rev()
+                                        .copied()
+                                        .map(Work::Expression),
+                                );
+                            }
                         }
                         HirKind::Try { .. } => {
                             work.push(Work::Try(id));
@@ -663,6 +689,7 @@ impl Builder<'_> {
                             work.push(Work::Expression(node.children[0]));
                         }
                         HirKind::Group
+                        | HirKind::NamedArgument { .. }
                         | HirKind::Interpolation
                         | HirKind::Tuple
                         | HirKind::TupleProjection { .. }
@@ -675,6 +702,30 @@ impl Builder<'_> {
                         }
                         _ => return Err(LoweringError::InvalidAnalysis),
                     }
+                }
+                Work::SnapshotArgument { call, argument } => {
+                    let ty = self
+                        .checked
+                        .types
+                        .get(
+                            self.checked.coercions[argument.0]
+                                .unwrap_or(self.checked.type_table[argument.0]),
+                        )
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    let snapshot = self.temporary(ty, argument);
+                    self.assign(snapshot, Rvalue::Use(self.value(argument)?), argument)?;
+                    let block = self.current.ok_or(LoweringError::InvalidAnalysis)?;
+                    let statement = self.body.blocks[block.0]
+                        .statements
+                        .last()
+                        .ok_or(LoweringError::InvalidAnalysis)?
+                        .clone();
+                    let at = self.body.blocks[block.0].statements.len() - 1;
+                    self.named_snapshots
+                        .entry(call.0)
+                        .or_default()
+                        .push((block, at, statement));
+                    self.values[argument.0] = Some(Operand::Place(snapshot));
                 }
                 Work::Try(id) => {
                     let node = &self.hir.nodes()[id.0];
@@ -774,7 +825,7 @@ impl Builder<'_> {
                 Work::FinishExpression(id) => {
                     let node = &self.hir.nodes()[id.0];
                     let value = match node.kind {
-                        HirKind::Group | HirKind::Interpolation => {
+                        HirKind::Group | HirKind::Interpolation | HirKind::NamedArgument { .. } => {
                             self.values[id.0] = Some(self.value(node.children[0])?);
                             continue;
                         }
@@ -845,11 +896,19 @@ impl Builder<'_> {
                                 .callees
                                 .get(&definition.0)
                                 .ok_or(LoweringError::InvalidAnalysis)?;
-                            let arguments = node.children[1..]
+                            let mut arguments = node.children[1..]
                                 .iter()
                                 .map(|&c| self.value(c))
-                                .collect::<Result<_, _>>()?;
+                                .collect::<Result<Vec<_>, _>>()?;
+                            if let Some(mapping) = &self.checked.named_calls[id.0] {
+                                let source_arguments = arguments.clone();
+                                for (source, &parameter) in mapping.parameters.iter().enumerate() {
+                                    arguments[parameter] = source_arguments[source].clone();
+                                }
+                            }
                             let destination = Place(self.local(id, None)?);
+                            let source_block =
+                                self.current.ok_or(LoweringError::InvalidAnalysis)?;
                             let target = self.block();
                             self.end(
                                 TerminatorKind::Call {
@@ -860,6 +919,21 @@ impl Builder<'_> {
                                 },
                                 id,
                             )?;
+                            if let Some(mapping) = &self.checked.named_calls[id.0] {
+                                self.named_calls.push(NamedCallCertificate {
+                                    mapping: mapping.clone(),
+                                    source: self.sources[id.0],
+                                    block: source_block,
+                                    call: self.body.blocks[source_block.0]
+                                        .terminator
+                                        .clone()
+                                        .ok_or(LoweringError::InvalidAnalysis)?,
+                                    snapshots: self
+                                        .named_snapshots
+                                        .remove(&id.0)
+                                        .ok_or(LoweringError::InvalidAnalysis)?,
+                                });
+                            }
                             self.current = Some(target);
                             self.values[id.0] = Some(Operand::Place(destination));
                             continue;

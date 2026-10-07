@@ -24,7 +24,7 @@
 
 [P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf), [두 파일·부정 18사례 수용 fixture](try-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](TRY_IMPLEMENTATION.md)을 따른다.
 
-[P17 함수 이름 인수 최소 계약](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf), [두 파일·부정 16사례 제안 fixture](named-arguments-proposal-fixtures/README.md)는 Draft / 승인 대기 / 미구현이다. 기본 인수·overload·named constructor는 포함하지 않는다.
+[P17 함수 이름 인수 최소 계약](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf), [두 파일·부정 16사례 수용 fixture](named-arguments-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다. 기본 인수·overload·named constructor는 포함하지 않는다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

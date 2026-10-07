@@ -1,17 +1,62 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P16 Copy try·Result 오류 전파까지다.
+현재 개발 완료 기능은 P17 함수 이름 인수까지다.
 
-## 다음 개발 준비 — 함수 이름 인수 (P17 Draft)
+## 현재 기능 실행 — 함수 이름 인수
 
-[P17 계약](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)과
-[제안 fixture·구현 후 실행 명령/24줄 기대 출력](docs/development-v0.1/named-arguments-proposal-fixtures/README.md)을 준비했다.
-이름 인수는 현재 미승인·미구현이다. 아래 P16 명령은 현재 실행 가능하다.
-문서 데이터 검사는 `node tools/docs/validate-pack.mjs`로 실행하며 기대 결과는 **PASS**다.
-이 검사는 P17 프로그램의 compile/Native 성공 검사가 아니다.
+```powershell
+cargo run -p nova-cli --offline -- check examples/named_arguments.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/named_arguments.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/named_arguments.nova --profile release
+```
 
-## 현재 기능 실행 — Copy try·Result 오류 전파
+check는 출력 없이 exit 0이며 두 Native 실행은 다음 24줄과 각 LF, stderr 없음·exit 0이다.
+
+```text
+right
+left
+reverse=702
+positional
+named
+mixed=102
+second
+first
+text=first/second
+unit=3
+unicode=304
+minimum=-12500
+copy=4/5
+option=7
+leaf
+later
+after
+success=102
+leaf
+error=-1
+before
+leaf
+prior-error=-1
+short=false
+```
+
+[P17 계약](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/NAMED_ARGUMENTS_IMPLEMENTATION.md)·[두 파일 수용 예제](docs/development-v0.1/named-arguments-proposal-fixtures/README.md)를 제공한다.
+이름은 원 함수 parameter와 대응하며 label과 value 이름 공간은 별개다. source-order 평가 후 parameter-order로 전달한다.
+기본 인수·named constructor·overload는 지원하지 않는다.
+
+```powershell
+cargo test --workspace --offline p17_
+cargo test -p nova-codegen-llvm --test emission --offline p17_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p17_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/named-arguments-proposal-fixtures/unknown_label.nova
+```
+
+집중 검사는 기본 9개·LLVM 1개·Native 2개다. 마지막 명령은 unknown label `other`에 N2201·exit 1이 예상된다.
+문서 metadata 검사는 `node tools/docs/validate-pack.mjs`로 실행하며 기대 결과는 PASS다.
+Compiler/Native 실행 검증과 구분한다.
+
+## 기존 기능 실행 — Copy try·Result 오류 전파
 
 ```powershell
 $env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
@@ -93,7 +138,7 @@ cargo run -p nova-cli --offline -- check docs/development-v0.1/option-result-pro
 
 마지막 명령은 `none`의 타입 문맥 부족으로 N2103·exit 1이 예상된다.
 문맥 없이 `Option::Some(7)`은 Option<int32>지만 `none` 및 Result 생성자는 완성된 기대 타입이 필요하다.
-`let x:int8?=Option::Some(7)`처럼 타입을 지정할 수 있다. String/Move payload·try·사용자 Generic은 후속이다.
+`let x:int8?=Option::Some(7)`처럼 타입을 지정할 수 있다. String/Move payload·사용자 Generic은 후속이다. try는 P16을 따른다.
 
 ## 기존 기능 실행 — Copy Enum·match
 
@@ -134,8 +179,8 @@ cargo test --workspace --offline
 cargo check --workspace --all-features --offline
 ```
 
-P16 기준 기본 tests 297개가 성공하고 실제 LLVM/Native tests 52개는 ignored로 표시된다.
-이 49개를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
+P17 기준 기본 tests 306개가 성공하고 실제 LLVM/Native tests 55개는 ignored로 표시된다.
+이 55개(LLVM 13개·Native 42개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
 
 ```powershell
 cargo test -p nova-codegen-llvm --test emission --offline -- --ignored --test-threads=1

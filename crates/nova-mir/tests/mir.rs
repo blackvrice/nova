@@ -1837,3 +1837,111 @@ fn p16_flat_try_cfg_is_iterative_and_nested_success_is_typed() {
         .join()
         .unwrap();
 }
+#[test]
+fn p17_public_typed_mapping_forgery_is_rejected_before_mir() {
+    let source = "func f(a:int8,b:int8){}func main(){f(b:2,a:1)}";
+    let mut db = SourceDatabase::default();
+    let file = db.add("api", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    let hir = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let resolved = resolve(&hir);
+    let mut checked = check(&hir, &resolved).unwrap();
+    let id = checked
+        .named_calls
+        .iter()
+        .position(Option::is_some)
+        .unwrap();
+    checked.named_calls[id]
+        .as_mut()
+        .unwrap()
+        .parameters
+        .swap(0, 1);
+    assert_eq!(
+        nova_mir::lower(&hir, &resolved, &checked, false),
+        Err(nova_mir::LoweringError::InvalidAnalysis)
+    );
+}
+
+#[test]
+fn p17_named_call_order_snapshots_and_same_type_cfg_forgery_gate() {
+    let source="func a()->int{ return 1 }func b()->int{ return 2 }func sum(left:int,right:int)->int{return left+left+right}func f()->int{return sum(right:b(),left:a())}";
+    let original = pass(source);
+    assert_eq!(
+        execute(&original, "f", vec![]),
+        (
+            Constant::Int32(4),
+            vec!["b".into(), "a".into(), "sum".into()]
+        )
+    );
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    let block=original.bodies[body].blocks.iter().position(|b|matches!(&b.terminator,Some(Terminator{kind:TerminatorKind::Call {callee,..},..}) if original.callees[callee.0].name=="sum")).unwrap();
+    let mut bad = original.clone();
+    let TerminatorKind::Call { arguments, .. } = &mut bad.bodies[body].blocks[block]
+        .terminator
+        .as_mut()
+        .unwrap()
+        .kind
+    else {
+        unreachable!()
+    };
+    arguments.swap(0, 1);
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    let entry = bad.bodies[body].entry;
+    bad.bodies[body].entry = BlockId(block);
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    let first = bad.bodies[body].blocks[entry.0].terminator.clone();
+    bad.bodies[body].blocks[block].terminator = first;
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    let statement = bad.bodies[body].blocks[block]
+        .statements
+        .last()
+        .unwrap()
+        .clone();
+    bad.bodies[body].blocks[block].statements.push(statement);
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    bad.bodies.remove(body);
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    let (target, at) = bad.bodies[body]
+        .blocks
+        .iter()
+        .enumerate()
+        .find_map(|(at, b)| b.statements.first().map(|_| (at, 0)))
+        .unwrap();
+    let StatementKind::Assign(_, value) = &mut bad.bodies[body].blocks[target].statements[at].kind;
+    *value = Rvalue::Use(Operand::Constant(Constant::Int32(9)));
+    assert!(!validate(&bad).is_empty());
+}
+#[test]
+fn p17_flat_large_parameter_mapping_uses_bounded_host_stack() {
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let params = (0..1024)
+                .map(|i| format!("p{i}:int"))
+                .collect::<Vec<_>>()
+                .join(",");
+            let args = (0..1024)
+                .rev()
+                .map(|i| format!("p{i}:{i}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            let source = format!(
+                "func many({params})->int{{return p0+p1023}}func f()->int{{return many({args})}}"
+            );
+            let module = pass(&source);
+            assert_eq!(execute(&module, "f", vec![]).0, Constant::Int32(1023));
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}

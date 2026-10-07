@@ -231,6 +231,14 @@ struct TryControlCertificate {
     terminators: Vec<Option<Terminator>>,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
+struct NamedCallCertificate {
+    mapping: nova_typecheck::NamedCall,
+    source: SourceInfo,
+    snapshots: Vec<(BlockId, usize, Statement)>,
+    block: BlockId,
+    call: Terminator,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Module {
     entry: SourceInfo,
     pub structs: StructRegistry,
@@ -243,6 +251,9 @@ pub struct Module {
     binder_provenance: std::collections::BTreeMap<usize, (nova_types::VariantId, usize)>,
     try_certificates: std::collections::BTreeMap<(usize, usize), TryCertificate>,
     try_controls: std::collections::BTreeMap<usize, TryControlCertificate>,
+    named_calls: std::collections::BTreeMap<(usize, usize), NamedCallCertificate>,
+    /// P17 freezes evaluation CFG and writes until a transform can preserve the proof.
+    named_bodies: std::collections::BTreeMap<usize, Body>,
     match_provenance: std::collections::BTreeMap<usize, (Type, Vec<nova_typecheck::MatchPattern>)>,
     structs_original: StructRegistry,
     tuple_ids: std::collections::BTreeSet<StructId>,

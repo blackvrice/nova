@@ -1,7 +1,9 @@
 //! P02 single-file semantic checking. Successful checking is not native execution.
 mod aggregates;
+mod arguments;
 mod enums;
 mod sums;
+pub use arguments::NamedCall;
 pub use enums::MatchPattern;
 mod const_eval;
 mod global_consts;
@@ -41,6 +43,8 @@ pub struct Checked {
     pub definition_types: Vec<TypeId>,
     pub signatures: Vec<Option<Signature>>,
     pub calls: Vec<Option<DefId>>,
+    /// P17 source argument order and its bijection to declaration parameter order.
+    pub named_calls: Vec<Option<NamedCall>>,
     pub integer_values: Vec<Option<i32>>,
     /// P07 literal payloads; legacy Int32 payloads above remain available.
     pub integer_literals: Vec<Option<IntegerValue>>,
@@ -127,6 +131,9 @@ impl fmt::Display for CheckError {
 impl std::error::Error for CheckError {}
 
 struct Checker<'a> {
+    parameter_indices:
+        std::collections::HashMap<usize, std::collections::HashMap<nova_hir::SymbolId, usize>>,
+    argument_mappings: Vec<Option<arguments::ArgumentMapping>>,
     sum_shapes: std::collections::HashMap<nova_types::SumKey, nova_types::EnumId>,
     sum_sources: std::collections::HashMap<nova_types::SumKey, HirId>,
     attempted_variants: std::collections::BTreeSet<usize>,
@@ -271,6 +278,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         definition_types: vec![error; resolved.definitions.len()],
         signatures: vec![None; resolved.definitions.len()],
         calls: vec![None; size],
+        named_calls: vec![None; size],
         integer_values: vec![None; size],
         integer_literals: vec![None; size],
         float_literals: vec![None; size],
@@ -308,6 +316,8 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 flags
             });
     let mut checker = Checker {
+        parameter_indices: Default::default(),
+        argument_mappings: (0..size).map(|_| None).collect(),
         sum_shapes: Default::default(),
         sum_sources: Default::default(),
         attempted_variants: Default::default(),
@@ -342,6 +352,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     };
     checker.collect_structs();
     checker.collect_signatures();
+    checker.collect_parameter_indices();
     checker.check_globals();
     let items = module.items().collect::<Vec<_>>();
     for item in items {
@@ -704,6 +715,9 @@ impl Checker<'_> {
             }
             let node = &self.module.nodes()[id.0];
             pending.push(Work::Exit(id, context));
+            if node.kind == HirKind::Call {
+                self.prepare_named_call(id);
+            }
             match node.kind {
                 HirKind::Match { .. } => {
                     pending.push(Work::MatchArms(id, context));
@@ -805,6 +819,9 @@ impl Checker<'_> {
                         self.resolve_variant(head)
                     };
                     self.result.variants[id.0] = variant;
+                    if self.has_named(id) && (builtin || variant.is_some()) {
+                        self.reject_named_constructor(id);
+                    }
                     for (at, &child) in node.children.iter().enumerate().rev() {
                         let expected = variant
                             .and_then(|v| self.result.enums.get(&v.enumeration))
@@ -821,7 +838,11 @@ impl Checker<'_> {
                         pending.push(Work::Enter(
                             child,
                             Context {
-                                expected: if at == 0 { None } else { expected },
+                                expected: if at == 0 || self.argument_mappings[id.0].is_some() {
+                                    None
+                                } else {
+                                    expected
+                                },
                                 expected_span: None,
                                 direct_callee: at == 0,
                                 ..context
@@ -832,11 +853,18 @@ impl Checker<'_> {
                 HirKind::Call => {
                     let def = self.callee_definition(node.children[0]);
                     for (index, &child) in node.children.iter().enumerate().rev() {
+                        let parameter = if index == 0 {
+                            None
+                        } else {
+                            self.argument_mappings[id.0]
+                                .as_ref()
+                                .map_or(Some(index - 1), |m| m.parameters[index - 1])
+                        };
                         let expected = if index == 0 {
                             None
                         } else {
                             def.and_then(|d| self.result.signatures[d.0].as_ref())
-                                .and_then(|s| s.parameters.get(index - 1))
+                                .and_then(|s| parameter.and_then(|p| s.parameters.get(p)))
                                 .copied()
                         };
                         pending.push(Work::Enter(
@@ -847,7 +875,9 @@ impl Checker<'_> {
                                     None
                                 } else {
                                     def.and_then(|d| self.result.signatures[d.0].as_ref())
-                                        .and_then(|s| s.parameter_spans.get(index - 1))
+                                        .and_then(|s| {
+                                            parameter.and_then(|p| s.parameter_spans.get(p))
+                                        })
                                         .copied()
                                         .flatten()
                                 },
@@ -1011,7 +1041,7 @@ impl Checker<'_> {
                         ));
                     }
                 }
-                HirKind::Group => {
+                HirKind::Group | HirKind::NamedArgument { .. } => {
                     pending.push(Work::Enter(node.children[0], context));
                 }
                 _ => {
@@ -1155,6 +1185,7 @@ impl Checker<'_> {
                 self.finish_sum_value(id, context.expected)
             }
             HirKind::VariantPath { .. } => self.finish_variant(id, context.direct_callee),
+            HirKind::Call if self.argument_mappings[id.0].is_some() => self.finish_named_call(id),
             HirKind::Call if self.sum_head(node.children[0]).is_some() => {
                 self.finish_sum_call(id, context.expected)
             }
@@ -1208,7 +1239,7 @@ impl Checker<'_> {
                     }
                 }
             }
-            HirKind::Group => {
+            HirKind::Group | HirKind::NamedArgument { .. } => {
                 self.result.type_table[id.0] = self.result.coercions[node.children[0].0]
                     .unwrap_or(self.result.type_table[node.children[0].0])
             }

@@ -1254,15 +1254,17 @@ impl<'a> Parser<'a> {
                     .get(self.cursor + 1)
                     .is_some_and(|t| t.kind == TokenKind::Colon)
             {
-                self.report(
-                    1102,
-                    self.current().span,
-                    "named arguments are outside Stage A",
-                );
-                self.bump();
-                self.bump();
+                let name = self.bump().span;
+                let colon = self.bump().span;
+                let value = self.expression(0);
+                children.push(self.node(
+                    NodeKind::NamedArgument { name, colon },
+                    name.start(),
+                    vec![value],
+                ));
+            } else {
+                children.push(self.expression(0));
             }
-            children.push(self.expression(0));
             if !self.eat(TokenKind::Comma) {
                 break;
             }

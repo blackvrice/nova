@@ -20,7 +20,7 @@
 
 2026-10-07 사용자 “P16 승인하고 Copy try 구현 진행” 답변으로 [P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md)을 승인했다. Prefix 결합·operand 문맥 격리·정확한 E·Copy snapshot·Error 조기 반환·const N3201·Source/CFG 검증 subset을 구현했다. [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf)·[수용 fixture](try-proposal-fixtures/README.md)·[구현 기록](TRY_IMPLEMENTATION.md)을 따른다. Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09/D10/D12/D16/D23/D25 승인은 아니다.
 
-2026-10-07 다음 Stage B 최소 범위 [P17 함수 이름 인수](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf)·[제안 fixture](named-arguments-proposal-fixtures/README.md)를 Draft로 준비했다. parameter 이름 대응·소스 순서 평가 후 선언 순서 전달·mapped 타입 문맥·try effect·Source/MIR 검증 범위이며 사용자 승인 대기/미구현이다. 기본 인수·overload·named constructor와 전체 D11/D16/D25/D30 승인이 아니다.
+2026-10-07 사용자 “P17 승인하고 이름 인수 구현 진행” 답변으로 [P17 함수 이름 인수](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)를 승인했다. [52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf)·[수용 fixture](named-arguments-proposal-fixtures/README.md)·[구현 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다. parameter 이름 대응·소스 순서 snapshot 후 선언 순서 전달·mapped 타입·try effect·Source/MIR 검증 subset을 구현했다. 기본 인수·overload·named constructor와 전체 D11/D16/D25/D30 승인이 아니다.
 
 ## 공통 승인 계약
 
