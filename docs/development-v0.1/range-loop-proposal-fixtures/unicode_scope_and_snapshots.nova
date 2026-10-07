@@ -1,0 +1,8 @@
+func main() {
+    var 끝=4
+    let 값=2
+    var total=0
+    for 값 in 값 until 끝 { 끝=0; total=total+값; if true { let 값=99; let copy=값 } }
+    if total!=5 { let fail:int8=127; let bad=fail+1 }
+    if 값!=2 { let fail:int8=127; let bad=fail+1 }
+}

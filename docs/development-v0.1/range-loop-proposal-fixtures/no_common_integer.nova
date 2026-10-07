@@ -1,0 +1,1 @@
+func main(){ let lo:int64=0; let hi:uint64=1; for i in lo until hi {} }

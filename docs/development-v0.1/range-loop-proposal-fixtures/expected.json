@@ -1,0 +1,260 @@
+{
+  "proposal": "P19",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "helpers"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "range=8\nstart\nend\nbounds=23\nempty-start\nempty-end\nempty=0\nmaximum=2/255\nmixed=0\nshadow=99/3\nnested=4\nloop=3\ntry-start\ntry-end\ntry-ok=3\ntry-start\ntry-end\ntry-error=-1\n",
+    "stderr": ""
+  },
+  "positive_cases": [
+    {
+      "source": "unicode_scope_and_snapshots.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "integer_edges_and_mixed_jumps.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "float_bound",
+      "source": "float_bound.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "1.0",
+      "primary": {
+        "start": 22,
+        "end": 25
+      }
+    },
+    {
+      "name": "string_bound",
+      "source": "string_bound.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "\"끝\"",
+      "primary": {
+        "start": 30,
+        "end": 35
+      }
+    },
+    {
+      "name": "bool_bound",
+      "source": "bool_bound.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "true",
+      "primary": {
+        "start": 22,
+        "end": 26
+      }
+    },
+    {
+      "name": "char_bound",
+      "source": "char_bound.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "'a'",
+      "primary": {
+        "start": 22,
+        "end": 25
+      }
+    },
+    {
+      "name": "unit_bound",
+      "source": "unit_bound.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "()",
+      "primary": {
+        "start": 9,
+        "end": 11
+      }
+    },
+    {
+      "name": "aggregate_bound",
+      "source": "aggregate_bound.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "(1,2)",
+      "primary": {
+        "start": 22,
+        "end": 27
+      }
+    },
+    {
+      "name": "no_common_integer",
+      "source": "no_common_integer.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "lo until hi",
+      "primary": {
+        "start": 55,
+        "end": 66
+      }
+    },
+    {
+      "name": "peer_literal_range",
+      "source": "peer_literal_range.nova",
+      "expected_diagnostic": "N2102",
+      "primary_text": "128",
+      "primary": {
+        "start": 40,
+        "end": 43
+      },
+      "forbidden_diagnostics": [
+        "N2101"
+      ]
+    },
+    {
+      "name": "undefined_bound",
+      "source": "undefined_bound.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "missing",
+      "primary": {
+        "start": 22,
+        "end": 29
+      },
+      "forbidden_diagnostics": [
+        "N2101"
+      ]
+    },
+    {
+      "name": "binder_not_in_bound_scope",
+      "source": "binder_not_in_bound_scope.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "value",
+      "primary": {
+        "start": 26,
+        "end": 31
+      },
+      "forbidden_diagnostics": [
+        "N2101"
+      ]
+    },
+    {
+      "name": "binder_outside",
+      "source": "binder_outside.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "値",
+      "primary": {
+        "start": 45,
+        "end": 48
+      }
+    },
+    {
+      "name": "immutable_binder",
+      "source": "immutable_binder.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "value",
+      "primary": {
+        "start": 38,
+        "end": 43
+      }
+    },
+    {
+      "name": "duplicate_binder",
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "value",
+      "primary": {
+        "start": 42,
+        "end": 47
+      }
+    },
+    {
+      "name": "chained_range",
+      "source": "chained_range.nova",
+      "expected_diagnostic": "N1103",
+      "primary_text": "through",
+      "primary": {
+        "start": 32,
+        "end": 39
+      }
+    },
+    {
+      "name": "range_value",
+      "source": "range_value.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "until",
+      "primary": {
+        "start": 25,
+        "end": 30
+      }
+    },
+    {
+      "name": "iterable_value",
+      "source": "iterable_value.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "(1,2)",
+      "primary": {
+        "start": 22,
+        "end": 27
+      }
+    },
+    {
+      "name": "wildcard_binder",
+      "source": "wildcard_binder.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "_",
+      "primary": {
+        "start": 17,
+        "end": 18
+      }
+    },
+    {
+      "name": "loop_missing_return",
+      "source": "loop_missing_return.nova",
+      "expected_diagnostic": "N3003",
+      "primary_text": "{ loop { return 1 } }",
+      "primary": {
+        "start": 14,
+        "end": 35
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "name": "bound_overflow",
+      "source": "bound_overflow.nova",
+      "expected_diagnostic": "N5201",
+      "primary_text": "값+1",
+      "primary": {
+        "start": 39,
+        "end": 44
+      },
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit_nonzero": true,
+        "stdout": ""
+      }
+    },
+    {
+      "name": "body_overflow",
+      "source": "body_overflow.nova",
+      "expected_diagnostic": "N5201",
+      "primary_text": "값+1",
+      "primary": {
+        "start": 78,
+        "end": 83
+      },
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit_nonzero": true,
+        "stdout": "before\n"
+      }
+    }
+  ]
+}

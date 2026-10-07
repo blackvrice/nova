@@ -683,6 +683,79 @@ assert(defaultMain.includes('use helpers::compose as joined') && defaultMain.inc
   && defaultHelpers.includes("value:(int8,char)=(BASE,'🙂')"), 'P18 missing scope/context/default/effect proposal data');
 checks.push('P18 Accepted/승인·구현 ledger·P17 parameter 한 production 확장·52-production EBNF/기존 51개 보존·두 파일/정상 2/부정 20사례 UTF-8 Span·cascade·검증 20줄 출력 metadata (Compiler/Native 실행 아님)');
 
+const rangeProposal = manifest.draft_proposals?.find(p => p.id === 'P19');
+assert(rangeProposal?.status === 'Draft' && rangeProposal?.implementation_verified === false
+  && rangeProposal?.document === 'RANGE_LOOP_STAGE_B_PROPOSAL.md'
+  && rangeProposal?.grammar === 'GRAMMAR_STAGE_B_RANGE_LOOP.ebnf'
+  && !manifest.accepted_proposals?.some(p => p.id === 'P19'), 'P19 invalid Draft ledger');
+const rangeText = fs.readFileSync(path.join(pack, rangeProposal?.document ?? 'RANGE_LOOP_STAGE_B_PROPOSAL.md'), 'utf8');
+assert(rangeText.includes('Draft / 사용자 승인 대기 / 미구현')
+  && rangeText.includes('증가시키지 않고 종료') && rangeText.includes('보수적으로 분석')
+  && rangeText.includes('기존 나머지 51개'), 'P19 missing scope/termination/status boundaries');
+validateGrammar('GRAMMAR_STAGE_B_RANGE_LOOP.ebnf');
+const rangeGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_RANGE_LOOP.ebnf'), 'utf8');
+assert(rangeGrammar.includes('Draft, unapproved, unimplemented'), 'P19 invalid grammar status');
+const rangeProductions = productions(rangeGrammar);
+assert(rangeProductions.size === 54 && defaultProductions.size === 52, 'P19 production count mismatch');
+for (const [name, value] of defaultProductions) {
+  if (name !== 'statement') assert(rangeProductions.get(name) === value, `P19 changes existing ${name}`);
+}
+assert(rangeProductions.get('statement') === 'if_stmt|while_stmt|for_stmt|loop_stmt|match_stmt|simple_statement'
+  && rangeProductions.get('for_stmt') === '"for","IDENT","in",expression,("until"|"through"),expression,block'
+  && rangeProductions.get('loop_stmt') === '"loop",block', 'P19 invalid minimal statement grammar');
+const rangeRoot = path.join(pack, 'range-loop-proposal-fixtures');
+const rangeFixture = JSON.parse(fs.readFileSync(path.join(rangeRoot, 'expected.json'), 'utf8'));
+assert(rangeFixture.proposal === 'P19' && rangeFixture.status === 'Draft'
+  && rangeFixture.implementation_verified === false && !rangeFixture.validated_result
+  && rangeFixture.entry === 'main.nova' && rangeFixture.source_root === '.'
+  && JSON.stringify(rangeFixture.reachable_modules) === '["main","helpers"]', 'P19 invalid unverified fixture graph/status');
+const rangeOutput = 'range=8\nstart\nend\nbounds=23\nempty-start\nempty-end\nempty=0\nmaximum=2/255\nmixed=0\nshadow=99/3\nnested=4\nloop=3\ntry-start\ntry-end\ntry-ok=3\ntry-start\ntry-end\ntry-error=-1\n';
+assert(rangeFixture.proposed_result?.check_exit === 0 && rangeFixture.proposed_result?.native_exit === 0
+  && rangeFixture.proposed_result?.stdout === rangeOutput && rangeFixture.proposed_result?.stderr === '', 'P19 proposed output mismatch');
+assert(rangeFixture.negative_cases?.length === 18 && rangeFixture.runtime_cases?.length === 2
+  && rangeFixture.positive_cases?.length === 2, 'P19 fixture counts mismatch');
+const rangeCases = [...rangeFixture.negative_cases, ...rangeFixture.runtime_cases];
+assert(new Set(rangeCases.map(c => c.name)).size === 20 && new Set(rangeCases.map(c => c.source)).size === 20,
+  'P19 duplicate diagnostic fixtures');
+for (const c of rangeCases) {
+  assert(knownCodes.has(c.expected_diagnostic), `P19 unknown diagnostic ${c.name}`);
+  const bytes = fs.readFileSync(path.join(rangeRoot, c.source));
+  const boundaries = new Set([0]);
+  let offset = 0;
+  for (const scalar of bytes.toString('utf8')) { offset += Buffer.byteLength(scalar); boundaries.add(offset); }
+  const { start, end } = c.primary;
+  assert(start < end && start >= 0 && end <= bytes.length && boundaries.has(start) && boundaries.has(end)
+    && bytes.subarray(start, end).toString('utf8') === c.primary_text, `P19 invalid UTF-8 byte Span ${c.name}`);
+  for (const code of c.forbidden_diagnostics ?? []) {
+    assert(knownCodes.has(code) && code !== c.expected_diagnostic, `P19 invalid cascade ${c.name}`);
+  }
+}
+for (const c of rangeFixture.positive_cases) {
+  assert(!c.validated_result && c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
+    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '', `P19 invalid unverified positive ${c.source}`);
+}
+for (const c of rangeFixture.runtime_cases) {
+  assert(c.expected_diagnostic === 'N5201' && c.proposed_result?.check_exit === 0
+    && c.proposed_result?.native_exit_nonzero === true, `P19 invalid proposed Runtime failure ${c.name}`);
+}
+assert(rangeFixture.runtime_cases.find(c => c.name === 'body_overflow')?.proposed_result?.stdout === 'before\n'
+  && rangeFixture.runtime_cases.find(c => c.name === 'bound_overflow')?.proposed_result?.stdout === '', 'P19 Abort effect data mismatch');
+for (const name of [rangeFixture.entry, 'helpers.nova', ...rangeFixture.positive_cases.map(c => c.source), ...rangeCases.map(c => c.source)]) {
+  assert(path.basename(name) === name && name.endsWith('.nova'), `P19 invalid filename ${name}`);
+  const text = fs.readFileSync(path.join(rangeRoot, name), 'utf8');
+  assert(text.endsWith('\n') && !text.includes('\r'), `P19 newline mismatch ${name}`);
+}
+for (const name of ['undefined_bound', 'binder_not_in_bound_scope', 'peer_literal_range']) {
+  assert(rangeFixture.negative_cases.find(c => c.name === name)?.forbidden_diagnostics?.includes('N2101'),
+    `P19 missing upstream cascade suppression ${name}`);
+}
+const rangeMain = fs.readFileSync(path.join(rangeRoot, 'main.nova'), 'utf8');
+assert(rangeMain.includes('use helpers::edge as bound') && rangeMain.includes('through MAX')
+  && rangeMain.includes('tag:"empty-start"') && rangeMain.includes('let lo:int8=-1')
+  && rangeMain.includes('until try fetch') && rangeMain.includes('loop {') && rangeMain.includes('continue'),
+  'P19 missing bound/effect/max/jump/context proposal cases');
+checks.push('P19 Draft/미승인·미구현 ledger·P18 statement 확장/두 production 추가·54-production EBNF/기존 51개 보존·두 파일/정상 2/부정 18/Runtime 2 UTF-8 Span·cascade·제안 18줄 metadata (Compiler/Native 통과 기록 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

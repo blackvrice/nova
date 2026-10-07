@@ -1,0 +1,17 @@
+func main() {
+    const MIN:int64=-9223372036854775808
+    const MAX:uint64=18446744073709551615
+    var visits=0
+    for v in MIN until MIN+1 { visits=visits+1 }
+    for v in MAX through MAX { visits=visits+1; continue }
+    for v in 2 until 2 { visits=100 }
+    for v in 3 through 2 { visits=100 }
+    var outer=0
+    loop {
+        outer=outer+1
+        for v in 1 through 3 { match v==2 { true=>{ break },false=>{ visits=visits+1 } } }
+        if outer==2 { break }
+        continue
+    }
+    if visits!=4 { let fail:int8=127; let bad=fail+1 }
+}

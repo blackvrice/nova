@@ -1,0 +1,1 @@
+func main(){ for _ in 0 until 3 {} }

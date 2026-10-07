@@ -129,3 +129,9 @@ Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09
 [구현 기록](DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
 선언 module의 상수 default·필수/default 혼합·생략 대응·caller materialization·Source/CFG 검증을 구현했다.
 runtime default·parameter 참조·overload·named constructor·일반 Move/Drop은 후속이다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.
+
+[P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md)·[54-production EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf)·
+[두 파일/부정 18/Runtime 2사례](range-loop-proposal-fixtures/README.md)는 **Draft / 사용자 승인 대기 / 미구현**다.
+기존 while·정수 승격·try·P18 default를 연결하는 다음 Stage B 최소 범위다.
+단일 bound 평가·immutable binder·until/through·MAX 종료·nested jump·보수적 return 분석을 제안한다.
+Array/iterable protocol·Range 값·step/descending·일반 Move/Drop은 후속이다.

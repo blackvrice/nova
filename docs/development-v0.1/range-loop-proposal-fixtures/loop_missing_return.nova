@@ -1,0 +1,2 @@
+func f()->int { loop { return 1 } }
+func main(){}

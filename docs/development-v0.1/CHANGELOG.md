@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P19 loop·정수 범위 for 착수안 (Draft)
+
+loop/정수 전용 until·through for·불변 binder·bound snapshot·inclusive MAX 종료·mixed jump·return 분석·Source/CFG 검증의
+최소 계약·54-production EBNF·두 파일 정상/정상 2/부정 18/Runtime 2 fixture와 기대 byte Span을 준비했다.
+기존 P01~P18 승인 사양과 Compiler 의미는 보존한다. 사용자 승인 전 구현하지 않는다.
+
+
 ## 2026-10-07 — P18 상수 표현식 함수 기본 인수 구현
 
 - 사용자 “P18 승인하고 함수 기본 인수 구현 진행”으로 P18을 Accepted 처리했다.

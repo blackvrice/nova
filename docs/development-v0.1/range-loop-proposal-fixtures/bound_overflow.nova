@@ -1,0 +1,2 @@
+func main(){ let 값:int8=127
+for i in 값+1 until 값 { print("unreachable") } }

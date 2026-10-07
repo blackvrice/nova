@@ -1,0 +1,2 @@
+func main(){ let 값:int8=127
+for i in 0 through 1 { print("before"); let bad=값+1; print("after") } }

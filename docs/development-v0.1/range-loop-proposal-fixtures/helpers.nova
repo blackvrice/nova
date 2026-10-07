@@ -1,0 +1,6 @@
+public func edge(value:int,tag:string="bound")->int { print(tag); return value }
+public func fetch(value:int,tag:string,ok:bool=true)->Result<int,int> {
+    print(tag)
+    if ok { return Result::Success(value) }
+    return Result::Error(-1)
+}

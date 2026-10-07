@@ -195,3 +195,5 @@ Copy payload·T?·문맥/none·match·const·private ABI를 지원한다. try는
 제공 인수를 소스 순서로 평가·snapshot한 뒤 caller에서 생략 기본값을 declaration order로 materialize한다.
 [구현 기록](docs/development-v0.1/DEFAULT_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제](examples/default_arguments.nova)·[직접 실행 명령](TESTING.md)을 제공한다.
 runtime/parameter 의존 default·const function·overload·named constructor는 후속이다.
+
+다음 개발 검토 자료: [P19 loop·정수 범위 for](docs/development-v0.1/RANGE_LOOP_STAGE_B_PROPOSAL.md). Draft / 사용자 승인 대기이며 현재 실행 지원은 P18까지다.

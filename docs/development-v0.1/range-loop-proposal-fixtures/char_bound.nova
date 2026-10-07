@@ -1,0 +1,1 @@
+func main(){ for i in 'a' until 'z' {} }
