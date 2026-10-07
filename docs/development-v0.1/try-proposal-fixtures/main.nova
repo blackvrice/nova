@@ -1,0 +1,49 @@
+use effects::Failure as F
+use effects::leaf
+use effects::second
+use effects::nested
+use effects::ping
+use effects::truth
+func combine(a:int8,b:int8)->int8 { return a+b }
+func pipeline(flag:bool)->Result<int16,F> {
+    print("start")
+    let n:int16=combine(try leaf(flag),second())
+    print("after")
+    return Result::Success(n)
+}
+func nestedPipeline(flag:bool)->Result<int8,F> {
+    let n=try try nested(flag)
+    return Result::Success(n)
+}
+func unitPipeline()->Result<(),F> { try ping(); return Result::Success(()) }
+func snapshot(v:Result<int8,F>)->Result<int8,F> {
+    var current=v
+    let x=try current
+    current=Result::Error(F::Bad(-5))
+    return Result::Success(x)
+}
+func shortCircuit()->Result<bool,F> {
+    let b=false && try truth()
+    return Result::Success(b)
+}
+func inLoop()->Result<int8,F> {
+    var n:int8=0
+    while n<2 {
+        n=n+1
+        let x=try leaf(true)
+        if n==1 { continue }
+        return Result::Success(x)
+    }
+    return Result::Success(0)
+}
+func main() {
+    match pipeline(true) { Result::Success(n)=>{ print("ok={n}") },Result::Error(_)=>{} }
+    match pipeline(false) { Result::Success(_)=>{},Result::Error(e)=>{ match e { F::Bad(n)=>{ print("error={n}") } } } }
+    match nestedPipeline(true) { Result::Success(n)=>{ print("nested={n}") },Result::Error(_)=>{} }
+    match nestedPipeline(false) { Result::Success(_)=>{},Result::Error(e)=>{ match e { F::Bad(n)=>{ print("nested-error={n}") } } } }
+    match unitPipeline() { Result::Success(_)=>{ print("unit=success") },Result::Error(_)=>{} }
+    let original:Result<int8,F>=Result::Success(9)
+    match snapshot(original) { Result::Success(n)=>{ print("snapshot={n}") },Result::Error(_)=>{} }
+    match shortCircuit() { Result::Success(b)=>{ print("short={b}") },Result::Error(_)=>{} }
+    match inLoop() { Result::Success(n)=>{ print("loop={n}") },Result::Error(_)=>{} }
+}

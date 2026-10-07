@@ -179,3 +179,6 @@ GitHub clone에는 LLVM binary가 포함되지 않습니다. 설치·시험 방�
 [구현 기록](docs/development-v0.1/OPTION_RESULT_IMPLEMENTATION.md), [standalone 예제](examples/option_result.nova),
 [두 파일 수용 예제](docs/development-v0.1/option-result-proposal-fixtures/README.md)와 [직접 실행 명령](TESTING.md)을 제공한다.
 Copy payload·T?·문맥/none·match·const·private ABI를 지원하며 try·Array·String/Move payload·사용자 Generic은 후속이다.
+
+다음 작업 [P16 Copy try·Result 오류 전파](docs/development-v0.1/TRY_STAGE_B_PROPOSAL.md)는 Draft / 사용자 승인 대기 / 미구현이다.
+[문법](docs/development-v0.1/GRAMMAR_STAGE_B_TRY.ebnf)과 [두 파일·부정 18사례](docs/development-v0.1/try-proposal-fixtures/README.md)는 제안 기대값이며 실제 실행 결과가 아니다.

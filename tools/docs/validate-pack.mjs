@@ -448,6 +448,78 @@ assert(fs.readFileSync(path.join(optionResultRoot, 'main.nova'), 'utf8').include
   && fs.readFileSync(path.join(optionResultRoot, 'values.nova'), 'utf8').includes('private struct Hidden'), 'P15 missing Copy/import/const/private fixture data');
 checks.push('P15 Accepted/승인·구현 ledger·P14 세 production 확장/세 추가·51-production EBNF·두 파일/부정 21사례 UTF-8 Span·검증 기대값 데이터 (문서 validator는 컴파일 실행 아님)');
 
+const tryProposal = manifest.draft_proposals?.find(p => p.id === 'P16');
+assert(tryProposal?.status === 'Draft' && tryProposal?.implementation_verified === false
+  && tryProposal?.authored_date === '2026-10-07' && tryProposal?.grammar_change === true
+  && tryProposal?.document === 'TRY_STAGE_B_PROPOSAL.md'
+  && tryProposal?.grammar === 'GRAMMAR_STAGE_B_TRY.ebnf', 'P16 missing unapproved Draft ledger');
+assert(!manifest.accepted_proposals?.some(p => p.id === 'P16'), 'Unapproved P16 in accepted ledger');
+assert(fs.readFileSync(path.join(pack, 'TRY_STAGE_B_PROPOSAL.md'), 'utf8')
+  .includes('Draft / 사용자 승인 대기 / 미구현'), 'P16 invalid proposal status');
+validateGrammar('GRAMMAR_STAGE_B_TRY.ebnf');
+const tryGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_TRY.ebnf'), 'utf8');
+assert(tryGrammar.includes('Draft, user approval required'), 'P16 invalid grammar status');
+const tryProductions = productions(tryGrammar);
+assert(tryProductions.size === 51 && tryProductions.size === optionResultProductions.size,
+  'P16 must retain all 51 productions');
+for (const [name, value] of optionResultProductions) {
+  if (name !== 'prefix_expr') assert(tryProductions.get(name) === value, `P16 changes existing ${name}`);
+}
+assert(tryProductions.get('prefix_expr') === '("+"|"-"|"!"|"try"),prefix_expr|postfix_expr',
+  'P16 invalid prefix grammar');
+const tryRoot = path.join(pack, 'try-proposal-fixtures');
+const tryFixture = JSON.parse(fs.readFileSync(path.join(tryRoot, 'expected.json'), 'utf8'));
+assert(tryFixture.proposal === 'P16' && tryFixture.status === 'Draft'
+  && tryFixture.implementation_verified === false && !tryFixture.validated_result,
+  'P16 proposed fixture must not claim implementation');
+assert(tryFixture.entry === 'main.nova' && tryFixture.source_root === '.'
+  && JSON.stringify(tryFixture.reachable_modules) === '["main","effects"]', 'P16 fixture graph mismatch');
+const tryExpectedStdout = [
+  'start', 'leaf', 'second', 'after', 'ok=8', 'start', 'leaf', 'error=-1',
+  'leaf', 'nested=7', 'leaf', 'nested-error=-1', 'ping', 'unit=success',
+  'snapshot=9', 'short=false', 'leaf', 'leaf', 'loop=7',
+].join('\n') + '\n';
+assert(tryFixture.proposed_result?.check_exit === 0 && tryFixture.proposed_result?.native_exit === 0
+  && tryFixture.proposed_result?.stdout === tryExpectedStdout
+  && tryFixture.proposed_result?.stderr === '', 'P16 proposed output mismatch');
+assert(tryFixture.negative_cases?.length === 18
+  && new Set(tryFixture.negative_cases.map(c => c.name)).size === 18
+  && new Set(tryFixture.negative_cases.map(c => c.source)).size === 18, 'P16 negative fixture set mismatch');
+for (const name of ['main.nova', 'effects.nova', ...tryFixture.negative_cases.map(c => c.source)]) {
+  assert(path.basename(name) === name && name.endsWith('.nova'), `P16 invalid filename ${name}`);
+  const bytes = fs.readFileSync(path.join(tryRoot, name));
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  assert(text.endsWith('\n') && !text.includes('\r'), `P16 fixture encoding/newline ${name}`);
+}
+for (const c of tryFixture.negative_cases) {
+  assert(knownCodes.has(c.expected_diagnostic), `P16 unknown diagnostic ${c.name}`);
+  const bytes = fs.readFileSync(path.join(tryRoot, c.source));
+  const boundaries = new Set([0]);
+  let offset = 0;
+  for (const char of bytes.toString('utf8')) { offset += Buffer.byteLength(char); boundaries.add(offset); }
+  const { start, end } = c.primary;
+  assert(start >= 0 && start < end && end <= bytes.length && boundaries.has(start) && boundaries.has(end),
+    `P16 invalid byte span ${c.name}`);
+  assert(bytes.subarray(start, end).toString('utf8') === c.primary_text, `P16 unexpected span text ${c.name}`);
+  for (const code of c.forbidden_diagnostics ?? []) {
+    assert(knownCodes.has(code) && code !== c.expected_diagnostic, `P16 invalid cascade expectation ${c.name}`);
+  }
+}
+for (const name of ['global_const', 'local_const', 'skipped_const_rhs']) {
+  const c = tryFixture.negative_cases.find(c => c.name === name);
+  assert(c?.expected_diagnostic === 'N3201' && c?.primary_text === 'try'
+    && c?.forbidden_diagnostics?.includes('N3002'), `P16 missing const precedence ${name}`);
+}
+const tryMain = fs.readFileSync(path.join(tryRoot, 'main.nova'), 'utf8');
+const tryEffects = fs.readFileSync(path.join(tryRoot, 'effects.nova'), 'utf8');
+assert(tryMain.includes('use effects::Failure as F')
+  && tryMain.includes('combine(try leaf(flag),second())')
+  && tryMain.includes('try try nested(flag)') && tryMain.includes('false && try truth()')
+  && tryMain.includes('current=Result::Error(F::Bad(-5))')
+  && tryEffects.includes('public func leaf') && tryEffects.includes('print("second")'),
+  'P16 missing effect/snapshot/nested/short-circuit proposal data');
+checks.push('P16 Draft/미승인·미구현 ledger·P15 prefix_expr 한 production 확장·51-production EBNF·두 파일/부정 18사례 UTF-8 Span·const/cascade·제안 19줄 출력 데이터 (Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

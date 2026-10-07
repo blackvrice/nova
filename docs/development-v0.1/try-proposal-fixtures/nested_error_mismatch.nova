@@ -1,0 +1,2 @@
+// P16 초안 🙂
+func f(r:Result<Result<int,int8>,bool>)->Result<int,bool>{let n=try try r;return Result::Success(n)}

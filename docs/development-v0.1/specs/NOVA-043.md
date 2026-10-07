@@ -16,6 +16,8 @@ Stage A 단일 파일 의미 검사는 사용자 승인 [P02](../SEMANTICS_STAGE
 
 Stage B 가변 지역 변수·반복문 최소 부분은 사용자 진행 요청으로 승인한 [P04](../CONTROL_STAGE_B_PROPOSAL.md)와 [전용 EBNF](../GRAMMAR_STAGE_B_CONTROL.ebnf)가 우선한다. [구현·검증 기록](../CONTROL_IMPLEMENTATION.md). 전체 Stage B와 ownership/Drop 정책은 Draft다.
 
+Copy prefix try·Result Error 조기 반환·operand 문맥 격리·정확한 E·const 금지·Source/CFG 검증은 [P16 Draft](../TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_TRY.ebnf), [제안 fixture](../try-proposal-fixtures/README.md)에서 검토한다. 사용자 미승인/미구현이며 Option try·error conversion·일반 Move/Drop와 전체 D08/D09/D10/D12/D16/D23/D25를 동결하지 않는다.
+
 ## 제어 흐름 초안 — D08
 if/while 조건은 bool만 허용한다. if/while/for/loop는 statement이며 value expression으로 사용하지 않는다. for binding in expression { ... }는 iterable/range를 한 번 평가한다.
 

@@ -1,0 +1,2 @@
+// P16 초안 🙂
+enum A{Bad;}enum B{Bad;}func f(r:Result<int,A>)->Result<int,B>{let x=try r;return Result::Success(x)}

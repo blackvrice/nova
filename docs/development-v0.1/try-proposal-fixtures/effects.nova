@@ -1,0 +1,12 @@
+public enum Failure { Bad(int8); }
+public func leaf(flag:bool)->Result<int8,Failure> {
+    print("leaf")
+    if flag { return Result::Success(7) } else { return Result::Error(Failure::Bad(-1)) }
+}
+public func second()->int8 { print("second"); return 1 }
+public func nested(flag:bool)->Result<Result<int8,Failure>,Failure> {
+    let inner:Result<int8,Failure>=leaf(flag)
+    return Result::Success(inner)
+}
+public func ping()->Result<(),Failure> { print("ping"); return Result::Success(()) }
+public func truth()->Result<bool,Failure> { print("truth"); return Result::Error(Failure::Bad(-2)) }

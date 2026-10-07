@@ -2,6 +2,8 @@
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
 현재 개발 완료 기능은 P15 Copy Option·Result·nullable까지다.
+다음 [P16 Copy try·Result 오류 전파](docs/development-v0.1/TRY_STAGE_B_PROPOSAL.md)는 Draft / 미승인 / 미구현이다.
+[P16 fixture의 실행 명령·19줄 출력](docs/development-v0.1/try-proposal-fixtures/README.md)은 승인·구현 후 사용할 제안 기대값이다.
 
 ## 현재 기능 실행 — Copy Option·Result·nullable
 

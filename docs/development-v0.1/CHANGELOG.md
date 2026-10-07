@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P16 Copy try·Result 오류 전파 착수안 (Draft)
+
+- [최소 계약](TRY_STAGE_B_PROPOSAL.md): prefix 결합·operand 문맥 격리·정확한 E·단일 평가/Copy snapshot·Error 조기 반환·const N3201·Source/CFG 검증.
+- [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf)는 P15 prefix_expr만 확장하며 기존 50개 production을 보존한다.
+- [두 파일·부정 18사례](try-proposal-fixtures/README.md)에 UTF-8 byte Span·cascade 금지·제안 19줄 stdout·구현 후 실행 명령을 기록했다.
+- Draft ledger/색인/영향 문서/validator를 연결했다. 사용자 미승인/미구현으로 accepted P01~P15와 Compiler/Runtime은 유지한다.
+- Option try·error conversion·String/Move payload·일반 Drop과 전체 D08/D09/D10/D12/D16/D23/D25는 제외한다.
+
 ## 2026-10-07 — P15 Copy Option·Result·nullable 구현
 
 - 사용자 “승인 할테니 다음 개발 작업 진행해줘” 답변으로 P15를 Accepted 처리했다.

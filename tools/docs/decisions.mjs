@@ -54,6 +54,7 @@ export function decisionMarkdown() {
   text += '2026-10-07 사용자 “P13 승인하고 Copy Tuple 구현 진행”으로 [P13 Copy Tuple 최소 계약](TUPLE_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](TUPLE_IMPLEMENTATION.md)을 따른다. Structural identity·numeric selector subspan·혼합 가변 경로·const·private ABI와 자원 한도 subset에만 적용하며 전체 D09/D10/D12/D16은 계속 Draft다.\n\n';
   text += '2026-10-07 사용자 “P14 승인하고 Copy Enum·match 구현 진행”으로 [P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](ENUM_IMPLEMENTATION.md)을 따른다. Qualified variant·Copy binder·Enum/Bool coverage·const 생성·private tagged ABI와 자원 한도 subset이며 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.\n\n';
   text += '2026-10-07 사용자 “승인 할테니 다음 개발 작업 진행해줘” 답변으로 검토한 [P15 Copy Option·Result·nullable 최소 계약](OPTION_RESULT_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](OPTION_RESULT_IMPLEMENTATION.md)을 따른다. Builtin family·T?·문맥/none·Copy match·const·private ABI와 한도 subset이며 try·Move/Drop·사용자 Generic·전체 D06/D08/D09/D10/D12/D15/D16/D23/D25/D30 승인은 아니다.\n\n';
+  text += '2026-10-07 작성한 [P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md)은 Draft / 사용자 미승인 / 미구현이다. Prefix 결합·operand 문맥 격리·정확한 E·Copy snapshot·Error 조기 반환·const N3201·Source/CFG 검증을 제안한다. [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf)와 [제안 fixture](try-proposal-fixtures/README.md)는 실행 성공 증거가 아니며 accepted ledger와 Compiler/Runtime에 적용하지 않는다.\n\n';
   text += '## 공통 승인 계약\n\n원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. ' +
     '최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. ' +
     'Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 ' +

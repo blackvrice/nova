@@ -1,0 +1,213 @@
+{
+  "proposal": "P16",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "effects"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "start\nleaf\nsecond\nafter\nok=8\nstart\nleaf\nerror=-1\nleaf\nnested=7\nleaf\nnested-error=-1\nping\nunit=success\nsnapshot=9\nshort=false\nleaf\nleaf\nloop=7\n",
+    "stderr": ""
+  },
+  "negative_cases": [
+    {
+      "name": "non_result_operand",
+      "source": "non_result_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "1",
+      "primary": {
+        "start": 56,
+        "end": 57
+      }
+    },
+    {
+      "name": "option_operand",
+      "source": "option_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "o",
+      "primary": {
+        "start": 62,
+        "end": 63
+      }
+    },
+    {
+      "name": "nominal_lookalike",
+      "source": "nominal_lookalike.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "r",
+      "primary": {
+        "start": 92,
+        "end": 93
+      }
+    },
+    {
+      "name": "unit_return",
+      "source": "unit_return.nova",
+      "expected_diagnostic": "N3002",
+      "primary_text": "try",
+      "primary": {
+        "start": 52,
+        "end": 55
+      }
+    },
+    {
+      "name": "option_return",
+      "source": "option_return.nova",
+      "expected_diagnostic": "N3002",
+      "primary_text": "try",
+      "primary": {
+        "start": 58,
+        "end": 61
+      }
+    },
+    {
+      "name": "error_width",
+      "source": "error_width.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "try",
+      "primary": {
+        "start": 71,
+        "end": 74
+      }
+    },
+    {
+      "name": "error_nominal",
+      "source": "error_nominal.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "try",
+      "primary": {
+        "start": 88,
+        "end": 91
+      }
+    },
+    {
+      "name": "return_raw_success",
+      "source": "return_raw_success.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "try r",
+      "primary": {
+        "start": 71,
+        "end": 76
+      }
+    },
+    {
+      "name": "missing_return",
+      "source": "missing_return.nova",
+      "expected_diagnostic": "N3003",
+      "primary_text": "{let x=try r}",
+      "primary": {
+        "start": 63,
+        "end": 76
+      }
+    },
+    {
+      "name": "untyped_constructor",
+      "source": "untyped_constructor.nova",
+      "expected_diagnostic": "N2103",
+      "primary_text": "Result::Success(1)",
+      "primary": {
+        "start": 60,
+        "end": 78
+      }
+    },
+    {
+      "name": "global_const",
+      "source": "global_const.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "try",
+      "primary": {
+        "start": 71,
+        "end": 74
+      },
+      "forbidden_diagnostics": [
+        "N3002"
+      ]
+    },
+    {
+      "name": "local_const",
+      "source": "local_const.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "try",
+      "primary": {
+        "start": 72,
+        "end": 75
+      },
+      "forbidden_diagnostics": [
+        "N3002"
+      ]
+    },
+    {
+      "name": "skipped_const_rhs",
+      "source": "skipped_const_rhs.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "try",
+      "primary": {
+        "start": 82,
+        "end": 85
+      },
+      "forbidden_diagnostics": [
+        "N3002"
+      ]
+    },
+    {
+      "name": "wrong_condition",
+      "source": "wrong_condition.nova",
+      "expected_diagnostic": "N3001",
+      "primary_text": "try r",
+      "primary": {
+        "start": 67,
+        "end": 72
+      }
+    },
+    {
+      "name": "success_narrowing",
+      "source": "success_narrowing.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "try r",
+      "primary": {
+        "start": 78,
+        "end": 83
+      }
+    },
+    {
+      "name": "unit_value",
+      "source": "unit_value.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "try r",
+      "primary": {
+        "start": 73,
+        "end": 78
+      }
+    },
+    {
+      "name": "nested_error_mismatch",
+      "source": "nested_error_mismatch.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "try",
+      "primary": {
+        "start": 83,
+        "end": 86
+      }
+    },
+    {
+      "name": "missing_name",
+      "source": "missing_name.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "missing",
+      "primary": {
+        "start": 56,
+        "end": 63
+      },
+      "forbidden_diagnostics": [
+        "N2101",
+        "N3002",
+        "N2103"
+      ]
+    }
+  ]
+}

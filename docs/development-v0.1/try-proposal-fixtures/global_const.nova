@@ -1,0 +1,2 @@
+// P16 초안 🙂
+const R:Result<int,bool>=Result::Success(1);const X=try R;func main(){}

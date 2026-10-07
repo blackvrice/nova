@@ -1,0 +1,2 @@
+// P16 초안 🙂
+func f()->Result<int,bool>{let n=try missing;return Result::Success(0)}
