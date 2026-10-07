@@ -643,3 +643,51 @@ fn p15_ast_type_and_none_certificates_reject_forged_spelling() {
         lower_source(&text[..at]);
     }
 }
+
+#[test]
+fn p16_try_public_ast_shape_spelling_and_keyword_boundaries_are_checked() {
+    for (text, keyword, child, has_child) in [
+        ("try 1", (0, 3), (4, 5), true),
+        ("tryfoo", (0, 3), (3, 6), true),
+        ("foo 1", (0, 3), (4, 5), true),
+        ("try 1", (1, 3), (4, 5), true),
+        ("try 1", (0, 3), (0, 3), true),
+        ("try 1", (0, 3), (4, 5), false),
+    ] {
+        let mut db = SourceDatabase::default();
+        let file = db.add("api", text.into()).unwrap();
+        let span = |r: (usize, usize)| Span::new(file, r.0, r.1).unwrap();
+        let whole = span((0, text.len()));
+        let mut arena = Arena::default();
+        let operand_kind = if text == "tryfoo" {
+            NodeKind::Name
+        } else {
+            NodeKind::Integer
+        };
+        let operand = arena.insert(operand_kind, span(child), vec![]).unwrap();
+        let t = arena
+            .insert(
+                NodeKind::Try {
+                    keyword: span(keyword),
+                },
+                whole,
+                if has_child { vec![operand] } else { vec![] },
+            )
+            .unwrap();
+        let error = arena.insert(NodeKind::Error, whole, vec![t]).unwrap();
+        let root = arena.insert(NodeKind::Root, whole, vec![error]).unwrap();
+        if text == "try 1" && keyword == (0, 3) && child == (4, 5) && has_child {
+            assert!(lower(&db, &arena, root).is_ok());
+        } else {
+            assert_eq!(
+                lower(&db, &arena, root),
+                Err(LoweringError::MalformedAst),
+                "{text}"
+            );
+        }
+    }
+    let source="// 🙂\nfunc f(r:Result<int,bool>)->Result<int,bool>{let x=try try r;return Result::Success(x)}";
+    for at in (0..=source.len()).filter(|&at| source.is_char_boundary(at)) {
+        lower_source(&source[..at]);
+    }
+}

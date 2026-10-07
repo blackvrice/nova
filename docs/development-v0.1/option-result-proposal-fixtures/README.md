@@ -38,3 +38,5 @@ cargo run -p nova-cli --offline -- run docs/development-v0.1/option-result-propo
 END/>= token adapter, multi-file shadow/private factory, 자원 직전/초과·const budget,
 독립 layout oracle·malformed specialization/CFG tag proof와 Native O0/O2는 [구현 기록](../OPTION_RESULT_IMPLEMENTATION.md)의 별도 실행 증거를 따른다.
 직접 실행할 standalone 예제와 검사 명령은 [TESTING.md](../../../TESTING.md)를 따른다.
+
+P16 승인 이후 `try_unsupported.nova`는 operand 문맥 격리의 N2103 constructor Span으로 검증한다. 이전 Parser N1102 기대값은 [P16](../TRY_STAGE_B_PROPOSAL.md)이 대체한다.

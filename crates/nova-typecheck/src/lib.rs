@@ -154,6 +154,7 @@ struct Context {
     return_span: Option<Span>,
     direct_callee: bool,
     loop_depth: usize,
+    const_declaration: Option<HirId>,
 }
 enum Work {
     Enter(HirId, Context),
@@ -358,6 +359,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             return_span: Some(module.nodes()[return_id.0].span),
             direct_callee: false,
             loop_depth: 0,
+            const_declaration: None,
         };
         checker.walk(body, context);
         if !checker.result.upstream_errors
@@ -749,7 +751,9 @@ impl Checker<'_> {
                         },
                     ));
                 }
-                HirKind::Binding { has_type, .. } => {
+                HirKind::Binding {
+                    has_type, constant, ..
+                } => {
                     let expected = if has_type {
                         Some(self.type_syntax(node.children[0]))
                     } else {
@@ -759,6 +763,11 @@ impl Checker<'_> {
                         *node.children.last().expect("binding initializer"),
                         Context {
                             expected,
+                            const_declaration: if constant {
+                                Some(id)
+                            } else {
+                                context.const_declaration
+                            },
                             expected_span: if has_type {
                                 Some(self.module.nodes()[node.children[0].0].span)
                             } else {
@@ -945,6 +954,17 @@ impl Checker<'_> {
                     };
                     pending.push(Work::Enter(child, cx));
                 }
+                HirKind::Try { .. } => {
+                    pending.push(Work::Enter(
+                        node.children[0],
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: false,
+                            ..context
+                        },
+                    ));
+                }
                 HirKind::Cast { .. } => {
                     pending.push(Work::Enter(
                         node.children[1],
@@ -1052,6 +1072,81 @@ impl Checker<'_> {
                     };
                 }
                 self.set(id, Type::Unit);
+            }
+            HirKind::Try { keyword } => {
+                let operand = node.children[0];
+                let source = self.ty(self.result.type_table[operand.0]);
+                if let Some(declaration) = context.const_declaration {
+                    self.report(
+                        3201,
+                        *keyword,
+                        "try is not permitted in a const initializer",
+                        Some(self.module.nodes()[declaration.0].span),
+                    );
+                    self.set(id, Type::Error);
+                    return;
+                }
+                if source == Type::Error {
+                    self.set(id, Type::Error);
+                    return;
+                }
+                let source_key = match source {
+                    Type::Enum(e) => self
+                        .result
+                        .sums
+                        .get(&e)
+                        .filter(|k| k.family == nova_types::SumFamily::Result)
+                        .cloned(),
+                    _ => None,
+                };
+                let destination = self.ty(context.return_type);
+                let destination_key = match destination {
+                    Type::Enum(e) => self
+                        .result
+                        .sums
+                        .get(&e)
+                        .filter(|k| k.family == nova_types::SumFamily::Result)
+                        .cloned(),
+                    _ => None,
+                };
+                let mut invalid = false;
+                if source_key.is_none() {
+                    self.report(
+                        2101,
+                        self.module.nodes()[operand.0].span,
+                        "try operand must be an intrinsic Result",
+                        None,
+                    );
+                    invalid = true;
+                }
+                if destination_key.is_none() && destination != Type::Error {
+                    self.report(
+                        3002,
+                        *keyword,
+                        "try requires an intrinsic Result function return type",
+                        context.return_span,
+                    );
+                    invalid = true;
+                }
+                if let (Some(from), Some(to)) = (&source_key, &destination_key) {
+                    if from.arguments[1] != to.arguments[1] {
+                        self.report(
+                            2101,
+                            *keyword,
+                            "try Error types must be exactly identical",
+                            context.return_span,
+                        );
+                        invalid = true;
+                    }
+                }
+                self.set(
+                    id,
+                    if invalid || destination == Type::Error {
+                        Type::Error
+                    } else {
+                        source_key.map_or(Type::Error, |k| k.arguments[0])
+                    },
+                );
             }
             HirKind::None => self.finish_sum_value(id, context.expected),
             HirKind::VariantPath { .. }

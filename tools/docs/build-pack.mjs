@@ -108,7 +108,7 @@ for (const row of rows) {
     ([14, 16, 25, 27, 28, 29, 32, 33, 47, 48, 51, 73, 74, 75, 76, 77, 78, 81, 83, 87, 91, 93, 94, 95, 96, 97, 119, 120, 136].includes(row.number)
       ? `사용자 승인한 Copy Option<T>/Result<T,E>·T?·qualified 생성/none·문맥·match·const·private tagged ABI는 [P15 Accepted](../OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [수용 fixture](../option-result-proposal-fixtures/README.md), [구현 기록](../OPTION_RESULT_IMPLEMENTATION.md)을 따른다. try·Move/Drop·사용자 Generic과 전체 D06/D08/D09/D10/D12/D15/D16/D23/D25/D30은 후속이다.\n\n` : '') +
     ([14, 16, 25, 28, 32, 40, 43, 44, 47, 48, 49, 51, 73, 74, 75, 76, 77, 78, 81, 83, 87, 91, 93, 94, 95, 96, 97, 120, 136].includes(row.number)
-      ? `Copy prefix try·Result Error 조기 반환·operand 문맥 격리·정확한 E·const 금지·Source/CFG 검증은 [P16 Draft](../TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_TRY.ebnf), [제안 fixture](../try-proposal-fixtures/README.md)에서 검토한다. 사용자 미승인/미구현이며 Option try·error conversion·일반 Move/Drop와 전체 D08/D09/D10/D12/D16/D23/D25를 동결하지 않는다.\n\n` : '') + body.trim() + '\n';
+      ? `사용자 승인한 Copy prefix try·Result Error 조기 반환·operand 문맥 격리·정확한 E·const 금지·Source/CFG 검증은 [P16 Accepted](../TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_TRY.ebnf), [수용 fixture](../try-proposal-fixtures/README.md), [구현 기록](../TRY_IMPLEMENTATION.md)을 따른다. Option try·error conversion·일반 Move/Drop와 전체 D08/D09/D10/D12/D16/D23/D25는 후속이다.\n\n` : '') + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -131,7 +131,7 @@ fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 �
   `[P13 Copy Tuple 최소 계약](TUPLE_STAGE_B_PROPOSAL.md), [40-production EBNF](GRAMMAR_STAGE_B_TUPLE.ebnf), [수용 fixture](tuple-proposal-fixtures/README.md)는 Accepted이며 [구현 기록](TUPLE_IMPLEMENTATION.md)을 따른다. 전체 D09/D10/D12/D16 승인이 아니다.\n\n` +
   `[P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](GRAMMAR_STAGE_B_ENUM.ebnf), [수용 fixture](enum-proposal-fixtures/README.md)는 Accepted / 구현 완료이며 [구현 기록](ENUM_IMPLEMENTATION.md)을 따른다. 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.\n\n` +
   `[P15 Copy Option·Result·nullable 최소 계약](OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [수용 fixture](option-result-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현·검증 기록](OPTION_RESULT_IMPLEMENTATION.md)을 따른다.\n\n` +
-  `[P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf), [두 파일·부정 18사례 제안 fixture](try-proposal-fixtures/README.md)는 Draft / 사용자 승인 대기 / 미구현이다.\n\n` +
+  `[P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf), [두 파일·부정 18사례 수용 fixture](try-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](TRY_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -167,9 +167,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P13', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B structural Copy tuples selector token subspans mixed mutation paths const private aggregate ABI and resource bounds', document: 'TUPLE_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_TUPLE.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P14', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B nominal Copy enums qualified variants Enum and Bool statement match Copy binders exhaustive coverage const construction private tagged ABI and resource bounds', document: 'ENUM_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_ENUM.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P15', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B intrinsic Copy Option Result nullable type arguments contextual construction none match const private tagged ABI and bounded specialization', document: 'OPTION_RESULT_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_OPTION_RESULT.ebnf', grammar_change: true, implementation_verified: true },
+    { id: 'P16', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B Copy prefix try isolated operand context exact Result error identity single evaluation snapshot early return const rejection and Source CFG validation', document: 'TRY_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_TRY.ebnf', grammar_change: true, implementation_verified: true },
   ],
   draft_proposals: [
-    { id: 'P16', status: 'Draft', authored_date: '2026-10-07', scope: 'Stage B Copy prefix try isolated operand context exact Result error identity single evaluation snapshot early return const rejection and Source CFG validation', document: 'TRY_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_TRY.ebnf', grammar_change: true, implementation_verified: false },
   ],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');

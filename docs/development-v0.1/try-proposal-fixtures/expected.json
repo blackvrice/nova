@@ -1,19 +1,13 @@
 {
   "proposal": "P16",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "effects"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "start\nleaf\nsecond\nafter\nok=8\nstart\nleaf\nerror=-1\nleaf\nnested=7\nleaf\nnested-error=-1\nping\nunit=success\nsnapshot=9\nshort=false\nleaf\nleaf\nloop=7\n",
-    "stderr": ""
-  },
   "negative_cases": [
     {
       "name": "non_result_operand",
@@ -209,5 +203,11 @@
         "N2103"
       ]
     }
-  ]
+  ],
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "start\nleaf\nsecond\nafter\nok=8\nstart\nleaf\nerror=-1\nleaf\nnested=7\nleaf\nnested-error=-1\nping\nunit=success\nsnapshot=9\nshort=false\nleaf\nleaf\nloop=7\n",
+    "stderr": ""
+  }
 }

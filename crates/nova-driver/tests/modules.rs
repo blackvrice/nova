@@ -557,3 +557,27 @@ fn symlinks_cannot_escape_source_root() {
     let loaded = load(&root.join("main.nova"), None).unwrap();
     assert_eq!(loaded.diagnostics[0].code.to_string(), "N8001");
 }
+
+#[test]
+fn p16_two_file_alias_fixture_reaches_verified_mir() {
+    let loaded = fixture(&[
+        (
+            "main.nova",
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/main.nova"),
+        ),
+        (
+            "effects.nova",
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/effects.nova"),
+        ),
+    ]);
+    let unit = unit(&loaded);
+    assert!(unit
+        .mir()
+        .bodies
+        .iter()
+        .flat_map(|b| &b.blocks)
+        .any(|b| matches!(
+            b.terminator.as_ref().unwrap().kind,
+            nova_mir::TerminatorKind::Try { .. }
+        )));
+}

@@ -112,8 +112,8 @@ Array·Option/Result·guard/nested pattern·일반 Move/borrow/Drop과 전체 D0
 Builtin Copy specialization·T?·생성 문맥·none·match·const·private ABI와 제한을 지원한다.
 try·exists·method API·Array·String/Move payload·사용자 Generic·일반 borrow/Drop은 후속이다.
 
-다음 착수 후보는 [P16 Copy try·Result 오류 전파](TRY_STAGE_B_PROPOSAL.md)다.
-상태는 Draft / 사용자 승인 대기 / 미구현이며 [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf)와
-[두 파일·부정 18사례](try-proposal-fixtures/README.md)의 prefix·exact E·Copy snapshot·조기 반환·const 금지·Source/CFG 기준을 검토한다.
-승인 후 Parser→HIR→TypeChecker→MIR/검증→LLVM/Native 순으로 연결하고 실행 명령·예상 출력과 실제 검증 결과를 제공한다.
-현재 승인 P01~P15와 원본 148개는 유지한다. Option try·error conversion·일반 Move/Drop·Array는 별도 후속이다.
+[P16 Copy try·Result 오류 전파](TRY_STAGE_B_PROPOSAL.md)는 2026-10-07 사용자 승인 후 구현했다.
+[51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf)·[두 파일·부정 18사례](try-proposal-fixtures/README.md)·
+[구현 기록](TRY_IMPLEMENTATION.md)과 [사용자 실행 명령](../../TESTING.md)을 제공한다.
+Prefix 결합·operand 문맥 격리·정확한 E·Copy snapshot·Error 조기 반환·const N3201·Source/CFG 검증을 지원한다.
+Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09/D10/D12/D16/D23/D25는 후속이다.

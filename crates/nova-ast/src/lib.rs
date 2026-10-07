@@ -128,6 +128,10 @@ pub enum NodeKind {
     Unit,
     Group,
     Prefix(Symbol),
+    /// One operand; exact prefix keyword subspan.
+    Try {
+        keyword: Span,
+    },
     /// Left, then right operand.
     Binary(Symbol),
     /// Callee, followed by positional arguments.

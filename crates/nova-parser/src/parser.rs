@@ -1142,6 +1142,17 @@ impl<'a> Parser<'a> {
         let token = self.current();
         let start = token.span.start();
         let kind = match token.kind {
+            TokenKind::Keyword(Keyword::Try) => {
+                self.bump();
+                let operand = self.expression(13);
+                return self.node(
+                    NodeKind::Try {
+                        keyword: token.span,
+                    },
+                    start,
+                    vec![operand],
+                );
+            }
             TokenKind::Symbol(operator @ (Symbol::Plus | Symbol::Minus | Symbol::Bang)) => {
                 self.bump();
                 let operand = self.expression(13);

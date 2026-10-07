@@ -192,12 +192,13 @@
     {
       "name": "try_unsupported",
       "source": "try_unsupported.nova",
-      "expected_diagnostic": "N1102",
-      "primary_text": "try",
+      "expected_diagnostic": "N2103",
+      "primary_text": "Result::Success(1)",
       "primary": {
-        "start": 52,
-        "end": 55
-      }
+        "start": 56,
+        "end": 74
+      },
+      "superseded_by": "P16 isolated try operand context"
     },
     {
       "name": "nullary_call",

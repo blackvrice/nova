@@ -837,6 +837,20 @@ impl Emitter<'_> {
             let terminator = block.terminator.as_ref().expect("verified terminator");
             self.source(terminator.source);
             match &terminator.kind {
+                TerminatorKind::Try {
+                    snapshot,
+                    success,
+                    error,
+                } => {
+                    let (t, value) = self.operand(body, &Operand::Place(*snapshot));
+                    let tag = self.instruction(format!("extractvalue {} {value}, 0", ty(t)));
+                    self.line(format!("switch i32 {tag}, label %try.invalid.{bb} ["));
+                    self.line(format!("  i32 0, label %bb{}", success.0));
+                    self.line(format!("  i32 1, label %bb{}", error.0));
+                    self.line("]");
+                    let _ = writeln!(self.output, "try.invalid.{bb}:");
+                    self.line("unreachable");
+                }
                 TerminatorKind::Match { scrutinee, arms } => {
                     let (t, value) = self.operand(body, scrutinee);
                     let (tag, tag_ty, domain) = if let Type::Enum(e) = t {

@@ -374,7 +374,7 @@ fn execute(module: &Module, name: &str, args: Vec<Constant>) -> (Constant, Vec<S
                     current = *target;
                 }
                 TerminatorKind::Unreachable => panic!("reachable orphan join"),
-                TerminatorKind::Match { .. } => {
+                TerminatorKind::Match { .. } | TerminatorKind::Try { .. } => {
                     panic!("tag dispatch is outside this arithmetic interpreter corpus")
                 }
             }
@@ -1658,6 +1658,180 @@ fn p15_deep_sum_constant_gate_and_drop_are_iterative() {
             *target = Rvalue::Use(Operand::Constant(value));
             assert!(!validate(&m).is_empty());
             drop(m);
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
+#[test]
+fn p16_try_snapshot_active_payload_and_error_return_certificates_reject_forgery() {
+    let source="func leaf(v:Result<bool,bool>)->Result<bool,bool>{return v}func f(r:Result<bool,bool>)->Result<int,bool>{let x=try leaf(r);return Result::Success(1)}";
+    let original = pass(source);
+    let bi = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    let dispatch = original.bodies[bi]
+        .blocks
+        .iter()
+        .position(|b| {
+            matches!(
+                b.terminator.as_ref().unwrap().kind,
+                TerminatorKind::Try { .. }
+            )
+        })
+        .unwrap();
+    let TerminatorKind::Try {
+        snapshot,
+        success,
+        error,
+    } = original.bodies[bi].blocks[dispatch]
+        .terminator
+        .as_ref()
+        .unwrap()
+        .kind
+    else {
+        unreachable!()
+    };
+    assert!(matches!(
+        original.bodies[bi].blocks[error.0]
+            .terminator
+            .as_ref()
+            .unwrap()
+            .kind,
+        TerminatorKind::Return(_)
+    ));
+    for forgery in 0..13 {
+        let mut m = original.clone();
+        let b = &mut m.bodies[bi];
+        match forgery {
+            0 => {
+                b.blocks[dispatch].terminator.as_mut().unwrap().kind = TerminatorKind::Try {
+                    snapshot,
+                    success: error,
+                    error: success,
+                };
+            }
+            1 => {
+                b.blocks[dispatch].terminator.as_mut().unwrap().source = b.source;
+            }
+            2 => {
+                b.blocks[error.0].terminator.as_mut().unwrap().kind = TerminatorKind::Goto(success);
+            }
+            3 => {
+                let StatementKind::Assign(_, Rvalue::Enum(_, fields)) =
+                    &mut b.blocks[error.0].statements[1].kind
+                else {
+                    unreachable!()
+                };
+                fields[0] = Operand::Constant(Constant::Bool(false));
+            }
+            4 => {
+                let StatementKind::Assign(_, Rvalue::Enum(v, _)) =
+                    &mut b.blocks[error.0].statements[1].kind
+                else {
+                    unreachable!()
+                };
+                v.index = 0;
+            }
+            5 => {
+                let statement = b.blocks[dispatch].statements.last_mut().unwrap();
+                let StatementKind::Assign(_, v) = &mut statement.kind;
+                *v = Rvalue::Use(Operand::Constant(Constant::Enum(
+                    nova_types::VariantId {
+                        enumeration: match b.locals[snapshot.0 .0].ty {
+                            Type::Enum(e) => e,
+                            _ => unreachable!(),
+                        },
+                        index: 0,
+                    },
+                    vec![Constant::Bool(true)],
+                )));
+            }
+            6 => {
+                let copy = b.blocks[dispatch].statements.last().unwrap().clone();
+                b.blocks[success.0].statements.insert(0, copy);
+            }
+            7 => {
+                let StatementKind::Assign(_, Rvalue::EnumPayload(_, v, _)) =
+                    &mut b.blocks[success.0].statements[0].kind
+                else {
+                    unreachable!()
+                };
+                v.index = 1;
+            }
+            8 => {
+                let StatementKind::Assign(_, Rvalue::EnumPayload(op, _, _)) =
+                    &mut b.blocks[error.0].statements[0].kind
+                else {
+                    unreachable!()
+                };
+                *op = Operand::Place(Place(b.parameters[0]));
+            }
+            9 => {
+                let block = b
+                    .blocks
+                    .iter()
+                    .find(|b| {
+                        matches!(
+                            b.terminator.as_ref().unwrap().kind,
+                            TerminatorKind::Call { .. }
+                        )
+                    })
+                    .unwrap()
+                    .clone();
+                b.blocks.push(block);
+            }
+            10 => b.entry = success,
+            11 => {
+                b.blocks[dispatch].terminator.as_mut().unwrap().kind =
+                    TerminatorKind::Goto(success);
+            }
+            12 => {
+                let StatementKind::Assign(value, _) = b.blocks[success.0].statements[0].kind;
+                let source = b.blocks[success.0].statements[0].source;
+                b.blocks[success.0].statements.insert(
+                    1,
+                    Statement {
+                        kind: StatementKind::Assign(
+                            value,
+                            Rvalue::Use(Operand::Constant(Constant::Bool(false))),
+                        ),
+                        source,
+                    },
+                );
+            }
+            _ => unreachable!(),
+        }
+        assert!(!validate(&m).is_empty(), "accepted forgery {forgery}");
+    }
+}
+#[test]
+fn p16_flat_try_cfg_is_iterative_and_nested_success_is_typed() {
+    pass("func f(r:Result<Result<int8,()>,()>)->Result<int8,()>{let n=try try r;return Result::Success(n)}");
+    pass("func f(r:Result<(),()>)->Result<(),()>{try r;return Result::Success(())}");
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let mut source = String::from("func f(r:Result<int,bool>)->Result<int,bool>{");
+            for i in 0..512 {
+                source.push_str(&format!("let x{i}=try r;"));
+            }
+            source.push_str("return Result::Success(0)}");
+            let m = pass(&source);
+            assert_eq!(
+                m.bodies[0]
+                    .blocks
+                    .iter()
+                    .filter(|b| matches!(
+                        b.terminator.as_ref().unwrap().kind,
+                        TerminatorKind::Try { .. }
+                    ))
+                    .count(),
+                512
+            );
         })
         .unwrap()
         .join()

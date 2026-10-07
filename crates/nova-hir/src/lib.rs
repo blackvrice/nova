@@ -127,6 +127,9 @@ pub enum HirKind {
     Unit,
     Group,
     Prefix(Symbol),
+    Try {
+        keyword: Span,
+    },
     Binary(Symbol),
     Call,
     Cast {
@@ -552,6 +555,23 @@ pub fn lower(
                 return Err(LoweringError::MalformedAst);
             }
         }
+        if let NodeKind::Try { keyword } = node.kind {
+            if sources.slice(keyword)? != "try"
+                || sources
+                    .slice(node.span)?
+                    .get(3..)
+                    .and_then(|s| s.chars().next())
+                    .is_some_and(unicode_ident::is_xid_continue)
+                || !inside(node.span, keyword)
+                || keyword.start() != node.span.start()
+                || node.children.len() != 1
+                || arena
+                    .get(node.children[0])
+                    .map_or(true, |n| n.span.start() < keyword.end())
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
         if let NodeKind::Cast { keyword } = node.kind {
             if sources.slice(keyword)? != "as"
                 || keyword.file() != node.span.file()
@@ -779,6 +799,7 @@ pub fn lower(
             NodeKind::Unit => HirKind::Unit,
             NodeKind::Group => HirKind::Group,
             NodeKind::Prefix(op) => HirKind::Prefix(op),
+            NodeKind::Try { keyword } => HirKind::Try { keyword },
             NodeKind::Binary(op) => HirKind::Binary(op),
             NodeKind::Call => HirKind::Call,
             NodeKind::Cast { keyword } => HirKind::Cast { keyword },
@@ -917,6 +938,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 | NodeKind::Boolean(_)
                 | NodeKind::Unit
                 | NodeKind::Group
+                | NodeKind::Try { .. }
                 | NodeKind::Prefix(_)
                 | NodeKind::Binary(_)
                 | NodeKind::Cast { .. }
@@ -1083,6 +1105,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         NodeKind::ExpressionStatement
         | NodeKind::Group
         | NodeKind::Prefix(_)
+        | NodeKind::Try { .. }
         | NodeKind::Interpolation => kinds.len() == 1 && expr(kinds[0]),
         NodeKind::Binary(_) => kinds.len() == 2 && kinds.iter().all(|k| expr(*k)),
         NodeKind::Cast { .. } => kinds.len() == 2 && expr(kinds[0]) && ty(kinds[1]),

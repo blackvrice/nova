@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P16 Copy try·Result 오류 전파 구현
+
+- 사용자 “P16 승인하고 Copy try 구현 진행” 답변으로 P16을 Accepted 처리했다.
+- Prefix AST/HIR·operand 문맥 격리·intrinsic Result/exact E·const N3201·flow를 연결했다.
+- MIR 단일 Copy snapshot·active Success/Error·destination Error 조기 반환·private Source/control certificate를 구현했다.
+- LLVM tag switch·기존 Copy/private ABI를 연결했다. Lexer/Runtime 정책은 유지한다.
+- 기본 10개·실제 LLVM 1개·Native 2개를 추가했다. [구현·검증 기록](TRY_IMPLEMENTATION.md)과 [직접 실행 명령](../../TESTING.md).
+- P15 try 거부 기대값은 P16 constructor 문맥 N2103으로 대체하고 기존 중첩 한도 code 표기만 정정했다.
+
 ## 2026-10-07 — P16 Copy try·Result 오류 전파 착수안 (Draft)
 
 - [최소 계약](TRY_STAGE_B_PROPOSAL.md): prefix 결합·operand 문맥 격리·정확한 E·단일 평가/Copy snapshot·Error 조기 반환·const N3201·Source/CFG 검증.

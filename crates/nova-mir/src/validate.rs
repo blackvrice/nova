@@ -174,6 +174,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
                 }
             }
         }
+        validator.check_tries(body);
         for (block_index, block) in body.blocks.iter().enumerate() {
             validator.block = Some(BlockId(block_index));
             for statement in &block.statements {
@@ -194,11 +195,15 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
                 }
                 let key = statement.source.hir.0;
                 match value {
-                    Rvalue::Enum(v, _) if module.variant_provenance.get(&key) != Some(v) => {
+                    Rvalue::Enum(v, _)
+                        if module.variant_provenance.get(&key) != Some(v)
+                            && !try_statement(module, body, statement) =>
+                    {
                         validator.report(Violation::InvalidSource);
                     }
                     Rvalue::EnumPayload(_, v, at)
-                        if module.binder_provenance.get(&key) != Some(&(*v, *at)) =>
+                        if module.binder_provenance.get(&key) != Some(&(*v, *at))
+                            && !try_statement(module, body, statement) =>
                     {
                         validator.report(Violation::InvalidSource);
                     }
@@ -242,6 +247,17 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
                 }
             }
             match &terminator.kind {
+                TerminatorKind::Try { snapshot, .. } => {
+                    let actual = validator.place_type(body, *snapshot);
+                    if !matches!(actual, Some(Type::Enum(e)) if module.sums.get(&e)
+                        .is_some_and(|k| k.family == nova_types::SumFamily::Result))
+                        || !module
+                            .try_certificates
+                            .contains_key(&(body.callee.0, terminator.source.hir.0))
+                    {
+                        validator.report(Violation::InvalidType);
+                    }
+                }
                 TerminatorKind::Match { scrutinee, arms } => {
                     let actual = validator.operand_type(body, scrutinee);
                     let patterns = arms.iter().map(|(p, _)| *p).collect::<Vec<_>>();
@@ -348,6 +364,7 @@ fn successors(kind: &TerminatorKind) -> Vec<BlockId> {
     match kind {
         TerminatorKind::Goto(target) | TerminatorKind::Call { target, .. } => vec![*target],
         TerminatorKind::Match { arms, .. } => arms.iter().map(|(_, b)| *b).collect(),
+        TerminatorKind::Try { success, error, .. } => vec![*success, *error],
         TerminatorKind::Branch {
             then_block,
             else_block,
@@ -355,6 +372,14 @@ fn successors(kind: &TerminatorKind) -> Vec<BlockId> {
         } => vec![*then_block, *else_block],
         TerminatorKind::Return(_) | TerminatorKind::Unreachable => vec![],
     }
+}
+fn try_statement(module: &Module, body: &Body, statement: &Statement) -> bool {
+    module
+        .try_certificates
+        .get(&(body.callee.0, statement.source.hir.0))
+        .is_some_and(|c| {
+            c.success_read == *statement || c.error_body.statements.contains(statement)
+        })
 }
 struct Validator<'a> {
     module: &'a Module,
@@ -659,6 +684,100 @@ impl Validator<'_> {
         }
     }
 
+    fn check_tries(&mut self, body: &Body) {
+        let module = self.module;
+        if let Some(control) = module.try_controls.get(&body.callee.0) {
+            if control.source != body.source
+                || control.entry != body.entry
+                || control.terminators.len() != body.blocks.len()
+                || control
+                    .terminators
+                    .iter()
+                    .zip(&body.blocks)
+                    .any(|(t, b)| t != &b.terminator)
+            {
+                self.report(Violation::InvalidSource);
+            }
+        }
+        // Count static definitions once: a loop may execute one definition repeatedly.
+        let mut writes = vec![0usize; body.locals.len()];
+        for block in &body.blocks {
+            for statement in &block.statements {
+                let StatementKind::Assign(p, _) = &statement.kind;
+                if let Some(n) = writes.get_mut(p.0 .0) {
+                    *n += 1;
+                }
+            }
+            if let Some(Terminator {
+                kind: TerminatorKind::Call { destination, .. },
+                ..
+            }) = &block.terminator
+            {
+                if let Some(n) = writes.get_mut(destination.0 .0) {
+                    *n += 1;
+                }
+            }
+        }
+        for (_, c) in module
+            .try_certificates
+            .range((body.callee.0, 0)..=(body.callee.0, usize::MAX))
+        {
+            self.source = Some(c.source);
+            self.block = Some(c.dispatch);
+            let StatementKind::Assign(snapshot, Rvalue::Use(_)) = &c.snapshot.kind else {
+                self.report(Violation::InvalidSource);
+                continue;
+            };
+            let valid_family = module
+                .sums
+                .get(&c.source_result)
+                .zip(module.sums.get(&c.destination_result))
+                .is_some_and(|(from, to)| {
+                    from.family == nova_types::SumFamily::Result
+                        && to.family == from.family
+                        && from.arguments.len() == 2
+                        && to.arguments.len() == 2
+                        && from.arguments[1] == to.arguments[1]
+                });
+            let dispatch = body.blocks.get(c.dispatch.0);
+            let StatementKind::Assign(success_value, _) = &c.success_read.kind;
+            let expected = Terminator {
+                source: c.source,
+                kind: TerminatorKind::Try {
+                    snapshot: *snapshot,
+                    success: c.success,
+                    error: c.error,
+                },
+            };
+            if !valid_family
+                || !module.try_controls.contains_key(&body.callee.0)
+                || module.sources.get(c.source.hir.0) != Some(&c.source)
+                || c.keyword.file() != c.source.span.file()
+                || c.keyword.start() != c.source.span.start()
+                || c.keyword.end() != c.keyword.start() + 3
+                || module.callees.get(body.callee.0).map(|f| f.return_type)
+                    != Some(Type::Enum(c.destination_result))
+                || body
+                    .locals
+                    .get(snapshot.0 .0)
+                    .map(|l| (l.ty, l.definition, l.source))
+                    != Some((Type::Enum(c.source_result), None, c.source))
+                || writes.get(snapshot.0 .0) != Some(&1)
+                || writes.get(success_value.0 .0) != Some(&1)
+                || dispatch.and_then(|b| b.statements.last()) != Some(&c.snapshot)
+                || dispatch.and_then(|b| b.terminator.as_ref()) != Some(&expected)
+                || body
+                    .blocks
+                    .get(c.success.0)
+                    .and_then(|b| b.statements.first())
+                    != Some(&c.success_read)
+                || body.blocks.get(c.error.0) != Some(&c.error_body)
+                || c.success == c.error
+            {
+                self.report(Violation::InvalidSource);
+            }
+        }
+    }
     fn check_enum_proofs(&mut self, body: &Body) {
         use std::collections::BTreeMap;
         type Facts = BTreeMap<usize, nova_types::VariantId>;
@@ -704,6 +823,28 @@ impl Validator<'_> {
                     if let Some(Some(v)) = variants.first() {
                         if variants.iter().all(|other| *other == Some(*v)) {
                             edge.insert(receiver.0 .0, *v);
+                        }
+                    }
+                }
+                if let TerminatorKind::Try {
+                    snapshot,
+                    success,
+                    error,
+                } = &term.kind
+                {
+                    edge.remove(&snapshot.0 .0);
+                    if success != error {
+                        if let Some(Local {
+                            ty: Type::Enum(e), ..
+                        }) = body.locals.get(snapshot.0 .0)
+                        {
+                            edge.insert(
+                                snapshot.0 .0,
+                                nova_types::VariantId {
+                                    enumeration: *e,
+                                    index: usize::from(target == *error),
+                                },
+                            );
                         }
                     }
                 }
@@ -857,6 +998,9 @@ impl Validator<'_> {
             if let Some(term) = &body.blocks[index].terminator {
                 self.source = Some(term.source);
                 match &term.kind {
+                    TerminatorKind::Try { snapshot, .. } => {
+                        self.read(&state, &Operand::Place(*snapshot))
+                    }
                     TerminatorKind::Match { scrutinee: op, .. }
                     | TerminatorKind::Return(op)
                     | TerminatorKind::Branch { condition: op, .. } => self.read(&state, op),

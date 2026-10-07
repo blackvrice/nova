@@ -22,7 +22,7 @@
 
 [P15 Copy Option·Result·nullable 최소 계약](OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [수용 fixture](option-result-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현·검증 기록](OPTION_RESULT_IMPLEMENTATION.md)을 따른다.
 
-[P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf), [두 파일·부정 18사례 제안 fixture](try-proposal-fixtures/README.md)는 Draft / 사용자 승인 대기 / 미구현이다.
+[P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf), [두 파일·부정 18사례 수용 fixture](try-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](TRY_IMPLEMENTATION.md)을 따른다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

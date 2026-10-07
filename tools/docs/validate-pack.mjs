@@ -448,17 +448,17 @@ assert(fs.readFileSync(path.join(optionResultRoot, 'main.nova'), 'utf8').include
   && fs.readFileSync(path.join(optionResultRoot, 'values.nova'), 'utf8').includes('private struct Hidden'), 'P15 missing Copy/import/const/private fixture data');
 checks.push('P15 Accepted/승인·구현 ledger·P14 세 production 확장/세 추가·51-production EBNF·두 파일/부정 21사례 UTF-8 Span·검증 기대값 데이터 (문서 validator는 컴파일 실행 아님)');
 
-const tryProposal = manifest.draft_proposals?.find(p => p.id === 'P16');
-assert(tryProposal?.status === 'Draft' && tryProposal?.implementation_verified === false
-  && tryProposal?.authored_date === '2026-10-07' && tryProposal?.grammar_change === true
+const tryProposal = manifest.accepted_proposals?.find(p => p.id === 'P16');
+assert(tryProposal?.status === 'Accepted' && tryProposal?.implementation_verified === true
+  && tryProposal?.approval_date === '2026-10-07' && tryProposal?.grammar_change === true
   && tryProposal?.document === 'TRY_STAGE_B_PROPOSAL.md'
-  && tryProposal?.grammar === 'GRAMMAR_STAGE_B_TRY.ebnf', 'P16 missing unapproved Draft ledger');
-assert(!manifest.accepted_proposals?.some(p => p.id === 'P16'), 'Unapproved P16 in accepted ledger');
+  && tryProposal?.grammar === 'GRAMMAR_STAGE_B_TRY.ebnf', 'P16 missing accepted/implemented ledger');
+assert(!manifest.draft_proposals?.some(p => p.id === 'P16'), 'Accepted P16 still in Draft ledger');
 assert(fs.readFileSync(path.join(pack, 'TRY_STAGE_B_PROPOSAL.md'), 'utf8')
-  .includes('Draft / 사용자 승인 대기 / 미구현'), 'P16 invalid proposal status');
+  .includes('Accepted / 사용자 승인 완료 / 구현 완료'), 'P16 invalid proposal status');
 validateGrammar('GRAMMAR_STAGE_B_TRY.ebnf');
 const tryGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_TRY.ebnf'), 'utf8');
-assert(tryGrammar.includes('Draft, user approval required'), 'P16 invalid grammar status');
+assert(tryGrammar.includes('Accepted, user approved 2026-10-07'), 'P16 invalid grammar status');
 const tryProductions = productions(tryGrammar);
 assert(tryProductions.size === 51 && tryProductions.size === optionResultProductions.size,
   'P16 must retain all 51 productions');
@@ -469,9 +469,9 @@ assert(tryProductions.get('prefix_expr') === '("+"|"-"|"!"|"try"),prefix_expr|po
   'P16 invalid prefix grammar');
 const tryRoot = path.join(pack, 'try-proposal-fixtures');
 const tryFixture = JSON.parse(fs.readFileSync(path.join(tryRoot, 'expected.json'), 'utf8'));
-assert(tryFixture.proposal === 'P16' && tryFixture.status === 'Draft'
-  && tryFixture.implementation_verified === false && !tryFixture.validated_result,
-  'P16 proposed fixture must not claim implementation');
+assert(tryFixture.proposal === 'P16' && tryFixture.status === 'Accepted'
+  && tryFixture.implementation_verified === true && !tryFixture.proposed_result,
+  'P16 fixture must record implementation');
 assert(tryFixture.entry === 'main.nova' && tryFixture.source_root === '.'
   && JSON.stringify(tryFixture.reachable_modules) === '["main","effects"]', 'P16 fixture graph mismatch');
 const tryExpectedStdout = [
@@ -479,9 +479,9 @@ const tryExpectedStdout = [
   'leaf', 'nested=7', 'leaf', 'nested-error=-1', 'ping', 'unit=success',
   'snapshot=9', 'short=false', 'leaf', 'leaf', 'loop=7',
 ].join('\n') + '\n';
-assert(tryFixture.proposed_result?.check_exit === 0 && tryFixture.proposed_result?.native_exit === 0
-  && tryFixture.proposed_result?.stdout === tryExpectedStdout
-  && tryFixture.proposed_result?.stderr === '', 'P16 proposed output mismatch');
+assert(tryFixture.validated_result?.check_exit === 0 && tryFixture.validated_result?.native_exit === 0
+  && tryFixture.validated_result?.stdout === tryExpectedStdout
+  && tryFixture.validated_result?.stderr === '', 'P16 validated output mismatch');
 assert(tryFixture.negative_cases?.length === 18
   && new Set(tryFixture.negative_cases.map(c => c.name)).size === 18
   && new Set(tryFixture.negative_cases.map(c => c.source)).size === 18, 'P16 negative fixture set mismatch');
@@ -518,7 +518,7 @@ assert(tryMain.includes('use effects::Failure as F')
   && tryMain.includes('current=Result::Error(F::Bad(-5))')
   && tryEffects.includes('public func leaf') && tryEffects.includes('print("second")'),
   'P16 missing effect/snapshot/nested/short-circuit proposal data');
-checks.push('P16 Draft/미승인·미구현 ledger·P15 prefix_expr 한 production 확장·51-production EBNF·두 파일/부정 18사례 UTF-8 Span·const/cascade·제안 19줄 출력 데이터 (Compiler/Native 실행 아님)');
+checks.push('P16 Accepted/승인·구현 ledger·P15 prefix_expr 한 production 확장·51-production EBNF·두 파일/부정 18사례 UTF-8 Span·const/cascade·검증 19줄 출력 데이터 (문서 validator는 Compiler/Native 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

@@ -1029,3 +1029,61 @@ fn p15_type_arguments_nullable_end_adapter_and_utf8_recovery() {
     );
     assert!(run(&deep).2.has_errors());
 }
+
+#[test]
+fn p16_prefix_precedence_keyword_spans_and_utf8_recovery() {
+    let source="// 🙂\nfunc f(){let a=try leaf()+1;let b=try try nested();let c=try leaf() as int8;let d=(try leaf()) as int8;let e=(try leaf()).x;return\ntry leaf()}";
+    let (db, lexed, p) = run(source);
+    assert!(
+        !lexed.has_errors() && !p.has_errors(),
+        "{:?}",
+        p.diagnostics
+    );
+    let tries = p
+        .arena
+        .iter()
+        .filter(|(_, n)| matches!(n.kind, NodeKind::Try { .. }))
+        .collect::<Vec<_>>();
+    assert!(tries
+        .iter()
+        .any(|(_, n)| db.slice(n.span).unwrap() == "try leaf()"));
+    let outer = tries
+        .iter()
+        .find(|(_, n)| db.slice(n.span).unwrap() == "try try nested()")
+        .unwrap()
+        .1;
+    assert!(matches!(
+        p.arena.get(outer.children[0]).unwrap().kind,
+        NodeKind::Try { .. }
+    ));
+    let cast = tries
+        .iter()
+        .find(|(_, n)| db.slice(n.span).unwrap() == "try leaf() as int8")
+        .unwrap()
+        .1;
+    assert!(matches!(
+        p.arena.get(cast.children[0]).unwrap().kind,
+        NodeKind::Cast { .. }
+    ));
+    for (_, n) in tries {
+        let NodeKind::Try { keyword } = n.kind else {
+            unreachable!()
+        };
+        assert_eq!(db.slice(keyword).unwrap(), "try");
+    }
+    assert!(p
+        .arena
+        .iter()
+        .any(|(_, n)| n.kind == NodeKind::Return && n.children.is_empty()));
+    for at in (0..=source.len()).filter(|&at| source.is_char_boundary(at)) {
+        let (_, _, p) = run(&source[..at]);
+        assert!(p.arena.iter().len() < source.len() * 4);
+    }
+    let deep = format!("func f(){{let x={}1}}", "try ".repeat(140));
+    assert!(run(&deep)
+        .2
+        .diagnostics
+        .iter()
+        .any(|d| d.code.to_string() == "N1102" && d.message.contains("nesting limit")));
+    assert!(run("func f(){let x=try }").2.has_errors());
+}

@@ -1,6 +1,8 @@
 # Stage B Copy try·Result 오류 전파 최소 계약 — P16
 
-작성일: 2026-10-07. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일: 2026-10-07. 상태: **Accepted / 사용자 승인 완료 / 구현 완료**.
+승인일: 2026-10-07. 사용자 답변: “P16 승인하고 Copy try 구현 진행”.
+현재 구현·검증 범위는 [구현 기록](TRY_IMPLEMENTATION.md)을 따른다.
 기존 D01~D05/P01~P15·Canonical·원본 148개 문서를 보존한다.
 전체 D08/D09/D10/D12/D16/D23/D25 승인이 아니다.
 
@@ -100,7 +102,8 @@
 
 | 상황 | code·primary |
 |---|---|
-| operand 누락·잘못된 문법·중첩 초과 | 기존 N1101/N1103, parser 원 위치 |
+| operand 누락·잘못된 문법 | 기존 N1101/N1103, parser 원 위치 |
+| 중첩 한도 초과 | 기존 P01 N1102 / loop 내부 P04 N8901, limit note |
 | primitive/Option/user Enum operand | N2101, operand expression |
 | enclosing function이 intrinsic Result를 반환하지 않음 | N3002, try keyword / function return annotation note |
 | Error E가 다름 | N2101, try keyword / operand·function E annotation note |
@@ -111,21 +114,21 @@
 | Source ErrorType | 파생 try 오류 억제, 원 syntax/name/type 진단 유지 |
 
 [두 파일 수용 fixture](try-proposal-fixtures/README.md)는 import/alias·nested try·Unit·snapshot·short-circuit·loop와
-성공/실패 effect order의 제안 stdout을 포함한다. [expected.json](try-proposal-fixtures/expected.json)은
-부정 18사례의 지정 code·정확한 UTF-8 byte Span과 cascade 금지 기대값이다.
-문서 validator는 승인 상태/grammar/metadata만 검사하며 미래 Compiler/Native 성공을 의미하지 않는다.
+성공/실패 effect order의 검증 stdout을 포함한다. [expected.json](try-proposal-fixtures/expected.json)은
+부정 18사례의 검증 code·정확한 UTF-8 byte Span과 cascade 금지 기대값이다.
+문서 validator는 승인 상태/grammar/metadata만 검사하며 Compiler/Native 실행 증거와 구분한다.
 
-승인 후 parsing/결합/cast·UTF-8 truncation·bare-jump END, exact E/alias/nominal/shadow/context,
+수용 검사는 parsing/결합/cast·UTF-8 truncation·bare-jump END, exact E/alias/nominal/shadow/context,
 const legality/cycle·flow·자원 경계·Source/CFG/error-payload identity gate를 검사한다.
 Native는 조기 실패의 이후 effect 부재·이전 String temporary·Unit/ZST·숫자 10종/Char/Bool/mixed Copy,
 private factory, nested Result/try·while jump·all-return과 기존 전체 회귀를 debug/release에서 확인한다.
 
 미포함: Option try·implicit error conversion·try block/catch/exception, String/Move Result payload,
 사용자 Generic·일반 borrow/Drop·Array·메서드 API·public ABI/FFI·Result main.
-사용자 승인 전 Compiler/Runtime/accepted ledger에 적용하지 않는다.
-현재 직접 실행할 P15 예제와 명령은 [TESTING.md](../../TESTING.md)를 따른다.
+2026-10-07 승인된 P16 subset을 Compiler와 accepted ledger에 적용했다.
+현재 직접 실행할 P16/P15 예제와 명령은 [TESTING.md](../../TESTING.md)를 따른다.
 
-## 초안 준비 검증 — 2026-10-07
+## 초안 준비 당시 검증 — 2026-10-07
 
 - 문서 build/validator PASS: 원본 hash·로컬 링크·Draft ledger·51개 production과 기존 50개 보존·부정 18사례 UTF-8 byte Span·제안 출력/cascade metadata.
 - HEAD 대비 accepted P01~P15·D01~D05와 원본 148개 SHA-256이 동일하다. Compiler/Runtime/Cargo source 변경은 없다.
@@ -134,4 +137,4 @@ private factory, nested Result/try·while jump·all-return과 기존 전체 회�
 - `cargo fmt --check`, Runtime `rustfmt --check --edition 2021 crates/nova-cli/runtime/stage_a.rs`,
   `cargo clippy --workspace --all-targets --offline -- -D warnings`, `cargo check --workspace --all-features --offline` PASS.
 - try가 없는 helper `try-proposal-fixtures/effects.nova`와 현재 P15 `examples/option_result.nova`의 check는 exit 0이다.
-  이는 P16 main/try·부정 진단·제안 stdout의 실행 검증이 아니다. 해당 결과는 승인 후 구현/검증한다.
+  이는 초안 작성 당시의 기록이다. 이후 P16 main/부정 진단/Native 실행 증거는 [구현 기록](TRY_IMPLEMENTATION.md)을 따른다.

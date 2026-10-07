@@ -18,7 +18,7 @@
 
 2026-10-07 사용자 “승인 할테니 다음 개발 작업 진행해줘” 답변으로 검토한 [P15 Copy Option·Result·nullable 최소 계약](OPTION_RESULT_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](OPTION_RESULT_IMPLEMENTATION.md)을 따른다. Builtin family·T?·문맥/none·Copy match·const·private ABI와 한도 subset이며 try·Move/Drop·사용자 Generic·전체 D06/D08/D09/D10/D12/D15/D16/D23/D25/D30 승인은 아니다.
 
-2026-10-07 작성한 [P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md)은 Draft / 사용자 미승인 / 미구현이다. Prefix 결합·operand 문맥 격리·정확한 E·Copy snapshot·Error 조기 반환·const N3201·Source/CFG 검증을 제안한다. [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf)와 [제안 fixture](try-proposal-fixtures/README.md)는 실행 성공 증거가 아니며 accepted ledger와 Compiler/Runtime에 적용하지 않는다.
+2026-10-07 사용자 “P16 승인하고 Copy try 구현 진행” 답변으로 [P16 Copy try·Result 오류 전파 최소 계약](TRY_STAGE_B_PROPOSAL.md)을 승인했다. Prefix 결합·operand 문맥 격리·정확한 E·Copy snapshot·Error 조기 반환·const N3201·Source/CFG 검증 subset을 구현했다. [51-production EBNF](GRAMMAR_STAGE_B_TRY.ebnf)·[수용 fixture](try-proposal-fixtures/README.md)·[구현 기록](TRY_IMPLEMENTATION.md)을 따른다. Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09/D10/D12/D16/D23/D25 승인은 아니다.
 
 ## 공통 승인 계약
 

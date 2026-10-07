@@ -190,6 +190,7 @@ impl Checker<'_> {
             return_span: None,
             direct_callee: false,
             loop_depth: 0,
+            const_declaration: None,
         };
         for index in order {
             let global = &globals[index];

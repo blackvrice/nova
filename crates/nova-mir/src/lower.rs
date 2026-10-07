@@ -73,6 +73,8 @@ pub fn lower(
             .collect(),
         binder_provenance: BTreeMap::new(),
         match_provenance: BTreeMap::new(),
+        try_certificates: BTreeMap::new(),
+        try_controls: BTreeMap::new(),
         structs_original: checked.structs.clone(),
         tuple_ids: checked.tuple_ids.clone(),
         callee_provenance: vec![],
@@ -228,6 +230,7 @@ pub fn lower(
             current: None,
             loops: vec![],
             match_falls: Default::default(),
+            tries: vec![],
         };
         builder.current = Some(builder.block());
         for &parameter in &hir.nodes()[id.0].children[..parameters] {
@@ -252,6 +255,27 @@ pub fn lower(
                 id,
             )?;
         }
+        if !builder.tries.is_empty() {
+            result.try_controls.insert(
+                callee.0,
+                TryControlCertificate {
+                    source: builder.body.source,
+                    entry: builder.body.entry,
+                    terminators: builder
+                        .body
+                        .blocks
+                        .iter()
+                        .map(|b| b.terminator.clone())
+                        .collect(),
+                },
+            );
+            result.try_certificates.extend(
+                builder
+                    .tries
+                    .into_iter()
+                    .map(|c| ((c.callee.0, c.source.hir.0), c)),
+            );
+        }
         result.bodies.push(builder.body);
     }
     let errors = validate(&result);
@@ -267,6 +291,7 @@ enum Work {
     Expression(HirId),
     Convert(HirId),
     FinishExpression(HirId),
+    Try(HirId),
     Binding(HirId),
     Assignment(HirId),
     Return(HirId),
@@ -327,6 +352,7 @@ struct Builder<'a> {
     /// Active lexical loops: continue condition and break exit.
     loops: Vec<(BlockId, BlockId)>,
     match_falls: std::collections::BTreeSet<usize>,
+    tries: Vec<TryCertificate>,
 }
 impl Builder<'_> {
     fn block(&mut self) -> BlockId {
@@ -356,6 +382,15 @@ impl Builder<'_> {
             source: self.sources[id.0],
         });
         Ok(local)
+    }
+    fn temporary(&mut self, ty: Type, id: HirId) -> Place {
+        let local = LocalId(self.body.locals.len());
+        self.body.locals.push(Local {
+            ty,
+            definition: None,
+            source: self.sources[id.0],
+        });
+        Place(local)
     }
     fn end(&mut self, kind: TerminatorKind, id: HirId) -> Result<(), LoweringError> {
         let block = self.current.take().ok_or(LoweringError::InvalidAnalysis)?;
@@ -619,6 +654,10 @@ impl Builder<'_> {
                                     .map(Work::Expression),
                             );
                         }
+                        HirKind::Try { .. } => {
+                            work.push(Work::Try(id));
+                            work.push(Work::Expression(node.children[0]));
+                        }
                         HirKind::Cast { .. } => {
                             work.push(Work::FinishExpression(id));
                             work.push(Work::Expression(node.children[0]));
@@ -636,6 +675,101 @@ impl Builder<'_> {
                         }
                         _ => return Err(LoweringError::InvalidAnalysis),
                     }
+                }
+                Work::Try(id) => {
+                    let node = &self.hir.nodes()[id.0];
+                    let HirKind::Try { keyword } = node.kind else {
+                        return Err(LoweringError::InvalidAnalysis);
+                    };
+                    let from = self
+                        .checked
+                        .types
+                        .get(self.checked.type_table[node.children[0].0])
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    let def = self.resolved.declaration_ids[self.body.source.hir.0]
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    let to = self
+                        .checked
+                        .types
+                        .get(
+                            self.checked.signatures[def.0]
+                                .as_ref()
+                                .ok_or(LoweringError::InvalidAnalysis)?
+                                .return_type,
+                        )
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    let (Type::Enum(source_result), Type::Enum(destination_result)) = (from, to)
+                    else {
+                        return Err(LoweringError::InvalidAnalysis);
+                    };
+                    let source_key = &self.checked.sums[&source_result];
+                    let success_type = source_key.arguments[0];
+                    let error_type = source_key.arguments[1];
+                    let snapshot = self.temporary(from, id);
+                    self.assign(snapshot, Rvalue::Use(self.value(node.children[0])?), id)?;
+                    let dispatch = self.current.ok_or(LoweringError::InvalidAnalysis)?;
+                    let snapshot_statement = self.body.blocks[dispatch.0]
+                        .statements
+                        .last()
+                        .unwrap()
+                        .clone();
+                    let success = self.block();
+                    let error = self.block();
+                    self.end(
+                        TerminatorKind::Try {
+                            snapshot,
+                            success,
+                            error,
+                        },
+                        id,
+                    )?;
+                    let variant = |index| nova_types::VariantId {
+                        enumeration: source_result,
+                        index,
+                    };
+                    self.current = Some(error);
+                    let error_value = self.temporary(error_type, id);
+                    self.assign(
+                        error_value,
+                        Rvalue::EnumPayload(Operand::Place(snapshot), variant(1), 0),
+                        id,
+                    )?;
+                    let result = self.temporary(to, id);
+                    self.assign(
+                        result,
+                        Rvalue::Enum(
+                            nova_types::VariantId {
+                                enumeration: destination_result,
+                                index: 1,
+                            },
+                            vec![Operand::Place(error_value)],
+                        ),
+                        id,
+                    )?;
+                    self.end(TerminatorKind::Return(Operand::Place(result)), id)?;
+                    let error_body = self.body.blocks[error.0].clone();
+                    self.current = Some(success);
+                    let value = self.temporary(success_type, id);
+                    self.assign(
+                        value,
+                        Rvalue::EnumPayload(Operand::Place(snapshot), variant(0), 0),
+                        id,
+                    )?;
+                    let success_read = self.body.blocks[success.0].statements[0].clone();
+                    self.values[id.0] = Some(Operand::Place(value));
+                    self.tries.push(TryCertificate {
+                        callee: self.body.callee,
+                        source: self.sources[id.0],
+                        keyword,
+                        source_result,
+                        destination_result,
+                        dispatch,
+                        snapshot: snapshot_statement,
+                        success,
+                        success_read,
+                        error,
+                        error_body,
+                    });
                 }
                 Work::FinishExpression(id) => {
                     let node = &self.hir.nodes()[id.0];

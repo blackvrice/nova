@@ -165,6 +165,12 @@ pub struct Statement {
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TerminatorKind {
+    /// Intrinsic Result tag dispatch; payload reads occur only on their active edge.
+    Try {
+        snapshot: Place,
+        success: BlockId,
+        error: BlockId,
+    },
     Match {
         scrutinee: Operand,
         arms: Vec<(nova_typecheck::MatchPattern, BlockId)>,
@@ -205,6 +211,26 @@ pub struct Body {
     pub entry: BlockId,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
+struct TryCertificate {
+    callee: CalleeId,
+    source: SourceInfo,
+    keyword: Span,
+    source_result: nova_types::EnumId,
+    destination_result: nova_types::EnumId,
+    dispatch: BlockId,
+    snapshot: Statement,
+    success: BlockId,
+    success_read: Statement,
+    error: BlockId,
+    error_body: BasicBlockData,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct TryControlCertificate {
+    source: SourceInfo,
+    entry: BlockId,
+    terminators: Vec<Option<Terminator>>,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Module {
     entry: SourceInfo,
     pub structs: StructRegistry,
@@ -215,6 +241,8 @@ pub struct Module {
     sum_origins: std::collections::BTreeMap<nova_types::EnumId, SourceInfo>,
     variant_provenance: std::collections::BTreeMap<usize, nova_types::VariantId>,
     binder_provenance: std::collections::BTreeMap<usize, (nova_types::VariantId, usize)>,
+    try_certificates: std::collections::BTreeMap<(usize, usize), TryCertificate>,
+    try_controls: std::collections::BTreeMap<usize, TryControlCertificate>,
     match_provenance: std::collections::BTreeMap<usize, (Type, Vec<nova_typecheck::MatchPattern>)>,
     structs_original: StructRegistry,
     tuple_ids: std::collections::BTreeSet<StructId>,

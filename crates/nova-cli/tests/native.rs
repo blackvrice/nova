@@ -1412,3 +1412,75 @@ fn p15_option_payload_checked_failure_has_exact_utf8_source_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p16_native_try_fixture_scalar_mixed_payloads_effects_and_string_arena_o0_o2() {
+    for profile in ["debug", "release"] {
+        let main = include_str!("../../../docs/development-v0.1/try-proposal-fixtures/main.nova")
+            .replace("effects::", "lib::");
+        let r = module_program(
+            &main,
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/effects.nova"),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stderr.is_empty());
+        assert_eq!(r.stdout,b"start\nleaf\nsecond\nafter\nok=8\nstart\nleaf\nerror=-1\nleaf\nnested=7\nleaf\nnested-error=-1\nping\nunit=success\nsnapshot=9\nshort=false\nleaf\nleaf\nloop=7\n");
+        let source = r#"const C:Result<(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double,bool,char),()>=Result::Success((-128,255,-32768,65535,-2147483648,4294967295,-9223372036854775808,18446744073709551615,0.5,-0.0,true,'🙂'))
+func peel(r:Result<(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double,bool,char),()>)->Result<bool,()>{let t=try r;print("{t.0} {t.1} {t.2} {t.3} {t.4} {t.5} {t.6} {t.7} {t.8} {t.9} {t.10} {t.11}");return Result::Success(t.10)}
+func unit(r:Result<(),()>)->Result<(),()>{try r;return Result::Success(())}
+func saved()->string{print("saved");return "kept"}
+func later()->int16{print("later");return 1}
+func combine(a:int16,b:int16)->int16{return a+b}
+func fail(s:string,r:Result<int8,char>)->Result<int16,char>{print("before={s}");let n:int16=try r;print("after={s}");return Result::Success(n)}
+func relay(s:string)->Result<int16,char>{let n=combine(try fail("{s}",Result::Error('🙂')),later());return Result::Success(n)}
+func main(){match peel(C){Result::Success(b)=>{print("ok={b}")},Result::Error(_)=>{}}match unit(Result::Error(())){Result::Success(_)=>{},Result::Error(_)=>{print("unit=error")}}let s=saved();match relay(s){Result::Success(_)=>{},Result::Error(c)=>{print("error={c}, saved={s}")}}}"#;
+        let r = program_profile(source, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stderr.is_empty());
+        assert_eq!(r.stdout,"-128 255 -32768 65535 -2147483648 4294967295 -9223372036854775808 18446744073709551615 0.5 -0 true 🙂\nok=true\nunit=error\nsaved\nbefore=kept\nerror=🙂, saved=kept\n".as_bytes());
+        let main = r#"use lib::get;func f(flag:bool)->Result<int8,bool>{let n=try get(flag);return Result::Success(n)}func main(){match f(false){Result::Success(_)=>{},Result::Error(b)=>{print("{b}")}}match f(true){Result::Success(n)=>{print("{n}")},Result::Error(_)=>{}}}"#;
+        let lib = r#"private struct Hidden{let n:int8}public func get(flag:bool)->Result<int8,bool>{let h=Hidden(9);if flag{return Result::Success(h.n)}else{return Result::Error(true)}}"#;
+        let r = module_program(main, lib, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"true\n9\n");
+        assert!(r.stderr.is_empty());
+        let main = r#"use lib::get;use lib::describe;func main(){match get(false){Result::Success(_)=>{},Result::Error(e)=>{print(describe(e))}}match get(true){Result::Success(n)=>{print("{n}")},Result::Error(_)=>{}}}"#;
+        let lib = r#"private struct Hidden{let n:int8;let tag:char}private func inner(flag:bool)->Result<bool,Hidden>{if flag{return Result::Success(true)}else{return Result::Error(Hidden(-9,'🙂'))}}public func get(flag:bool)->Result<int8,Hidden>{let b=try inner(flag);return Result::Success(9)}public func describe(h:Hidden)->string{return "hidden={h.n} {h.tag}"}"#;
+        let r = module_program(main, lib, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, "hidden=-9 🙂\n9\n".as_bytes());
+        assert!(r.stderr.is_empty());
+        let source = r#"func cond(flag:bool)->Result<bool,bool>{print("cond");if flag{return Result::Success(true)}else{return Result::Error(false)}}func tryLoop(flag:bool)->Result<int,bool>{while try cond(flag){print("body");break}print("done");return Result::Success(7)}func nested(r:Result<Result<int,bool>,bool>)->Result<int,bool>{return try r}func main(){match tryLoop(false){Result::Success(_)=>{},Result::Error(b)=>{print("error={b}")}}match tryLoop(true){Result::Success(n)=>{print("loop={n}")},Result::Error(_)=>{}}let r:Result<Result<int,bool>,bool>=Result::Success(Result::Error(true));match nested(r){Result::Success(_)=>{},Result::Error(b)=>{print("nested={b}")}}}"#;
+        let r = program_profile(source, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(
+            r.stdout,
+            b"cond\nerror=false\ncond\nbody\ndone\nloop=7\nnested=true\n"
+        );
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p16_try_success_checked_failure_keeps_exact_utf8_span_o0_o2() {
+    let source="// 한글 🙂\nfunc f(r:Result<int8,bool>)->Result<int8,bool>{let x=try r;return Result::Success(x+1)}func main(){let r:Result<int8,bool>=Result::Success(127);let n=f(r)}";
+    let start = source.find("x+1").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert!(!r.status.success());
+        assert!(r.stdout.is_empty());
+        let stderr = String::from_utf8(r.stderr).unwrap();
+        assert_eq!(
+            stderr.lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#0:{start}..{}",
+                    start + 3
+                )
+                .as_str()
+            )
+        );
+    }
+}

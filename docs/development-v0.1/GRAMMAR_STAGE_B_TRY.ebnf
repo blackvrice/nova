@@ -1,4 +1,4 @@
-(* P16 Copy try/Result propagation: Draft, user approval required.
+(* P16 Copy try/Result propagation: Accepted, user approved 2026-10-07.
    Extends accepted P15: only prefix_expr changes (51 total).
    Exact E, isolated operand context and semantics follow TRY_STAGE_B_PROPOSAL.md. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl | enum_decl ) }, "EOF" ;

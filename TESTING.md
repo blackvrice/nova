@@ -1,9 +1,53 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P15 Copy Option·Result·nullable까지다.
-다음 [P16 Copy try·Result 오류 전파](docs/development-v0.1/TRY_STAGE_B_PROPOSAL.md)는 Draft / 미승인 / 미구현이다.
-[P16 fixture의 실행 명령·19줄 출력](docs/development-v0.1/try-proposal-fixtures/README.md)은 승인·구현 후 사용할 제안 기대값이다.
+현재 개발 완료 기능은 P16 Copy try·Result 오류 전파까지다.
+
+## 현재 기능 실행 — Copy try·Result 오류 전파
+
+```powershell
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- check examples/try_result.nova
+cargo run -p nova-cli --offline -- run examples/try_result.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/try_result.nova --profile release
+```
+
+check는 출력 없이 exit 0이다. debug/release는 다음 19줄과 각 LF, stderr 없음·exit 0이다.
+
+```text
+start
+leaf
+second
+after
+ok=8
+start
+leaf
+error=-1
+leaf
+nested=7
+leaf
+nested-error=-1
+ping
+unit=success
+snapshot=9
+short=false
+leaf
+leaf
+loop=7
+```
+
+[계약](docs/development-v0.1/TRY_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/TRY_IMPLEMENTATION.md)·
+[두 파일 import/alias fixture](docs/development-v0.1/try-proposal-fixtures/README.md)를 제공한다.
+P16 집중 검사는 기본 10개·실제 LLVM 1개·Native 2개이며 opt-in 검사는 O0/O2를 포함한다.
+
+```powershell
+cargo test --workspace --offline p16_
+cargo test -p nova-codegen-llvm --test emission --offline p16_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p16_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/try-proposal-fixtures/error_width.nova
+```
+
+마지막 check는 int8/Int16 Error 타입이 정확히 같지 않아 try keyword의 **N2101·exit 1**이다.
 
 ## 현재 기능 실행 — Copy Option·Result·nullable
 
@@ -82,7 +126,7 @@ cargo test --workspace --offline
 cargo check --workspace --all-features --offline
 ```
 
-P15 기준 기본 tests 287개가 성공하고 실제 LLVM/Native tests 49개는 ignored로 표시된다.
+P16 기준 기본 tests 297개가 성공하고 실제 LLVM/Native tests 52개는 ignored로 표시된다.
 이 49개를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
 
 ```powershell

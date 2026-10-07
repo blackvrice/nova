@@ -2571,7 +2571,7 @@ fn p15_proposal_failures_have_exact_utf8_byte_spans() {
         (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/binder_scope.nova"), "N2001", 79, 80),
         (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/recursive_value.nova"), "N2101", 44, 45),
         (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/user_generic.nova"), "N1102", 40, 43),
-        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/try_unsupported.nova"), "N1102", 52, 55),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/try_unsupported.nova"), "N2103", 56, 74),
         (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/nullary_call.nova"), "N2201", 42, 56),
         (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/nullary_pattern_binder.nova"), "N2201", 62, 77),
     ] {
@@ -2776,4 +2776,233 @@ fn p15_mixed_cycles_depth_occurrence_and_first_origin_are_bounded() {
             "{source}"
         );
     }
+}
+
+#[test]
+fn p16_contract_diagnostics_exact_utf8_spans_and_cascade_suppression() {
+    let cases: &[(&str, &str, usize, usize, &[&str])] = &[
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/non_result_operand.nova"
+            ),
+            "N2101",
+            56,
+            57,
+            &[],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/option_operand.nova"
+            ),
+            "N2101",
+            62,
+            63,
+            &[],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/nominal_lookalike.nova"
+            ),
+            "N2101",
+            92,
+            93,
+            &[],
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/unit_return.nova"),
+            "N3002",
+            52,
+            55,
+            &[],
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/option_return.nova"),
+            "N3002",
+            58,
+            61,
+            &[],
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/error_width.nova"),
+            "N2101",
+            71,
+            74,
+            &[],
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/error_nominal.nova"),
+            "N2101",
+            88,
+            91,
+            &[],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/return_raw_success.nova"
+            ),
+            "N2101",
+            71,
+            76,
+            &[],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/missing_return.nova"
+            ),
+            "N3003",
+            63,
+            76,
+            &[],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/untyped_constructor.nova"
+            ),
+            "N2103",
+            60,
+            78,
+            &[],
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/global_const.nova"),
+            "N3201",
+            71,
+            74,
+            &["N3002"],
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/local_const.nova"),
+            "N3201",
+            72,
+            75,
+            &["N3002"],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/skipped_const_rhs.nova"
+            ),
+            "N3201",
+            82,
+            85,
+            &["N3002"],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/wrong_condition.nova"
+            ),
+            "N3001",
+            67,
+            72,
+            &[],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/success_narrowing.nova"
+            ),
+            "N2101",
+            78,
+            83,
+            &[],
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/unit_value.nova"),
+            "N2101",
+            73,
+            78,
+            &[],
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/try-proposal-fixtures/nested_error_mismatch.nova"
+            ),
+            "N2101",
+            83,
+            86,
+            &[],
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/try-proposal-fixtures/missing_name.nova"),
+            "N2001",
+            56,
+            63,
+            &["N2101", "N3002", "N2103"],
+        ),
+    ];
+    for &(source, code, start, end, forbidden) in cases {
+        let result = frontend(source);
+        assert!(!result.passed(), "{source}");
+        assert!(
+            result
+                .diagnostics()
+                .iter()
+                .any(|d| d.code.to_string() == code
+                    && (d.primary.span.start(), d.primary.span.end()) == (start, end)),
+            "{source}\n{:?}",
+            result.diagnostics()
+        );
+        assert!(
+            !result
+                .diagnostics()
+                .iter()
+                .any(|d| forbidden.contains(&d.code.to_string().as_str())),
+            "{source}\n{:?}",
+            result.diagnostics()
+        );
+        if code == "N3201" {
+            let d = result
+                .diagnostics()
+                .iter()
+                .find(|d| d.code.to_string() == code)
+                .unwrap();
+            assert!(d.secondary.iter().any(|l| result
+                .sources
+                .slice(l.span)
+                .unwrap()
+                .starts_with("const")));
+        }
+    }
+}
+#[test]
+fn p16_exact_normalized_error_context_nested_flow_and_aliases() {
+    for source in [
+        "func f(r:Result<int8,Option<int>>)->Result<int16,int?>{let n:int16=try r;return Result::Success(n)}",
+        "func f(r:Result<Result<int8,bool>,bool>)->Result<int8,bool>{return try r}",
+        "func f(r:Result<Result<int8,bool>,bool>)->Result<int16,bool>{let n:int16=try try r;return Result::Success(n)}",
+        "func f(r:Result<(),()>)->Result<(),()>{try r;return Result::Success(())}",
+        "func f(r:Result<int,bool>)->Result<int,bool>{let Result=3;let n=try r;return Result::Success(n)}",
+        "const R:Result<int,bool>=Result::Error(true);func f()->Result<int,bool>{let n=try R;return Result::Success(n)}",
+        "func f(r:Result<int,bool>,b:bool)->Result<int,bool>{match b{true=>{return Result::Success(try r)},false=>{return Result::Error(false)}}}",
+    ] { pass(source); }
+    let r=pass("func f(r:Result<int8,bool>)->Result<int16,bool>{let n:int16=try r;return Result::Success(n)}");
+    let (hir, _, checked) = r.semantic.unwrap();
+    let at = hir
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::Try { .. }))
+        .unwrap();
+    assert_eq!(checked.types.get(checked.type_table[at]), Some(Type::Int8));
+    assert_eq!(
+        checked.coercions[at].and_then(|t| checked.types.get(t)),
+        Some(Type::Int16)
+    );
+    for source in [
+        "func f(r:Result<int,int8>)->Result<int,int>{let n=try r;return Result::Success(n)}",
+        "func f()->Result<int8,bool>{let n:int8=try Result::Error(true);return Result::Success(n)}",
+        "func f(r:Result<int,bool>)->Result<int,bool>{let n=try r as int8;return Result::Success(n)}",
+    ] { assert!(!frontend(source).passed(),"{source}"); }
+    pass("func f(r:Result<int,bool>)->Result<int8,bool>{let n=(try r) as int8;return Result::Success(n)}");
+}
+#[test]
+fn p16_const_cycles_and_normal_path_return_remain_required() {
+    for source in [
+        "const R:Result<bool,bool>=Result::Success(B);const B=false&&try R;func main(){}",
+        "const R:Result<bool,bool>=Result::Error(B);const B=true||try R;func main(){}",
+    ] {
+        let r = frontend(source);
+        assert!(codes(&r).contains(&"N3202".into()), "{:?}", r.diagnostics());
+    }
+    let r = frontend(
+        "const R:Result<int,bool>=Result::Error(true);func f()->Result<int,bool>{let n=try R}",
+    );
+    assert!(codes(&r).contains(&"N3003".into()));
 }
