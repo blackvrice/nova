@@ -1,0 +1,5 @@
+func main() { let first=(walk)(again:true,value:7); let second=(walk)(7) }
+func walk(value:int8,again:bool=false)->int8 {
+    if again { return walk(value:value) }
+    return value
+}

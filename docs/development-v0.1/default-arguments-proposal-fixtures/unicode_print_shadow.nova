@@ -1,0 +1,3 @@
+const 값:int8=7
+func print(값:int8=값,횟수:int8=2) {}
+func main() { let 값:int8=99; print(); print(횟수:3) }

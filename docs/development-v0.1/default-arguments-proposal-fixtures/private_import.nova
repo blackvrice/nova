@@ -1,0 +1,2 @@
+use helpers::SECRET
+func main() {}

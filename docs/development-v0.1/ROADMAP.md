@@ -123,3 +123,8 @@ Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09
 [구현 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
 사용자 함수의 parameter 이름 대응·source-order snapshot/parameter-order 전달·mapped 타입/try 검증을 구현했다.
 기본 인수·overload·named constructor·Array·일반 Move/Drop은 포함하지 않는다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.
+
+[P18 상수 표현식 함수 기본 인수](DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md)·[52-production EBNF](GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf)·
+[두 파일·부정 20사례 제안 fixture](default-arguments-proposal-fixtures/README.md)는 **Draft / 승인 대기 / 미구현**이다.
+선언 module의 상수 default·필수/default 혼합·생략 대응·caller materialization·Source/CFG 검증을 다음 최소 범위로 제안한다.
+runtime default·parameter 참조·overload·named constructor·일반 Move/Drop은 후속이다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.

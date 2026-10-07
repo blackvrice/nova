@@ -1,0 +1,2 @@
+func f(value:string="x={1}") {}
+func main() {}

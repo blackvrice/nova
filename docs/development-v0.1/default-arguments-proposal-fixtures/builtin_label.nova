@@ -1,0 +1,2 @@
+func f(value:int8=1) {}
+func main() { print(value:"x") }

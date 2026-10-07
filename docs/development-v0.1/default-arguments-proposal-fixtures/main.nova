@@ -1,0 +1,37 @@
+use helpers::compose as joined
+use helpers::probe as traced
+use helpers::fetch
+use helpers::packed
+const SECRET:int8=99
+func holes(a:int8=4,b:int8,c:int8=6)->int32 { return (a as int32)*100+(b as int32)*10+(c as int32) }
+func text(first:string="default",second:string="two") { print("text={first}/{second}") }
+func unit(value:()=(),count:int8=3) { print("unit={count}") }
+func optional(value:int8?=none)->int8? { return value }
+func outcome(value:Result<int8,int8>=Result::Success(7))->Result<int8,int8> { return value }
+func pipeline(flag:bool)->Result<int32,int8> {
+    let n=joined(right:try fetch(ok:flag))
+    print("after")
+    return Result::Success(n)
+}
+func main() {
+    let all=joined()
+    print("defaults={all}")
+    let named=joined(right:traced(tag:"right",value:2))
+    print("named={named}")
+    let positional=joined(traced(tag:"left",value:1))
+    print("positional={positional}")
+    let reverse=joined(right:traced(tag:"second",value:2),left:traced(tag:"first",value:7))
+    print("reverse={reverse}")
+    let middle=holes(b:5)
+    print("holes={middle}")
+    text(second:"provided")
+    unit()
+    let copy=packed()
+    print("copy={copy.0}/{copy.1}")
+    match optional() { none=>{ print("option=none") },Option::Some(_)=>{} }
+    match outcome() { Result::Success(n)=>{ print("result={n}") },Result::Error(_)=>{} }
+    match pipeline(true) { Result::Success(n)=>{ print("success={n}") },Result::Error(_)=>{} }
+    match pipeline(false) { Result::Success(_)=>{},Result::Error(e)=>{ print("error={e}") } }
+    let short=false && (joined()==620)
+    print("short={short}")
+}

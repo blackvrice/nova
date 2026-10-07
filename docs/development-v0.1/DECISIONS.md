@@ -22,6 +22,8 @@
 
 2026-10-07 사용자 “P17 승인하고 이름 인수 구현 진행” 답변으로 [P17 함수 이름 인수](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)를 승인했다. [52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf)·[수용 fixture](named-arguments-proposal-fixtures/README.md)·[구현 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다. parameter 이름 대응·소스 순서 snapshot 후 선언 순서 전달·mapped 타입·try effect·Source/MIR 검증 subset을 구현했다. 기본 인수·overload·named constructor와 전체 D11/D16/D25/D30 승인이 아니다.
 
+2026-10-07 다음 Stage B 최소 범위 [P18 상수 표현식 함수 기본 인수](DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md)·[52-production EBNF](GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf)·[제안 fixture](default-arguments-proposal-fixtures/README.md)를 Draft로 준비했다. declaration-module scope·checked compile-time default·생략 인수 대응·제공 인수 평가 후 caller materialization·Source/MIR 검증 범위이며 사용자 승인 대기/미구현이다. runtime/parameter 의존 default·overload·named constructor와 전체 D09/D11/D16/D25/D30 승인이 아니다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

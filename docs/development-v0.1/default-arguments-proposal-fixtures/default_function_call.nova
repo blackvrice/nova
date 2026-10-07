@@ -1,0 +1,3 @@
+func g()->int8 { return 1 }
+func f(value:int8=g()) {}
+func main() {}

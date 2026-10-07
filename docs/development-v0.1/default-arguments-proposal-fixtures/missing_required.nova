@@ -1,0 +1,2 @@
+func f(a:int8=1,b:int8) {}
+func main() { f() }

@@ -1,0 +1,3 @@
+func f(value:int8=1)->int8 { return value }
+const VALUE=f()
+func main() {}

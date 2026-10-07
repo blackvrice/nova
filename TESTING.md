@@ -3,6 +3,13 @@
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
 현재 개발 완료 기능은 P17 함수 이름 인수까지다.
 
+## 다음 개발 준비 — 상수 표현식 함수 기본 인수 (P18 Draft)
+
+[P18 계약](docs/development-v0.1/DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md)·[제안 fixture/구현 후 명령/20줄 기대 출력](docs/development-v0.1/default-arguments-proposal-fixtures/README.md)을 준비했다.
+기본 인수는 미승인·미구현이다. 현재 실행 가능한 명령은 아래 P17 예제다.
+문서 metadata 검사는 `node tools/docs/validate-pack.mjs`로 실행하며 기대 결과는 PASS다.
+이 검사는 P18 source의 compile/Native 성공 검사가 아니다.
+
 ## 현재 기능 실행 — 함수 이름 인수
 
 ```powershell

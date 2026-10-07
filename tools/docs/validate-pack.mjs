@@ -595,6 +595,94 @@ assert(namedPrivate?.primary?.start === 0 && namedPrivate?.primary?.end === 20
   && namedPrivate?.primary_text === 'use helpers::hidden\n', 'P17 must preserve P11 whole-import N2004 Span');
 checks.push('P17 Accepted/승인·구현 ledger·P16 arguments 확장/argument 추가·52-production EBNF·두 파일/정상 2·부정 16사례 UTF-8 Span·cascade·검증 24줄 출력 metadata (Compiler/Native 실행 아님)');
 
+const defaultProposal = manifest.draft_proposals?.find(p => p.id === 'P18');
+assert(defaultProposal?.status === 'Draft' && defaultProposal?.implementation_verified === false
+  && defaultProposal?.document === 'DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md'
+  && defaultProposal?.grammar === 'GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf'
+  && !defaultProposal?.approval_date && !manifest.accepted_proposals?.some(p => p.id === 'P18'),
+  'P18 must remain unapproved/unimplemented Draft');
+const defaultProposalText = fs.readFileSync(path.join(pack, 'DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md'), 'utf8');
+assert(defaultProposalText.includes('Draft / 사용자 승인 대기 / 미구현')
+  && defaultProposalText.includes('10,000-node') && defaultProposalText.includes('module의 top-level scope')
+  && defaultProposalText.includes('나머지 **51개 production'), 'P18 invalid status/scope/budget text');
+validateGrammar('GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf');
+const defaultGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf'), 'utf8');
+assert(defaultGrammar.includes('Draft, not approved or implemented'), 'P18 invalid grammar status');
+const defaultProductions = productions(defaultGrammar);
+assert(defaultProductions.size === 52 && namedProductions.size === 52, 'P18 must preserve production count');
+for (const [name, value] of namedProductions) {
+  if (name !== 'parameter') assert(defaultProductions.get(name) === value, `P18 changes existing ${name}`);
+}
+assert(defaultProductions.get('parameter') === '"IDENT",":",type,["=",expression]', 'P18 invalid parameter grammar');
+const defaultRoot = path.join(pack, 'default-arguments-proposal-fixtures');
+const defaultFixture = JSON.parse(fs.readFileSync(path.join(defaultRoot, 'expected.json'), 'utf8'));
+assert(defaultFixture.proposal === 'P18' && defaultFixture.status === 'Draft'
+  && defaultFixture.implementation_verified === false && !defaultFixture.validated_result,
+  'P18 fixture must remain proposed data');
+assert(defaultFixture.entry === 'main.nova' && defaultFixture.source_root === '.'
+  && JSON.stringify(defaultFixture.reachable_modules) === '["main","helpers"]', 'P18 fixture graph mismatch');
+const defaultOutput = 'defaults=620\nright\nnamed=602\nleft\npositional=120\nsecond\nfirst\nreverse=702\nholes=456\ntext=default/provided\nunit=3\ncopy=4/🙂\noption=none\nresult=7\nleaf\nafter\nsuccess=602\nleaf\nerror=-1\nshort=false\n';
+assert(defaultFixture.proposed_result?.check_exit === 0 && defaultFixture.proposed_result?.native_exit === 0
+  && defaultFixture.proposed_result?.stdout === defaultOutput && defaultFixture.proposed_result?.stderr === '',
+  'P18 proposed output mismatch');
+assert(defaultFixture.negative_cases?.length === 20
+  && new Set(defaultFixture.negative_cases.map(c => c.name)).size === 20
+  && new Set(defaultFixture.negative_cases.map(c => c.source)).size === 20, 'P18 negative set mismatch');
+assert(defaultFixture.positive_cases?.length === 2
+  && JSON.stringify(defaultFixture.positive_cases.map(c => c.source))
+    === '["unicode_print_shadow.nova","forward_recursive_grouped.nova"]', 'P18 positive set mismatch');
+for (const c of defaultFixture.positive_cases) {
+  assert(c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
+    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '' && !c.validated_result,
+    `P18 invalid positive proposed result ${c.source}`);
+}
+for (const name of [defaultFixture.entry, 'helpers.nova', ...defaultFixture.positive_cases.map(c => c.source),
+  ...defaultFixture.negative_cases.map(c => c.source)]) {
+  assert(path.basename(name) === name && name.endsWith('.nova'), `P18 invalid filename ${name}`);
+  const text = fs.readFileSync(path.join(defaultRoot, name), 'utf8');
+  assert(text.endsWith('\n') && !text.includes('\r'), `P18 fixture encoding/newline ${name}`);
+}
+for (const c of defaultFixture.negative_cases) {
+  assert(knownCodes.has(c.expected_diagnostic), `P18 unknown diagnostic ${c.name}`);
+  const bytes = fs.readFileSync(path.join(defaultRoot, c.source));
+  const boundaries = new Set([0]);
+  let offset = 0;
+  for (const scalar of bytes.toString('utf8')) { offset += Buffer.byteLength(scalar); boundaries.add(offset); }
+  const { start, end } = c.primary;
+  assert(start < end && start >= 0 && end <= bytes.length && boundaries.has(start) && boundaries.has(end),
+    `P18 invalid byte span ${c.name}`);
+  assert(bytes.subarray(start, end).toString('utf8') === c.primary_text, `P18 unexpected span text ${c.name}`);
+  for (const code of c.forbidden_diagnostics ?? []) {
+    assert(knownCodes.has(code) && code !== c.expected_diagnostic, `P18 invalid cascade expectation ${c.name}`);
+  }
+}
+const defaultTry = defaultFixture.negative_cases.find(c => c.name === 'default_try');
+assert(defaultTry?.expected_diagnostic === 'N3201' && defaultTry?.primary_text === 'try'
+  && defaultTry?.forbidden_diagnostics?.includes('N3002'), 'P18 missing const-try precedence');
+for (const name of ['default_type', 'default_range', 'parameter_reference', 'self_reference',
+  'caller_local_reference', 'undefined_default']) {
+  const c = defaultFixture.negative_cases.find(c => c.name === name);
+  assert(c?.forbidden_diagnostics?.includes('N3201'), `P18 missing upstream cascade suppression ${name}`);
+}
+for (const name of ['default_function_call', 'skipped_function_call']) {
+  const c = defaultFixture.negative_cases.find(c => c.name === name);
+  const bytes = fs.readFileSync(path.join(defaultRoot, c.source));
+  assert(c.primary.start === bytes.lastIndexOf(Buffer.from(c.primary_text)), `P18 Span points at declaration instead of call ${name}`);
+}
+const defaultPrivate = defaultFixture.negative_cases.find(c => c.name === 'private_import');
+assert(defaultPrivate?.primary?.start === 0 && defaultPrivate?.primary?.end === 20
+  && defaultPrivate?.primary_text === 'use helpers::SECRET\n', 'P18 must preserve P11 whole-import N2004 Span');
+const defaultMain = fs.readFileSync(path.join(defaultRoot, 'main.nova'), 'utf8');
+const defaultHelpers = fs.readFileSync(path.join(defaultRoot, 'helpers.nova'), 'utf8');
+assert(defaultMain.includes('use helpers::compose as joined') && defaultMain.includes('const SECRET:int8=99')
+  && defaultMain.includes('joined(right:try fetch(ok:flag))') && defaultMain.includes('holes(b:5)')
+  && defaultMain.includes('value:Result<int8,int8>=Result::Success(7)')
+  && defaultMain.includes('value:int8?=none') && defaultMain.includes('false &&')
+  && defaultHelpers.includes('private const SECRET:int8=6')
+  && defaultHelpers.includes('left:int8=SECRET,right:int16=20')
+  && defaultHelpers.includes("value:(int8,char)=(BASE,'🙂')"), 'P18 missing scope/context/default/effect proposal data');
+checks.push('P18 Draft/미승인·미구현 ledger·P17 parameter 한 production 확장·52-production EBNF/기존 51개 보존·두 파일/정상 2/부정 20사례 UTF-8 Span·cascade·제안 20줄 출력 데이터 (Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

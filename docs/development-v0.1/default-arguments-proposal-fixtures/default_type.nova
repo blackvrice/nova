@@ -1,0 +1,2 @@
+func f(value:bool=1) {}
+func main() {}

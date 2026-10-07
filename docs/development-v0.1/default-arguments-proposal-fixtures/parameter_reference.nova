@@ -1,0 +1,2 @@
+func f(left:int8,right:int8=left) {}
+func main() {}

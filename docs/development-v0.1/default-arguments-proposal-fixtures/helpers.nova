@@ -1,0 +1,10 @@
+private const SECRET:int8=6
+public const BASE:int8=4
+public func compose(left:int8=SECRET,right:int16=20)->int32 { return (left as int32)*100+(right as int32) }
+public func probe(tag:string,value:int8)->int8 { print(tag); return value }
+public func fetch(ok:bool)->Result<int8,int8> {
+    print("leaf")
+    if ok { return Result::Success(2) } else { return Result::Error(-1) }
+}
+public func packed(value:(int8,char)=(BASE,'🙂'))->(int8,char) { return value }
+private func hidden(value:int8=SECRET)->int8 { return value }

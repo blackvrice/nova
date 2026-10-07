@@ -1,0 +1,3 @@
+func predicate()->bool { return true }
+func f(value:bool=false && predicate()) {}
+func main() {}

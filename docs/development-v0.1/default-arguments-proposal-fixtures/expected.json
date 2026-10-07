@@ -1,0 +1,263 @@
+{
+  "proposal": "P18",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "helpers"
+  ],
+  "positive_cases": [
+    {
+      "source": "unicode_print_shadow.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "forward_recursive_grouped.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "unknown_label",
+      "source": "unknown_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "other",
+      "primary": {
+        "start": 40,
+        "end": 45
+      }
+    },
+    {
+      "name": "duplicate_label",
+      "source": "duplicate_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 48,
+        "end": 53
+      }
+    },
+    {
+      "name": "positional_after_named",
+      "source": "positional_after_named.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "1",
+      "primary": {
+        "start": 49,
+        "end": 50
+      }
+    },
+    {
+      "name": "missing_required",
+      "source": "missing_required.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "f()",
+      "primary": {
+        "start": 41,
+        "end": 44
+      }
+    },
+    {
+      "name": "excess_positional",
+      "source": "excess_positional.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "f(1,2)",
+      "primary": {
+        "start": 38,
+        "end": 44
+      }
+    },
+    {
+      "name": "default_type",
+      "source": "default_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "1",
+      "primary": {
+        "start": 18,
+        "end": 19
+      },
+      "forbidden_diagnostics": [
+        "N3201"
+      ]
+    },
+    {
+      "name": "default_range",
+      "source": "default_range.nova",
+      "expected_diagnostic": "N2102",
+      "primary_text": "128",
+      "primary": {
+        "start": 18,
+        "end": 21
+      },
+      "forbidden_diagnostics": [
+        "N3201"
+      ]
+    },
+    {
+      "name": "unused_overflow",
+      "source": "unused_overflow.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "127+1",
+      "primary": {
+        "start": 18,
+        "end": 23
+      }
+    },
+    {
+      "name": "default_divide_zero",
+      "source": "default_divide_zero.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "1/0",
+      "primary": {
+        "start": 19,
+        "end": 22
+      }
+    },
+    {
+      "name": "parameter_reference",
+      "source": "parameter_reference.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "left",
+      "primary": {
+        "start": 28,
+        "end": 32
+      },
+      "forbidden_diagnostics": [
+        "N3201"
+      ]
+    },
+    {
+      "name": "self_reference",
+      "source": "self_reference.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "value",
+      "primary": {
+        "start": 18,
+        "end": 23
+      },
+      "forbidden_diagnostics": [
+        "N3201"
+      ]
+    },
+    {
+      "name": "caller_local_reference",
+      "source": "caller_local_reference.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "callerOnly",
+      "primary": {
+        "start": 18,
+        "end": 28
+      },
+      "forbidden_diagnostics": [
+        "N3201"
+      ]
+    },
+    {
+      "name": "default_function_call",
+      "source": "default_function_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "g()",
+      "primary": {
+        "start": 46,
+        "end": 49
+      }
+    },
+    {
+      "name": "default_interpolation",
+      "source": "default_interpolation.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "\"x={1}\"",
+      "primary": {
+        "start": 20,
+        "end": 27
+      }
+    },
+    {
+      "name": "skipped_function_call",
+      "source": "skipped_function_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "predicate()",
+      "primary": {
+        "start": 66,
+        "end": 77
+      }
+    },
+    {
+      "name": "default_try",
+      "source": "default_try.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "try",
+      "primary": {
+        "start": 79,
+        "end": 82
+      },
+      "forbidden_diagnostics": [
+        "N3002"
+      ]
+    },
+    {
+      "name": "undefined_default",
+      "source": "undefined_default.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "UNDEFINED",
+      "primary": {
+        "start": 18,
+        "end": 27
+      },
+      "forbidden_diagnostics": [
+        "N3201"
+      ]
+    },
+    {
+      "name": "const_function_call",
+      "source": "const_function_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "f()",
+      "primary": {
+        "start": 56,
+        "end": 59
+      }
+    },
+    {
+      "name": "builtin_label",
+      "source": "builtin_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 44,
+        "end": 49
+      }
+    },
+    {
+      "name": "private_import",
+      "source": "private_import.nova",
+      "expected_diagnostic": "N2004",
+      "primary_text": "use helpers::SECRET\n",
+      "primary": {
+        "start": 0,
+        "end": 20
+      },
+      "forbidden_diagnostics": [
+        "N2201"
+      ]
+    }
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "defaults=620\nright\nnamed=602\nleft\npositional=120\nsecond\nfirst\nreverse=702\nholes=456\ntext=default/provided\nunit=3\ncopy=4/🙂\noption=none\nresult=7\nleaf\nafter\nsuccess=602\nleaf\nerror=-1\nshort=false\n",
+    "stderr": ""
+  }
+}

@@ -1,0 +1,3 @@
+func leaf()->Result<int8,int8> { return Result::Success(1) }
+func f(value:int8=try leaf()) {}
+func main() {}

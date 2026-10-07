@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P18 상수 표현식 함수 기본 인수 착수안 (Draft)
+
+- 선언 module scope·기존 const subset·10,000-node 예산·생략 대응·caller materialization·Source/MIR 검증 제안.
+- P17 parameter 한 production만 확장한 52-production EBNF, 두 파일/정상 2개/부정 20개·UTF-8 Span·cascade·20줄 기대값 작성.
+- Draft ledger/영향 문서/validator와 구현 후 실행 명령을 연결했다. Compiler/Runtime/기존 승인/원본 148개는 보존한다.
+- runtime default·parameter 참조·overload·named constructor·일반 Move/Drop과 전체 D09/D11/D16/D25/D30은 제외한다.
+
 ## 2026-10-07 — P17 함수 이름 인수 구현
 
 - 사용자 “P17 승인하고 이름 인수 구현 진행”으로 P17을 Accepted 처리했다.

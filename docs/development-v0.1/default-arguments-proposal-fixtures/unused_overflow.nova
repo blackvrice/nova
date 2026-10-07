@@ -1,0 +1,2 @@
+func f(value:int8=127+1) {}
+func main() {}
