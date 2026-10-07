@@ -1,7 +1,7 @@
 {
   "proposal": "P18",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
@@ -11,7 +11,7 @@
   "positive_cases": [
     {
       "source": "unicode_print_shadow.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -20,7 +20,7 @@
     },
     {
       "source": "forward_recursive_grouped.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -254,7 +254,8 @@
       ]
     }
   ],
-  "proposed_result": {
+  "approval_date": "2026-10-07",
+  "validated_result": {
     "check_exit": 0,
     "native_exit": 0,
     "stdout": "defaults=620\nright\nnamed=602\nleft\npositional=120\nsecond\nfirst\nreverse=702\nholes=456\ntext=default/provided\nunit=3\ncopy=4/🙂\noption=none\nresult=7\nleaf\nafter\nsuccess=602\nleaf\nerror=-1\nshort=false\n",

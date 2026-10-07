@@ -43,6 +43,9 @@ pub enum HirKind {
         name: SymbolId,
         name_span: Span,
     },
+    DefaultValue {
+        equals: Span,
+    },
     Struct {
         name: SymbolId,
         name_span: Span,
@@ -419,6 +422,48 @@ pub fn lower(
                 return Err(LoweringError::MalformedAst);
             }
         }
+        if let NodeKind::DefaultValue { equals } = node.kind {
+            let value = arena
+                .get(*node.children.first().ok_or(LoweringError::MalformedAst)?)
+                .ok_or(LoweringError::MalformedAst)?;
+            if !inside(node.span, equals)
+                || sources.slice(equals)? != "="
+                || equals.start() != node.span.start()
+                || equals.end() > value.span.start()
+                || value.span.end() != node.span.end()
+                || !type_punctuation(
+                    sources.slice(Span::new(
+                        node.span.file(),
+                        equals.end(),
+                        value.span.start(),
+                    )?)?,
+                    &[""],
+                )
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if matches!(node.kind, NodeKind::Parameter { .. }) && node.children.len() == 2 {
+            let ty = arena
+                .get(node.children[0])
+                .ok_or(LoweringError::MalformedAst)?;
+            let default = arena
+                .get(node.children[1])
+                .ok_or(LoweringError::MalformedAst)?;
+            if ty.span.end() > default.span.start()
+                || default.span.end() != node.span.end()
+                || !type_punctuation(
+                    sources.slice(Span::new(
+                        node.span.file(),
+                        ty.span.end(),
+                        default.span.start(),
+                    )?)?,
+                    &[""],
+                )
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
         if let NodeKind::NamedArgument { name, colon } = node.kind {
             let value = arena
                 .get(*node.children.first().ok_or(LoweringError::MalformedAst)?)
@@ -778,6 +823,7 @@ pub fn lower(
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
             },
+            NodeKind::DefaultValue { equals } => HirKind::DefaultValue { equals },
             NodeKind::Parameter { name } => HirKind::Parameter {
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
@@ -1099,7 +1145,12 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         NodeKind::GenericType { .. } => !kinds.is_empty() && kinds.iter().all(|k| ty(*k)),
         NodeKind::NullableType => kinds.len() == 1 && ty(kinds[0]),
         NodeKind::TupleType => !kinds.is_empty() && kinds.iter().all(|k| ty(*k)),
-        NodeKind::Parameter { .. } => kinds.len() == 1 && ty(kinds[0]),
+        NodeKind::Parameter { .. } => {
+            (kinds.len() == 1 || kinds.len() == 2)
+                && ty(kinds[0])
+                && (kinds.len() == 1 || matches!(kinds[1], NodeKind::DefaultValue { .. }))
+        }
+        NodeKind::DefaultValue { .. } => kinds.len() == 1 && expr(kinds[0]),
         NodeKind::Binding { has_type, .. } => {
             kinds.len() == 1 + usize::from(has_type)
                 && (!has_type || ty(kinds[0]))

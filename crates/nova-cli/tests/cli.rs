@@ -775,3 +775,64 @@ fn p17_fixture_checks_and_invalid_labels_gate_all_build_commands() {
     }
     assert!(!dir.join("target").exists());
 }
+
+#[test]
+fn p18_fixture_checks_private_span_and_invalid_defaults_gate_native_tools() {
+    let dir = directory();
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/default-arguments-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "unicode_print_shadow.nova",
+        "forward_recursive_grouped.nova",
+    ] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("check")
+            .arg(fixtures.join(name))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stdout.is_empty() && r.stderr.is_empty());
+    }
+    let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .arg("check")
+        .arg(fixtures.join("private_import.nova"))
+        .arg("--source-root")
+        .arg(&fixtures)
+        .current_dir(&dir)
+        .output()
+        .unwrap();
+    assert_eq!(r.status.code(), Some(1));
+    let e = String::from_utf8(r.stderr).unwrap();
+    assert!(e.contains("N2004") && e.contains("bytes 0..20"), "{e}");
+    assert!(!e.contains("N2201"));
+    let output = dir.join("keep.exe");
+    std::fs::write(&output, b"keep").unwrap();
+    for name in [
+        "unused_overflow.nova",
+        "missing_required.nova",
+        "default_try.nova",
+    ] {
+        for command in ["check", "build", "run"] {
+            let mut cmd = Command::new(env!("CARGO_BIN_EXE_nova"));
+            cmd.arg(command)
+                .arg(fixtures.join(name))
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&dir);
+            if command == "build" {
+                cmd.arg("-o").arg(&output);
+            }
+            let r = cmd.output().unwrap();
+            assert_eq!(r.status.code(), Some(1));
+            assert!(!String::from_utf8_lossy(&r.stderr).contains("N8201"));
+            assert_eq!(std::fs::read(&output).unwrap(), b"keep");
+        }
+    }
+    assert!(!dir.join("target").exists());
+}

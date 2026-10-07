@@ -429,6 +429,13 @@ pub fn resolve(module: &Module) -> Resolved {
                 *node.children.last().expect("function body exists"),
                 function_scope,
             )];
+            // P18 defaults use the declaration module, never parameter/caller scopes.
+            pending.extend(node.children[..parameters].iter().rev().filter_map(|p| {
+                module.nodes()[p.0]
+                    .children
+                    .get(1)
+                    .map(|&value| Work::Visit(value, root_scope))
+            }));
         } else if matches!(node.kind, HirKind::Binding { constant: true, .. }) {
             pending = node
                 .children

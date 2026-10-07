@@ -739,3 +739,61 @@ fn p17_named_argument_source_metadata_and_external_ast_are_checked() {
         assert_eq!(lower(&db, &arena, root).is_ok(), valid, "{text}");
     }
 }
+
+#[test]
+fn p18_default_source_metadata_and_external_ast_are_checked() {
+    let source = "func f(앞:int8 /*ty*/ = /*v*/ 1,뒤:string=\"🙂\"){}";
+    let hir = lower_source(source);
+    assert_eq!(
+        hir.nodes()
+            .iter()
+            .filter(|n| matches!(n.kind, HirKind::DefaultValue { .. }))
+            .count(),
+        2
+    );
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        lower_source(&source[..at]);
+    }
+    for (text, equals, child, count, valid) in [
+        ("x:int8=1", (6, 7), (7, 8), 1, true),
+        ("x:int8+1", (6, 7), (7, 8), 1, false),
+        ("x:int8x=1", (7, 8), (8, 9), 1, false),
+        ("x:int8=1", (6, 7), (7, 8), 0, false),
+        ("x:int8=1", (6, 7), (7, 8), 2, false),
+        ("x:int8=1", (5, 6), (7, 8), 1, false),
+    ] {
+        let mut db = SourceDatabase::default();
+        let file = db.add("api", text.into()).unwrap();
+        let span = |r: (usize, usize)| Span::new(file, r.0, r.1).unwrap();
+        let mut arena = Arena::default();
+        let ty = arena
+            .insert(NodeKind::NamedType, span((2, 6)), vec![])
+            .unwrap();
+        let value = arena
+            .insert(NodeKind::Integer, span(child), vec![])
+            .unwrap();
+        let default = arena
+            .insert(
+                NodeKind::DefaultValue {
+                    equals: span(equals),
+                },
+                span((equals.0, text.len())),
+                vec![value; count],
+            )
+            .unwrap();
+        let parameter = arena
+            .insert(
+                NodeKind::Parameter { name: span((0, 1)) },
+                span((0, text.len())),
+                vec![ty, default],
+            )
+            .unwrap();
+        let error = arena
+            .insert(NodeKind::Error, span((0, text.len())), vec![parameter])
+            .unwrap();
+        let root = arena
+            .insert(NodeKind::Root, span((0, text.len())), vec![error])
+            .unwrap();
+        assert_eq!(lower(&db, &arena, root).is_ok(), valid, "{text}");
+    }
+}

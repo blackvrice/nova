@@ -1564,3 +1564,70 @@ fn p17_native_named_argument_overflow_preserves_effect_order_and_span_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p18_native_default_fixture_scope_contexts_effects_try_and_private_abi_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/default-arguments-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="defaults=620\nright\nnamed=602\nleft\npositional=120\nsecond\nfirst\nreverse=702\nholes=456\ntext=default/provided\nunit=3\ncopy=4/🙂\noption=none\nresult=7\nleaf\nafter\nsuccess=602\nleaf\nerror=-1\nshort=false\n";
+    for profile in ["debug", "release"] {
+        for (name, expected) in [
+            ("main.nova", expected),
+            ("unicode_print_shadow.nova", ""),
+            ("forward_recursive_grouped.nova", ""),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, expected.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let source = r#"struct Box{let n:int8}enum Choice{One(Box)}
+func defaults(a:int8=-128,b:uint8=255,c:int16=-32768,d:uint16=65535,e:int32=-2147483648,f:uint32=4294967295,g:int64=-9223372036854775808,h:uint64=18446744073709551615,i:float=0.5,j:double=-0.0,k:char='🙂',flag:bool=true,u:()=(),text:string="x\0🙂",s:Box=Box(7),choice:Choice=Choice::One(Box(8)),t:(int8,bool)=(9,false),r:Result<int8,()>=Result::Success(10)){
+print("{a}/{b}/{c}/{d}/{e}/{f}/{g}/{h}/{i}/{j}/{k}/{flag}");print("{text}/{s.n}/{t.0}/{t.1}");match choice{Choice::One(v)=>{print("choice={v.n}")}}match r{Result::Success(n)=>{print("result={n}")},Result::Error(_)=>{}}}
+func main(){defaults();defaults(a:1,text:"override")}"#;
+        let r = program_profile(source, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stderr.is_empty());
+        let expected="-128/255/-32768/65535/-2147483648/4294967295/-9223372036854775808/18446744073709551615/0.5/-0/🙂/true\nx\0🙂/7/9/false\nchoice=8\nresult=10\n1/255/-32768/65535/-2147483648/4294967295/-9223372036854775808/18446744073709551615/0.5/-0/🙂/true\noverride/7/9/false\nchoice=8\nresult=10\n";
+        assert_eq!(r.stdout, expected.as_bytes());
+        let main="use lib::show;use lib::saved;use lib::early;func main(){let text=saved();match early(){Result::Success(_)=>{},Result::Error(_)=>{}}show();print(text)}";
+        let lib="private struct H{private let value:int8}public func show(value:H=H(7)){print(\"private={value.value}\")}public func saved(value:string=\"kept\")->string{return value}func leaf()->Result<int,bool>{return Result::Error(true)}func sum(a:int=99,b:int)->int{return a+b}public func early()->Result<int,bool>{let x=sum(b:try leaf());return Result::Success(x)}";
+        let r = module_program(main, lib, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"private=7\nkept\n");
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p18_default_callee_overflow_has_exact_cross_file_span_and_effects_o0_o2() {
+    let main="use lib::overflow;func effect(){print(\"provided\")}func main(){overflow(marker:effect());print(\"after\")}";
+    let lib="// 한글 🙂\npublic func overflow(value:int8=127,marker:()=()){let x=value+1;print(\"callee-after\")}";
+    let start = lib.find("value+1").unwrap();
+    for profile in ["debug", "release"] {
+        let r = module_program(main, lib, profile);
+        assert!(!r.status.success());
+        assert_eq!(r.stdout, b"provided\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#1:{start}..{}",
+                    start + 7
+                )
+                .as_str()
+            )
+        );
+    }
+}

@@ -719,21 +719,23 @@ impl<'a> Parser<'a> {
                 let parameter_name = self.bump().span;
                 self.expect(TokenKind::Colon);
                 let ty = self.type_node();
+                let mut parameter_children = vec![ty];
+                if self.kind() == TokenKind::Symbol(Symbol::Equal) {
+                    let equals = self.bump().span;
+                    let value = self.expression(0);
+                    parameter_children.push(self.node(
+                        NodeKind::DefaultValue { equals },
+                        equals.start(),
+                        vec![value],
+                    ));
+                }
                 children.push(self.node(
                     NodeKind::Parameter {
                         name: parameter_name,
                     },
                     parameter_name.start(),
-                    vec![ty],
+                    parameter_children,
                 ));
-                if self.kind() == TokenKind::Symbol(Symbol::Equal) {
-                    self.report(
-                        1102,
-                        self.current().span,
-                        "default parameters are outside Stage A",
-                    );
-                    self.skip_list_element();
-                }
             }
             if self.eat(TokenKind::Comma) {
                 if self.kind() == TokenKind::RightParen {

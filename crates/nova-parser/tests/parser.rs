@@ -450,7 +450,7 @@ fn unsupported_stage_features_are_not_silently_accepted() {
         "use std",
         "let x=1",
         "func f<T>() {}",
-        "func f(x: int=1) {}",
+        // P18 accepts constant-expression defaults; dedicated tests cover them below.
         "func f(take x: int) {}",
     ] {
         let (_, _, parsed) = run(source);
@@ -1128,4 +1128,45 @@ fn p17_named_argument_spans_order_recovery_and_nesting() {
         ")".repeat(140)
     );
     assert!(run(&deep).2.has_errors());
+}
+
+#[test]
+fn p18_default_parameter_spans_split_tokens_and_utf8_recovery() {
+    let source = "func f(a:int8=1,b:Result<int8,bool>=Result::Success(7),c:string=\"가\",) {}";
+    let (db, lexed, parsed) = run(source);
+    assert!(
+        !lexed.has_errors() && !parsed.has_errors(),
+        "{:?}",
+        parsed.diagnostics
+    );
+    let defaults = parsed
+        .arena
+        .iter()
+        .filter_map(|(_, n)| match n.kind {
+            NodeKind::DefaultValue { equals } => Some((n, equals)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(defaults.len(), 3);
+    for (node, equals) in defaults {
+        assert_eq!(db.slice(equals).unwrap(), "=");
+        assert_eq!(node.span.start(), equals.start());
+        assert_eq!(node.children.len(), 1);
+        assert_eq!(
+            node.span.end(),
+            parsed.arena.get(node.children[0]).unwrap().span.end()
+        );
+    }
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let (db, _, p) = run(&source[..at]);
+        for d in &p.diagnostics {
+            db.slice(d.primary.span).unwrap();
+        }
+        assert_eq!(p.arena.dump(), run(&source[..at]).2.arena.dump());
+    }
+    assert!(run("func f(x:int=){}func later(){}")
+        .2
+        .diagnostics
+        .iter()
+        .any(|d| d.code.to_string() == "N1101"));
 }

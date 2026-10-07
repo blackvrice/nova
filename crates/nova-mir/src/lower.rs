@@ -75,6 +75,7 @@ pub fn lower(
         match_provenance: BTreeMap::new(),
         try_certificates: BTreeMap::new(),
         named_calls: BTreeMap::new(),
+        default_sources: BTreeMap::new(),
         named_bodies: BTreeMap::new(),
         try_controls: BTreeMap::new(),
         structs_original: checked.structs.clone(),
@@ -282,6 +283,13 @@ pub fn lower(
         }
         if !builder.named_calls.is_empty() {
             result.named_bodies.insert(callee.0, builder.body.clone());
+            for certificate in &builder.named_calls {
+                for (_, _, _, snapshot) in &certificate.defaults {
+                    result
+                        .default_sources
+                        .insert((callee.0, snapshot.source.hir.0), snapshot.source);
+                }
+            }
             result.named_calls.extend(
                 builder
                     .named_calls
@@ -900,11 +908,50 @@ impl Builder<'_> {
                                 .iter()
                                 .map(|&c| self.value(c))
                                 .collect::<Result<Vec<_>, _>>()?;
-                            if let Some(mapping) = &self.checked.named_calls[id.0] {
-                                let source_arguments = arguments.clone();
+                            let mut default_snapshots = vec![];
+                            if let Some(mapping) = self.checked.named_calls[id.0].clone() {
+                                let count = self.checked.signatures[definition.0]
+                                    .as_ref()
+                                    .ok_or(LoweringError::InvalidAnalysis)?
+                                    .parameters
+                                    .len();
+                                let mut slots = vec![None; count];
                                 for (source, &parameter) in mapping.parameters.iter().enumerate() {
-                                    arguments[parameter] = source_arguments[source].clone();
+                                    slots[parameter] = Some(arguments[source].clone());
                                 }
+                                for omitted in &mapping.defaults {
+                                    let default = self.checked.defaults[omitted.parameter.0]
+                                        .as_ref()
+                                        .ok_or(LoweringError::InvalidAnalysis)?
+                                        .clone();
+                                    let nova_typecheck::ConstEvaluation::Value { value, .. } =
+                                        &default.evaluation
+                                    else {
+                                        return Err(LoweringError::InvalidAnalysis);
+                                    };
+                                    let constant = Constant::from_const(value);
+                                    let snapshot =
+                                        self.temporary(constant.ty(), omitted.initializer);
+                                    self.assign(
+                                        snapshot,
+                                        Rvalue::Use(Operand::Constant(constant)),
+                                        omitted.initializer,
+                                    )?;
+                                    let block =
+                                        self.current.ok_or(LoweringError::InvalidAnalysis)?;
+                                    let at = self.body.blocks[block.0].statements.len() - 1;
+                                    default_snapshots.push((
+                                        default,
+                                        block,
+                                        at,
+                                        self.body.blocks[block.0].statements[at].clone(),
+                                    ));
+                                    slots[omitted.index] = Some(Operand::Place(snapshot));
+                                }
+                                arguments = slots
+                                    .into_iter()
+                                    .map(|slot| slot.ok_or(LoweringError::InvalidAnalysis))
+                                    .collect::<Result<Vec<_>, _>>()?;
                             }
                             let destination = Place(self.local(id, None)?);
                             let source_block =
@@ -922,6 +969,7 @@ impl Builder<'_> {
                             if let Some(mapping) = &self.checked.named_calls[id.0] {
                                 self.named_calls.push(NamedCallCertificate {
                                     mapping: mapping.clone(),
+                                    defaults: default_snapshots,
                                     source: self.sources[id.0],
                                     block: source_block,
                                     call: self.body.blocks[source_block.0]
@@ -931,7 +979,7 @@ impl Builder<'_> {
                                     snapshots: self
                                         .named_snapshots
                                         .remove(&id.0)
-                                        .ok_or(LoweringError::InvalidAnalysis)?,
+                                        .unwrap_or_default(),
                                 });
                             }
                             self.current = Some(target);

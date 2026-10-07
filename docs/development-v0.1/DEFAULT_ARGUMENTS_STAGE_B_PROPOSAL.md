@@ -1,8 +1,9 @@
 # Stage B 상수 표현식 함수 기본 인수 최소 계약 — P18
 
-작성일: 2026-10-07. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일/승인일/구현일: 2026-10-07. 상태: **Accepted / 사용자 승인 / 구현 완료**.
+사용자 “P18 승인하고 함수 기본 인수 구현 진행” 답변으로 승인했다. [구현·검증 기록](DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
 기존 D01~D05/P01~P17·Canonical·원본 148개를 보존한다.
-전체 D09/D11/D16/D25/D30 승인이 아니다. 승인 전 Compiler에 적용하지 않는다.
+전체 D09/D11/D16/D25/D30 승인이 아니다. 아래 P18 subset만 Compiler에 적용했다.
 
 ## Specification Change Proposal
 
@@ -12,7 +13,7 @@
   [P05/P06](GLOBAL_CONST_STAGE_B_PROPOSAL.md), [P11 Module](MODULE_STAGE_B_PROPOSAL.md),
   [P15](OPTION_RESULT_STAGE_B_PROPOSAL.md), [P16 try](TRY_STAGE_B_PROPOSAL.md),
   [P17 이름 인수](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md), [결정](DECISIONS.md).
-- 현재 사양: 기본 인수는 caller에서 평가한다. P17은 모든 parameter를 정확히 한 번 제공해야 하며 기본값을 포함하지 않는다.
+- 변경 전 사양: 기본 인수는 caller에서 평가한다. P17은 모든 parameter를 정확히 한 번 제공해야 하며 기본값을 포함하지 않는다.
   기본값 선언 문법·이름 scope·생략 순서·허용 표현식·실패/예산의 구체 계약은 아직 승인되지 않았다.
 - 발견된 문제: optional parameter를 callee 내부에서 채우면 기존 caller-side 규칙과 ABI를 바꾼다.
   호출자의 local 이름으로 default를 다시 해석하면 import/private/shadow에 따라 값이 달라진다.
@@ -149,7 +150,7 @@ let d=holes(b:5)           // 456
 ## 수용 기준·검토 자료
 
 [두 파일 fixture](default-arguments-proposal-fixtures/README.md)·[기대값](default-arguments-proposal-fixtures/expected.json)은
-**제안 데이터**이며 Draft / `implementation_verified:false`다. 현재 P17 compiler로 성공한다고 주장하지 않는다.
+**검증된 수용 데이터**이며 Accepted / `implementation_verified:true`다. Compiler와 Windows Native O0/O2로 확인했다.
 
 - Parser/HIR: type/default child 순서·`=`/initializer Span·trailing comma·nested type `>=` split·보간·UTF-8 truncation/recovery·외부 AST 위조.
 - scope/type/const: declaration-module private global/import alias·forward global·같은 철자의 parameter/caller shadow·필수/default 혼합·
@@ -163,9 +164,9 @@ let d=holes(b:5)           // 456
 
 미포함: runtime/side-effect default·parameter 의존 default·const function·named constructor·overload·method/receiver·
 사용자 Generic·Array·일반 Move/borrow/Drop·공용 ABI/FFI·별도 컴파일/cache 제품화와 전체 D09/D11/D16/D25/D30.
-승인 후 P18 subset만 Compiler·accepted ledger에 적용한다. 현재 사용 가능한 명령은 [TESTING.md](../../TESTING.md)를 따른다.
+승인한 P18 subset만 Compiler·accepted ledger에 적용했다. 현재 사용 가능한 명령은 [TESTING.md](../../TESTING.md)를 따른다.
 
-## 초안 준비 검증 — 2026-10-07
+## 초안 준비 당시 검증 — 2026-10-07 (과거 기록)
 
 - 문서 build/validator PASS: 148개 원본 hash·로컬 링크·Draft ledger·52-production EBNF와 기존 51개 보존·
   정상 2/부정 20사례의 UTF-8 byte Span·cascade 금지·제안 20줄 stdout metadata를 검사했다.
@@ -180,6 +181,6 @@ let d=holes(b:5)           // 456
 - ignored target의 **기존 P17 문법/명시적 인수만 사용하는 대조 프로그램**을 check 및 Windows Native debug/release로 실행했다.
   check 출력 없음·exit 0, 두 Native 실행은 제안값과 같은 20줄 UTF-8/LF·빈 stderr·exit 0이었다.
   이는 기존 연산·출력 값의 검산이며 **P18 default source의 compile/Native 통과나 새 declaration-scope/생략 의미의 구현 증거가 아니다**.
-  tracked P18 fixture는 Draft/`implementation_verified:false`를 유지한다.
+  당시 tracked P18 fixture는 Draft/`implementation_verified:false`였다. 현재 검증은 [구현 기록](DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
 - 문서 fixture 준비 중 함수 선언 `g()`/`predicate()`와 default 안 호출의 철자가 같은 두 기대 Span은
   실제 제안 오류 대상인 default 안 호출 위치로 정리했다. Compiler 정책 변경은 아니다.

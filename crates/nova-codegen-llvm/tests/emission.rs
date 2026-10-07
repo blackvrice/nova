@@ -916,3 +916,56 @@ fn p17_real_llvm_named_calls_coff_elf_o0_o2() {
         }
     }
 }
+
+fn p18_corpus() -> CodegenUnit {
+    unit(
+        r#"struct S{let n:int8;}func leaf()->Result<S,bool>{return Result::Success(S(7))}
+func join(left:S,right:(char,double)=('🙂',-0.0),marker:()=(),text:string="value")->int8{print("{text} {right.0} {right.1}");return left.n}
+func relay()->Result<int8,bool>{let n=join(left:try leaf());return Result::Success(n)}
+func main(){match relay(){Result::Success(n)=>{print("{n}")},Result::Error(_)=>{}}}"#,
+    )
+}
+#[test]
+fn p18_llvm_default_calls_reuse_private_abi_and_are_deterministic() {
+    let unit = p18_corpus();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&unit, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&unit, target, true).unwrap());
+        assert!(ir.text.contains("try.invalid."));
+        assert!(!ir.text.contains("invoke "));
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 via NOVA_CLANG"]
+fn p18_real_llvm_default_calls_coff_elf_o0_o2() {
+    let unit = p18_corpus();
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").unwrap()),
+    };
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-p18-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
+            let path = root.join(format!("{}-{optimization:?}.obj", target.triple()));
+            backend
+                .codegen_unit(
+                    &unit,
+                    &target,
+                    &CodegenOptions {
+                        object_path: path.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(path).unwrap();
+            assert!(if target == TargetSpec::WindowsX64Msvc {
+                bytes.starts_with(b"\x64\x86")
+            } else {
+                bytes.starts_with(b"\x7fELF")
+            });
+        }
+    }
+}

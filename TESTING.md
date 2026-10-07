@@ -1,16 +1,57 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P17 함수 이름 인수까지다.
+현재 개발 완료 기능은 P18 함수 기본 인수까지다.
 
-## 다음 개발 준비 — 상수 표현식 함수 기본 인수 (P18 Draft)
+## 현재 기능 실행 — 함수 기본 인수
 
-[P18 계약](docs/development-v0.1/DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md)·[제안 fixture/구현 후 명령/20줄 기대 출력](docs/development-v0.1/default-arguments-proposal-fixtures/README.md)을 준비했다.
-기본 인수는 미승인·미구현이다. 현재 실행 가능한 명령은 아래 P17 예제다.
-문서 metadata 검사는 `node tools/docs/validate-pack.mjs`로 실행하며 기대 결과는 PASS다.
-이 검사는 P18 source의 compile/Native 성공 검사가 아니다.
+```powershell
+cargo run -p nova-cli --offline -- check examples/default_arguments.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/default_arguments.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/default_arguments.nova --profile release
+```
 
-## 현재 기능 실행 — 함수 이름 인수
+check는 출력 없이 exit 0이며 두 Native 실행은 다음 20줄과 각 LF, stderr 없음·exit 0이다.
+
+```text
+defaults=620
+right
+named=602
+left
+positional=120
+second
+first
+reverse=702
+holes=456
+text=default/provided
+unit=3
+copy=4/🙂
+option=none
+result=7
+leaf
+after
+success=602
+leaf
+error=-1
+short=false
+```
+
+[P18 계약](docs/development-v0.1/DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/DEFAULT_ARGUMENTS_IMPLEMENTATION.md)·[두 파일 수용 예제](docs/development-v0.1/default-arguments-proposal-fixtures/README.md)를 제공한다.
+기본값은 선언 module의 상수 표현식이다. caller local로 다시 해석하지 않으며 parameter/runtime 값 의존 default는 지원하지 않는다.
+제공 인수를 source order로 평가한 뒤 생략 default를 declaration order로 caller에서 채운다.
+
+```powershell
+cargo test --workspace --offline p18_
+cargo test -p nova-codegen-llvm --test emission --offline p18_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p18_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/default-arguments-proposal-fixtures/unused_overflow.nova
+```
+
+집중 검사는 기본 10개·LLVM 1개·Native 2개다. 마지막 명령은 사용하지 않는 default의 `127+1`에서도 N3201·exit 1이 예상된다.
+문서 metadata 검사는 `node tools/docs/validate-pack.mjs`로 실행하며 기대 결과는 PASS다. 실제 Compiler/Native 실행과 구분한다.
+
+## 기존 기능 실행 — 함수 이름 인수
 
 ```powershell
 cargo run -p nova-cli --offline -- check examples/named_arguments.nova
@@ -50,7 +91,7 @@ short=false
 
 [P17 계약](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/NAMED_ARGUMENTS_IMPLEMENTATION.md)·[두 파일 수용 예제](docs/development-v0.1/named-arguments-proposal-fixtures/README.md)를 제공한다.
 이름은 원 함수 parameter와 대응하며 label과 value 이름 공간은 별개다. source-order 평가 후 parameter-order로 전달한다.
-기본 인수·named constructor·overload는 지원하지 않는다.
+상수 표현식 기본 인수는 P18에서 추가했다. named constructor·overload는 지원하지 않는다.
 
 ```powershell
 cargo test --workspace --offline p17_
@@ -186,8 +227,8 @@ cargo test --workspace --offline
 cargo check --workspace --all-features --offline
 ```
 
-P17 기준 기본 tests 306개가 성공하고 실제 LLVM/Native tests 55개는 ignored로 표시된다.
-이 55개(LLVM 13개·Native 42개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
+P18 기준 기본 tests 316개가 성공하고 실제 LLVM/Native tests 58개는 ignored로 표시된다.
+이 58개(LLVM 14개·Native 44개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
 
 ```powershell
 cargo test -p nova-codegen-llvm --test emission --offline -- --ignored --test-threads=1

@@ -235,6 +235,7 @@ struct NamedCallCertificate {
     mapping: nova_typecheck::NamedCall,
     source: SourceInfo,
     snapshots: Vec<(BlockId, usize, Statement)>,
+    defaults: Vec<(nova_typecheck::ParameterDefault, BlockId, usize, Statement)>,
     block: BlockId,
     call: Terminator,
 }
@@ -252,6 +253,7 @@ pub struct Module {
     try_certificates: std::collections::BTreeMap<(usize, usize), TryCertificate>,
     try_controls: std::collections::BTreeMap<usize, TryControlCertificate>,
     named_calls: std::collections::BTreeMap<(usize, usize), NamedCallCertificate>,
+    default_sources: std::collections::BTreeMap<(usize, usize), SourceInfo>,
     /// P17 freezes evaluation CFG and writes until a transform can preserve the proof.
     named_bodies: std::collections::BTreeMap<usize, Body>,
     match_provenance: std::collections::BTreeMap<usize, (Type, Vec<nova_typecheck::MatchPattern>)>,

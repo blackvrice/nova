@@ -408,9 +408,14 @@ impl Validator<'_> {
     }
     fn check_source(&mut self, body: &Body, info: SourceInfo) {
         if self.module.sources.get(info.hir.0) != Some(&info)
-            || info.span.file() != body.source.span.file()
-            || info.span.start() < body.source.span.start()
-            || info.span.end() > body.source.span.end()
+            || (self
+                .module
+                .default_sources
+                .get(&(body.callee.0, info.hir.0))
+                != Some(&info)
+                && (info.span.file() != body.source.span.file()
+                    || info.span.start() < body.source.span.start()
+                    || info.span.end() > body.source.span.end()))
         {
             self.report(Violation::InvalidSource);
         }
@@ -743,9 +748,10 @@ impl Validator<'_> {
                     .get(c.block.0)
                     .and_then(|b| b.terminator.as_ref())
                     != Some(&c.call)
-                || c.snapshots.len() != arguments.len()
-                || c.mapping.parameters.len() != arguments.len()
-                || c.mapping.arguments.len() != arguments.len()
+                || c.snapshots.len() + c.defaults.len() != arguments.len()
+                || c.mapping.parameters.len() != c.snapshots.len()
+                || c.mapping.arguments.len() != c.snapshots.len()
+                || c.mapping.defaults.len() != c.defaults.len()
                 || signature.parameters.len() != arguments.len()
             {
                 self.report(Violation::InvalidArguments);
@@ -780,6 +786,55 @@ impl Validator<'_> {
                 if !valid {
                     self.report(Violation::InvalidArguments);
                 }
+            }
+            let mut previous = None;
+            for (omitted, (default, block, at, snapshot)) in
+                c.mapping.defaults.iter().zip(&c.defaults)
+            {
+                let parameter = omitted.index;
+                let StatementKind::Assign(place, Rvalue::Use(Operand::Constant(constant))) =
+                    &snapshot.kind
+                else {
+                    self.report(Violation::InvalidArguments);
+                    continue;
+                };
+                let nova_typecheck::ConstEvaluation::Value { value, .. } = &default.evaluation
+                else {
+                    self.report(Violation::InvalidArguments);
+                    continue;
+                };
+                let valid = seen.get_mut(parameter).is_some_and(|s| {
+                    let new = !*s;
+                    *s = true;
+                    new
+                }) && previous.map_or(true, |(index, statement)| {
+                    index < parameter && statement < *at
+                }) && default.callee == signature.definition
+                    && default.argument == *omitted
+                    && Constant::from_const(value) == *constant
+                    && *block == c.block
+                    && module.sources.get(omitted.initializer.0) == Some(&snapshot.source)
+                    && module.sources.get(omitted.parameter.0).is_some_and(|p| {
+                        p.span.file() == snapshot.source.span.file()
+                            && p.span.start() <= snapshot.source.span.start()
+                            && snapshot.source.span.end() <= p.span.end()
+                    })
+                    && body.blocks.get(block.0).and_then(|b| b.statements.get(*at))
+                        == Some(snapshot)
+                    && writes.get(place.0 .0) == Some(&1)
+                    && arguments.get(parameter) == Some(&Operand::Place(*place))
+                    && body.locals.get(place.0 .0).is_some_and(|l| {
+                        l.definition.is_none()
+                            && l.source == snapshot.source
+                            && signature.parameters.get(parameter) == Some(&l.ty)
+                    });
+                previous = Some((parameter, *at));
+                if !valid {
+                    self.report(Violation::InvalidArguments);
+                }
+            }
+            if seen.iter().any(|filled| !filled) {
+                self.report(Violation::InvalidArguments);
             }
         }
     }

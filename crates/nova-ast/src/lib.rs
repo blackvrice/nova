@@ -52,6 +52,10 @@ pub enum NodeKind {
     Parameter {
         name: Span,
     },
+    /// Optional second parameter child, containing exactly one initializer expression.
+    DefaultValue {
+        equals: Span,
+    },
     Struct {
         name: Span,
     },

@@ -6,6 +6,8 @@ pub struct NamedCall {
     pub arguments: Vec<HirId>,
     /// Source argument index -> parameter index.
     pub parameters: Vec<usize>,
+    /// Omitted defaults in declaration order; provided arguments remain source ordered.
+    pub defaults: Vec<DefaultArgument>,
 }
 
 pub(super) struct ArgumentMapping {
@@ -34,6 +36,12 @@ impl Checker<'_> {
                 })
                 .collect();
             self.parameter_indices.insert(index, names);
+            if node.children[..parameters]
+                .iter()
+                .any(|p| self.module.nodes()[p.0].children.len() == 2)
+            {
+                self.default_functions.insert(index);
+            }
         }
     }
 
@@ -76,21 +84,39 @@ impl Checker<'_> {
     }
 
     pub(super) fn prepare_named_call(&mut self, id: HirId) {
-        if !self.has_named(id) {
-            return;
-        }
+        let named = self.has_named(id);
         let node = &self.module.nodes()[id.0];
         let Some(def) = self.callee_definition(node.children[0]) else {
             return;
         };
         let DefinitionKind::Function(function) = self.resolved.definitions[def.0].kind else {
-            self.reject_named_constructor(id);
+            if named {
+                self.reject_named_constructor(id);
+            }
             return;
         };
+        if !named && !self.default_functions.contains(&def.0) {
+            return;
+        }
         let declaration = &self.module.nodes()[function.0];
         let HirKind::Function { parameters, .. } = declaration.kind else {
             return;
         };
+        if !named && node.children.len() - 1 > parameters {
+            self.report(
+                2201,
+                node.span,
+                "too many positional arguments",
+                Some(declaration.span),
+            );
+            self.argument_mappings[id.0] = Some(ArgumentMapping {
+                parameters: (0..node.children.len() - 1)
+                    .map(|i| (i < parameters).then_some(i))
+                    .collect(),
+                valid: false,
+            });
+            return;
+        }
         let mut filled: Vec<Option<HirId>> = vec![None; parameters];
         let mut mapping = Vec::with_capacity(node.children.len() - 1);
         let mut first_label = None;
@@ -194,7 +220,14 @@ impl Checker<'_> {
             mapping.push(parameter);
         }
         if valid {
-            if let Some(at) = filled.iter().position(Option::is_none) {
+            if let Some(at) = filled.iter().enumerate().find_map(|(at, value)| {
+                (value.is_none()
+                    && self.module.nodes()[declaration.children[at].0]
+                        .children
+                        .len()
+                        == 1)
+                    .then_some(at)
+            }) {
                 self.report(
                     2201,
                     node.span,
@@ -249,8 +282,34 @@ impl Checker<'_> {
         if wrong {
             self.set(id, Type::Error)
         } else {
+            let DefinitionKind::Function(function) = self.resolved.definitions[def.0].kind else {
+                self.set(id, Type::Error);
+                return;
+            };
+            let declaration = &self.module.nodes()[function.0];
+            let mut supplied = vec![false; signature.parameters.len()];
+            for at in parameters.iter().flatten() {
+                supplied[*at] = true;
+            }
+            let defaults = supplied
+                .iter()
+                .enumerate()
+                .filter_map(|(index, &supplied)| {
+                    if supplied {
+                        return None;
+                    }
+                    let parameter = declaration.children[index];
+                    let wrapper = self.module.nodes()[parameter.0].children[1];
+                    Some(DefaultArgument {
+                        index,
+                        parameter,
+                        initializer: self.module.nodes()[wrapper.0].children[0],
+                    })
+                })
+                .collect();
             self.result.named_calls[id.0] = Some(NamedCall {
                 callee: def,
+                defaults,
                 arguments: node.children[1..].to_vec(),
                 parameters: parameters
                     .into_iter()

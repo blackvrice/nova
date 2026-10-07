@@ -1945,3 +1945,165 @@ fn p17_flat_large_parameter_mapping_uses_bounded_host_stack() {
         .join()
         .unwrap();
 }
+
+#[test]
+fn p18_public_default_values_and_omitted_mapping_forgery_are_rejected() {
+    let source = "func sum(a:int=99,b:int=98)->int{return a+b}func main(){sum()}";
+    for mutation in 0..3 {
+        let mut db = SourceDatabase::default();
+        let file = db.add("api", source.into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        let hir = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+        let resolved = resolve(&hir);
+        let mut checked = check(&hir, &resolved).unwrap();
+        if mutation == 0 {
+            let d = checked.defaults.iter_mut().flatten().next().unwrap();
+            let nova_typecheck::ConstEvaluation::Value { value, .. } = &mut d.evaluation else {
+                unreachable!()
+            };
+            *value = nova_types::ConstValue::Int32(97);
+        } else {
+            let c = checked.named_calls.iter_mut().flatten().next().unwrap();
+            if mutation == 1 {
+                c.defaults.swap(0, 1)
+            } else {
+                c.defaults[0].initializer = c.defaults[1].initializer;
+            }
+        }
+        assert_eq!(
+            lower(&hir, &resolved, &checked, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p18_defaults_snapshot_order_values_sources_and_cfg_are_certified() {
+    let source="func side()->int{return 3}func sum(a:int=99,b:int,c:int=98)->int{return a+b+c}func f()->int{return sum(b:side())}";
+    let original = pass(source);
+    assert_eq!(
+        execute(&original, "f", vec![]),
+        (Constant::Int32(200), vec!["side".into(), "sum".into()])
+    );
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    let block=original.bodies[body].blocks.iter().position(|b|matches!(&b.terminator,Some(Terminator{kind:TerminatorKind::Call{callee,..},..})if original.callees[callee.0].name=="sum")).unwrap();
+    let at = original.bodies[body].blocks[block]
+        .statements
+        .iter()
+        .position(|s| {
+            matches!(
+                s.kind,
+                StatementKind::Assign(_, Rvalue::Use(Operand::Constant(Constant::Int32(99))))
+            )
+        })
+        .unwrap();
+    assert!(
+        original.bodies[body].blocks[block].statements[at]
+            .source
+            .span
+            .start()
+            < original.bodies[body].source.span.start()
+    );
+    for mutation in 0..9 {
+        let mut bad = original.clone();
+        let b = &mut bad.bodies[body];
+        match mutation {
+            0 => {
+                let TerminatorKind::Call { arguments, .. } =
+                    &mut b.blocks[block].terminator.as_mut().unwrap().kind
+                else {
+                    unreachable!()
+                };
+                arguments.swap(0, 2);
+            }
+            1 => {
+                let StatementKind::Assign(_, v) = &mut b.blocks[block].statements[at].kind;
+                *v = Rvalue::Use(Operand::Constant(Constant::Int32(97)));
+            }
+            2 => b.blocks[block].statements.swap(at, at + 1),
+            3 => {
+                b.blocks[block].statements[at].source =
+                    b.blocks[block].terminator.as_ref().unwrap().source
+            }
+            4 => {
+                b.blocks[block].statements.remove(at);
+            }
+            5 => {
+                let s = b.blocks[block].statements[at].clone();
+                b.blocks[block].statements.push(s);
+            }
+            6 => b.entry = BlockId(block),
+            7 => {
+                let StatementKind::Assign(place, _) = b.blocks[block].statements[at].kind;
+                b.locals[place.0 .0].source = b.source;
+            }
+            _ => {
+                let s = b.blocks[block].statements[at].clone();
+                b.blocks[b.entry.0].statements.push(s);
+            }
+        }
+        assert!(!validate(&bad).is_empty(), "mutation {mutation}");
+    }
+    let source="func leaf()->Result<int,bool>{return Result::Error(true)}func sum(a:int=99,b:int)->int{return a+b}func f()->Result<int,bool>{let x=sum(b:try leaf());return Result::Success(x)}";
+    let mut bad = pass(source);
+    let b = bad
+        .bodies
+        .iter_mut()
+        .find(|b| b.source.span.start() == source.find("func f()").unwrap())
+        .unwrap();
+    let target = b
+        .blocks
+        .iter()
+        .position(|b| {
+            matches!(
+                b.terminator,
+                Some(Terminator {
+                    kind: TerminatorKind::Call { .. },
+                    ..
+                })
+            ) && b.statements.iter().any(|s| {
+                matches!(
+                    s.kind,
+                    StatementKind::Assign(_, Rvalue::Use(Operand::Constant(Constant::Int32(99))))
+                )
+            })
+        })
+        .unwrap();
+    let error = b
+        .blocks
+        .iter_mut()
+        .find(|b| {
+            matches!(
+                b.terminator,
+                Some(Terminator {
+                    kind: TerminatorKind::Return(_),
+                    ..
+                })
+            )
+        })
+        .unwrap();
+    error.terminator.as_mut().unwrap().kind = TerminatorKind::Goto(BlockId(target));
+    assert!(!validate(&bad).is_empty());
+}
+#[test]
+fn p18_flat_defaults_and_omissions_use_bounded_host_stack() {
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let params = (0..1024)
+                .map(|i| format!("p{i}:int={i}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            let module = pass(&format!(
+                "func many({params})->int{{return p0+p1023}}func f()->int{{return many()}}"
+            ));
+            assert_eq!(execute(&module, "f", vec![]).0, Constant::Int32(1023));
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}

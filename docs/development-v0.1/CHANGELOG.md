@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P18 상수 표현식 함수 기본 인수 구현
+
+- 사용자 “P18 승인하고 함수 기본 인수 구현 진행”으로 P18을 Accepted 처리했다.
+- Parser/HIR default Source·declaration-module resolution·typed 상수 평가/예산·생략 대응·caller materialization·cross-file MIR 인증 구현.
+- 기본 10개·LLVM 1개·Native 2개 테스트와 독립 예제/직접 실행 명령 추가. [구현 기록](DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
+- 기존 Compiler 의미·원본 148개 보존. runtime/parameter 의존 default·const function·overload·named constructor·일반 Move/Drop은 후속이다.
+
 ## 2026-10-07 — P18 상수 표현식 함수 기본 인수 착수안 (Draft)
 
 - 선언 module scope·기존 const subset·10,000-node 예산·생략 대응·caller materialization·Source/MIR 검증 제안.

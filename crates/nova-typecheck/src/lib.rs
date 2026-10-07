@@ -1,6 +1,8 @@
 //! P02 single-file semantic checking. Successful checking is not native execution.
 mod aggregates;
 mod arguments;
+mod defaults;
+pub use defaults::{DefaultArgument, ParameterDefault};
 mod enums;
 mod sums;
 pub use arguments::NamedCall;
@@ -45,6 +47,8 @@ pub struct Checked {
     pub calls: Vec<Option<DefId>>,
     /// P17 source argument order and its bijection to declaration parameter order.
     pub named_calls: Vec<Option<NamedCall>>,
+    /// P18 declaration defaults indexed by parameter HIR ID.
+    pub defaults: Vec<Option<ParameterDefault>>,
     pub integer_values: Vec<Option<i32>>,
     /// P07 literal payloads; legacy Int32 payloads above remain available.
     pub integer_literals: Vec<Option<IntegerValue>>,
@@ -110,6 +114,16 @@ impl Checked {
                 );
             }
         }
+        for (index, default) in self.defaults.iter().enumerate() {
+            if let Some(default) = default {
+                let _ = writeln!(output, "default {index} {default:?}");
+            }
+        }
+        for (index, call) in self.named_calls.iter().enumerate() {
+            if let Some(call) = call.as_ref().filter(|c| !c.defaults.is_empty()) {
+                let _ = writeln!(output, "default call {index} {call:?}");
+            }
+        }
         output
     }
 }
@@ -134,6 +148,7 @@ struct Checker<'a> {
     parameter_indices:
         std::collections::HashMap<usize, std::collections::HashMap<nova_hir::SymbolId, usize>>,
     argument_mappings: Vec<Option<arguments::ArgumentMapping>>,
+    default_functions: std::collections::HashSet<usize>,
     sum_shapes: std::collections::HashMap<nova_types::SumKey, nova_types::EnumId>,
     sum_sources: std::collections::HashMap<nova_types::SumKey, HirId>,
     attempted_variants: std::collections::BTreeSet<usize>,
@@ -279,6 +294,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         signatures: vec![None; resolved.definitions.len()],
         calls: vec![None; size],
         named_calls: vec![None; size],
+        defaults: vec![None; size],
         integer_values: vec![None; size],
         integer_literals: vec![None; size],
         float_literals: vec![None; size],
@@ -318,6 +334,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     let mut checker = Checker {
         parameter_indices: Default::default(),
         argument_mappings: (0..size).map(|_| None).collect(),
+        default_functions: Default::default(),
         sum_shapes: Default::default(),
         sum_sources: Default::default(),
         attempted_variants: Default::default(),
@@ -354,6 +371,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     checker.collect_signatures();
     checker.collect_parameter_indices();
     checker.check_globals();
+    checker.check_defaults();
     let items = module.items().collect::<Vec<_>>();
     for item in items {
         let node = &module.nodes()[item.0];

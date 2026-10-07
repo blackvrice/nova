@@ -3072,3 +3072,123 @@ fn p17_context_forward_shadow_alias_spelling_and_const_are_preserved() {
         HirKind::NamedArgument { .. }
     ));
 }
+
+#[test]
+fn p18_diagnostics_exact_spans_and_default_error_cascades() {
+    for (source,code,start,end,forbidden) in [
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/unknown_label.nova"), "N2201", 40, 45, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/duplicate_label.nova"), "N2201", 48, 53, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/positional_after_named.nova"), "N2201", 49, 50, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/missing_required.nova"), "N2201", 41, 44, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/excess_positional.nova"), "N2201", 38, 44, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/default_type.nova"), "N2101", 18, 19, &["N3201"]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/default_range.nova"), "N2102", 18, 21, &["N3201"]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/unused_overflow.nova"), "N3201", 18, 23, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/default_divide_zero.nova"), "N3201", 19, 22, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/parameter_reference.nova"), "N2001", 28, 32, &["N3201"]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/self_reference.nova"), "N2001", 18, 23, &["N3201"]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/caller_local_reference.nova"), "N2001", 18, 28, &["N3201"]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/default_function_call.nova"), "N3201", 46, 49, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/default_interpolation.nova"), "N3201", 20, 27, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/skipped_function_call.nova"), "N3201", 66, 77, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/default_try.nova"), "N3201", 79, 82, &["N3002"]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/undefined_default.nova"), "N2001", 18, 27, &["N3201"]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/const_function_call.nova"), "N3201", 56, 59, &[] as &[&str]),
+        (include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/builtin_label.nova"), "N2201", 44, 49, &[] as &[&str]),
+    ] {
+        let r=frontend(source);assert!(!r.passed(),"{source}");
+        assert!(r.diagnostics().iter().any(|d|d.code.to_string()==code&&d.primary.span.start()==start&&d.primary.span.end()==end),"{source} {:?}",r.diagnostics());
+        assert!(!r.diagnostics().iter().any(|d|forbidden.contains(&d.code.to_string().as_str())),"{source} {:?}",r.diagnostics());
+        if code=="N3201" && !source.contains("const VALUE") {
+            let d=r.diagnostics().iter().find(|d|d.code.to_string()==code).unwrap();
+            assert!(d.secondary.iter().any(|l|r.sources.slice(l.span).unwrap().starts_with("value:")));
+        }
+    }
+    let r = frontend("func f(value:int8=127+1){}func main(){f(0);f(value:1)}");
+    assert_eq!(codes(&r), ["N3201"]);
+    assert_eq!(
+        codes(&frontend(
+            "func f(a:int8=1,b:int8=2){}func main(){f(other:1000)}"
+        )),
+        ["N2201"]
+    );
+}
+#[test]
+fn p18_declaration_scope_type_context_forward_aliases_and_const_rules() {
+    for source in [
+        include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/unicode_print_shadow.nova"),
+        include_str!("../../../docs/development-v0.1/default-arguments-proposal-fixtures/forward_recursive_grouped.nova"),
+        "func f(a:int8=BASE,b:bool=false&&(1/0==0)){}const BASE:int8=7;func main(){f()}",
+        "struct S{let n:int8;}enum E{One(S)}func f(s:S=S(7),e:E=E::One(S(8)),r:Result<int8,bool>=Result::Success(9),o:int8?=none,u:()=(),text:string=\"a\\0🙂\"){}func main(){f()}",
+        "func f(a:int8=-128,b:uint8=255,c:int16=-32768,d:uint16=65535,e:int32=-2147483648,f:uint32=4294967295,g:int64=-9223372036854775808,h:uint64=18446744073709551615,i:float=0.5,j:double=1e100,k:char='🙂',flag:bool=true){}func main(){f()}",
+        "func f(value:int8=127 as int8)->int8{return value}func main(){let n=f()}",
+    ] {pass(source);}
+    let (hir,_,c)=p12_bundle(&[
+        ("main","use lib::f as renamed;const VALUE:int8=99;func main(){let VALUE:int8=100;renamed()}"),
+        ("lib","use other::VALUE as imported;private const VALUE:int8=7;public func f(VALUE:int8=VALUE,other:int8=imported){}"),
+        ("other","public const VALUE:int8=8"),
+    ]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    let values = c
+        .defaults
+        .iter()
+        .flatten()
+        .map(|d| match &d.evaluation {
+            ConstEvaluation::Value {
+                value: ConstValue::Integer(v),
+                ..
+            } => v.value(),
+            _ => panic!("unexpected {:?}", d.evaluation),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(values, [7, 8]);
+    for d in c.defaults.iter().flatten() {
+        assert_eq!(
+            hir.nodes()[d.argument.initializer.0].span.file().as_u32(),
+            1
+        );
+    }
+    for source in [
+        "const A:int8=B;const B:int8=A;func f(v:int8=A){}",
+        "const A:int8=127+1;func f(v:int8=A){}",
+    ] {
+        let r = frontend(source);
+        assert_eq!(
+            r.diagnostics()
+                .iter()
+                .filter(|d| d.code.to_string() == "N3201")
+                .count(),
+            usize::from(source.contains("127+1"))
+        );
+        assert!(!r.passed());
+    }
+}
+#[test]
+fn p18_default_budget_is_per_declaration_and_includes_skipped_rhs() {
+    let terms = vec!["1"; 5000].join("+");
+    let r = pass(&format!(
+        "func f(a:int=({terms}),b:int=({terms})){{}}func main(){{f();f();f(0,0)}}"
+    ));
+    let (_, _, c) = r.semantic.unwrap();
+    assert!(c
+        .defaults
+        .iter()
+        .flatten()
+        .all(|d| matches!(d.evaluation, ConstEvaluation::Value { nodes: 10000, .. })));
+    let too_many = vec!["1"; 5001].join("+");
+    for expr in [too_many, format!("false&&({terms}==0)")] {
+        let ty = if expr.starts_with("false") {
+            "bool"
+        } else {
+            "int"
+        };
+        let r = frontend(&format!("func f(value:{ty}={expr}){{}}func main(){{}}"));
+        let d = r
+            .diagnostics()
+            .iter()
+            .find(|d| d.code.to_string() == "N3202")
+            .unwrap();
+        assert!(d.notes.iter().any(|n| n.contains("10000")));
+        assert!(!codes(&r).contains(&"N3201".into()));
+    }
+}
