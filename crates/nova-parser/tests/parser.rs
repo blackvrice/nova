@@ -893,3 +893,70 @@ fn p12_missing_struct_close_recovers_later_top_level_items() {
         |(_, n)| matches!(n.kind,NodeKind::Struct{name} if sources.slice(name).unwrap()=="Other")
     ));
 }
+
+#[test]
+fn p13_tuple_forms_selectors_preserve_numeric_tokens_and_exact_subspans() {
+    let source="func f(p:((int,),bool))->(int,){var t=((1,),true);t.0.0=t.0.0+1;let x=(t.0).0;let r=0.1;print(\"🙂 {x}\");return (x,)}";
+    let (db, lexed, parsed) = run(source);
+    assert!(
+        !lexed.has_errors() && !parsed.has_errors(),
+        "{:?}",
+        parsed.diagnostics
+    );
+    assert!(lexed
+        .tokens
+        .iter()
+        .any(|t| t.kind == TokenKind::Float && db.slice(t.span).unwrap() == "0.0"));
+    let selectors = parsed
+        .arena
+        .iter()
+        .filter_map(|(_, n)| {
+            if let NodeKind::TupleProjection { index } = n.kind {
+                Some(index)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(selectors.len(), 6);
+    for span in selectors {
+        assert_eq!(db.slice(span).unwrap(), "0");
+        assert_eq!(span.end() - span.start(), 1);
+    }
+    assert_eq!(
+        parsed
+            .arena
+            .iter()
+            .filter(|(_, n)| n.kind == NodeKind::Tuple)
+            .count(),
+        3
+    );
+    for end in 0..=source.len() {
+        if source.is_char_boundary(end) {
+            let _ = run(&source[..end]);
+        }
+    }
+}
+#[test]
+fn p13_bad_selector_spellings_and_tuple_recovery_are_bounded() {
+    for selector in ["01", "0_1", "0x1", "0b1", "0.1e2", "-1", "00.1"] {
+        let source = format!("func f(){{let t=((1,),);let x=t.{selector}}} func later(){{}}");
+        let (db, _, parsed) = run(&source);
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.code.to_string() == "N1102"),
+            "{selector}: {:?}",
+            parsed.diagnostics
+        );
+        assert!(parsed.arena.iter().any(|(_,n)| matches!(n.kind,NodeKind::Function{name,..} if db.slice(name).unwrap()=="later")));
+    }
+    for target in ["(t).0", "f().0"] {
+        let (_, _, parsed) = run(&format!("func f(){{var t=(1,);{target}=2}}"));
+        assert!(parsed.has_errors());
+    }
+    let deep = format!("func f(p:{}int{}){{}}", "(".repeat(140), ",)".repeat(140));
+    let (_, _, parsed) = run(&deep);
+    assert!(parsed.has_errors());
+}

@@ -1,9 +1,10 @@
 # Stage B Copy Tuple 최소 계약 — P13
 
-작성일: 2026-10-07. 상태: **Draft / 사용자 승인 대기**. Compiler에는 아직 적용하지 않았다.
+작성일·승인일: 2026-10-07. 상태: **Accepted / 구현 완료**.
+사용자 “P13 승인하고 Copy Tuple 구현 진행”으로 아래 subset을 승인했다. [구현·검증 기록](TUPLE_IMPLEMENTATION.md)을 따른다.
 기존 D01~D05/P01~P12·Canonical·원본 148개 문서를 보존한다. 전체 D09/D10/D12/D16 승인이 아니다.
 
-## Specification Change Proposal
+## Specification Change Proposal — 승인 전 근거 기록
 
 - 관련 문서: [Canonical](CANONICAL.md), [MVP Freeze](../00_Governance/NOVA-002_Nova_0.1_MVP_기능_동결표.md),
   [원본 Tuple/Array/Function](../03_Types_Declarations/NOVA-029_Tuple_Array_Function_타입_사양서.md),
@@ -11,7 +12,7 @@
   [Tuple 초안](specs/NOVA-029.md), [결정](DECISIONS.md), [P12](STRUCT_STAGE_B_PROPOSAL.md).
 - 현재 사양: Unit은 (), 양방향 타입 검사·손실 없는 숫자 승격·source-order 평가를 유지한다.
   Stage B에 Tuple이 있지만 원본은 구체 생성/타입/projection/가변성/ABI를 제공하지 않는다.
-  보완 문서의 `(x,)`, `(x,y)`, `.0/.1`은 D12 Draft이며 현재 Compiler는 Unit/group만 지원한다.
+  보완 문서의 `(x,)`, `(x,y)`, `.0/.1`은 D12 Draft이며 승인 전 Compiler는 Unit/group만 지원했다.
 - 발견된 문제: struct 다음의 익명 product type을 위한 structural identity와 Copy 경로 규칙이 필요하다.
   기존 longest-match Lexer는 `t.0.1`을 IDENT/Dot/FLOAT(0.1)로 읽으므로 Parser 계약 없이 임의 해석할 수 없다.
 - 제안 변경: 아래 Copy Tuple subset과 전용 EBNF·numeric selector 해석·자원 제한을 동결한다.
@@ -67,7 +68,7 @@
 ## Const·layout·자원 제한
 
 1. const에 순수 tuple 생성·projection을 추가한다. tuple expression은 1 node + 실제 평가한 element expression,
-   projection은 1 node + receiver다. grouping·selector digits는 새 예산 node가 아니다.
+   projection은 1 node + receiver다. grouping·selector digits의 합성 node를 추가하지 않는다. 기존 group expression은 P05대로 1 node다.
    cached const reference 1 node, initializer별 10,000-node 제한과 checked N3201, static dependency/skipped RHS cycle N3202를 보존한다.
    tuple element는 선택되지 않더라도 생성 시 모두 평가한다. 사용자 함수는 const에서 계속 금지한다.
 2. tuple layout은 element 순서와 P12 x64 natural alignment/padding이다. Unit/빈 struct element도 논리 ID/완전 초기화를 유지한다.
@@ -93,7 +94,8 @@
 
 ## 수용 기준과 진단
 
-[두 파일 제안 fixture](tuple-proposal-fixtures/README.md)는 **미검증 Draft 기대값**이다.
+[두 파일 수용 fixture](tuple-proposal-fixtures/README.md)는 승인 후 Compiler/Native로 검증했다.
+실제 검증 범위와 환경은 [구현 기록](TUPLE_IMPLEMENTATION.md)을 따른다.
 
 | 상황 | 진단/primary |
 |---|---|
@@ -106,12 +108,12 @@
 | checked const / dependency cycle·budget | 기존 N3201/N3202와 원 source Span |
 | aggregate 자원 상한 | N8901, 초과 type/tuple expression + 한도 note/원인 element |
 
-승인 후 Parser UTF-8 truncation·one-tuple/group/Unit·trailing comma·연속 selector subspan·혼합 target 복구,
+수용 기준은 Parser UTF-8 truncation·one-tuple/group/Unit·trailing comma·연속 selector subspan·혼합 target 복구,
 structural/nominal 타입·양방향 문맥·private factory·multi-file 원 ID, const budget/cycle,
 shape/arity/depth/count/size 경계, 독립 layout oracle, 손상 MIR gate를 검증한다.
 LLVM COFF/ELF O0/O2와 Windows Native 두 profile의 exact stdout/effect order/Copy/Abort, 기존 전체 회귀도 검증한다.
 
-## 초안 단계 검증 기록
+## 초안 단계 검증 기록 — 구현 전 이력
 
 2026-10-07 문서 validator PASS: 원본 148개 hash, 링크, Draft ledger, 40-production 경계,
 두 파일·부정 10사례의 UTF-8 Span/기대값 데이터 유효성을 확인했다. 무모호성 증명이나 Tuple 실행 검증은 아니다.
@@ -120,9 +122,10 @@ LLVM COFF/ELF O0/O2와 Windows Native 두 profile의 exact stdout/effect order/C
 이번 변경은 문서/문서 도구뿐이므로 opt-in LLVM/Native 전체 40개를 다시 실행하지 않았다.
 P13 Compiler 테스트와 Tuple Native 실행은 구현 전이므로 통과했다고 보고하지 않는다.
 
-## 승인 요청·미포함 범위
+## 승인 기록·미포함 범위
 
 사용자 개발 지침: “사용자의 승인을 받기 전에는 해당 사양 변경을 적용하지 마십시오.”
-승인 요청은 P13 Copy Tuple 생성/타입·structural identity·numeric projection의 token subspan 처리·혼합 가변 경로·const·
+사용자 승인: **“P13 승인하고 Copy Tuple 구현 진행”** (2026-10-07).
+승인 범위는 P13 Copy Tuple 생성/타입·structural identity·numeric projection의 token subspan 처리·혼합 가변 경로·const·
 P12 field 확장·private ABI·자원 제한이다. Array·Enum/match·destructuring·String element·일반 Move/borrow·init/Drop·
-전체 D09/D10/D12/D16 승인은 포함하지 않는다. 승인 전에는 Compiler/accepted ledger에 적용하지 않는다.
+전체 D09/D10/D12/D16 승인은 포함하지 않는다. 승인 subset을 구현하고 accepted ledger에 기록했다.

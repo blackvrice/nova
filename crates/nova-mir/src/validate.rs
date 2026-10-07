@@ -65,11 +65,8 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         if !definitions.insert(callee.definition.0) {
             validator.report(Violation::DuplicateDefinition);
         }
-        if !value_type(callee.return_type, &module.structs)
-            || callee
-                .parameters
-                .iter()
-                .any(|&ty| !value_type(ty, &module.structs))
+        if !value_type(callee.return_type, module)
+            || callee.parameters.iter().any(|&ty| !value_type(ty, module))
         {
             validator.report(Violation::InvalidType);
         }
@@ -123,7 +120,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         for local in &body.locals {
             validator.source = Some(local.source);
             validator.check_source(body, local.source);
-            if !value_type(local.ty, &module.structs) {
+            if !value_type(local.ty, module) {
                 validator.report(Violation::InvalidType);
             }
             if let Some(def) = local.definition {
@@ -239,10 +236,10 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
     validator.errors
 }
 
-fn value_type(ty: Type, shapes: &StructRegistry) -> bool {
+fn value_type(ty: Type, module: &Module) -> bool {
     ty.numeric()
         || matches!(ty, Type::Unit | Type::Bool | Type::Char | Type::String)
-        || matches!(ty,Type::Struct(id) if shapes.get(&id).is_some_and(|s|s.layout.is_some()))
+        || matches!(ty,Type::Struct(id) | Type::Tuple(id) if module.aggregate_type(id) == ty && module.structs.get(&id).is_some_and(|s|s.layout.is_some()))
 }
 fn successors(kind: &TerminatorKind) -> Vec<BlockId> {
     match kind {
@@ -304,7 +301,10 @@ impl Validator<'_> {
                     if v.ty() != expected {
                         self.report(Violation::TypeMismatch);
                     }
-                    if let Constant::Struct(id, fields) = v {
+                    if let Constant::Struct(id, fields) | Constant::Tuple(id, fields) = v {
+                        if v.ty() != self.module.aggregate_type(*id) {
+                            self.report(Violation::InvalidType);
+                        }
                         if let Some(shape) = self.module.structs.get(id) {
                             if fields.len() != shape.fields.len() {
                                 self.report(Violation::InvalidArguments);
@@ -347,11 +347,11 @@ impl Validator<'_> {
                 } else {
                     self.report(Violation::InvalidType);
                 }
-                Some(Type::Struct(*id))
+                Some(self.module.aggregate_type(*id))
             }
             Rvalue::Project(receiver, field) => {
                 let recv = self.operand_type(body, receiver);
-                self.same_type(Some(Type::Struct(field.structure)), recv);
+                self.same_type(Some(self.module.aggregate_type(field.structure)), recv);
                 match self
                     .module
                     .structs
@@ -372,7 +372,7 @@ impl Validator<'_> {
                     self.report(Violation::InvalidArguments);
                 }
                 for field in path {
-                    self.same_type(Some(Type::Struct(field.structure)), ty);
+                    self.same_type(Some(self.module.aggregate_type(field.structure)), ty);
                     ty = match self
                         .module
                         .structs

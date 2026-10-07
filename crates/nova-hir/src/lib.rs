@@ -57,6 +57,12 @@ pub enum HirKind {
         name: SymbolId,
         name_span: Span,
     },
+    TupleProjection {
+        index: SymbolId,
+        index_span: Span,
+    },
+    Tuple,
+    TupleType,
     TypeName(SymbolId),
     UnitType,
     Block,
@@ -226,6 +232,7 @@ impl Module {
                     | HirKind::Parameter { name, .. }
                     | HirKind::Binding { name, .. }
                     | HirKind::Name(name)
+                    | HirKind::TupleProjection { index: name, .. }
                     | HirKind::TypeName(name)
                     | HirKind::ImportSegment(name) => *name = mapping[name.0],
                     HirKind::Import {
@@ -352,6 +359,19 @@ pub fn lower(
             if name.file() != node.span.file()
                 || name.start() < node.span.start()
                 || name.end() > node.span.end()
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::TupleProjection { index } = node.kind {
+            let digits = sources.slice(index)?;
+            if !inside(node.span, index)
+                || !(digits == "0"
+                    || digits
+                        .as_bytes()
+                        .first()
+                        .is_some_and(|b| matches!(b, b'1'..=b'9'))
+                        && digits.bytes().all(|b| b.is_ascii_digit()))
             {
                 return Err(LoweringError::MalformedAst);
             }
@@ -545,6 +565,12 @@ pub fn lower(
             NodeKind::NamedType => {
                 HirKind::TypeName(intern(node.span, &mut module, &mut interned)?)
             }
+            NodeKind::TupleProjection { index } => HirKind::TupleProjection {
+                index: intern(index, &mut module, &mut interned)?,
+                index_span: index,
+            },
+            NodeKind::Tuple => HirKind::Tuple,
+            NodeKind::TupleType => HirKind::TupleType,
             NodeKind::UnitType => HirKind::UnitType,
             NodeKind::Block => HirKind::Block,
             NodeKind::Binding {
@@ -706,7 +732,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
     let ty = |kind: NodeKind| {
         matches!(
             kind,
-            NodeKind::NamedType | NodeKind::UnitType | NodeKind::Error
+            NodeKind::NamedType | NodeKind::UnitType | NodeKind::TupleType | NodeKind::Error
         )
     };
     let expr = |kind: NodeKind| {
@@ -724,6 +750,8 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 | NodeKind::Binary(_)
                 | NodeKind::Cast { .. }
                 | NodeKind::Call
+                | NodeKind::Tuple
+                | NodeKind::TupleProjection { .. }
                 | NodeKind::Projection { .. }
                 | NodeKind::InterpolatedString
                 | NodeKind::Error
@@ -781,7 +809,11 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             .iter()
             .all(|k| matches!(k, NodeKind::Field { .. } | NodeKind::Error)),
         NodeKind::Field { .. } => kinds.len() == 1 && ty(kinds[0]),
-        NodeKind::Projection { .. } => kinds.len() == 1 && expr(kinds[0]),
+        NodeKind::Projection { .. } | NodeKind::TupleProjection { .. } => {
+            kinds.len() == 1 && expr(kinds[0])
+        }
+        NodeKind::Tuple => !kinds.is_empty() && kinds.iter().all(|k| expr(*k)),
+        NodeKind::TupleType => !kinds.is_empty() && kinds.iter().all(|k| ty(*k)),
         NodeKind::Parameter { .. } => kinds.len() == 1 && ty(kinds[0]),
         NodeKind::Binding { has_type, .. } => {
             kinds.len() == 1 + usize::from(has_type)
@@ -795,7 +827,11 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             }
             let mut target = node.children[0];
             while let Some(n) = arena.get(target) {
-                if matches!(n.kind, NodeKind::Projection { .. }) && n.children.len() == 1 {
+                if matches!(
+                    n.kind,
+                    NodeKind::Projection { .. } | NodeKind::TupleProjection { .. }
+                ) && n.children.len() == 1
+                {
                     target = n.children[0];
                 } else {
                     return n.kind == NodeKind::Name;

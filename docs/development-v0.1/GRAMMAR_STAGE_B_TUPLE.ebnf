@@ -1,4 +1,4 @@
-(* P13 Copy Tuple: Draft, not approved or implemented.
+(* P13 Copy Tuple: Accepted by user 2026-10-07; implemented P13 subset.
    Extends accepted P12: four productions plus three new productions.
    Selector-context token subspans follow TUPLE_STAGE_B_PROPOSAL.md; Lexer tokens remain unchanged. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl ) }, "EOF" ;

@@ -54,3 +54,23 @@ fn deeply_malformed_const_payload_drop_uses_no_recursive_host_stack() {
         .join()
         .unwrap();
 }
+
+#[test]
+fn p13_deep_mixed_tuple_struct_payload_drop_is_iterative() {
+    std::thread::Builder::new()
+        .stack_size(64 * 1024)
+        .spawn(|| {
+            let mut value = ConstValue::Unit;
+            for index in 0..30000 {
+                value = if index % 2 == 0 {
+                    ConstValue::Tuple(StructId(1), vec![value])
+                } else {
+                    ConstValue::Struct(StructId(2), vec![value])
+                };
+            }
+            drop(value);
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}

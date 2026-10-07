@@ -12,6 +12,8 @@
 
 nominal Copy struct·위치 생성·type import·가변 field 경로·const·private layout/ABI와 자원 제한은 사용자 승인 [P12](../STRUCT_STAGE_B_PROPOSAL.md)와 [37-production EBNF](../GRAMMAR_STAGE_B_STRUCT.ebnf)를 따른다. [구현·검증 기록](../STRUCT_IMPLEMENTATION.md). String field·init/Drop·일반 Move/borrow와 전체 D06/D10/D12/D16/D30은 후속이다.
 
+structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·private aggregate ABI와 자원 제한은 사용자 승인 [P13](../TUPLE_STAGE_B_PROPOSAL.md)와 [40-production EBNF](../GRAMMAR_STAGE_B_TUPLE.ebnf)를 따른다. [구현·검증 기록](../TUPLE_IMPLEMENTATION.md). Array/Enum/일반 Move element와 전체 D09/D10/D12/D16은 후속이다.
+
 ## Target layout 계약
 Layout(TypeId,TargetSpec) → size, align, field offsets, variant layout, valid-bit-patterns/niche를 반환한다. pointer width/endian/aggregate ABI는 Target 입력이며 host에서 추정하지 않는다.
 

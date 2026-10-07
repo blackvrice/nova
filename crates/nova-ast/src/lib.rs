@@ -63,6 +63,11 @@ pub enum NodeKind {
     Projection {
         name: Span,
     },
+    TupleProjection {
+        index: Span,
+    },
+    Tuple,
+    TupleType,
     NamedType,
     UnitType,
     Block,

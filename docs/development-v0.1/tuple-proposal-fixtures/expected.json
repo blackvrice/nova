@@ -1,18 +1,13 @@
 {
   "proposal": "P13",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "tuples"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "original=21, snapshot=20, shifted=21, one=7, tag=🙂\n"
-  },
   "negative_cases": [
     {
       "name": "immutable-root",
@@ -114,5 +109,10 @@
       },
       "primary_text": "A"
     }
-  ]
+  ],
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "original=21, snapshot=20, shifted=21, one=7, tag=🙂\n"
+  }
 }

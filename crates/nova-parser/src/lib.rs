@@ -112,5 +112,5 @@ pub fn parse_with_options(
     if tokens.last().map(|t| t.kind) != Some(TokenKind::Eof) {
         return Err(ParseInputError::InvalidTokenStream);
     }
-    Ok(parser::Parser::new(tokens, options, file, text_len).run())
+    Ok(parser::Parser::new(tokens, options, file, sources.file(file)?.text()).run())
 }

@@ -1156,3 +1156,98 @@ fn p12_struct_field_checked_failure_has_exact_utf8_source_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p13_copy_tuple_native_fixture_and_effect_order_o0_o2() {
+    for profile in ["debug", "release"] {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/native-tuple-tests")
+            .join(format!(
+                "{}-{}",
+                std::process::id(),
+                SEQUENCE.fetch_add(1, Ordering::Relaxed)
+            ));
+        std::fs::create_dir_all(&root).unwrap();
+        let root = root.canonicalize().unwrap();
+        for (name, source) in [
+            (
+                "main.nova",
+                include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/main.nova"),
+            ),
+            (
+                "tuples.nova",
+                include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/tuples.nova"),
+            ),
+        ] {
+            std::fs::write(root.join(name), source).unwrap();
+        }
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("run")
+            .arg(root.join("main.nova"))
+            .args(["--profile", profile])
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "original=21, snapshot=20, shifted=21, one=7, tag=🙂\n".as_bytes()
+        );
+        assert!(result.stderr.is_empty());
+        let source = r#"struct Empty{} struct P{var x:int8;let b:bool}
+func first()->int8{print("first");return 1} func second()->double{print("second");return 2.5}
+func echo(v:((P,double),Empty,(),char))->((P,double),Empty,(),char){return v}
+func main(){var t=echo(((P(first(),true),second()),Empty(),(),'🙂'));let old=t;while t.0.0.x<4{t.0.0.x=t.0.0.x+1};t.0.1=3.5;print("{old.0.0.x} {t.0.0.x} {old.0.1} {t.0.1} {old.3} {old.0.0.b}")}"#;
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "first\nsecond\n1 4 2.5 3.5 🙂 true\n".as_bytes()
+        );
+        assert!(result.stderr.is_empty());
+        let source = r#"const C:(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double)=(-128,255,-32768,65535,-2147483648,4294967295,-9223372036854775808,18446744073709551615,0.5,-0.0)
+func echo(v:(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double))->(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double){return v}
+func main(){let v=echo(C);print("{v.0} {v.1} {v.2} {v.3} {v.4} {v.5} {v.6} {v.7} {v.8} {v.9}")}"#;
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout,b"-128 255 -32768 65535 -2147483648 4294967295 -9223372036854775808 18446744073709551615 0.5 -0\n");
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p13_tuple_element_checked_failure_has_exact_utf8_source_o0_o2() {
+    let source = "// 한글 🙂\nfunc main(){let t:(int8,)=(127,);let n=t.0+1;print(\"unreachable\")}";
+    let start = source.find("t.0+1").unwrap();
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(!result.status.success());
+        assert!(result.stdout.is_empty());
+        let stderr = String::from_utf8(result.stderr).unwrap();
+        assert_eq!(
+            stderr.lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#0:{start}..{}",
+                    start + 5
+                )
+                .as_str()
+            ),
+            "{stderr}"
+        );
+    }
+}

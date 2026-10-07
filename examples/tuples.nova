@@ -1,0 +1,17 @@
+public struct Packet {
+    public var items: ((int, int), bool)
+    public let tag: char
+}
+public const START: ((int, int), bool) = ((10, 20), true)
+public func shifted(p: ((int, int), bool)) -> ((int, int), bool) {
+    return ((p.0.0, p.0.1 + 1), p.1)
+}
+
+func main() {
+    var original = Packet(START, '🙂')
+    let snapshot = original
+    original.items.0.1 = original.items.0.1 + 1
+    let next = shifted(snapshot.items)
+    let one: (int8,) = (7,)
+    print("original={original.items.0.1}, snapshot={snapshot.items.0.1}, shifted={next.0.1}, one={one.0}, tag={snapshot.tag}")
+}

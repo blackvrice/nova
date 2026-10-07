@@ -6,6 +6,7 @@ use nova_syntax::{Keyword, Symbol, Token, TokenKind};
 
 pub(crate) struct Parser<'a> {
     tokens: &'a [Token],
+    text: &'a str,
     cursor: usize,
     last_end: usize,
     file: FileId,
@@ -24,14 +25,15 @@ impl<'a> Parser<'a> {
         tokens: &'a [Token],
         options: ParserOptions,
         file: FileId,
-        text_len: usize,
+        text: &'a str,
     ) -> Self {
         Self {
             tokens,
+            text,
             cursor: 0,
             last_end: 0,
             file,
-            text_len,
+            text_len: text.len(),
             arena: Arena::default(),
             diagnostics: vec![],
             synthetic: vec![],
@@ -248,11 +250,12 @@ impl<'a> Parser<'a> {
             .is_some_and(|t| t.kind == TokenKind::Dot)
         {
             at += 1;
-            if !self
-                .tokens
-                .get(at)
-                .is_some_and(|t| t.kind == TokenKind::Identifier)
-            {
+            if !self.tokens.get(at).is_some_and(|t| {
+                matches!(
+                    t.kind,
+                    TokenKind::Identifier | TokenKind::Integer | TokenKind::Float
+                )
+            }) {
                 return false;
             }
             at += 1;
@@ -264,6 +267,42 @@ impl<'a> Parser<'a> {
     fn projection(&mut self, receiver: AstNodeId) -> AstNodeId {
         let start = self.arena.get(receiver).expect("receiver").span.start();
         self.bump();
+        if matches!(self.kind(), TokenKind::Integer | TokenKind::Float) {
+            let token = self.bump();
+            let spelling = &self.text[token.span.start()..token.span.end()];
+            let parts = spelling.split('.').collect::<Vec<_>>();
+            if parts.len() <= 2 && parts.iter().all(|part| canonical_index(part)) {
+                let mut value = receiver;
+                let mut offset = token.span.start();
+                for part in parts {
+                    let index = self.span(offset, offset + part.len());
+                    value = self
+                        .arena
+                        .insert(
+                            NodeKind::TupleProjection { index },
+                            self.span(start, index.end()),
+                            vec![value],
+                        )
+                        .expect("projection subspans");
+                    offset = index.end() + 1;
+                }
+                return value;
+            }
+            self.report(
+                1102,
+                token.span,
+                "tuple selector must be canonical decimal digits",
+            );
+            return self.node(NodeKind::Error, start, vec![receiver]);
+        }
+        if self.kind() == TokenKind::Symbol(Symbol::Minus) {
+            let span = self.bump().span;
+            self.report(1102, span, "tuple selector cannot be negative");
+            if self.kind() == TokenKind::Integer {
+                self.bump();
+            }
+            return self.node(NodeKind::Error, start, vec![receiver]);
+        }
         let name = self.expect(TokenKind::Identifier).span;
         self.node(NodeKind::Projection { name }, start, vec![receiver])
     }
@@ -562,9 +601,34 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::LeftParen => {
+                if !self.enter() {
+                    self.skip_list_element();
+                    return self.node(NodeKind::Error, start, vec![]);
+                }
                 self.open(TokenKind::LeftParen);
+                if self.kind() == TokenKind::RightParen {
+                    self.close(TokenKind::RightParen);
+                    self.depth -= 1;
+                    return self.node(NodeKind::UnitType, start, vec![]);
+                }
+                let mut children = vec![self.type_node()];
+                self.expect(TokenKind::Comma);
+                while !matches!(
+                    self.kind(),
+                    TokenKind::RightParen | TokenKind::Eof | TokenKind::RightBrace
+                ) {
+                    let before = self.cursor;
+                    children.push(self.type_node());
+                    if !self.eat(TokenKind::Comma) {
+                        break;
+                    }
+                    if before == self.cursor {
+                        break;
+                    }
+                }
                 self.close(TokenKind::RightParen);
-                self.node(NodeKind::UnitType, start, vec![])
+                self.depth -= 1;
+                self.node(NodeKind::TupleType, start, children)
             }
             _ => {
                 self.expect(TokenKind::Identifier);
@@ -799,6 +863,24 @@ impl<'a> Parser<'a> {
                     return self.node(NodeKind::Unit, start, vec![]);
                 }
                 let value = self.expression(0);
+                if self.eat(TokenKind::Comma) {
+                    let mut children = vec![value];
+                    while !matches!(
+                        self.kind(),
+                        TokenKind::RightParen | TokenKind::Eof | TokenKind::RightBrace
+                    ) {
+                        let before = self.cursor;
+                        children.push(self.expression(0));
+                        if !self.eat(TokenKind::Comma) {
+                            break;
+                        }
+                        if before == self.cursor {
+                            break;
+                        }
+                    }
+                    self.close(TokenKind::RightParen);
+                    return self.node(NodeKind::Tuple, start, children);
+                }
                 self.close(TokenKind::RightParen);
                 return self.node(NodeKind::Group, start, vec![value]);
             }
@@ -969,4 +1051,13 @@ fn unsupported(kind: TokenKind) -> bool {
                     | Keyword::Internal
             )
     )
+}
+
+fn canonical_index(text: &str) -> bool {
+    text == "0"
+        || text
+            .as_bytes()
+            .first()
+            .is_some_and(|b| matches!(b, b'1'..=b'9'))
+            && text.bytes().all(|b| b.is_ascii_digit())
 }

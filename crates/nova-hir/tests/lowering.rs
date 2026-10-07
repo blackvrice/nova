@@ -499,3 +499,56 @@ fn p10_cast_lowering_preserves_alias_syntax_origin_and_rejects_forged_keyword() 
         }
     }
 }
+
+#[test]
+fn p13_public_ast_numeric_selector_subspans_are_validated() {
+    for digits in ["01", "0_1", "0x1", "0.1", "0"] {
+        let text = format!("func f(){{t.{digits}}}");
+        let mut sources = SourceDatabase::default();
+        let file = sources.add("api.nova", text.clone()).unwrap();
+        let span = |start, end| Span::new(file, start, end).unwrap();
+        let mut arena = Arena::default();
+        let receiver = arena.insert(NodeKind::Name, span(9, 10), vec![]).unwrap();
+        let projection = arena
+            .insert(
+                NodeKind::TupleProjection {
+                    index: span(11, 11 + digits.len()),
+                },
+                span(9, 11 + digits.len()),
+                vec![receiver],
+            )
+            .unwrap();
+        let stmt = arena
+            .insert(
+                NodeKind::ExpressionStatement,
+                span(9, 11 + digits.len()),
+                vec![projection],
+            )
+            .unwrap();
+        let body = arena
+            .insert(NodeKind::Block, span(8, text.len()), vec![stmt])
+            .unwrap();
+        let function = arena
+            .insert(
+                NodeKind::Function {
+                    name: span(5, 6),
+                    parameters: 0,
+                    has_return_type: false,
+                },
+                span(0, text.len()),
+                vec![body],
+            )
+            .unwrap();
+        let root = arena
+            .insert(NodeKind::Root, span(0, text.len()), vec![function])
+            .unwrap();
+        if digits == "0" {
+            assert!(lower(&sources, &arena, root).is_ok());
+        } else {
+            assert_eq!(
+                lower(&sources, &arena, root),
+                Err(LoweringError::MalformedAst)
+            );
+        }
+    }
+}

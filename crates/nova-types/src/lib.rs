@@ -29,8 +29,15 @@ pub enum Type {
     String,
     Function,
     Struct(StructId),
+    Tuple(StructId),
 }
 impl Type {
+    pub const fn aggregate(self) -> Option<StructId> {
+        match self {
+            Self::Struct(id) | Self::Tuple(id) => Some(id),
+            _ => None,
+        }
+    }
     pub const fn float(self) -> Option<FloatKind> {
         match self {
             Self::Float32 => Some(FloatKind::F32),
@@ -91,6 +98,7 @@ pub enum ConstValue {
     String(String),
     Unit,
     Struct(StructId, Vec<ConstValue>),
+    Tuple(StructId, Vec<ConstValue>),
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CastError {
@@ -135,6 +143,7 @@ impl ConstValue {
             Self::String(_) => Type::String,
             Self::Unit => Type::Unit,
             Self::Struct(id, _) => Type::Struct(*id),
+            Self::Tuple(id, _) => Type::Tuple(*id),
         }
     }
     pub fn from_integer(value: IntegerValue) -> Self {
@@ -199,11 +208,11 @@ impl TypeInterner {
 impl Drop for ConstValue {
     fn drop(&mut self) {
         let mut pending = match self {
-            Self::Struct(_, fields) => std::mem::take(fields),
+            Self::Struct(_, fields) | Self::Tuple(_, fields) => std::mem::take(fields),
             _ => return,
         };
         while let Some(mut value) = pending.pop() {
-            if let Self::Struct(_, fields) = &mut value {
+            if let Self::Struct(_, fields) | Self::Tuple(_, fields) = &mut value {
                 pending.append(fields);
             }
         }

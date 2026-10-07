@@ -2037,3 +2037,205 @@ fn p12_documented_negative_fixtures_have_exact_code_and_source_spans() {
         (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/user-init.nova"),"N1102",11,15),
     ] {let result=frontend(source);assert!(result.diagnostics().iter().any(|d|d.code.to_string()==code && d.primary.span.start()==start && d.primary.span.end()==end),"{source}: {:?}",result.diagnostics());}
 }
+
+#[test]
+fn p13_structural_identity_context_coercions_copy_and_excluded_operations() {
+    pass(include_str!("../../../examples/tuples.nova"));
+    pass("struct A{var x:int} func echo(t:(A,()))->(A,()){return t} func f(){var t=echo((A(1),()));let old=t;t.0.x=2}");
+    pass("func echo(t:(int32,bool))->(int,bool){return t} func f(){let a:(int,bool)=echo((1,true));let b:(int32,bool)=a}");
+    let (hir, _, checked) =
+        pass("func f(a:int8,b:float){const C:(int8,)=(127,);let t:(int16,double)=(a,b)}")
+            .semantic
+            .unwrap();
+    let tuple = hir
+        .nodes()
+        .iter()
+        .find(|n| n.kind == HirKind::Tuple && n.children.len() == 2)
+        .unwrap();
+    assert_eq!(
+        checked.coercions[tuple.children[0].0].and_then(|t| checked.types.get(t)),
+        Some(Type::Int16)
+    );
+    assert_eq!(
+        checked.coercions[tuple.children[1].0].and_then(|t| checked.types.get(t)),
+        Some(Type::Float64)
+    );
+    for source in [
+        "func f(){let a=(1,);let b:(int64,)=a}",
+        "func f(){let a=(1,);let b:int=a}",
+        "func f(){let a=(1,);let b=a==a}",
+        "func f(){let a=(1,);let b=a as int}",
+        "func f(){let a=(1,);let b=a.x}",
+        "func f(){let a=1;let b=a.0}",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N2101"], "{source}");
+    }
+    assert_eq!(
+        codes(&frontend(
+            "func f(){let t=(1,);let x=t.999999999999999999999999999999999999999999}"
+        )),
+        ["N2001"]
+    );
+}
+#[test]
+fn p13_bundle_const_alias_private_factory_and_mixed_cycles() {
+    let (_, _, checked) = p12_bundle(&[
+        (
+            "main",
+            include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/main.nova"),
+        ),
+        (
+            "tuples",
+            include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/tuples.nova"),
+        ),
+    ]);
+    assert!(!checked.has_errors(), "{:?}", checked.diagnostics);
+    let (_, _, checked) = p12_bundle(&[
+        (
+            "main",
+            "use lib::make;func f(){var t=(make(),);let old=t;t.0.x=2}",
+        ),
+        (
+            "lib",
+            "private struct Hidden{public var x:int} public func make()->Hidden{return Hidden(1)}",
+        ),
+    ]);
+    assert!(!checked.has_errors(), "{:?}", checked.diagnostics);
+    for source in [
+        "struct A{let child:(A,)} func f(){}",
+        "struct A{let child:(B,)} struct B{let child:(A,)} func f(){}",
+    ] {
+        assert!(codes(&frontend(source)).contains(&"N2101".into()));
+    }
+    assert_eq!(
+        codes(&frontend("const A=(B,);const B=A.0;func f(){}")),
+        ["N3202"]
+    );
+    assert_eq!(codes(&frontend("func f(){const x=(1/0,true)}")), ["N3201"]);
+    assert_eq!(
+        constant_value("func f(){const C=(3,true);const X=C.0}", "X"),
+        (ConstValue::Int32(3), 2)
+    );
+}
+#[test]
+fn p13_const_and_mixed_aggregate_resource_boundaries() {
+    let terms = vec!["1"; 5000].join("+");
+    let source = format!("const C=({terms},);func f(){{}}");
+    let (_, _, checked) = pass(&source).semantic.unwrap();
+    assert!(checked
+        .const_values
+        .iter()
+        .any(|c| matches!(c, ConstEvaluation::Value { nodes: 10000, .. })));
+    let source = format!("const C=({terms}+1,);func f(){{}}");
+    assert_eq!(codes(&frontend(&source)), ["N3202"]);
+    pass(&format!(
+        "func f(){{let t=({},)}}",
+        vec!["()"; 1024].join(",")
+    ));
+    assert_eq!(
+        codes(&frontend(&format!(
+            "func f(){{let t=({},)}}",
+            vec!["()"; 1025].join(",")
+        ))),
+        ["N8901"]
+    );
+    for (count, expected) in [(63, false), (64, true)] {
+        let mut source = "struct S0{}".to_owned();
+        for i in 1..=count {
+            source += &format!("struct S{i}{{let next:(S{},)}}", i - 1);
+        }
+        source += "func f(){}";
+        assert_eq!(
+            codes(&frontend(&source)).contains(&"N8901".into()),
+            expected
+        );
+    }
+    let mut source = "struct S0{}".to_owned();
+    for i in 1..=16 {
+        source += &format!("struct S{i}{{let next:(S{p},S{p})}}", p = i - 1);
+    }
+    source += "func f(){}";
+    assert!(codes(&frontend(&source)).contains(&"N8901".into()));
+}
+#[test]
+fn p13_unique_shape_limit_reuse_and_source_order() {
+    let mut source = String::new();
+    for n in 0..4096 {
+        let types = (0..13)
+            .map(|bit| if n & (1 << bit) == 0 { "int" } else { "bool" })
+            .collect::<Vec<_>>()
+            .join(",");
+        let values = (0..13)
+            .map(|bit| if n & (1 << bit) == 0 { "1" } else { "true" })
+            .collect::<Vec<_>>()
+            .join(",");
+        source += &format!("const C{n}:({types})=({values});");
+    }
+    let (_, _, checked) = pass(&(source.clone() + "func f(){let t=C0;let z=C4095}"))
+        .semantic
+        .unwrap();
+    assert_eq!(checked.tuple_ids.len(), 4096);
+    let types = (0..13)
+        .map(|bit| {
+            if 4096 & (1 << bit) == 0 {
+                "int"
+            } else {
+                "bool"
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    let values = (0..13)
+        .map(|bit| if 4096 & (1 << bit) == 0 { "1" } else { "true" })
+        .collect::<Vec<_>>()
+        .join(",");
+    // A function body precedes annotations that are collected in an earlier pass.
+    // The limit diagnostic must still name the first excess shape in source order.
+    let earlier = format!("func earlier(){{let t=({values})}}{source}");
+    let result = frontend(&earlier);
+    assert_eq!(codes(&result), ["N8901"]);
+    assert_eq!(
+        result.diagnostics()[0].primary.span.start(),
+        earlier.find("const C4095:").unwrap() + "const C4095:".len()
+    );
+    let annotation_start = source.len() + "const OVER:".len();
+    source += &format!("const OVER:({types})=({values});func f(){{}}");
+    let result = frontend(&source);
+    assert_eq!(codes(&result), ["N8901"]);
+    assert_eq!(
+        result.diagnostics()[0].primary.span.start(),
+        annotation_start
+    );
+}
+#[test]
+fn p13_tuple_layout_has_independent_padding_and_zero_size_oracle() {
+    let (_,_,checked)=pass("struct Empty{} const C:((),Empty,uint8,uint16,char,float,double,(int8,uint64),bool)=((),Empty(),1,2,'🙂',0.5,-0.0,(-1,3),true);func f(){}").semantic.unwrap();
+    let shape = checked
+        .tuple_ids
+        .iter()
+        .map(|sid| &checked.structs[sid])
+        .find(|s| s.fields.len() == 9)
+        .unwrap();
+    let l = shape.layout.as_ref().unwrap();
+    assert_eq!(l.offsets, [0, 0, 0, 2, 4, 8, 16, 24, 40]);
+    assert_eq!((l.size, l.align, l.depth, l.occurrences), (48, 8, 2, 11));
+}
+
+#[test]
+fn p13_documented_negative_fixtures_have_exact_codes_and_byte_spans() {
+    for (source,code,start,end) in [
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/immutable-root.nova"),"N3004",37,38),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/immutable-field.nova"),"N3004",76,80),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/index-range.nova"),"N2001",55,56),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/arity-mismatch.nova"),"N2101",38,42),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/element-mismatch.nova"),"N2101",43,44),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/nominal-element.nova"),"N2101",81,85),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/string-element.nova"),"N1102",27,33),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/selector-exponent.nova"),"N1102",53,58),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/aggregate-interpolation.nova"),"N2101",48,49),
+(include_str!("../../../docs/development-v0.1/tuple-proposal-fixtures/recursive-tuple-field.nova"),"N2101",23,24),
+    ] {
+        let result=frontend(source);assert_eq!(codes(&result),[code],"{source}");
+        let span=result.diagnostics()[0].primary.span;assert_eq!((span.start(),span.end()),(start,end),"{source}");
+    }
+}

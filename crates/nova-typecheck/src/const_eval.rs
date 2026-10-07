@@ -86,7 +86,7 @@ pub(crate) fn evaluate(
                 | Symbol::AndAnd
                 | Symbol::OrOr,
             ) => true,
-            HirKind::Projection { .. } => true,
+            HirKind::Projection { .. } | HirKind::TupleProjection { .. } | HirKind::Tuple => true,
             HirKind::Call => checked.calls[id.0].is_some_and(|d| {
                 matches!(
                     resolved.definitions[d.0].kind,
@@ -126,14 +126,27 @@ pub(crate) fn evaluate(
     while let Some(task) = work.pop() {
         match task {
             Work::Aggregate(id) => {
-                let count = module.nodes()[id.0].children.len() - 1;
+                let tuple = module.nodes()[id.0].kind == HirKind::Tuple;
+                let count = module.nodes()[id.0].children.len() - usize::from(!tuple);
                 let fields = values.split_off(values.len() - count);
-                let sid = nova_types::StructId(checked.calls[id.0].expect("checked constructor").0);
-                values.push(ConstValue::Struct(sid, fields));
+                if tuple {
+                    let sid = checked
+                        .types
+                        .get(checked.type_table[id.0])
+                        .expect("tuple type")
+                        .aggregate()
+                        .expect("aggregate");
+                    values.push(ConstValue::Tuple(sid, fields));
+                } else {
+                    let sid =
+                        nova_types::StructId(checked.calls[id.0].expect("checked constructor").0);
+                    values.push(ConstValue::Struct(sid, fields));
+                }
             }
             Work::Project(id) => {
                 let receiver = values.pop().expect("receiver");
-                let ConstValue::Struct(_, fields) = &receiver else {
+                let (ConstValue::Struct(_, fields) | ConstValue::Tuple(_, fields)) = &receiver
+                else {
                     unreachable!("checked receiver")
                 };
                 values.push(fields[checked.projections[id.0].expect("field ID").index].clone());
@@ -188,7 +201,11 @@ pub(crate) fn evaluate(
                         work.push(Work::Aggregate(id));
                         work.extend(node.children[1..].iter().rev().copied().map(Work::Evaluate));
                     }
-                    HirKind::Projection { .. } => {
+                    HirKind::Tuple => {
+                        work.push(Work::Aggregate(id));
+                        work.extend(node.children.iter().rev().copied().map(Work::Evaluate));
+                    }
+                    HirKind::Projection { .. } | HirKind::TupleProjection { .. } => {
                         work.push(Work::Project(id));
                         work.push(Work::Evaluate(node.children[0]));
                     }

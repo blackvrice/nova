@@ -54,20 +54,25 @@ pub enum Constant {
     String(String),
     Unit,
     Struct(StructId, Vec<Constant>),
+    Tuple(StructId, Vec<Constant>),
 }
 impl Constant {
     pub fn from_const(value: &ConstValue) -> Self {
         enum Work<'a> {
             Value(&'a ConstValue),
-            Aggregate(StructId, usize),
+            Aggregate(StructId, usize, bool),
         }
         let mut work = vec![Work::Value(value)];
         let mut values = vec![];
         while let Some(task) = work.pop() {
             match task {
-                Work::Aggregate(id, count) => {
+                Work::Aggregate(id, count, tuple) => {
                     let fields = values.split_off(values.len() - count);
-                    values.push(Self::Struct(id, fields));
+                    values.push(if tuple {
+                        Self::Tuple(id, fields)
+                    } else {
+                        Self::Struct(id, fields)
+                    });
                 }
                 Work::Value(value) => match value {
                     ConstValue::Int32(v) => values.push(Self::Int32(*v)),
@@ -77,8 +82,12 @@ impl Constant {
                     ConstValue::Char(v) => values.push(Self::Char(*v)),
                     ConstValue::String(v) => values.push(Self::String(v.clone())),
                     ConstValue::Unit => values.push(Self::Unit),
-                    ConstValue::Struct(id, fields) => {
-                        work.push(Work::Aggregate(*id, fields.len()));
+                    ConstValue::Struct(id, fields) | ConstValue::Tuple(id, fields) => {
+                        work.push(Work::Aggregate(
+                            *id,
+                            fields.len(),
+                            matches!(value, ConstValue::Tuple(..)),
+                        ));
                         work.extend(fields.iter().rev().map(Work::Value));
                     }
                 },
@@ -103,6 +112,7 @@ impl Constant {
             Self::String(_) => Type::String,
             Self::Unit => Type::Unit,
             Self::Struct(id, _) => Type::Struct(*id),
+            Self::Tuple(id, _) => Type::Tuple(*id),
         }
     }
 }
@@ -181,6 +191,7 @@ pub struct Module {
     entry: SourceInfo,
     pub structs: StructRegistry,
     structs_original: StructRegistry,
+    tuple_ids: std::collections::BTreeSet<StructId>,
     callee_provenance: Vec<Callee>,
     projection_provenance: std::collections::BTreeMap<usize, FieldId>,
     constructor_provenance: std::collections::BTreeMap<usize, StructId>,
@@ -193,6 +204,13 @@ pub struct Module {
     pub sources: Vec<SourceInfo>,
 }
 impl Module {
+    pub fn aggregate_type(&self, id: StructId) -> Type {
+        if self.tuple_ids.contains(&id) {
+            Type::Tuple(id)
+        } else {
+            Type::Struct(id)
+        }
+    }
     pub fn entry_definition(&self) -> Option<DefId> {
         self.entry_main
             .as_ref()
@@ -232,11 +250,11 @@ impl Module {
 impl Drop for Constant {
     fn drop(&mut self) {
         let mut pending = match self {
-            Self::Struct(_, fields) => std::mem::take(fields),
+            Self::Struct(_, fields) | Self::Tuple(_, fields) => std::mem::take(fields),
             _ => return,
         };
         while let Some(mut value) = pending.pop() {
-            if let Self::Struct(_, fields) = &mut value {
+            if let Self::Struct(_, fields) | Self::Tuple(_, fields) = &mut value {
                 pending.append(fields);
             }
         }

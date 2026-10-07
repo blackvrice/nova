@@ -57,6 +57,7 @@ pub fn lower(
         entry: sources[hir.root().0],
         structs: checked.structs.clone(),
         structs_original: checked.structs.clone(),
+        tuple_ids: checked.tuple_ids.clone(),
         callee_provenance: vec![],
         projection_provenance: checked
             .projections
@@ -113,10 +114,21 @@ pub fn lower(
     }
     result.callee_provenance = result.callees.clone();
     for (index, node) in hir.nodes().iter().enumerate() {
+        if node.kind == HirKind::Tuple {
+            result.constructor_provenance.insert(
+                index,
+                ty(checked.type_table[index])?
+                    .aggregate()
+                    .ok_or(LoweringError::InvalidAnalysis)?,
+            );
+        }
         if node.kind == HirKind::Assignment {
             let mut root = node.children[0];
             let mut path = vec![];
-            while matches!(hir.nodes()[root.0].kind, HirKind::Projection { .. }) {
+            while matches!(
+                hir.nodes()[root.0].kind,
+                HirKind::Projection { .. } | HirKind::TupleProjection { .. }
+            ) {
                 path.push(checked.projections[root.0].ok_or(LoweringError::InvalidAnalysis)?);
                 root = hir.nodes()[root.0].children[0];
             }
@@ -475,6 +487,8 @@ impl Builder<'_> {
                         }
                         HirKind::Group
                         | HirKind::Interpolation
+                        | HirKind::Tuple
+                        | HirKind::TupleProjection { .. }
                         | HirKind::Projection { .. }
                         | HirKind::Prefix(_)
                         | HirKind::Binary(_)
@@ -499,9 +513,23 @@ impl Builder<'_> {
                                 .get(self.checked.type_table[id.0])
                                 .ok_or(LoweringError::InvalidAnalysis)?,
                         ),
-                        HirKind::Projection { .. } => Rvalue::Project(
-                            self.value(node.children[0])?,
-                            self.checked.projections[id.0].ok_or(LoweringError::InvalidAnalysis)?,
+                        HirKind::Projection { .. } | HirKind::TupleProjection { .. } => {
+                            Rvalue::Project(
+                                self.value(node.children[0])?,
+                                self.checked.projections[id.0]
+                                    .ok_or(LoweringError::InvalidAnalysis)?,
+                            )
+                        }
+                        HirKind::Tuple => Rvalue::Aggregate(
+                            self.checked
+                                .types
+                                .get(self.checked.type_table[id.0])
+                                .and_then(Type::aggregate)
+                                .ok_or(LoweringError::InvalidAnalysis)?,
+                            node.children
+                                .iter()
+                                .map(|&c| self.value(c))
+                                .collect::<Result<_, _>>()?,
                         ),
                         HirKind::Prefix(op) => Rvalue::Unary(op, self.value(node.children[0])?),
                         HirKind::Binary(op) => Rvalue::Binary(
@@ -614,7 +642,10 @@ impl Builder<'_> {
                     let children = &self.hir.nodes()[id.0].children;
                     let mut root = children[0];
                     let mut path = vec![];
-                    while matches!(self.hir.nodes()[root.0].kind, HirKind::Projection { .. }) {
+                    while matches!(
+                        self.hir.nodes()[root.0].kind,
+                        HirKind::Projection { .. } | HirKind::TupleProjection { .. }
+                    ) {
                         path.push(
                             self.checked.projections[root.0]
                                 .ok_or(LoweringError::InvalidAnalysis)?,

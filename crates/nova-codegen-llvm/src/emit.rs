@@ -121,7 +121,7 @@ pub fn emit_ir(
 }
 fn ty(ty: Type) -> String {
     match ty {
-        Type::Struct(id) => format!("%nova_struct_{}", id.0),
+        Type::Struct(id) | Type::Tuple(id) => format!("%nova_struct_{}", id.0),
         Type::Int8 | Type::UInt8 => "i8".into(),
         Type::Int16 | Type::UInt16 => "i16".into(),
         Type::Int32 | Type::UInt32 | Type::Char => "i32".into(),
@@ -135,7 +135,7 @@ fn ty(ty: Type) -> String {
     }
 }
 fn return_ty(t: Type) -> String {
-    if matches!(t, Type::Unit | Type::Struct(_)) {
+    if matches!(t, Type::Unit) || t.aggregate().is_some() {
         "void".into()
     } else {
         ty(t)
@@ -202,17 +202,17 @@ impl Emitter<'_> {
             ),
             Operand::Constant(Constant::Bool(value)) => (Type::Bool, value.to_string()),
             Operand::Constant(Constant::Char(value)) => (Type::Char, (*value as u32).to_string()),
-            Operand::Constant(Constant::Struct(id, fields)) => {
+            Operand::Constant(Constant::Struct(id, fields) | Constant::Tuple(id, fields)) => {
                 let mut value = String::from("zeroinitializer");
                 for (index, field) in fields.iter().enumerate() {
                     let (t, v) = self.operand(body, &Operand::Constant(field.clone()));
                     value = self.instruction(format!(
                         "insertvalue {} {value}, {} {v}, {index}",
-                        ty(Type::Struct(*id)),
+                        ty(self.mir.aggregate_type(*id)),
                         ty(t)
                     ));
                 }
-                (Type::Struct(*id), value)
+                (self.mir.aggregate_type(*id), value)
             }
             Operand::Constant(Constant::Unit) => (Type::Unit, "zeroinitializer".into()),
             Operand::Constant(Constant::String(text)) => {
@@ -374,7 +374,7 @@ impl Emitter<'_> {
             .iter()
             .enumerate()
             .map(|(id, &type_)| {
-                if matches!(type_, Type::Struct(_)) {
+                if type_.aggregate().is_some() {
                     format!("ptr readonly %arg{id}")
                 } else {
                     format!("{} %arg{id}", ty(type_))
@@ -382,7 +382,7 @@ impl Emitter<'_> {
             })
             .collect::<Vec<_>>()
             .join(", ");
-        let parameters = if matches!(signature.return_type, Type::Struct(_)) {
+        let parameters = if signature.return_type.aggregate().is_some() {
             if parameters.is_empty() {
                 "ptr %out".into()
             } else {
@@ -412,7 +412,7 @@ impl Emitter<'_> {
             {
                 for (index, _) in arguments.iter().enumerate() {
                     let t = self.mir.callees[callee.0].parameters[index];
-                    if matches!(t, Type::Struct(_)) {
+                    if t.aggregate().is_some() {
                         self.line(format!("%call.{bb}.{index} = alloca {}", ty(t)));
                     }
                 }
@@ -432,7 +432,7 @@ impl Emitter<'_> {
             }
         }
         for (id, parameter) in body.parameters.iter().enumerate() {
-            if matches!(signature.parameters[id], Type::Struct(_)) {
+            if signature.parameters[id].aggregate().is_some() {
                 let t = ty(signature.parameters[id]);
                 let v = self.instruction(format!("load {t}, ptr %arg{id}"));
                 self.line(format!("store {t} {v}, ptr %p{}", parameter.0));
@@ -457,11 +457,11 @@ impl Emitter<'_> {
                             let (t, f) = self.operand(body, field);
                             v = self.instruction(format!(
                                 "insertvalue {} {v}, {} {f}, {index}",
-                                ty(Type::Struct(*id)),
+                                ty(self.mir.aggregate_type(*id)),
                                 ty(t)
                             ));
                         }
-                        Some((Type::Struct(*id), v))
+                        Some((self.mir.aggregate_type(*id), v))
                     }
                     Rvalue::Project(receiver, field) => {
                         let (t, v) = self.operand(body, receiver);
@@ -716,7 +716,7 @@ impl Emitter<'_> {
                     ));
                 }
                 TerminatorKind::Return(value) => {
-                    if matches!(signature.return_type, Type::Struct(_)) {
+                    if signature.return_type.aggregate().is_some() {
                         let (t, v) = self.operand(body, value);
                         self.line(format!("store {} {v}, ptr %out", ty(t)));
                         self.line("ret void");
@@ -753,11 +753,11 @@ impl Emitter<'_> {
                         ));
                     } else {
                         let mut arguments = vec![];
-                        if matches!(callee_.return_type, Type::Struct(_)) {
+                        if callee_.return_type.aggregate().is_some() {
                             arguments.push(format!("ptr %p{}", destination.0));
                         }
                         for (index, (type_, value)) in args.iter().enumerate() {
-                            if matches!(type_, Type::Struct(_)) {
+                            if type_.aggregate().is_some() {
                                 self.line(format!(
                                     "store {} {value}, ptr %call.{bb}.{index}",
                                     ty(*type_)
@@ -773,7 +773,7 @@ impl Emitter<'_> {
                             return_ty(callee_.return_type),
                             callee.0
                         );
-                        if matches!(callee_.return_type, Type::Struct(_)) {
+                        if callee_.return_type.aggregate().is_some() {
                             self.line(call);
                         } else if callee_.return_type == Type::Unit {
                             self.line(call);

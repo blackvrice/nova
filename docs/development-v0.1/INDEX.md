@@ -16,7 +16,7 @@
 
 [P12 Copy struct 최소 계약](STRUCT_STAGE_B_PROPOSAL.md)과 [37-production EBNF](GRAMMAR_STAGE_B_STRUCT.ebnf), [수용 fixture](struct-proposal-fixtures/README.md)는 Accepted이며 [구현·검증 기록](STRUCT_IMPLEMENTATION.md)을 따른다. 전체 D06/D10/D12/D16/D30 승인이 아니다.
 
-[P13 Copy Tuple 최소 계약](TUPLE_STAGE_B_PROPOSAL.md), [40-production EBNF](GRAMMAR_STAGE_B_TUPLE.ebnf), [수용 fixture](tuple-proposal-fixtures/README.md)는 Draft/승인 대기이며 미구현이다. 전체 D09/D10/D12/D16 승인이 아니다.
+[P13 Copy Tuple 최소 계약](TUPLE_STAGE_B_PROPOSAL.md), [40-production EBNF](GRAMMAR_STAGE_B_TUPLE.ebnf), [수용 fixture](tuple-proposal-fixtures/README.md)는 Accepted이며 [구현 기록](TUPLE_IMPLEMENTATION.md)을 따른다. 전체 D09/D10/D12/D16 승인이 아니다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

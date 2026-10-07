@@ -1302,3 +1302,75 @@ fn p12_deeply_malformed_aggregate_payload_is_rejected_and_dropped_iteratively() 
     drop(module);
     drop(value);
 }
+
+#[test]
+fn p13_tuple_metadata_path_arity_and_kind_corruption_is_rejected() {
+    let source="const C=((1,),true);func echo(t:((int,),bool))->((int,),bool){return t} func main(){var t=echo(C);t.0.0=t.0.0+1;print(\"{t.0.0}\")}";
+    let original = pass(source);
+    assert!(validate(&original).is_empty());
+    let mut bad = original.clone();
+    let rv = bad
+        .bodies
+        .iter_mut()
+        .flat_map(|b| &mut b.blocks)
+        .flat_map(|b| &mut b.statements)
+        .find_map(|s| {
+            if let StatementKind::Assign(_, Rvalue::Update(_, path, _)) = &mut s.kind {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    rv[0].index = 1;
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    let arg = bad
+        .bodies
+        .iter_mut()
+        .flat_map(|b| &mut b.blocks)
+        .filter_map(|b| b.terminator.as_mut())
+        .find_map(|t| {
+            if let TerminatorKind::Call { arguments, .. } = &mut t.kind {
+                arguments
+                    .iter_mut()
+                    .find(|a| matches!(a, Operand::Constant(Constant::Tuple(..))))
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    if let Operand::Constant(Constant::Tuple(_, fields)) = arg {
+        fields.clear();
+    }
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    let local = bad
+        .bodies
+        .iter_mut()
+        .flat_map(|b| &mut b.locals)
+        .find(|l| matches!(l.ty, Type::Tuple(_)))
+        .unwrap();
+    if let Type::Tuple(sid) = local.ty {
+        local.ty = Type::Struct(sid);
+    }
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    bad.structs.values_mut().next().unwrap().fields[0].mutable = false;
+    assert!(!validate(&bad).is_empty());
+}
+#[test]
+fn p13_malformed_deep_tuple_constant_conversion_and_gate_are_iterative() {
+    let mut module = pass("const C=(1,);func main(){let t=C}");
+    let sid = *module.structs.keys().next().unwrap();
+    let mut value = nova_types::ConstValue::Unit;
+    for _ in 0..30000 {
+        value = nova_types::ConstValue::Tuple(sid, vec![value]);
+    }
+    let constant = Constant::from_const(&value);
+    module.bodies[0].blocks[0].statements[0].kind =
+        StatementKind::Assign(Place(LocalId(0)), Rvalue::Use(Operand::Constant(constant)));
+    assert!(!validate(&module).is_empty());
+    drop(module);
+    drop(value);
+}

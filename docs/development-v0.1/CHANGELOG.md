@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P13 승인과 Copy Tuple 구현
+
+- 사용자 “P13 승인하고 Copy Tuple 구현 진행”을 계약·40-production EBNF·accepted ledger에 기록.
+- structural Copy Tuple·numeric selector 원 byte subspan·혼합 경로·기대 타입·const·mixed layout graph 구현.
+- 독립 MIR shape kind/ID/path/signature gate와 private snapshot/out ABI, 반복형 malformed payload 해제 확장.
+- 기본 265개·실제 LLVM 9개·Windows Native 34개와 정확한 부정 10사례 code/Span을 검증.
+- [구현 기록](TUPLE_IMPLEMENTATION.md), [예제](../../examples/tuples.nova), [사용자 실행 명령](../../TESTING.md) 갱신.
+- 원본 148개 보존, Array·Enum/match·일반 Move element·전체 D09/D10/D12/D16은 후속.
+
 ## 2026-10-07 — P13 Copy Tuple 착수안 (Draft)과 사용자 테스트 안내
 
 - structural Copy Tuple·위치 element·numeric projection·혼합 가변 경로·const·private ABI와 자원 제한 제안.

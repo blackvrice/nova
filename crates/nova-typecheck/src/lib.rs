@@ -24,6 +24,8 @@ pub struct Signature {
 pub struct Checked {
     pub types: TypeInterner,
     pub structs: nova_types::StructRegistry,
+    pub tuple_ids: std::collections::BTreeSet<nova_types::StructId>,
+    pub tuple_origins: std::collections::BTreeMap<nova_types::StructId, HirId>,
     pub field_sources: std::collections::BTreeMap<nova_types::StructId, Vec<HirId>>,
     pub projections: Vec<Option<nova_types::FieldId>>,
     pub type_table: Vec<TypeId>,
@@ -116,6 +118,9 @@ impl fmt::Display for CheckError {
 impl std::error::Error for CheckError {}
 
 struct Checker<'a> {
+    type_syntax_seen: std::collections::BTreeSet<usize>,
+    tuple_shapes: std::collections::HashMap<Vec<Type>, nova_types::StructId>,
+    tuple_shape_sources: std::collections::HashMap<Vec<Type>, HirId>,
     module: &'a Module,
     resolved: &'a Resolved,
     result: Checked,
@@ -235,6 +240,8 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     let result = Checked {
         types,
         structs: Default::default(),
+        tuple_ids: Default::default(),
+        tuple_origins: Default::default(),
         field_sources: Default::default(),
         projections: vec![None; size],
         type_table: vec![error; size],
@@ -278,6 +285,9 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 flags
             });
     let mut checker = Checker {
+        type_syntax_seen: Default::default(),
+        tuple_shapes: Default::default(),
+        tuple_shape_sources: Default::default(),
         module,
         resolved,
         result,
@@ -350,6 +360,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             checker.set(HirId(index), Type::Unit);
         }
     }
+    checker.check_tuple_limit();
     Ok(checker.result)
 }
 
@@ -384,6 +395,33 @@ impl Checker<'_> {
         });
     }
     fn type_syntax(&mut self, id: HirId) -> TypeId {
+        let mut work = vec![(id, false)];
+        while let Some((at, exit)) = work.pop() {
+            if self.type_syntax_seen.contains(&at.0) {
+                continue;
+            }
+            let node = &self.module.nodes()[at.0];
+            if node.kind == HirKind::TupleType && !exit {
+                work.push((at, true));
+                work.extend(node.children.iter().rev().map(|&c| (c, false)));
+                continue;
+            }
+            if node.kind == HirKind::TupleType {
+                let fields = node
+                    .children
+                    .iter()
+                    .map(|c| self.ty(self.result.type_table[c.0]))
+                    .collect();
+                let ty = self.intern_tuple(at, fields, false);
+                self.set(at, ty);
+            } else {
+                self.type_syntax_atom(at);
+            }
+            self.type_syntax_seen.insert(at.0);
+        }
+        self.result.type_table[id.0]
+    }
+    fn type_syntax_atom(&mut self, id: HirId) -> TypeId {
         let node = &self.module.nodes()[id.0];
         let ty = match node.kind {
             HirKind::UnitType => Type::Unit,
@@ -814,6 +852,30 @@ impl Checker<'_> {
                         },
                     ));
                 }
+                HirKind::Tuple => {
+                    let expected = context.expected.map(|t| self.ty(t));
+                    let fields = expected.and_then(|ty| {
+                        if let Type::Tuple(sid) = ty {
+                            Some(self.result.structs[&sid].fields.clone())
+                        } else {
+                            None
+                        }
+                    });
+                    for (index, &child) in node.children.iter().enumerate().rev() {
+                        let expected = fields
+                            .as_ref()
+                            .filter(|f| f.len() == node.children.len())
+                            .map(|f| self.result.types.intern(f[index].ty));
+                        pending.push(Work::Enter(
+                            child,
+                            Context {
+                                expected,
+                                direct_callee: false,
+                                ..context
+                            },
+                        ));
+                    }
+                }
                 HirKind::Group => {
                     pending.push(Work::Enter(node.children[0], context));
                 }
@@ -997,6 +1059,36 @@ impl Checker<'_> {
                 self.set(id, Type::Unit);
             }
             HirKind::Assignment => self.set(id, Type::Unit),
+            HirKind::Tuple => {
+                if let Some(expected) = context.expected {
+                    if let Type::Tuple(sid) = self.ty(expected) {
+                        let fields = self.result.structs[&sid].fields.clone();
+                        if fields.len() == node.children.len() {
+                            let mut invalid = false;
+                            for (&child, field) in node.children.iter().zip(fields) {
+                                let expected = self.result.types.intern(field.ty);
+                                invalid |= self.mismatch(child, expected, None);
+                            }
+                            if invalid {
+                                self.set(id, Type::Error);
+                                return;
+                            }
+                        }
+                    }
+                }
+                let fields = node
+                    .children
+                    .iter()
+                    .map(|c| {
+                        self.ty(self.result.coercions[c.0].unwrap_or(self.result.type_table[c.0]))
+                    })
+                    .collect();
+                let ty = self.intern_tuple(id, fields, true);
+                self.set(id, ty);
+            }
+            HirKind::TupleProjection { index, index_span } => {
+                self.tuple_projection(id, *index, *index_span)
+            }
             HirKind::Projection { name, name_span } => self.projection(id, *name, *name_span),
             HirKind::Break | HirKind::Continue => {
                 if context.loop_depth == 0 {
@@ -1199,7 +1291,7 @@ impl Checker<'_> {
                     self.set(id, Type::Error);
                 }
             }
-            HirKind::TypeName(_) | HirKind::UnitType => {
+            HirKind::TypeName(_) | HirKind::UnitType | HirKind::TupleType => {
                 self.type_syntax(id);
             }
             _ => self.set(id, Type::Unit),
