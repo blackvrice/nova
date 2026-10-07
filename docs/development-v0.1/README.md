@@ -43,7 +43,7 @@ print 충돌 정정도 사용자 승인했고 현재 API·진단·검증 증거�
 
 [P07 고정 폭 정수 타입·손실 없는 승격](INTEGER_STAGE_B_PROPOSAL.md)은 사용자 승인으로 Accepted다.
 8종 정수·literal 문맥·checked 산술·const·MIR 변환·보간의 [구현·검증 기록](INTEGER_IMPLEMENTATION.md).
-float/cast 최소 범위는 P09/P10을 따르고 module은 P11, aggregate는 별도 후속 범위다.
+float/cast 최소 범위는 P09/P10, module은 P11, Copy struct는 P12를 따른다. 나머지 aggregate는 후속이다.
 
 [P08 char·Unicode scalar·보간 계약](CHAR_STAGE_B_PROPOSAL.md)과
 [31-production EBNF](GRAMMAR_STAGE_B_CHAR.ebnf)는 2026-10-04 사용자 승인으로 Accepted다.
@@ -111,6 +111,6 @@ frontend/MIR pass는 Native 실행 성공이 아니다. P03 Windows x64 Stage A 
 일반 Arithmetic/출력/ABI 전체 정책은 Draft이며 P03 subset만 승인했다.
 
 [P12 Copy struct 최소 계약](STRUCT_STAGE_B_PROPOSAL.md)·[전용 EBNF](GRAMMAR_STAGE_B_STRUCT.ebnf)·
-[두 파일 수용 fixture](struct-proposal-fixtures/README.md)는 Draft/사용자 승인 대기다.
-nominal Copy field·위치 인수 생성·type import·field 읽기/대입·const·private ABI와 제한을 제안했다.
-승인 전에는 Compiler와 accepted ledger에 적용하지 않는다. String field·init/Drop·일반 Move/borrow는 후속이다.
+[두 파일 수용 fixture](struct-proposal-fixtures/README.md)는 2026-10-05 사용자 승인으로 Accepted다.
+nominal Copy field·위치 인수 생성·type import·field 읽기/대입·const·private ABI와 제한을 구현했다.
+[구현·검증 기록](STRUCT_IMPLEMENTATION.md)을 따른다. String field·init/Drop·일반 Move/borrow는 후속이다.

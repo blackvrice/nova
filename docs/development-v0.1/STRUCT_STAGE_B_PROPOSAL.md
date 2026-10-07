@@ -1,10 +1,11 @@
 # Stage B Copy struct 최소 계약 — P12
 
-작성일: 2026-10-05. 상태: **Draft / 사용자 승인 대기**.
-아래 내용은 새 의미 규칙의 제안이며 Compiler에 적용하지 않았다.
+작성일·승인일: 2026-10-05. 상태: **Accepted / 구현 완료**.
+사용자 “P12 승인하고 Copy struct 구현 진행”으로 아래 subset을 승인했다.
+2026-10-07 완료한 [구현·검증 기록](STRUCT_IMPLEMENTATION.md)을 따른다.
 D01~D05/P01~P11과 원본 Canonical을 보존한다. 전체 Stage B 또는 D06/D10/D12/D16/D30 승인이 아니다.
 
-## Specification Change Proposal
+## Specification Change Proposal — 승인 전 근거 기록
 
 - 관련 기준: [Canonical](CANONICAL.md), [원본 Struct 선언](../03_Types_Declarations/NOVA-027_Struct_Class_Enum_선언_사양서.md),
   [원본 초기화](../03_Types_Declarations/NOVA-031_생성자_필드_초기화_사양서.md),
@@ -12,7 +13,7 @@ D01~D05/P01~P11과 원본 Canonical을 보존한다. 전체 Stage B 또는 D06/D
   [원본 namespace](../02_Names_Modules/NOVA-023_Package_간_이름_해석_사양서.md),
   [Copy 초안](specs/NOVA-051.md), [결정 초안](DECISIONS.md), [P11](MODULE_STAGE_B_PROPOSAL.md).
 - 현재 확정: Struct는 값 의미이며 field는 let/var를 명시한다. 직접 재귀 값 layout은 금지한다.
-  type/value/module namespace는 분리한다. Parser와 Backend는 아직 struct를 지원하지 않는다.
+  type/value/module namespace는 분리한다. 승인 전 Parser와 Backend는 struct를 지원하지 않았다.
 - 빈 부분: 생성 표기, Copy 판정, projection의 가변성, type import, const payload와 private Native ABI.
 - 제안: 아래 Copy field로만 구성된 nominal struct를 추가하고 위치 인수 생성·field 읽기/대입·const·Native를 연결한다.
 - 이유: Stage C의 일반 Move/borrow/Drop을 앞당기지 않고 Stage B aggregate의 값 복사와 layout을 검증한다.
@@ -156,8 +157,8 @@ func main() {
 | checked const 실패 / const cycle·budget | N3201 / N3202 | 기존 P05/P06/P10 Span 규칙 |
 | type/field/depth/layout/count 상한 | N8901 | 초과 선언 + 한도 note/field secondary |
 
-[두 파일 수용 예제와 부정 사례](struct-proposal-fixtures/README.md)는 Draft 기대값이다.
-현재 compiler 실행 증거나 승인된 conformance가 아니다. 구현 완료에는 다음 독립 검증이 필요하다.
+[두 파일 수용 예제와 부정 사례](struct-proposal-fixtures/README.md)는 승인 후 Compiler와 Native로 검증했다.
+아래 수용 기준의 실제 검증 범위와 환경은 [구현 기록](STRUCT_IMPLEMENTATION.md)에 정리했다.
 
 1. Parser의 field END/Unicode/주석·잘린 입력 복구·postfix 결합·제한 target과 기존 snapshot 회귀.
 2. type/value 분리·예약 primitive·forward type·alias 원 ID·동명 type/value 원자 import·private 생성/추론 값 검사.
@@ -169,27 +170,17 @@ func main() {
    Linux Native 실행은 현 host에서 검증했다고 주장하지 않는다.
 8. cargo fmt/clippy/workspace test/all-features check, Runtime fmt와 문서 validator.
 
-## 이번 초안의 검증 기록
+## 구현 검증 기록
 
-2026-10-05 현재 초안 단계에서 다음 명령이 PASS다.
+2026-10-05~2026-10-07 기본 workspace 252개, LLVM opt-in 8개, Windows Native opt-in 32개를 검증했다.
+문서 validator는 원본 148개 hash·승인 ledger·37-production grammar·fixture 데이터를 검사한다.
+Compiler/Native 실행 증거, 후속 gate 보강 뒤의 재검증 순서와 환경 제한은
+[구현·검증 기록](STRUCT_IMPLEMENTATION.md)을 따른다.
 
-```text
-node tools/docs/build-pack.mjs
-node tools/docs/validate-pack.mjs
-cargo fmt --check
-rustfmt --check --edition 2021 crates/nova-cli/runtime/stage_a.rs
-cargo clippy --workspace --all-targets --offline -- -D warnings
-cargo test --workspace --offline
-cargo check --workspace --all-features --offline
-```
-
-[문서 검증 결과](VALIDATION.md)는 원본 148개 hash, 37-production grammar 경계와 Draft fixture 데이터를 확인한다.
-Rust 검사는 기존 P01~P11 구현의 회귀 검증이다. ignored LLVM/Native 테스트는 이번 문서 변경에서 재실행하지 않았다.
-P12 Parser/타입/MIR/Native 수용 테스트는 구현 전이므로 통과했다고 보고하지 않는다.
-
-## 승인 요청과 미포함 범위
+## 승인 기록과 미포함 범위
 
 사용자의 붙여넣은 개발 지침: “사용자의 승인을 받기 전에는 해당 사양 변경을 적용하지 마십시오.”
-승인 요청은 **P12의 Copy struct·위치 인수 생성·type import·field 읽기/가변 경로·const·private ABI·명시된 제한**이다.
-승인 후 이 subset을 구현한다. 전체 D06/D10/D12/D16/D30이나 String field·명시적 init/Drop·일반 borrow/Move,
+사용자 승인: **“P12 승인하고 Copy struct 구현 진행”** (2026-10-05).
+승인 범위는 P12의 Copy struct·위치 인수 생성·type import·field 읽기/가변 경로·const·private ABI·명시된 제한이다.
+전체 D06/D10/D12/D16/D30이나 String field·명시적 init/Drop·일반 borrow/Move,
 Enum/Tuple/Array/Class·Package·public ABI는 승인 대상에 포함하지 않는다.

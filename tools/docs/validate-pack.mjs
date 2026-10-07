@@ -213,16 +213,16 @@ assert(fs.readFileSync(path.join(moduleFixtureRoot, 'main.nova'), 'utf8').includ
   && fs.readFileSync(path.join(moduleFixtureRoot, 'math.nova'), 'utf8').includes('use main::twice'), 'P11 missing fixture cyclic import/alias');
 checks.push('P11 Module 승인 subset/날짜·accepted ledger·기존 P10 production 보존·34-production EBNF와 수용 2-file fixture 데이터 (컴파일 실행 아님)');
 
-const structProposal = manifest.draft_proposals?.find(p => p.id === 'P12');
-assert(structProposal?.status === 'Draft' && structProposal?.implementation_verified === false
+const structProposal = manifest.accepted_proposals?.find(p => p.id === 'P12');
+assert(structProposal?.status === 'Accepted' && structProposal?.implementation_verified === true
   && structProposal?.grammar_change === true && structProposal?.document === 'STRUCT_STAGE_B_PROPOSAL.md'
-  && structProposal?.grammar === 'GRAMMAR_STAGE_B_STRUCT.ebnf' && !structProposal?.approval_date,
-  'P12 missing Draft/unimplemented ledger');
-assert(!manifest.accepted_proposals?.some(p => p.id === 'P12'), 'P12 must not be accepted without user approval');
+  && structProposal?.grammar === 'GRAMMAR_STAGE_B_STRUCT.ebnf' && structProposal?.approval_date === '2026-10-05',
+  'P12 missing approved/implemented ledger');
+assert(!manifest.draft_proposals?.some(p => p.id === 'P12'), 'P12 must not remain Draft after user approval');
 assert(fs.readFileSync(path.join(pack, structProposal?.document ?? 'STRUCT_STAGE_B_PROPOSAL.md'), 'utf8')
-  .includes('Draft / 사용자 승인 대기'), 'Invalid P12 proposal status');
+  .includes('Accepted / 구현 완료'), 'Invalid P12 proposal status');
 const structGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_STRUCT.ebnf'), 'utf8');
-assert(structGrammar.includes('Draft, not approved or implemented'), 'Invalid P12 grammar status');
+assert(structGrammar.includes('Accepted by user 2026-10-05'), 'Invalid P12 grammar status');
 const structProductions = productions(structGrammar);
 for (const [name, value] of moduleProductions) {
   if (!['program', 'assignment', 'postfix_expr'].includes(name)) {
@@ -238,12 +238,12 @@ assert(structProductions.get('field_decl') === '[visibility],("let"|"var"),"IDEN
 assert(structProductions.get('field_path') === '"IDENT",{".","IDENT"}', 'P12 invalid field target grammar');
 const structFixtureRoot = path.join(pack, 'struct-proposal-fixtures');
 const structFixture = JSON.parse(fs.readFileSync(path.join(structFixtureRoot, 'expected.json'), 'utf8'));
-assert(structFixture.proposal === 'P12' && structFixture.status === 'Draft'
-  && structFixture.implementation_verified === false && !structFixture.validated_result, 'P12 fixture must remain unverified Draft');
+assert(structFixture.proposal === 'P12' && structFixture.status === 'Accepted'
+  && structFixture.implementation_verified === true && !structFixture.proposed_result, 'P12 fixture acceptance status missing');
 assert(structFixture.entry === 'main.nova' && structFixture.source_root === '.'
   && JSON.stringify(structFixture.reachable_modules) === '["main","geometry"]', 'P12 fixture graph mismatch');
-assert(structFixture.proposed_result?.check_exit === 0 && structFixture.proposed_result?.native_exit === 0
-  && structFixture.proposed_result?.stdout === 'original=21, snapshot=20, shifted=21, tag=🙂\n', 'P12 proposed result mismatch');
+assert(structFixture.validated_result?.check_exit === 0 && structFixture.validated_result?.native_exit === 0
+  && structFixture.validated_result?.stdout === 'original=21, snapshot=20, shifted=21, tag=🙂\n', 'P12 validated result mismatch');
 assert(structFixture.negative_cases?.length === 10
   && new Set(structFixture.negative_cases.map(c => c.name)).size === 10, 'P12 negative fixture set mismatch');
 for (const name of ['main.nova', 'geometry.nova', ...structFixture.negative_cases.map(c => c.source)]) {
@@ -266,7 +266,7 @@ for (const c of structFixture.negative_cases) {
 assert(fs.readFileSync(path.join(structFixtureRoot, 'main.nova'), 'utf8').includes('use geometry::Pair as P')
   && fs.readFileSync(path.join(structFixtureRoot, 'main.nova'), 'utf8').includes('original.pair.x = original.pair.x + 1')
   && fs.readFileSync(path.join(structFixtureRoot, 'geometry.nova'), 'utf8').includes('public struct Pair'), 'P12 missing Copy/import fixture data');
-checks.push('P12 Draft/미승인·미구현 ledger·P11의 세 production 변경/세 production 추가·37-production EBNF·두 파일/부정 10사례 UTF-8 Span·예상 결과 데이터 (컴파일 실행 아님)');
+checks.push('P12 Accepted/승인·구현 ledger·P11의 세 production 변경/세 production 추가·37-production EBNF·두 파일/부정 10사례 UTF-8 Span·검증 결과 데이터 (컴파일 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

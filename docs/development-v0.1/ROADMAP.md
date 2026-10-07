@@ -86,10 +86,10 @@ float remainder/math API, Linux Native host 실행 검증이다. 전체 D07 승�
 [전용 EBNF](GRAMMAR_STAGE_B_MODULE.ebnf)는 top-level use/visibility만 추가한다.
 root-relative 함수/전역 const import·alias·가시성·reachable graph·cross-file const/entry/source identity와
 [구현·검증 증거](MODULE_IMPLEMENTATION.md)를 따른다. module alias/qualified value/reexport/Package와 전체 D06/D30은 후속이다.
-다음 최소 범위는 [P12 Copy struct](STRUCT_STAGE_B_PROPOSAL.md)로 구체화했다.
-위치 인수 생성·type import·field 읽기/가변 경로·const·private layout/ABI와 자원 한도를 제안한다.
-[37-production EBNF](GRAMMAR_STAGE_B_STRUCT.ebnf)와 [두 파일 fixture](struct-proposal-fixtures/README.md)는 Draft/승인 대기이며 미구현이다.
-승인 후 구현하며 String field·명시적 init/Drop·일반 Move/borrow·Enum/Tuple/Array는 후속이다.
+[P12 Copy struct](STRUCT_STAGE_B_PROPOSAL.md)는 2026-10-05 사용자 승인 후 구현했다.
+위치 인수 생성·type import·field 읽기/가변 경로·const·private layout/ABI와 자원 한도를 제공한다.
+[37-production EBNF](GRAMMAR_STAGE_B_STRUCT.ebnf)와 [두 파일 fixture](struct-proposal-fixtures/README.md)는 Accepted이며
+[구현·검증 기록](STRUCT_IMPLEMENTATION.md)을 따른다. String field·명시적 init/Drop·일반 Move/borrow·Enum/Tuple/Array는 별도 후속 계약이다.
 
 Pin/self-reference, dynamic objects/vtable/associated types, async/generator, registry server,
 hosted .NET/JVM/Python, self-hosting은 별도 버전/범위 검토. Stage A의 Advanced Optimization,

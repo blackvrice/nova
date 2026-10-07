@@ -1,4 +1,9 @@
 //! P02 Stage A semantic types. No LLVM or target host type dependency.
+mod aggregate;
+pub use aggregate::{
+    layout as struct_layout, FieldId, StructField, StructId, StructLayout, StructRegistry,
+    StructShape,
+};
 mod float;
 mod integer;
 pub use float::{
@@ -23,6 +28,7 @@ pub enum Type {
     Char,
     String,
     Function,
+    Struct(StructId),
 }
 impl Type {
     pub const fn float(self) -> Option<FloatKind> {
@@ -84,6 +90,7 @@ pub enum ConstValue {
     Char(char),
     String(String),
     Unit,
+    Struct(StructId, Vec<ConstValue>),
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CastError {
@@ -127,6 +134,7 @@ impl ConstValue {
             Self::Char(_) => Type::Char,
             Self::String(_) => Type::String,
             Self::Unit => Type::Unit,
+            Self::Struct(id, _) => Type::Struct(*id),
         }
     }
     pub fn from_integer(value: IntegerValue) -> Self {
@@ -184,6 +192,20 @@ impl TypeInterner {
             (Some(Type::Error), Some(_)) | (Some(_), Some(Type::Error)) => true,
             (Some(left), Some(right)) => left == right,
             _ => false,
+        }
+    }
+}
+
+impl Drop for ConstValue {
+    fn drop(&mut self) {
+        let mut pending = match self {
+            Self::Struct(_, fields) => std::mem::take(fields),
+            _ => return,
+        };
+        while let Some(mut value) = pending.pop() {
+            if let Self::Struct(_, fields) = &mut value {
+                pending.append(fields);
+            }
         }
     }
 }

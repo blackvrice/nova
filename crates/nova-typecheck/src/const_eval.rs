@@ -33,6 +33,8 @@ enum Work {
     Evaluate(HirId),
     Convert(HirId),
     Cast(HirId),
+    Aggregate(HirId),
+    Project(HirId),
     Unary(HirId, Symbol),
     Binary(HirId, Symbol),
     Logical(HirId, Symbol),
@@ -84,6 +86,13 @@ pub(crate) fn evaluate(
                 | Symbol::AndAnd
                 | Symbol::OrOr,
             ) => true,
+            HirKind::Projection { .. } => true,
+            HirKind::Call => checked.calls[id.0].is_some_and(|d| {
+                matches!(
+                    resolved.definitions[d.0].kind,
+                    nova_resolve::DefinitionKind::Struct(_)
+                )
+            }),
             HirKind::Name(_) => matches!(resolved.references[id.0],
                 Some(Resolution::Definition(def)) if resolved.definitions[def.0].constant
                     && matches!(checked.const_values[def.0], ConstEvaluation::Value { .. })),
@@ -99,6 +108,8 @@ pub(crate) fn evaluate(
         }
         if matches!(node.kind, HirKind::Cast { .. }) {
             pending.push(node.children[0]);
+        } else if node.kind == HirKind::Call {
+            pending.extend(node.children[1..].iter().rev().copied());
         } else {
             pending.extend(node.children.iter().rev().copied());
         }
@@ -114,6 +125,19 @@ pub(crate) fn evaluate(
     let mut values = vec![];
     while let Some(task) = work.pop() {
         match task {
+            Work::Aggregate(id) => {
+                let count = module.nodes()[id.0].children.len() - 1;
+                let fields = values.split_off(values.len() - count);
+                let sid = nova_types::StructId(checked.calls[id.0].expect("checked constructor").0);
+                values.push(ConstValue::Struct(sid, fields));
+            }
+            Work::Project(id) => {
+                let receiver = values.pop().expect("receiver");
+                let ConstValue::Struct(_, fields) = &receiver else {
+                    unreachable!("checked receiver")
+                };
+                values.push(fields[checked.projections[id.0].expect("field ID").index].clone());
+            }
             Work::Cast(id) => {
                 let value: ConstValue = values.pop().expect("cast operand");
                 let dest = checked
@@ -159,6 +183,14 @@ pub(crate) fn evaluate(
                             unreachable!("permission checked cached const value")
                         };
                         values.push(value.clone());
+                    }
+                    HirKind::Call => {
+                        work.push(Work::Aggregate(id));
+                        work.extend(node.children[1..].iter().rev().copied().map(Work::Evaluate));
+                    }
+                    HirKind::Projection { .. } => {
+                        work.push(Work::Project(id));
+                        work.push(Work::Evaluate(node.children[0]));
                     }
                     HirKind::Cast { .. } => {
                         work.push(Work::Cast(id));

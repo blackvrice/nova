@@ -96,19 +96,19 @@
       "grammar": "GRAMMAR_STAGE_B_MODULE.ebnf",
       "grammar_change": true,
       "implementation_verified": true
-    }
-  ],
-  "draft_proposals": [
+    },
     {
       "id": "P12",
-      "status": "Draft",
+      "status": "Accepted",
+      "approval_date": "2026-10-05",
       "scope": "Stage B nominal Copy structs positional construction type imports field reads mutable paths const private aggregate ABI and resource bounds",
       "document": "STRUCT_STAGE_B_PROPOSAL.md",
       "grammar": "GRAMMAR_STAGE_B_STRUCT.ebnf",
       "grammar_change": true,
-      "implementation_verified": false
+      "implementation_verified": true
     }
   ],
+  "draft_proposals": [],
   "authored_date": "2026-10-03",
   "topics": [
     {
@@ -263,7 +263,7 @@
       "original": "../01_Source_Syntax/NOVA-014_문법_명세_및_EBNF_사양서.md",
       "draft": "specs/NOVA-014.md",
       "original_sha256": "fb7321f8bb8fe1884451ac7bd13fb81f4950446b2a48b124f0a20a424938f673",
-      "draft_sha256": "7720bcfd560ee4e8fdcfbf3b3dc68563ca7eae09b94c5a9555e950134cf4d43a"
+      "draft_sha256": "4d78d48e7c9f9341184db3249ff28f0eb1b0a102c7d39b60133b4916ff8ff577"
     },
     {
       "id": "NOVA-015",
@@ -285,7 +285,7 @@
       "original": "../01_Source_Syntax/NOVA-016_Parser_AST_사양서.md",
       "draft": "specs/NOVA-016.md",
       "original_sha256": "081762c4641cbceb0033b5be5f4cc55fa63efb9a993f69d920adf6255cb47e0c",
-      "draft_sha256": "9512d3a1237c5b5ebd8ce33cd32f8298f3ae09a4efd8d848976b4971ba17669f"
+      "draft_sha256": "7c42c3694c2cfb19ceea9528e9eff55b019089eae07c406ad3ea05d5aadd02e3"
     },
     {
       "id": "NOVA-017",
@@ -318,7 +318,7 @@
       "original": "../02_Names_Modules/NOVA-019_이름_해석_Scope_사양서.md",
       "draft": "specs/NOVA-019.md",
       "original_sha256": "1ce115352e028700cf60b852d50ef8a9764e5ce30f1ef0f18471e2403bf9f422",
-      "draft_sha256": "57f4ad44cdd8f2d96ed9848d360d0e783c30fcd2027a6fe2b4a31a8ddabe38bf"
+      "draft_sha256": "4aec5965922db8a96d0a58767339331687157588b066dbbcc9ca981abafd59a6"
     },
     {
       "id": "NOVA-020",
@@ -329,7 +329,7 @@
       "original": "../02_Names_Modules/NOVA-020_Module_Import_사양서.md",
       "draft": "specs/NOVA-020.md",
       "original_sha256": "c9e3247a6530ee25b5713f8856c48d6882dec14934e26b0a17b22145021934f9",
-      "draft_sha256": "b6772e33e38d8b750b7f43a899b0b650b9f0a1290286cebaaff2f708e19a4753"
+      "draft_sha256": "98167e31bcedc0e0d54c492fcff814a042a76e0945b7dfd798b4672773e5de88"
     },
     {
       "id": "NOVA-021",
@@ -362,7 +362,7 @@
       "original": "../02_Names_Modules/NOVA-023_Package_간_이름_해석_사양서.md",
       "draft": "specs/NOVA-023.md",
       "original_sha256": "5fbcbb4676b7bd43aa43e9d442a8184d7f58af5ea90b448a55cfd87a51dcd32e",
-      "draft_sha256": "0f6b3a66a538efb76dd0393964c5490f71635531cb9a74a69247dfab9e8da848"
+      "draft_sha256": "c7b8e0ad59a46682f32922693e84ae40b4bc4a76df388e7e59a71647d66b69d6"
     },
     {
       "id": "NOVA-024",
@@ -373,7 +373,7 @@
       "original": "../02_Names_Modules/NOVA-024_이름_충돌_Shadowing_진단_기준서.md",
       "draft": "specs/NOVA-024.md",
       "original_sha256": "fb8761f5c1c2afa0b8ff28f9c68ec5497c094fe5a11a5710fb978fa92e65fe33",
-      "draft_sha256": "da83188847fbd90bcd0f955a93faa92ae8b473206e8aef07dbd9bb4283f17a82"
+      "draft_sha256": "3ca445e97eb94560d4409e8827c24fc2f5e6987067ecd0da9c1e46ca800847d3"
     },
     {
       "id": "NOVA-025",
@@ -384,7 +384,7 @@
       "original": "../03_Types_Declarations/NOVA-025_타입_시스템_타입_추론_형변환_사양서.md",
       "draft": "specs/NOVA-025.md",
       "original_sha256": "f810d44043c6ce5b015db4df71c295df113fcdc69817280662ea460a31f3e7c2",
-      "draft_sha256": "48642a84a21d85a9f985f6e3ec347005dcbd7411e1c6028562c1fb7e662fc76f"
+      "draft_sha256": "c25facd556e70ad2a174f3ff1533fe1eaa93e51668bb7d28e2f094466514c861"
     },
     {
       "id": "NOVA-026",
@@ -406,7 +406,7 @@
       "original": "../03_Types_Declarations/NOVA-027_Struct_Class_Enum_선언_사양서.md",
       "draft": "specs/NOVA-027.md",
       "original_sha256": "a755c35c897295b94cdd7c95c3e94f37cbd743a9be2cf6b71697d86e45beac61",
-      "draft_sha256": "eff8c2df59a69249fcb2155247f00ddce6f18c0a357938e22f75d6d96e025db0"
+      "draft_sha256": "d67dc9684ab54e9f74b2d043181da9721abbbb2d8c7ced7bd6ef7790c1a1ea5a"
     },
     {
       "id": "NOVA-028",
@@ -450,7 +450,7 @@
       "original": "../03_Types_Declarations/NOVA-031_생성자_필드_초기화_사양서.md",
       "draft": "specs/NOVA-031.md",
       "original_sha256": "b33d8dec6bf36ec4ed3e3c4f428036782100263e4d8a205f9d79b63d281d2d68",
-      "draft_sha256": "72a0a60b5fdadd5a8ed8b90a480d34f8399684068b8b433bf6d6268947bb91f0"
+      "draft_sha256": "01047d1d38d61f58782d98a47953bbd7ce3ad3b368952db738f1881ddcdbb617"
     },
     {
       "id": "NOVA-032",
@@ -472,7 +472,7 @@
       "original": "../03_Types_Declarations/NOVA-033_타입_레이아웃_정렬_Niche_사양서.md",
       "draft": "specs/NOVA-033.md",
       "original_sha256": "949ef8b7538b2045233b42a6637d93894cdfdd781249c8ac941aafcf7aa9bddb",
-      "draft_sha256": "f5a55b3aaebedc62524e60c2f55f938a8fa66f68a0af3fb84eafcac35312473f"
+      "draft_sha256": "1c7c874a5331c94a586534e10c329b133026391ea8e1fb25040fa7f98e764ff7"
     },
     {
       "id": "NOVA-034",
@@ -670,7 +670,7 @@
       "original": "../05_Ownership_Safety/NOVA-051_메모리_소유권_모델_사양서.md",
       "draft": "specs/NOVA-051.md",
       "original_sha256": "aecaa55fc725c8bb79cf394ed3ba435db3da6446a23a7a6b6ecedc3c95f20c1e",
-      "draft_sha256": "a95a40855cbecb04f07bd4877eb996955a60bd3a449fe68a41b13ec639aaf3d5"
+      "draft_sha256": "a6c51b2c052e917ae33d4d785c40f742f9809e9c947f464a6791a25dc48c606c"
     },
     {
       "id": "NOVA-052",
@@ -912,7 +912,7 @@
       "original": "../07_Compiler_Frontend/NOVA-073_AST_Node_구조서.md",
       "draft": "specs/NOVA-073.md",
       "original_sha256": "7325e4a87a39dce5ea3d2c93ab509ad4ca535813a510a416e5183c13649671b6",
-      "draft_sha256": "a8fc362735ddc9965f02d86a16439e6f8ad60f3de0758a9bacec3f376f50990f"
+      "draft_sha256": "e9dfc6f58381291636c1d0e6bf63078d340cdc38b9dc37e9c61ab58a48d32c4e"
     },
     {
       "id": "NOVA-074",
@@ -923,7 +923,7 @@
       "original": "../07_Compiler_Frontend/NOVA-074_HIR_Node_구조서.md",
       "draft": "specs/NOVA-074.md",
       "original_sha256": "e19e13ecb3df080d4549038419d8e066a719e3e2d0c649d875ed51a5155a7c72",
-      "draft_sha256": "5b5388c7c186f1b0986317938c7429e16e266458581bc6846e4d0abf4244ac57"
+      "draft_sha256": "4ea9ca1b5eab67dcb5dc01a5c2f3c9ce44f3a62e53597dff24c133d3dcea0880"
     },
     {
       "id": "NOVA-075",
@@ -934,7 +934,7 @@
       "original": "../07_Compiler_Frontend/NOVA-075_AST_HIR_Lowering_사양서.md",
       "draft": "specs/NOVA-075.md",
       "original_sha256": "36e8132628809d8d5f42d0c215305b4c40eeca54c1104aed3279868274fa3eed",
-      "draft_sha256": "77a9579a763a81d78aada57980bc0cde30fec8b20d2345852b91eba42672d250"
+      "draft_sha256": "2b1b8cd3dfbfb3f5775ff3aa5c6c633c75ef9d6985505275fd67e88ed32a46b7"
     },
     {
       "id": "NOVA-076",
@@ -945,7 +945,7 @@
       "original": "../07_Compiler_Frontend/NOVA-076_Symbol_Table_Definition_Registry_사양서.md",
       "draft": "specs/NOVA-076.md",
       "original_sha256": "7bedd9432f3fb80dc9580d2a4cb94f28528e433670803b82fe50b0e6ae5f44a7",
-      "draft_sha256": "d08489224e51d4179a029ec3fce74e558c022667af24cf43c9c42a8790c8e181"
+      "draft_sha256": "3f64ff2f6cd0b6e8cd2bbbf8732387ede932315fe05944d9fdc9d08beb4f835b"
     },
     {
       "id": "NOVA-077",
@@ -956,7 +956,7 @@
       "original": "../07_Compiler_Frontend/NOVA-077_타입_검사기_소유권_검사기_아키텍처_사양서.md",
       "draft": "specs/NOVA-077.md",
       "original_sha256": "28ead43dad461b86c2b151ad8e23be84268a1409cfeb687091547d447ae105ff",
-      "draft_sha256": "65be251699acaf750fe2faa5063b6bdcb73fb72d6ae7457b0ab77a1aa0f03d72"
+      "draft_sha256": "635eba599539b5b4516716187e3fd1362515c40dca2027c5feb4808a6922bc67"
     },
     {
       "id": "NOVA-078",
@@ -967,7 +967,7 @@
       "original": "../07_Compiler_Frontend/NOVA-078_진단_시스템_Error_Code_관리_사양서.md",
       "draft": "specs/NOVA-078.md",
       "original_sha256": "dbd60461cf22d60ae09c94ba413887191c206be9523a133764d5cbc3b42710da",
-      "draft_sha256": "f3815cf2622245ef915931506fc87a2ddc96f8339956673f71016553f6403d3a"
+      "draft_sha256": "7b3e9bc8e1224fd1291ebb1a317182e8fa4ea19e3b570b4619827afbfb215f10"
     },
     {
       "id": "NOVA-079",
@@ -1000,7 +1000,7 @@
       "original": "../08_MIR_Middleend/NOVA-081_MIR_구조_CFG_평가_순서_사양서.md",
       "draft": "specs/NOVA-081.md",
       "original_sha256": "85c7f61cb15f3b0cc7cc5fcb705c719ade30899555eea383f4d4719313cced94",
-      "draft_sha256": "6f3194306fb96ecbb246d27d79ca48612c3855b147add271ead6e0e9abfc41f9"
+      "draft_sha256": "24aa7bb37fc63c32d27a9d8eb8f887211860fbcd787f828a8874876e8f61c5c8"
     },
     {
       "id": "NOVA-082",
@@ -1022,7 +1022,7 @@
       "original": "../08_MIR_Middleend/NOVA-083_MIR_검증기_사양서.md",
       "draft": "specs/NOVA-083.md",
       "original_sha256": "5ee4edf2e8fff8e6125af1ab1efb6c4b4f825395194dc737d9093be1f8350309",
-      "draft_sha256": "2116442c29ac412df4365225dbd0ddd24596ca48b1605a44a5b23f535cb057b2"
+      "draft_sha256": "62e51a0a62d059086773631c0d8d8ac0d509420bacc579cd47bf445f1a4c8ee5"
     },
     {
       "id": "NOVA-084",
@@ -1066,7 +1066,7 @@
       "original": "../08_MIR_Middleend/NOVA-087_Constant_Evaluation_Engine_사양서.md",
       "draft": "specs/NOVA-087.md",
       "original_sha256": "d633f16e33ed6165e84095cc8b2610b51e98f5325b7b9238717c2813a8d1be58",
-      "draft_sha256": "c5f4d0cecc01397d6aff93dcac5e37017e111330c3e9e4b4d21e8dbb5ef1f3a1"
+      "draft_sha256": "655894c7e89f616000c6d325686acc77f467f2cba8286bfbcd8cd145bf56b54e"
     },
     {
       "id": "NOVA-088",
@@ -1110,7 +1110,7 @@
       "original": "../08_MIR_Middleend/NOVA-091_SSA_변환_여부_결정서.md",
       "draft": "specs/NOVA-091.md",
       "original_sha256": "c614d664c283a39474213f416fbbe38a775f883fe5699dc7d0c996da29746960",
-      "draft_sha256": "0b773b1048911d8e97587378b176cecd76d24f5d27b64df638772e38c4d4c670"
+      "draft_sha256": "06ff74e4d8ca055b885f20d25a10d40e6d1f567d2135e2b0ce862fac7bf0540e"
     },
     {
       "id": "NOVA-092",
@@ -1132,7 +1132,7 @@
       "original": "../09_Backend_Runtime/NOVA-093_Backend_선택_LLVM_연동_결정서.md",
       "draft": "specs/NOVA-093.md",
       "original_sha256": "d07441275c222d6d1d7b4c841cc964c7d03495ffb22c6a6ce9407b0eb68ca784",
-      "draft_sha256": "403c2a124e5e3f34bcbf4f51c1933c4f578850ab126631d791c9f00823f6754b"
+      "draft_sha256": "c325464c823d3375039e7a783559bec93fee6e3b0e1d20756800334cbdeebdc8"
     },
     {
       "id": "NOVA-094",
@@ -1143,7 +1143,7 @@
       "original": "../09_Backend_Runtime/NOVA-094_Nova_타입_Backend_타입_Mapping_사양서.md",
       "draft": "specs/NOVA-094.md",
       "original_sha256": "9179587dd523a3c46bf1675ed79457fd1d471cbfc6e987680e9d4bdc6cf8d9cc",
-      "draft_sha256": "70ee7aa20d08d283fe44c33651cf3593319ba75d436ad0380ce8ae665b9d33a4"
+      "draft_sha256": "04d0adbe008b31c1699be7c4afe0beff69d9880bf6e747219a2742d2110f74f7"
     },
     {
       "id": "NOVA-095",
@@ -1154,7 +1154,7 @@
       "original": "../09_Backend_Runtime/NOVA-095_Backend_타입_레이아웃_정렬_Niche_구현서.md",
       "draft": "specs/NOVA-095.md",
       "original_sha256": "0d071dac1161ce452173177e4d3d8ce1edb64faaad4b5720c087dbe1d72064e8",
-      "draft_sha256": "72a418db209a5711c78b85ce98a6bd4af5b878338a6881bf21a3daab88f13077"
+      "draft_sha256": "b3649857dc8573c4327146c99500bab00f5ad2fd1cc0b6a8fae4ab9d5ac7990b"
     },
     {
       "id": "NOVA-096",
@@ -1165,7 +1165,7 @@
       "original": "../09_Backend_Runtime/NOVA-096_함수_ABI_인수_반환_Lowering_사양서.md",
       "draft": "specs/NOVA-096.md",
       "original_sha256": "d1ae6c98c80b3b69859ff50212438e8ddee8faa52842637521c5a53d7d79f913",
-      "draft_sha256": "099bf9d18d1a1f6a9f1ae78073e42897fcd7608b774f26a4611e4ecbfc0637d0"
+      "draft_sha256": "7d9df957b48e18edab5a87212a8f55b9c5f086e2299f3f5e14979a57ba31ae9e"
     },
     {
       "id": "NOVA-097",
@@ -1176,7 +1176,7 @@
       "original": "../09_Backend_Runtime/NOVA-097_Name_Mangling_Symbol_사양서.md",
       "draft": "specs/NOVA-097.md",
       "original_sha256": "3096b825d32918fa5d9439d8b209719af2c6e3525f509a4f9b7525929fcfe278",
-      "draft_sha256": "4ff7bef4941b97c1ba21d840f966c3b5e43ace661685e3f47657eeecd0d87625"
+      "draft_sha256": "ce08928fd5e8e28ed590f4ccd7a4dbedfbba97bc91188cb392b4251a5321d510"
     },
     {
       "id": "NOVA-098",
@@ -1605,7 +1605,7 @@
       "original": "../13_Testing_Release/NOVA-136_Compiler_테스트_전략서.md",
       "draft": "specs/NOVA-136.md",
       "original_sha256": "ec17471bc409921651627ad2ff0e320d88c18c51957b2e31b7a87ad2b2147a04",
-      "draft_sha256": "a66c8f9b696fff3cdb32f13a7b38dfa3f226c987092417047eabc4f56f52aa18"
+      "draft_sha256": "a74f0382a9ce4c226784df80b87dcbcf6c41ef37fbf11289216912d3647a2237"
     },
     {
       "id": "NOVA-137",

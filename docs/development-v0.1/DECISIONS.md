@@ -10,7 +10,7 @@
 
 2026-10-05 사용자 “P10 승인하고 숫자 cast 구현 진행”으로 [명시적 숫자 cast P10](CAST_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](CAST_IMPLEMENTATION.md)과 [postfix as 전용 EBNF](GRAMMAR_STAGE_B_CAST.ebnf)를 따른다. 숫자 10종의 checked 변환 subset에만 적용하며 Bool/Char/unsafe cast와 전체 D07은 Draft다.
 
-[P12 Copy struct 최소 계약](STRUCT_STAGE_B_PROPOSAL.md)은 Draft/사용자 승인 대기다. 생성·type import·Copy field·const·private layout/ABI와 제한의 subset이며 전체 D06/D10/D12/D16/D30은 계속 Draft다.
+2026-10-05 사용자 “P12 승인하고 Copy struct 구현 진행”으로 [P12 Copy struct 최소 계약](STRUCT_STAGE_B_PROPOSAL.md)을 승인했다. [구현 기록](STRUCT_IMPLEMENTATION.md)을 따른다. 생성·type import·Copy field·const·private layout/ABI와 제한의 subset이며 전체 D06/D10/D12/D16/D30은 계속 Draft다.
 
 ## 공통 승인 계약
 

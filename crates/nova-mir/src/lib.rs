@@ -8,7 +8,9 @@ use nova_hir::{HirId, SourceOrigin};
 use nova_resolve::DefId;
 use nova_source::Span;
 use nova_syntax::Symbol;
-use nova_types::{FloatValue, IntKind, IntegerValue, Type};
+use nova_types::{
+    ConstValue, FieldId, FloatValue, IntKind, IntegerValue, StructId, StructRegistry, Type,
+};
 use std::fmt::Write;
 pub use validate::{validate, ValidationError, Violation};
 
@@ -51,8 +53,39 @@ pub enum Constant {
     Char(char),
     String(String),
     Unit,
+    Struct(StructId, Vec<Constant>),
 }
 impl Constant {
+    pub fn from_const(value: &ConstValue) -> Self {
+        enum Work<'a> {
+            Value(&'a ConstValue),
+            Aggregate(StructId, usize),
+        }
+        let mut work = vec![Work::Value(value)];
+        let mut values = vec![];
+        while let Some(task) = work.pop() {
+            match task {
+                Work::Aggregate(id, count) => {
+                    let fields = values.split_off(values.len() - count);
+                    values.push(Self::Struct(id, fields));
+                }
+                Work::Value(value) => match value {
+                    ConstValue::Int32(v) => values.push(Self::Int32(*v)),
+                    ConstValue::Integer(v) => values.push(Self::from_integer(*v)),
+                    ConstValue::Float(v) => values.push(Self::Float(*v)),
+                    ConstValue::Bool(v) => values.push(Self::Bool(*v)),
+                    ConstValue::Char(v) => values.push(Self::Char(*v)),
+                    ConstValue::String(v) => values.push(Self::String(v.clone())),
+                    ConstValue::Unit => values.push(Self::Unit),
+                    ConstValue::Struct(id, fields) => {
+                        work.push(Work::Aggregate(*id, fields.len()));
+                        work.extend(fields.iter().rev().map(Work::Value));
+                    }
+                },
+            }
+        }
+        values.pop().expect("one converted constant")
+    }
     pub fn from_integer(value: IntegerValue) -> Self {
         if value.kind() == IntKind::I32 {
             Self::Int32(value.value() as i32)
@@ -69,6 +102,7 @@ impl Constant {
             Self::Char(_) => Type::Char,
             Self::String(_) => Type::String,
             Self::Unit => Type::Unit,
+            Self::Struct(id, _) => Type::Struct(*id),
         }
     }
 }
@@ -80,6 +114,10 @@ pub enum Operand {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Rvalue {
     Use(Operand),
+    Aggregate(StructId, Vec<Operand>),
+    Project(Operand, FieldId),
+    /// Whole-root reconstruction through a checked mutable field path.
+    Update(Operand, Vec<FieldId>, Operand),
     /// P07 whole-range lossless sign/zero extension, never narrowing.
     Widen(Operand, Type),
     /// P09 whole-type lossless integer-to-float or float widening.
@@ -141,6 +179,13 @@ pub struct Body {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Module {
     entry: SourceInfo,
+    pub structs: StructRegistry,
+    structs_original: StructRegistry,
+    callee_provenance: Vec<Callee>,
+    projection_provenance: std::collections::BTreeMap<usize, FieldId>,
+    constructor_provenance: std::collections::BTreeMap<usize, StructId>,
+    mutation_provenance: std::collections::BTreeMap<usize, (DefId, Vec<FieldId>)>,
+    mutable_definitions: std::collections::BTreeSet<usize>,
     entry_main: Option<(Callee, SourceInfo)>,
     pub callees: Vec<Callee>,
     pub bodies: Vec<Body>,
@@ -181,5 +226,19 @@ impl Module {
             }
         }
         text
+    }
+}
+
+impl Drop for Constant {
+    fn drop(&mut self) {
+        let mut pending = match self {
+            Self::Struct(_, fields) => std::mem::take(fields),
+            _ => return,
+        };
+        while let Some(mut value) = pending.pop() {
+            if let Self::Struct(_, fields) = &mut value {
+                pending.append(fields);
+            }
+        }
     }
 }

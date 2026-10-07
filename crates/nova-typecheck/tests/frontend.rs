@@ -1804,3 +1804,236 @@ fn p10_const_budget_counts_casts_but_not_type_syntax() {
     let source = format!("const X={expression} as int;func f(){{}}");
     assert!(codes(&frontend(&source)).contains(&"N3202".into()));
 }
+
+#[test]
+fn p12_nominal_const_copy_fields_context_and_diagnostics() {
+    let source="struct P{var x:int8;let c:char;let u:()} const V=P(1,'🙂',());const X=V.x;func make(p:P)->P{return p} func main(){var p=make(V);let old=p;p.x=p.x+1;const C=P(2,'x',());const Y=C.x;let f=P(3,'x',()).x}";
+    let (_, resolved, checked) = pass(source).semantic.unwrap();
+    for name in ["V", "C"] {
+        let id = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == name)
+            .unwrap();
+        assert!(matches!(
+            checked.const_values[id],
+            ConstEvaluation::Value {
+                nodes: 4,
+                value: ConstValue::Struct(_, _)
+            }
+        ));
+    }
+    for name in ["X", "Y"] {
+        let id = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == name)
+            .unwrap();
+        assert!(matches!(
+            checked.const_values[id],
+            ConstEvaluation::Value { nodes: 2, .. }
+        ));
+    }
+    for (source, code) in [
+        ("struct A{let x:A}", "N2101"),
+        ("struct A{let b:B} struct B{let a:A}", "N2101"),
+        ("struct A{let x:string}", "N1102"),
+        ("struct A{let x:int;var x:int}", "N2002"),
+        ("struct int{}", "N2002"),
+        ("struct A{let x:Missing}", "N2001"),
+        ("struct A{var x:int} func f(p:A){p.x=1}", "N3004"),
+        ("struct A{var x:int} func f(){let p=A(1);p.x=2}", "N3004"),
+        (
+            "struct A{let x:int} struct B{let a:A} func f(){var b=B(A(1));b.a.x=2}",
+            "N3004",
+        ),
+        ("struct A{let x:int} func f(){let a=A()}", "N2201"),
+        (
+            "struct A{let x:int} struct B{let x:int} func f(){let a:A=B(1)}",
+            "N2101",
+        ),
+        ("struct A{let x:int} func f(){let A=1;let a=A(2)}", "N2101"),
+        (
+            "struct A{let x:int} func f(){let a=A(1);let b=a.y}",
+            "N2001",
+        ),
+        ("struct A{let x:int} const V=A(1/0)", "N3201"),
+        ("struct A{let x:int} const V=A(W.x);const W=V", "N3202"),
+    ] {
+        let result = frontend(source);
+        assert!(
+            codes(&result).contains(&code.into()),
+            "{source}: {:?}",
+            result.diagnostics()
+        );
+    }
+}
+#[test]
+fn p12_const_budget_and_transitive_layout_resource_limits() {
+    for (terms, ok) in [(5000, true), (5001, false)] {
+        let source = format!(
+            "struct P{{let x:int}} const V=P({})",
+            vec!["0"; terms].join("+")
+        );
+        let result = frontend(&source);
+        assert_eq!(result.passed(), ok, "{:?}", result.diagnostics());
+        if !ok {
+            assert!(codes(&result).contains(&"N3202".into()));
+        }
+    }
+    for (depth, ok) in [(128, true), (129, false)] {
+        let mut source = String::from("struct S0{} ");
+        for i in 1..depth {
+            source += &format!("struct S{i}{{let child:S{}}} ", i - 1);
+        }
+        let result = frontend(&source);
+        assert_eq!(result.passed(), ok, "{:?}", result.diagnostics());
+        if !ok {
+            assert!(codes(&result).contains(&"N8901".into()));
+        }
+    }
+    let mut source = String::from("struct S0{} ");
+    for i in 1..17 {
+        source += &format!("struct S{i}{{let left:S{};let right:S{}}} ", i - 1, i - 1);
+    }
+    assert!(codes(&frontend(&source)).contains(&"N8901".into()));
+    let source = format!(
+        "struct Huge{{{}}}",
+        (0..1025)
+            .map(|i| format!("let f{i}:int;"))
+            .collect::<String>()
+    );
+    assert!(codes(&frontend(&source)).contains(&"N8901".into()));
+}
+
+fn p12_bundle(files: &[(&str, &str)]) -> (Module, Resolved, Checked) {
+    let mut db = SourceDatabase::default();
+    let mut modules = vec![];
+    for &(name, source) in files {
+        let file = db.add(format!("{name}.nova"), source.into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+        modules.push((name.into(), lower(&db, &p.arena, p.root).unwrap()));
+    }
+    let hir = Module::bundle(modules).unwrap();
+    let resolved = resolve(&hir);
+    let checked = check(&hir, &resolved).unwrap();
+    for d in &checked.diagnostics {
+        db.slice(d.primary.span).unwrap();
+        for l in &d.secondary {
+            db.slice(l.span).unwrap();
+        }
+    }
+    (hir, resolved, checked)
+}
+#[test]
+fn p12_type_import_alias_private_factories_and_dual_namespace_atomicity() {
+    let (hir, resolved, checked) = p12_bundle(&[
+        (
+            "main",
+            include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/main.nova"),
+        ),
+        (
+            "geometry",
+            include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/geometry.nova"),
+        ),
+    ]);
+    assert!(!checked.has_errors(), "{:?}", checked.diagnostics);
+    let scope = resolved.node_scopes[hir.units()[0].root.0].unwrap();
+    assert_eq!(checked.structs.len(), 2);
+    assert_eq!(
+        resolved.scopes[scope.0].types["P"],
+        resolved.scopes[resolved.node_scopes[hir.units()[1].root.0].unwrap().0].types["Pair"]
+    );
+    for (main, lib, code) in [
+        (
+            "use lib::P;func f(){let p=P(1)}",
+            "public struct P{private let x:int}",
+            Some("N2004"),
+        ),
+        (
+            "use lib::make;func f(){let p=make();let x=p.x}",
+            "private struct P{internal let x:int} public func make()->P{return P(1)}",
+            None,
+        ),
+        (
+            "use lib::make;func f(){let p=make();let x=p.x}",
+            "public struct P{private let x:int} public func make()->P{return P(1)}",
+            Some("N2004"),
+        ),
+        (
+            "use lib::P as Q;func f(p:Q){let x=Q()}",
+            "public struct P{} public func P()->int{return 42}",
+            None,
+        ),
+        (
+            "use lib::P as Q;func f(p:Q){}",
+            "private struct P{} public func P(){}",
+            Some("N2004"),
+        ),
+        (
+            "use lib::P as Q;const Q=1;func f(){}",
+            "public struct P{} public func P(){}",
+            Some("N2002"),
+        ),
+        (
+            "use lib::P as int;func f(){}",
+            "public struct P{}",
+            Some("N2002"),
+        ),
+    ] {
+        let (hir, r, c) = p12_bundle(&[("main", main), ("lib", lib)]);
+        if let Some(code) = code {
+            assert!(
+                c.diagnostics.iter().any(|d| d.code.to_string() == code),
+                "{main}: {:?}",
+                c.diagnostics
+            );
+        } else {
+            assert!(!c.has_errors(), "{main}: {:?}", c.diagnostics);
+        }
+        if main.starts_with("use lib::P as Q") && code.is_some() {
+            let scope = r.node_scopes[hir.units()[0].root.0].unwrap();
+            assert!(!r.scopes[scope.0].types.contains_key("Q"));
+            assert!(!r.scopes[scope.0]
+                .definitions
+                .get("Q")
+                .is_some_and(|d| matches!(r.definitions[d.0].kind, DefinitionKind::Function(_))));
+        }
+    }
+}
+#[test]
+fn p12_all_scalar_layouts_and_struct_count_boundary() {
+    let (_,_,c)=pass("struct Empty{} struct Mixed{let empty:Empty;let unit:();let b:bool;let i:int16;let c:char;let f:float;let d:double;let n:uint64}").semantic.unwrap();
+    let shape = c.structs.values().find(|s| s.name == "Mixed").unwrap();
+    let l = shape.layout.as_ref().unwrap();
+    assert_eq!(l.offsets, [0, 0, 0, 2, 4, 8, 16, 24]);
+    assert_eq!((l.size, l.align, l.depth, l.occurrences), (32, 8, 2, 8));
+    for (count, ok) in [(1024, true), (1025, false)] {
+        let src = (0..count)
+            .map(|i| format!("struct S{i}{{}} "))
+            .collect::<String>();
+        let result = frontend(&src);
+        assert_eq!(result.passed(), ok, "{:?}", result.diagnostics());
+        if !ok {
+            assert!(codes(&result).contains(&"N8901".into()));
+        }
+    }
+}
+
+#[test]
+fn p12_documented_negative_fixtures_have_exact_code_and_source_spans() {
+    for (source,code,start,end) in [
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/string-field.nova"),"N1102",23,29),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/recursive-field.nova"),"N2101",24,28),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/immutable-root.nova"),"N3004",52,53),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/immutable-field.nova"),"N3004",54,55),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/constructor-arity.nova"),"N2201",46,49),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/missing-field.nova"),"N2001",62,63),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/nominal-mismatch.nova"),"N2101",73,77),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/shadowed-constructor.nova"),"N2101",57,61),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/aggregate-interpolation.nova"),"N2101",60,61),
+        (include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/user-init.nova"),"N1102",11,15),
+    ] {let result=frontend(source);assert!(result.diagnostics().iter().any(|d|d.code.to_string()==code && d.primary.span.start()==start && d.primary.span.end()==end),"{source}: {:?}",result.diagnostics());}
+}

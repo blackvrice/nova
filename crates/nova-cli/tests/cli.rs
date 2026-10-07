@@ -533,3 +533,39 @@ fn p10_cast_source_failures_precede_tools_but_runtime_failures_pass_check() {
         assert!(!directory.join("target").exists());
     }
 }
+
+#[test]
+fn p12_struct_failures_preserve_outputs_and_gate_native_tools() {
+    for (source, code) in [
+        ("struct P{let text:string} func main(){}", "N1102"),
+        ("struct P{let p:P} func main(){}", "N2101"),
+        ("struct P{var x:int} func main(){let p=P(1);p.x=2}", "N3004"),
+        ("struct P{let x:int} const P0=P(1/0);func main(){}", "N3201"),
+        ("struct P{let x:int} func main(){let p=P()}", "N2201"),
+    ] {
+        let root = directory();
+        let path = root.join("main.nova");
+        let output = root.join("keep.exe");
+        std::fs::write(&path, source).unwrap();
+        std::fs::write(&output, b"keep").unwrap();
+        for command in ["check", "build", "run"] {
+            let mut cmd = Command::new(env!("CARGO_BIN_EXE_nova"));
+            cmd.arg(command)
+                .arg(&path)
+                .env("NOVA_CLANG", "missing-clang")
+                .env("NOVA_RUSTC", "missing-rustc")
+                .current_dir(&root);
+            if command == "build" {
+                cmd.arg("-o").arg(&output);
+            }
+            let result = cmd.output().unwrap();
+            assert_eq!(result.status.code(), Some(1));
+            assert!(
+                String::from_utf8_lossy(&result.stderr).contains(code),
+                "{:?}",
+                result
+            );
+            assert_eq!(std::fs::read(&output).unwrap(), b"keep");
+        }
+    }
+}

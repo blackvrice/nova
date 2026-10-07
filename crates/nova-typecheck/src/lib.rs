@@ -1,4 +1,5 @@
 //! P02 single-file semantic checking. Successful checking is not native execution.
+mod aggregates;
 mod const_eval;
 mod global_consts;
 pub use const_eval::{ConstEvaluation, CONST_NODE_LIMIT};
@@ -22,6 +23,9 @@ pub struct Signature {
 #[derive(Debug, Eq, PartialEq)]
 pub struct Checked {
     pub types: TypeInterner,
+    pub structs: nova_types::StructRegistry,
+    pub field_sources: std::collections::BTreeMap<nova_types::StructId, Vec<HirId>>,
+    pub projections: Vec<Option<nova_types::FieldId>>,
     pub type_table: Vec<TypeId>,
     pub definition_types: Vec<TypeId>,
     pub signatures: Vec<Option<Signature>>,
@@ -137,6 +141,7 @@ struct Context {
 enum Work {
     Enter(HirId, Context),
     Exit(HirId, Context),
+    AssignmentValue(HirId, Context),
     Peer {
         literal: HirId,
         typed: HirId,
@@ -177,6 +182,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 continue;
             }
             DefinitionKind::Function(id)
+            | DefinitionKind::Struct(id)
             | DefinitionKind::GlobalConst(id)
             | DefinitionKind::Parameter(id)
             | DefinitionKind::Local(id) => id,
@@ -185,7 +191,8 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             return Err(CheckError::InvalidResolution);
         };
         let name = match (definition.kind, &node.kind) {
-            (DefinitionKind::Function(_), HirKind::Function { name, .. })
+            (DefinitionKind::Struct(_), HirKind::Struct { name, .. })
+            | (DefinitionKind::Function(_), HirKind::Function { name, .. })
             | (DefinitionKind::Parameter(_), HirKind::Parameter { name, .. })
             | (DefinitionKind::Local(_), HirKind::Binding { name, .. }) => name,
             (
@@ -227,6 +234,9 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     }
     let result = Checked {
         types,
+        structs: Default::default(),
+        field_sources: Default::default(),
+        projections: vec![None; size],
         type_table: vec![error; size],
         definition_types: vec![error; resolved.definitions.len()],
         signatures: vec![None; resolved.definitions.len()],
@@ -294,6 +304,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 flags
             }),
     };
+    checker.collect_structs();
     checker.collect_signatures();
     checker.check_globals();
     let items = module.items().collect::<Vec<_>>();
@@ -400,10 +411,7 @@ impl Checker<'_> {
                         );
                         Type::Error
                     }
-                    _ => {
-                        self.report(2001, node.span, "undefined type name", None);
-                        Type::Error
-                    }
+                    _ => self.struct_type_name(id, name),
                 }
             }
             HirKind::Error => Type::Error,
@@ -449,6 +457,24 @@ impl Checker<'_> {
                         return_type,
                         parameter_spans: spans,
                         return_span: Some(self.module.nodes()[return_id.0].span),
+                    });
+                }
+                DefinitionKind::Struct(id) => {
+                    let sid = nova_types::StructId(index);
+                    let shape = &self.result.structs[&sid];
+                    let fields = shape.fields.clone();
+                    self.result.definition_types[index] = self.result.types.intern(Type::Function);
+                    self.result.signatures[index] = Some(Signature {
+                        parameters: fields
+                            .iter()
+                            .map(|f| self.result.types.intern(f.ty))
+                            .collect(),
+                        return_type: self.result.types.intern(Type::Struct(sid)),
+                        parameter_spans: self.result.field_sources[&sid]
+                            .iter()
+                            .map(|f| Some(self.module.nodes()[f.0].span))
+                            .collect(),
+                        return_span: Some(self.module.nodes()[id.0].span),
                     });
                 }
                 DefinitionKind::Parameter(id) => {
@@ -544,6 +570,24 @@ impl Checker<'_> {
                     ));
                     continue;
                 }
+                Work::AssignmentValue(id, cx) => {
+                    let n = &self.module.nodes()[id.0];
+                    let expected = if self.assignment_target(n.children[0]) {
+                        self.result.type_table[n.children[0].0]
+                    } else {
+                        self.result.types.intern(Type::Error)
+                    };
+                    pending.push(Work::Enter(
+                        n.children[1],
+                        Context {
+                            expected: Some(expected),
+                            expected_span: Some(self.module.nodes()[n.children[0].0].span),
+                            direct_callee: false,
+                            ..cx
+                        },
+                    ));
+                    continue;
+                }
                 Work::Enter(id, cx) => (id, cx, false),
                 Work::Exit(id, cx) => (id, cx, true),
             };
@@ -558,22 +602,7 @@ impl Checker<'_> {
             match node.kind {
                 HirKind::Assignment => {
                     let target = node.children[0];
-                    let def = match self.resolved.references[target.0] {
-                        Some(Resolution::Definition(def)) => Some(def),
-                        _ => None,
-                    };
-                    let expected = def
-                        .filter(|d| self.resolved.definitions[d.0].mutable)
-                        .map(|d| self.result.definition_types[d.0]);
-                    pending.push(Work::Enter(
-                        node.children[1],
-                        Context {
-                            expected,
-                            expected_span: def.and_then(|d| self.resolved.definitions[d.0].span),
-                            direct_callee: false,
-                            ..context
-                        },
-                    ));
+                    pending.push(Work::AssignmentValue(id, context));
                     pending.push(Work::Enter(
                         target,
                         Context {
@@ -811,7 +840,9 @@ impl Checker<'_> {
         if let Some(Resolution::Definition(def)) = self.resolved.references[id.0] {
             if matches!(
                 self.resolved.definitions[def.0].kind,
-                DefinitionKind::Function(_) | DefinitionKind::BuiltinPrint
+                DefinitionKind::Function(_)
+                    | DefinitionKind::BuiltinPrint
+                    | DefinitionKind::Struct(_)
             ) {
                 return Some(def);
             }
@@ -965,21 +996,8 @@ impl Checker<'_> {
                 }
                 self.set(id, Type::Unit);
             }
-            HirKind::Assignment => {
-                let target = node.children[0];
-                if let Some(Resolution::Definition(def)) = self.resolved.references[target.0] {
-                    let definition = &self.resolved.definitions[def.0];
-                    if !definition.mutable {
-                        self.report(
-                            3004,
-                            self.module.nodes()[target.0].span,
-                            "assignment requires a mutable local var",
-                            definition.span,
-                        );
-                    }
-                }
-                self.set(id, Type::Unit);
-            }
+            HirKind::Assignment => self.set(id, Type::Unit),
+            HirKind::Projection { name, name_span } => self.projection(id, *name, *name_span),
             HirKind::Break | HirKind::Continue => {
                 if context.loop_depth == 0 {
                     self.report(
@@ -1097,7 +1115,7 @@ impl Checker<'_> {
                         .clone()
                         .expect("function signature collected");
                     self.result.calls[id.0] = Some(def);
-                    let mut wrong = false;
+                    let mut wrong = !self.constructor_visible(def, node.span);
                     if node.children.len() - 1 != signature.parameters.len() {
                         self.report(
                             2201,
@@ -1125,7 +1143,7 @@ impl Checker<'_> {
                     if self.ty(self.result.type_table[callee.0]) != Type::Error {
                         self.report(
                             2101,
-                            self.module.nodes()[callee.0].span,
+                            if matches!(self.module.nodes()[callee.0].kind,HirKind::Name(name) if self.type_definition(callee,name).is_some()) { node.span } else { self.module.nodes()[callee.0].span },
                             "expression is not callable",
                             None,
                         );

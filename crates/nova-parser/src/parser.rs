@@ -59,6 +59,8 @@ impl<'a> Parser<'a> {
                 items.push(self.visible());
             } else if self.kind() == TokenKind::Keyword(Keyword::Func) {
                 items.push(self.function());
+            } else if self.kind() == TokenKind::Keyword(Keyword::Struct) {
+                items.push(self.structure());
             } else if self.kind() == TokenKind::Keyword(Keyword::Const) {
                 items.push(self.statement());
             } else {
@@ -132,6 +134,7 @@ impl<'a> Parser<'a> {
         let child = match self.kind() {
             TokenKind::Keyword(Keyword::Func) => self.function(),
             TokenKind::Keyword(Keyword::Const) => self.statement(),
+            TokenKind::Keyword(Keyword::Struct) => self.structure(),
             _ => {
                 self.report(
                     if self.kind() == TokenKind::Keyword(Keyword::Use) {
@@ -154,6 +157,115 @@ impl<'a> Parser<'a> {
             token.span.start(),
             vec![child],
         )
+    }
+    fn structure(&mut self) -> AstNodeId {
+        let start = self.bump().span.start();
+        let name = self.expect(TokenKind::Identifier).span;
+        self.open(TokenKind::LeftBrace);
+        let mut fields = vec![];
+        while !matches!(self.kind(), TokenKind::RightBrace | TokenKind::Eof) {
+            if matches!(
+                self.kind(),
+                TokenKind::Keyword(Keyword::Func | Keyword::Struct | Keyword::Use | Keyword::Const)
+            ) {
+                self.report(
+                    1102,
+                    self.current().span,
+                    "unsupported struct member or missing closing brace",
+                );
+                break;
+            }
+            if self.at_end() {
+                self.bump();
+                continue;
+            }
+            let field_start = self.current().span.start();
+            let visibility = match self.kind() {
+                TokenKind::Keyword(Keyword::Public) => {
+                    self.bump();
+                    Visibility::Public
+                }
+                TokenKind::Keyword(Keyword::Private) => {
+                    self.bump();
+                    Visibility::Private
+                }
+                TokenKind::Keyword(Keyword::Internal) => {
+                    self.bump();
+                    Visibility::Internal
+                }
+                _ => Visibility::Internal,
+            };
+            if !matches!(self.kind(), TokenKind::Keyword(Keyword::Let | Keyword::Var)) {
+                self.report(
+                    1102,
+                    self.current().span,
+                    "P12 struct members must be typed let/var fields",
+                );
+                let before = self.cursor;
+                self.recover_statement();
+                if before == self.cursor {
+                    self.bump();
+                }
+                fields.push(self.node(NodeKind::Error, field_start, vec![]));
+                continue;
+            }
+            let mutable = self.bump().kind == TokenKind::Keyword(Keyword::Var);
+            let name = self.expect(TokenKind::Identifier).span;
+            self.expect(TokenKind::Colon);
+            let ty = self.type_node();
+            fields.push(self.node(
+                NodeKind::Field {
+                    name,
+                    mutable,
+                    visibility,
+                },
+                field_start,
+                vec![ty],
+            ));
+            if self.at_end() {
+                self.bump();
+            } else if !matches!(self.kind(), TokenKind::RightBrace | TokenKind::Eof) {
+                self.report(
+                    1102,
+                    self.current().span,
+                    "field initializers and unsupported members are outside P12",
+                );
+                self.recover_statement();
+            }
+        }
+        self.close(TokenKind::RightBrace);
+        self.node(NodeKind::Struct { name }, start, fields)
+    }
+    fn assignment_ahead(&self) -> bool {
+        let mut at = self.cursor;
+        if self.tokens[at].kind != TokenKind::Identifier {
+            return false;
+        }
+        at += 1;
+        while self
+            .tokens
+            .get(at)
+            .is_some_and(|t| t.kind == TokenKind::Dot)
+        {
+            at += 1;
+            if !self
+                .tokens
+                .get(at)
+                .is_some_and(|t| t.kind == TokenKind::Identifier)
+            {
+                return false;
+            }
+            at += 1;
+        }
+        self.tokens
+            .get(at)
+            .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::Equal))
+    }
+    fn projection(&mut self, receiver: AstNodeId) -> AstNodeId {
+        let start = self.arena.get(receiver).expect("receiver").span.start();
+        self.bump();
+        let name = self.expect(TokenKind::Identifier).span;
+        self.node(NodeKind::Projection { name }, start, vec![receiver])
     }
     fn current(&self) -> Token {
         self.tokens[self.cursor]
@@ -273,6 +385,7 @@ impl<'a> Parser<'a> {
             TokenKind::Eof
                 | TokenKind::Keyword(
                     Keyword::Func
+                        | Keyword::Struct
                         | Keyword::Const
                         | Keyword::Use
                         | Keyword::Public
@@ -520,14 +633,12 @@ impl<'a> Parser<'a> {
                     children,
                 )
             }
-            TokenKind::Identifier
-                if self
-                    .tokens
-                    .get(self.cursor + 1)
-                    .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::Equal)) =>
-            {
+            TokenKind::Identifier if self.assignment_ahead() => {
                 self.bump();
-                let target = self.node(NodeKind::Name, start, vec![]);
+                let mut target = self.node(NodeKind::Name, start, vec![]);
+                while self.kind() == TokenKind::Dot {
+                    target = self.projection(target);
+                }
                 self.bump();
                 let value = self.expression(0);
                 self.node(NodeKind::Assignment, start, vec![target, value])
@@ -633,6 +744,10 @@ impl<'a> Parser<'a> {
                 let target = self.type_node_with_comparison(true);
                 let cast_start = self.arena.get(left).expect("parsed operand").span.start();
                 left = self.node(NodeKind::Cast { keyword }, cast_start, vec![left, target]);
+                continue;
+            }
+            if self.kind() == TokenKind::Dot && minimum <= 15 {
+                left = self.projection(left);
                 continue;
             }
             let Some((operator, precedence)) = binary(self.kind()) else {

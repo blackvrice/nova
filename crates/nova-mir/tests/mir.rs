@@ -1248,3 +1248,57 @@ fn p10_analysis_cast_target_value_count_and_operand_context_cannot_be_forged() {
         );
     }
 }
+
+#[test]
+fn p12_aggregate_projection_update_metadata_and_invalid_payloads_are_checked() {
+    let source="struct P{var x:int;let y:bool} const C=P(1,true);func f(p:P)->P{return p} func main(){var p=f(C);let old=p;p.x=p.x+1;print(\"{old.x} {p.x}\")}";
+    let original = pass(source);
+    assert_eq!(original.structs.len(), 1);
+    let mut bad = pass(source);
+    bad.structs
+        .values_mut()
+        .next()
+        .unwrap()
+        .layout
+        .as_mut()
+        .unwrap()
+        .size += 1;
+    assert!(!validate(&bad).is_empty());
+    let mut bad = pass(source);
+    let arg = bad
+        .bodies
+        .iter_mut()
+        .flat_map(|b| &mut b.blocks)
+        .filter_map(|b| b.terminator.as_mut())
+        .find_map(|t| {
+            if let TerminatorKind::Call { arguments, .. } = &mut t.kind {
+                arguments
+                    .iter_mut()
+                    .find(|a| matches!(a, Operand::Constant(Constant::Struct(..))))
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    if let Operand::Constant(Constant::Struct(_, fields)) = arg {
+        fields.clear();
+    }
+    assert!(!validate(&bad).is_empty());
+}
+
+#[test]
+fn p12_deeply_malformed_aggregate_payload_is_rejected_and_dropped_iteratively() {
+    let mut module = pass("struct P{let x:int} const C=P(1);func main(){let p=C}");
+    let sid = *module.structs.keys().next().unwrap();
+    let mut value = nova_types::ConstValue::Unit;
+    for _ in 0..30_000 {
+        value = nova_types::ConstValue::Struct(sid, vec![value]);
+    }
+    let constant = Constant::from_const(&value);
+    let body = &mut module.bodies[0];
+    body.blocks[0].statements[0].kind =
+        StatementKind::Assign(Place(LocalId(0)), Rvalue::Use(Operand::Constant(constant)));
+    assert!(!validate(&module).is_empty());
+    drop(module);
+    drop(value);
+}

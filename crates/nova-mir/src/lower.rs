@@ -2,7 +2,6 @@ use crate::*;
 use nova_hir::{HirKind, Module as HirModule};
 use nova_resolve::{DefinitionKind, Resolution, Resolved};
 use nova_typecheck::{Checked, ConstEvaluation};
-use nova_types::ConstValue;
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -56,6 +55,32 @@ pub fn lower(
     let ty = |id| checked.types.get(id).ok_or(LoweringError::InvalidAnalysis);
     let mut result = Module {
         entry: sources[hir.root().0],
+        structs: checked.structs.clone(),
+        structs_original: checked.structs.clone(),
+        callee_provenance: vec![],
+        projection_provenance: checked
+            .projections
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &f)| f.map(|f| (i, f)))
+            .collect(),
+        constructor_provenance: checked
+            .calls
+            .iter()
+            .enumerate()
+            .filter_map(|(i, d)| {
+                d.filter(|d| matches!(resolved.definitions[d.0].kind, DefinitionKind::Struct(_)))
+                    .map(|d| (i, StructId(d.0)))
+            })
+            .collect(),
+        mutation_provenance: BTreeMap::new(),
+        mutable_definitions: resolved
+            .definitions
+            .iter()
+            .enumerate()
+            .filter(|(_, d)| d.mutable)
+            .map(|(i, _)| i)
+            .collect(),
         entry_main: None,
         callees: vec![],
         bodies: vec![],
@@ -86,6 +111,24 @@ pub fn lower(
             builtin_print: definition.kind == DefinitionKind::BuiltinPrint,
         });
     }
+    result.callee_provenance = result.callees.clone();
+    for (index, node) in hir.nodes().iter().enumerate() {
+        if node.kind == HirKind::Assignment {
+            let mut root = node.children[0];
+            let mut path = vec![];
+            while matches!(hir.nodes()[root.0].kind, HirKind::Projection { .. }) {
+                path.push(checked.projections[root.0].ok_or(LoweringError::InvalidAnalysis)?);
+                root = hir.nodes()[root.0].children[0];
+            }
+            if !path.is_empty() {
+                path.reverse();
+                let Some(Resolution::Definition(def)) = resolved.references[root.0] else {
+                    return Err(LoweringError::InvalidAnalysis);
+                };
+                result.mutation_provenance.insert(index, (def, path));
+            }
+        }
+    }
     for callee in &result.callees {
         let DefinitionKind::Function(id) = resolved.definitions[callee.definition.0].kind else {
             continue;
@@ -100,7 +143,9 @@ pub fn lower(
     for id in hir.items() {
         if matches!(
             hir.nodes()[id.0].kind,
-            HirKind::Binding { constant: true, .. } | HirKind::Import { .. }
+            HirKind::Binding { constant: true, .. }
+                | HirKind::Import { .. }
+                | HirKind::Struct { .. }
         ) {
             continue;
         }
@@ -399,15 +444,8 @@ impl Builder<'_> {
                                 else {
                                     return Err(LoweringError::InvalidAnalysis);
                                 };
-                                self.values[id.0] = Some(Operand::Constant(match value {
-                                    ConstValue::Int32(value) => Constant::Int32(*value),
-                                    ConstValue::Integer(value) => Constant::from_integer(*value),
-                                    ConstValue::Float(value) => Constant::Float(*value),
-                                    ConstValue::Bool(value) => Constant::Bool(*value),
-                                    ConstValue::Char(value) => Constant::Char(*value),
-                                    ConstValue::String(value) => Constant::String(value.clone()),
-                                    ConstValue::Unit => Constant::Unit,
-                                }));
+                                self.values[id.0] =
+                                    Some(Operand::Constant(Constant::from_const(value)));
                                 continue;
                             }
                             let local = *self
@@ -437,6 +475,7 @@ impl Builder<'_> {
                         }
                         HirKind::Group
                         | HirKind::Interpolation
+                        | HirKind::Projection { .. }
                         | HirKind::Prefix(_)
                         | HirKind::Binary(_)
                         | HirKind::InterpolatedString => {
@@ -460,6 +499,10 @@ impl Builder<'_> {
                                 .get(self.checked.type_table[id.0])
                                 .ok_or(LoweringError::InvalidAnalysis)?,
                         ),
+                        HirKind::Projection { .. } => Rvalue::Project(
+                            self.value(node.children[0])?,
+                            self.checked.projections[id.0].ok_or(LoweringError::InvalidAnalysis)?,
+                        ),
                         HirKind::Prefix(op) => Rvalue::Unary(op, self.value(node.children[0])?),
                         HirKind::Binary(op) => Rvalue::Binary(
                             op,
@@ -475,6 +518,22 @@ impl Builder<'_> {
                         HirKind::Call => {
                             let definition =
                                 self.checked.calls[id.0].ok_or(LoweringError::InvalidAnalysis)?;
+                            if matches!(
+                                self.resolved.definitions[definition.0].kind,
+                                DefinitionKind::Struct(_)
+                            ) {
+                                let value = Rvalue::Aggregate(
+                                    StructId(definition.0),
+                                    node.children[1..]
+                                        .iter()
+                                        .map(|&c| self.value(c))
+                                        .collect::<Result<_, _>>()?,
+                                );
+                                let dest = Place(self.local(id, None)?);
+                                self.assign(dest, value, id)?;
+                                self.values[id.0] = Some(Operand::Place(dest));
+                                continue;
+                            }
                             let callee = *self
                                 .callees
                                 .get(&definition.0)
@@ -515,15 +574,7 @@ impl Builder<'_> {
                     let value = if let ConstEvaluation::Value { value, .. } =
                         &self.checked.const_values[definition.0]
                     {
-                        Operand::Constant(match value {
-                            ConstValue::Int32(value) => Constant::Int32(*value),
-                            ConstValue::Integer(value) => Constant::from_integer(*value),
-                            ConstValue::Float(value) => Constant::Float(*value),
-                            ConstValue::Bool(value) => Constant::Bool(*value),
-                            ConstValue::Char(value) => Constant::Char(*value),
-                            ConstValue::String(value) => Constant::String(value.clone()),
-                            ConstValue::Unit => Constant::Unit,
-                        })
+                        Operand::Constant(Constant::from_const(value))
                     } else {
                         self.value(initializer)?
                     };
@@ -561,15 +612,33 @@ impl Builder<'_> {
                 }
                 Work::Assignment(id) => {
                     let children = &self.hir.nodes()[id.0].children;
-                    let Some(Resolution::Definition(def)) = self.resolved.references[children[0].0]
-                    else {
+                    let mut root = children[0];
+                    let mut path = vec![];
+                    while matches!(self.hir.nodes()[root.0].kind, HirKind::Projection { .. }) {
+                        path.push(
+                            self.checked.projections[root.0]
+                                .ok_or(LoweringError::InvalidAnalysis)?,
+                        );
+                        root = self.hir.nodes()[root.0].children[0];
+                    }
+                    path.reverse();
+                    let Some(Resolution::Definition(def)) = self.resolved.references[root.0] else {
                         return Err(LoweringError::InvalidAnalysis);
                     };
                     let local = *self
                         .declarations
                         .get(&def.0)
                         .ok_or(LoweringError::InvalidAnalysis)?;
-                    self.assign(Place(local), Rvalue::Use(self.value(children[1])?), id)?;
+                    let rhs = self.value(children[1])?;
+                    self.assign(
+                        Place(local),
+                        if path.is_empty() {
+                            Rvalue::Use(rhs)
+                        } else {
+                            Rvalue::Update(Operand::Place(Place(local)), path, rhs)
+                        },
+                        id,
+                    )?;
                 }
                 Work::While {
                     id,

@@ -43,6 +43,20 @@ pub enum HirKind {
         name: SymbolId,
         name_span: Span,
     },
+    Struct {
+        name: SymbolId,
+        name_span: Span,
+    },
+    Field {
+        name: SymbolId,
+        name_span: Span,
+        mutable: bool,
+        visibility: Visibility,
+    },
+    Projection {
+        name: SymbolId,
+        name_span: Span,
+    },
     TypeName(SymbolId),
     UnitType,
     Block,
@@ -206,6 +220,9 @@ impl Module {
                 }
                 match &mut node.kind {
                     HirKind::Function { name, .. }
+                    | HirKind::Struct { name, .. }
+                    | HirKind::Field { name, .. }
+                    | HirKind::Projection { name, .. }
                     | HirKind::Parameter { name, .. }
                     | HirKind::Binding { name, .. }
                     | HirKind::Name(name)
@@ -336,6 +353,14 @@ pub fn lower(
                 || name.start() < node.span.start()
                 || name.end() > node.span.end()
             {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::Struct { name }
+        | NodeKind::Field { name, .. }
+        | NodeKind::Projection { name } = node.kind
+        {
+            if !inside(node.span, name) || !identifier(sources.slice(name)?) {
                 return Err(LoweringError::MalformedAst);
             }
         }
@@ -494,6 +519,24 @@ pub fn lower(
                     parameters,
                 }
             }
+            NodeKind::Struct { name } => HirKind::Struct {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+            },
+            NodeKind::Field {
+                name,
+                mutable,
+                visibility,
+            } => HirKind::Field {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+                mutable,
+                visibility,
+            },
+            NodeKind::Projection { name } => HirKind::Projection {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+            },
             NodeKind::Parameter { name } => HirKind::Parameter {
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
@@ -681,6 +724,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 | NodeKind::Binary(_)
                 | NodeKind::Cast { .. }
                 | NodeKind::Call
+                | NodeKind::Projection { .. }
                 | NodeKind::InterpolatedString
                 | NodeKind::Error
         )
@@ -690,6 +734,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             matches!(
                 k,
                 NodeKind::Function { .. }
+                    | NodeKind::Struct { .. }
                     | NodeKind::Visible { .. }
                     | NodeKind::Import { .. }
                     | NodeKind::Binding {
@@ -720,6 +765,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 && matches!(
                     kinds[0],
                     NodeKind::Function { .. }
+                        | NodeKind::Struct { .. }
                         | NodeKind::Binding {
                             constant: true,
                             mutable: false,
@@ -731,6 +777,11 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         NodeKind::Import { .. } => {
             kinds.len() >= 2 && kinds.iter().all(|k| *k == NodeKind::ImportSegment)
         }
+        NodeKind::Struct { .. } => kinds
+            .iter()
+            .all(|k| matches!(k, NodeKind::Field { .. } | NodeKind::Error)),
+        NodeKind::Field { .. } => kinds.len() == 1 && ty(kinds[0]),
+        NodeKind::Projection { .. } => kinds.len() == 1 && expr(kinds[0]),
         NodeKind::Parameter { .. } => kinds.len() == 1 && ty(kinds[0]),
         NodeKind::Binding { has_type, .. } => {
             kinds.len() == 1 + usize::from(has_type)
@@ -738,7 +789,20 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 && expr(*kinds.last().expect("length checked"))
         }
         NodeKind::Return => kinds.len() <= 1 && kinds.iter().all(|k| expr(*k)),
-        NodeKind::Assignment => kinds.len() == 2 && kinds[0] == NodeKind::Name && expr(kinds[1]),
+        NodeKind::Assignment => {
+            if kinds.len() != 2 || !expr(kinds[1]) {
+                return false;
+            }
+            let mut target = node.children[0];
+            while let Some(n) = arena.get(target) {
+                if matches!(n.kind, NodeKind::Projection { .. }) && n.children.len() == 1 {
+                    target = n.children[0];
+                } else {
+                    return n.kind == NodeKind::Name;
+                }
+            }
+            false
+        }
         NodeKind::While => {
             kinds.len() == 2
                 && expr(kinds[0])

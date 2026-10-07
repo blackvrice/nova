@@ -1,4 +1,4 @@
-(* P12 Copy struct subset: Draft, not approved or implemented.
+(* P12 Copy struct subset: Accepted by user 2026-10-05; implemented P12 subset.
    Extends accepted P11: program/assignment/postfix_expr plus three productions.
    Constructor calls use existing syntax; field types require semantic validation.
    No new END rules, methods, init/drop, Move fields, or public ABI. *)

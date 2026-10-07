@@ -52,6 +52,17 @@ pub enum NodeKind {
     Parameter {
         name: Span,
     },
+    Struct {
+        name: Span,
+    },
+    Field {
+        name: Span,
+        mutable: bool,
+        visibility: Visibility,
+    },
+    Projection {
+        name: Span,
+    },
     NamedType,
     UnitType,
     Block,

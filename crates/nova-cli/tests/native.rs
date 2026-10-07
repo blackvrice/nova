@@ -1059,3 +1059,100 @@ print("{i} {j} {k} {chain} {d(-0.0) as int} {less} {skipped}")
         assert_eq!(result.stdout,b"127 -128 0 -0 -0 true inf -inf NaN\n9223372036854774784 18446744073709549568 18446744073709552000 127 0 true false\n");
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p12_copy_struct_native_fixture_and_effect_order_o0_o2() {
+    for profile in ["debug", "release"] {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../target/native-struct-tests")
+            .join(format!(
+                "{}-{}",
+                std::process::id(),
+                SEQUENCE.fetch_add(1, Ordering::Relaxed)
+            ));
+        std::fs::create_dir_all(&root).unwrap();
+        let root = root.canonicalize().unwrap();
+        for (name, source) in [
+            (
+                "main.nova",
+                include_str!("../../../docs/development-v0.1/struct-proposal-fixtures/main.nova"),
+            ),
+            (
+                "geometry.nova",
+                include_str!(
+                    "../../../docs/development-v0.1/struct-proposal-fixtures/geometry.nova"
+                ),
+            ),
+        ] {
+            std::fs::write(root.join(name), source).unwrap();
+        }
+        let result = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("run")
+            .arg(root.join("main.nova"))
+            .args(["--profile", profile])
+            .current_dir(&root)
+            .output()
+            .unwrap();
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "original=21, snapshot=20, shifted=21, tag=🙂\n".as_bytes()
+        );
+        assert!(result.stderr.is_empty());
+        let source = r#"struct Empty{} struct P{var x:int;var y:double;let c:char;let b:bool;let u:();let e:Empty}
+func first()->int{print("first");return 1} func second()->double{print("second");return 2.5}
+func copy(p:P)->P{return p} func empty()->Empty{return Empty()}
+func main(){var p=P(first(),second(),'🙂',true,(),empty());let old=copy(p);while p.x<4{p.x=p.x+1};p.y=3.5;print("{old.x} {p.x} {old.y} {p.y} {old.c} {old.b}")}"#;
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            "first\nsecond\n1 4 2.5 3.5 🙂 true\n".as_bytes()
+        );
+        assert!(result.stderr.is_empty());
+        let source = r#"struct Widths{let a:int8;let b:uint8;let c:int16;let d:uint16;let e:int;let f:uint;let g:int64;let h:uint64;let i:float;let j:double}
+const C=Widths(-128,255,-32768,65535,-2147483648,4294967295,-9223372036854775808,18446744073709551615,0.5,-0.0)
+func echo(v:Widths)->Widths{return v} func main(){let v=echo(C);print("{v.a} {v.b} {v.c} {v.d} {v.e} {v.f} {v.g} {v.h} {v.i} {v.j}")}"#;
+        let result = program_profile(source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout,b"-128 255 -32768 65535 -2147483648 4294967295 -9223372036854775808 18446744073709551615 0.5 -0\n");
+        assert!(result.stderr.is_empty());
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p12_struct_field_checked_failure_has_exact_utf8_source_o0_o2() {
+    let source="// 한글 🙂\nstruct P{let x:int8} func main(){let p=P(127);let n=p.x+1;print(\"unreachable\")}";
+    let start = source.find("p.x+1").unwrap();
+    for profile in ["debug", "release"] {
+        let result = program_profile(source, profile);
+        assert!(!result.status.success());
+        assert!(result.stdout.is_empty());
+        let stderr = String::from_utf8(result.stderr).unwrap();
+        assert_eq!(
+            stderr.lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#0:{start}..{}",
+                    start + 5
+                )
+                .as_str()
+            ),
+            "{stderr}"
+        );
+    }
+}

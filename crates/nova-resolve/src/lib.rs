@@ -13,6 +13,7 @@ pub struct ScopeId(pub usize);
 pub enum DefinitionKind {
     BuiltinPrint,
     Function(HirId),
+    Struct(HirId),
     GlobalConst(HirId),
     Parameter(HirId),
     Local(HirId),
@@ -30,6 +31,9 @@ pub struct Definition {
 #[derive(Debug, Eq, PartialEq)]
 pub struct Scope {
     pub parent: Option<ScopeId>,
+    pub types: BTreeMap<String, DefId>,
+    pub failed_types: BTreeSet<String>,
+    pub type_import_spans: BTreeMap<String, Span>,
     pub definitions: BTreeMap<String, DefId>,
     pub failed_imports: BTreeSet<String>,
     pub import_spans: BTreeMap<String, Span>,
@@ -85,6 +89,9 @@ pub fn resolve(module: &Module) -> Resolved {
         definitions: vec![],
         scopes: vec![Scope {
             parent: None,
+            types: BTreeMap::new(),
+            failed_types: BTreeSet::new(),
+            type_import_spans: BTreeMap::new(),
             definitions: BTreeMap::new(),
             failed_imports: BTreeSet::new(),
             import_spans: BTreeMap::new(),
@@ -129,6 +136,24 @@ pub fn resolve(module: &Module) -> Resolved {
                 name_span,
                 item,
             );
+        } else if let HirKind::Struct { name, name_span } = module.nodes()[item.0].kind {
+            let spelling = module.symbol(name).expect("struct name");
+            if primitive_name(spelling) {
+                result.diagnostics.push(diagnostic(
+                    2002,
+                    name_span,
+                    "struct name conflicts with primitive type",
+                    None,
+                ));
+            }
+            declare(
+                &mut result,
+                root_scope,
+                spelling,
+                DefinitionKind::Struct(item),
+                name_span,
+                item,
+            );
         } else if let HirKind::Binding {
             name,
             name_span,
@@ -169,6 +194,10 @@ pub fn resolve(module: &Module) -> Resolved {
         .iter()
         .map(|scope| result.scopes[scope.0].definitions.clone())
         .collect::<Vec<_>>();
+    let direct_types = scopes
+        .iter()
+        .map(|s| result.scopes[s.0].types.clone())
+        .collect::<Vec<_>>();
     for &item in &items {
         let node = &module.nodes()[item.0];
         let HirKind::Import {
@@ -193,6 +222,80 @@ pub fn resolve(module: &Module) -> Resolved {
             .position(|unit| unit.path == target_path);
         let definition =
             target.and_then(|target| direct[target].get(path[path.len() - 1]).copied());
+        let type_definition =
+            target.and_then(|t| direct_types[t].get(path[path.len() - 1]).copied());
+        if let Some(type_def) = type_definition {
+            let mut failures = vec![];
+            for (def, type_namespace) in [(Some(type_def), true), (definition, false)] {
+                let Some(def) = def else { continue };
+                let d = &result.definitions[def.0];
+                let id = match d.kind {
+                    DefinitionKind::Struct(id)
+                    | DefinitionKind::Function(id)
+                    | DefinitionKind::GlobalConst(id) => id,
+                    _ => unreachable!(),
+                };
+                let s = &result.scopes[scope.0];
+                let (bindings, failed, spans) = if type_namespace {
+                    (&s.types, &s.failed_types, &s.type_import_spans)
+                } else {
+                    (&s.definitions, &s.failed_imports, &s.import_spans)
+                };
+                if let Some(previous) = bindings.get(name) {
+                    failures.push(diagnostic(
+                        2002,
+                        binding_span,
+                        "duplicate import binding",
+                        spans
+                            .get(name)
+                            .copied()
+                            .or(result.definitions[previous.0].span),
+                    ));
+                } else if failed.contains(name) {
+                    failures.push(diagnostic(
+                        2002,
+                        binding_span,
+                        "duplicate import binding",
+                        spans.get(name).copied(),
+                    ));
+                } else if type_namespace && primitive_name(name)
+                    || !type_namespace && name == "print" && d.constant
+                {
+                    failures.push(diagnostic(
+                        2002,
+                        binding_span,
+                        "import conflicts with reserved binding",
+                        d.span,
+                    ));
+                }
+                if target != Some(owner) && module.visibility(id) == Visibility::Private {
+                    failures.push(diagnostic(
+                        2004,
+                        node.span,
+                        "import target is private",
+                        d.span,
+                    ));
+                }
+            }
+            let s = &mut result.scopes[scope.0];
+            s.type_import_spans.insert(name.into(), binding_span);
+            if definition.is_some() {
+                s.import_spans.insert(name.into(), binding_span);
+            }
+            if failures.is_empty() {
+                s.types.insert(name.into(), type_def);
+                if let Some(def) = definition {
+                    s.definitions.insert(name.into(), def);
+                }
+            } else {
+                s.failed_types.insert(name.into());
+                if definition.is_some() {
+                    s.failed_imports.insert(name.into());
+                }
+                result.diagnostics.extend(failures);
+            }
+            continue;
+        }
         if let Some(previous) = result.scopes[scope.0].definitions.get(name).copied() {
             let previous_span = result.scopes[scope.0]
                 .import_spans
@@ -287,6 +390,13 @@ pub fn resolve(module: &Module) -> Resolved {
                 .insert(name.into(), definition.expect("valid import"));
         }
     }
+    let constructor_heads = module
+        .nodes()
+        .iter()
+        .filter(|n| n.kind == HirKind::Call)
+        .filter_map(|n| n.children.first())
+        .map(|id| id.0)
+        .collect::<BTreeSet<_>>();
     for &item in &items {
         let root_scope = scopes[module.owner(item).expect("file ownership")];
         let node = &module.nodes()[item.0];
@@ -374,11 +484,19 @@ pub fn resolve(module: &Module) -> Resolved {
                         }
                         current = result.scopes[scope.0].parent;
                     }
+                    if found.is_none() && current.is_none() && constructor_heads.contains(&id.0) {
+                        let root = &result.scopes[root_scope.0];
+                        found = root.types.get(spelling).copied();
+                        if root.failed_types.contains(spelling) {
+                            current = Some(root_scope);
+                        }
+                    }
                     result.references[id.0] = Some(if let Some(def) = found {
                         Resolution::Definition(def)
                     } else {
                         if !current.is_some_and(|scope| {
                             result.scopes[scope.0].failed_imports.contains(spelling)
+                                || result.scopes[scope.0].failed_types.contains(spelling)
                         }) {
                             result.diagnostics.push(diagnostic(
                                 2001,
@@ -412,6 +530,9 @@ fn new_scope(result: &mut Resolved, parent: ScopeId) -> ScopeId {
     let id = ScopeId(result.scopes.len());
     result.scopes.push(Scope {
         parent: Some(parent),
+        types: BTreeMap::new(),
+        failed_types: BTreeSet::new(),
+        type_import_spans: BTreeMap::new(),
         definitions: BTreeMap::new(),
         failed_imports: BTreeSet::new(),
         import_spans: BTreeMap::new(),
@@ -427,7 +548,12 @@ fn declare(
     node: HirId,
 ) {
     let id = DefId(result.definitions.len());
-    if let Some(previous) = result.scopes[scope.0].definitions.get(name) {
+    let bindings = if matches!(kind, DefinitionKind::Struct(_)) {
+        &mut result.scopes[scope.0].types
+    } else {
+        &mut result.scopes[scope.0].definitions
+    };
+    if let Some(previous) = bindings.get(name) {
         let previous = &result.definitions[previous.0];
         result.diagnostics.push(diagnostic(
             2002,
@@ -436,7 +562,7 @@ fn declare(
             previous.span,
         ));
     } else {
-        result.scopes[scope.0].definitions.insert(name.into(), id);
+        bindings.insert(name.into(), id);
     }
     result.definitions.push(Definition {
         name: name.into(),
@@ -467,4 +593,30 @@ fn diagnostic(code: u16, span: Span, message: &str, secondary: Option<Span>) -> 
         notes: vec![],
         suggestions: vec![],
     }
+}
+
+pub fn primitive_name(name: &str) -> bool {
+    matches!(
+        name,
+        "int8"
+            | "int16"
+            | "int32"
+            | "int64"
+            | "uint8"
+            | "uint16"
+            | "uint32"
+            | "uint64"
+            | "float32"
+            | "float64"
+            | "bool"
+            | "char"
+            | "string"
+            | "void"
+            | "int"
+            | "uint"
+            | "byte"
+            | "float"
+            | "double"
+            | "never"
+    )
 }

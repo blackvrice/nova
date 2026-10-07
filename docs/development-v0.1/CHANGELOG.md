@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P12 승인과 Copy struct 구현
+
+- 사용자 “P12 승인하고 Copy struct 구현 진행”의 2026-10-05 승인을 계약/37-production EBNF/ledger에 기록.
+- nominal Copy struct·분리 type namespace/원자 import·위치 생성·field 읽기/가변 경로·const·checked layout 구현.
+- 독립 MIR 원 ID/path/layout/signature 검증과 private Native snapshot/out ABI, malformed payload 반복형 해제 보강.
+- 기본 252개·실제 LLVM 8개·Windows Native 32개 검증 및 최종 gate 보강 후 Core/LLVM/P12·Hello 재검증.
+- [구현·검증 기록](STRUCT_IMPLEMENTATION.md), [두 파일 fixture](struct-proposal-fixtures/README.md), [예제](../../examples/structs.nova).
+- 원본 148개 문서를 보존하며 String field·init/Drop·일반 Move/borrow·전체 D06/D10/D12/D16/D30은 후속.
+
 ## 2026-10-05 — P12 Copy struct 착수안 (Draft)
 
 - 원본 value semantics·명시적 let/var·재귀 값 금지·namespace 분리를 보존하는 [P12 최소 계약](STRUCT_STAGE_B_PROPOSAL.md) 작성.

@@ -429,7 +429,6 @@ fn unsupported_stage_features_are_not_silently_accepted() {
         "let x=f(name: 1)",
         "let x=f<int>(1)",
         "(x)=1",
-        "f().member",
         "for x in xs { print(1) }",
     ] {
         let source = format!("func main() {{ {body}; print(2) }}\nfunc later() {{ print(3) }}");
@@ -580,7 +579,6 @@ fn unsupported_assignment_and_jump_forms_preserve_later_functions() {
     for body in [
         "(x)=1",
         "f()=1",
-        "x.member=1",
         "x[0]=1",
         "x= y=1",
         "x+=1",
@@ -856,4 +854,42 @@ fn p10_postfix_cast_precedence_spans_and_recovery() {
         let (_, _, parsed) = run(malformed);
         assert!(parsed.has_errors());
     }
+}
+
+#[test]
+fn p12_struct_fields_projection_paths_and_all_utf8_truncations() {
+    let source="public struct 쌍\n{ public var x:int\nprivate let mark:char\n} func make()->쌍{return 쌍(1,'🙂')} func main(){var p=make();p.x=p.x+1;let v=make().x}";
+    let (_, lexed, parsed) = run(source);
+    assert!(
+        !lexed.has_errors() && !parsed.has_errors(),
+        "{:?}",
+        parsed.diagnostics
+    );
+    for end in (0..=source.len()).filter(|&i| source.is_char_boundary(i)) {
+        let (db, _, parsed) = run(&source[..end]);
+        for (_, node) in parsed.arena.iter() {
+            db.slice(node.span).unwrap();
+        }
+        for d in &parsed.diagnostics {
+            db.slice(d.primary.span).unwrap();
+        }
+    }
+    for source in [
+        "struct P{let x:int=1}",
+        "struct P{init(){}}",
+        "func main(){make().x=1}",
+        "func main(){(p).x=1}",
+    ] {
+        assert!(run(source).2.has_errors(), "{source}");
+    }
+}
+
+#[test]
+fn p12_missing_struct_close_recovers_later_top_level_items() {
+    let (sources, _, p) = run("struct P{let x:int func later(){} struct Other{}");
+    assert!(p.has_errors());
+    assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function{name,..} if sources.slice(name).unwrap()=="later")));
+    assert!(p.arena.iter().any(
+        |(_, n)| matches!(n.kind,NodeKind::Struct{name} if sources.slice(name).unwrap()=="Other")
+    ));
 }

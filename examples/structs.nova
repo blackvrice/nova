@@ -1,0 +1,20 @@
+public struct Pair {
+    public var x: int
+    public let y: int
+}
+public struct Box {
+    public var pair: Pair
+    public let tag: char
+}
+public func shifted(p: Pair) -> Pair {
+    return Pair(p.x + 1, p.y)
+}
+
+const START = Pair(20, 2)
+func main() {
+    var original = Box(START, '🙂')
+    let snapshot = original
+    original.pair.x = original.pair.x + 1
+    let shiftedPair = shifted(snapshot.pair)
+    print("original={original.pair.x}, snapshot={snapshot.pair.x}, shifted={shiftedPair.x}, tag={snapshot.tag}")
+}

@@ -35,6 +35,9 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         block: None,
         source: None,
     };
+    if module.structs != module.structs_original {
+        validator.report(Violation::InvalidType);
+    }
     if module.sources.get(module.entry.hir.0) != Some(&module.entry) {
         validator.report(Violation::InvalidSource);
     }
@@ -49,7 +52,10 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
             validator.report(Violation::InvalidCallee);
         }
     }
-    let mut definitions = BTreeSet::new();
+    if module.callees != module.callee_provenance {
+        validator.report(Violation::InvalidCallee);
+    }
+    let mut definitions = module.structs.keys().map(|s| s.0).collect::<BTreeSet<_>>();
     for (index, source) in module.sources.iter().enumerate() {
         if source.hir.0 != index {
             validator.report(Violation::InvalidSource);
@@ -59,7 +65,12 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         if !definitions.insert(callee.definition.0) {
             validator.report(Violation::DuplicateDefinition);
         }
-        if !value_type(callee.return_type) || callee.parameters.iter().any(|&ty| !value_type(ty)) {
+        if !value_type(callee.return_type, &module.structs)
+            || callee
+                .parameters
+                .iter()
+                .any(|&ty| !value_type(ty, &module.structs))
+        {
             validator.report(Violation::InvalidType);
         }
         if callee.builtin_print
@@ -112,7 +123,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         for local in &body.locals {
             validator.source = Some(local.source);
             validator.check_source(body, local.source);
-            if !value_type(local.ty) {
+            if !value_type(local.ty, &module.structs) {
                 validator.report(Violation::InvalidType);
             }
             if let Some(def) = local.definition {
@@ -128,6 +139,43 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
                 validator.check_source(body, statement.source);
                 let StatementKind::Assign(place, value) = &statement.kind;
                 let expected = validator.place_type(body, *place);
+                if let Rvalue::Update(Operand::Place(root), _, _) = value {
+                    if *root != *place
+                        || !body
+                            .locals
+                            .get(root.0 .0)
+                            .and_then(|l| l.definition)
+                            .is_some_and(|d| module.mutable_definitions.contains(&d.0))
+                    {
+                        validator.report(Violation::InvalidLocal);
+                    }
+                }
+                let key = statement.source.hir.0;
+                match value {
+                    Rvalue::Aggregate(id, _)
+                        if module.constructor_provenance.get(&key) != Some(id) =>
+                    {
+                        validator.report(Violation::InvalidSource)
+                    }
+                    Rvalue::Project(_, field)
+                        if module.projection_provenance.get(&key) != Some(field) =>
+                    {
+                        validator.report(Violation::InvalidSource)
+                    }
+                    Rvalue::Update(Operand::Place(root), path, _)
+                        if !module.mutation_provenance.get(&key).is_some_and(
+                            |(def, original)| {
+                                body.locals
+                                    .get(root.0 .0)
+                                    .is_some_and(|l| l.definition == Some(*def))
+                                    && original == path
+                            },
+                        ) =>
+                    {
+                        validator.report(Violation::InvalidSource);
+                    }
+                    _ => {}
+                }
                 let actual = validator.rvalue_type(body, value);
                 validator.same_type(expected, actual);
             }
@@ -191,8 +239,10 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
     validator.errors
 }
 
-fn value_type(ty: Type) -> bool {
-    ty.numeric() || matches!(ty, Type::Unit | Type::Bool | Type::Char | Type::String)
+fn value_type(ty: Type, shapes: &StructRegistry) -> bool {
+    ty.numeric()
+        || matches!(ty, Type::Unit | Type::Bool | Type::Char | Type::String)
+        || matches!(ty,Type::Struct(id) if shapes.get(&id).is_some_and(|s|s.layout.is_some()))
 }
 fn successors(kind: &TerminatorKind) -> Vec<BlockId> {
     match kind {
@@ -242,7 +292,36 @@ impl Validator<'_> {
     fn operand_type(&mut self, body: &Body, operand: &Operand) -> Option<Type> {
         match operand {
             Operand::Place(place) => self.place_type(body, *place),
-            Operand::Constant(constant) => Some(constant.ty()),
+            Operand::Constant(constant) => {
+                let mut work = vec![(constant, constant.ty(), 0usize)];
+                let mut count = 0;
+                while let Some((v, expected, depth)) = work.pop() {
+                    count += 1;
+                    if depth > 128 || count > 65_537 {
+                        self.report(Violation::InvalidType);
+                        break;
+                    }
+                    if v.ty() != expected {
+                        self.report(Violation::TypeMismatch);
+                    }
+                    if let Constant::Struct(id, fields) = v {
+                        if let Some(shape) = self.module.structs.get(id) {
+                            if fields.len() != shape.fields.len() {
+                                self.report(Violation::InvalidArguments);
+                            }
+                            work.extend(
+                                fields
+                                    .iter()
+                                    .zip(&shape.fields)
+                                    .map(|(v, f)| (v, f.ty, depth + 1)),
+                            );
+                        } else {
+                            self.report(Violation::InvalidType);
+                        }
+                    }
+                }
+                Some(constant.ty())
+            }
         }
     }
     fn same_type(&mut self, expected: Option<Type>, actual: Option<Type>) {
@@ -255,6 +334,69 @@ impl Validator<'_> {
     fn rvalue_type(&mut self, body: &Body, value: &Rvalue) -> Option<Type> {
         match value {
             Rvalue::Use(operand) => self.operand_type(body, operand),
+            Rvalue::Aggregate(id, fields) => {
+                if let Some(shape) = self.module.structs.get(id) {
+                    let expected = shape.fields.iter().map(|f| f.ty).collect::<Vec<_>>();
+                    if expected.len() != fields.len() {
+                        self.report(Violation::InvalidArguments);
+                    }
+                    for (&ty, field) in expected.iter().zip(fields) {
+                        let actual = self.operand_type(body, field);
+                        self.same_type(Some(ty), actual);
+                    }
+                } else {
+                    self.report(Violation::InvalidType);
+                }
+                Some(Type::Struct(*id))
+            }
+            Rvalue::Project(receiver, field) => {
+                let recv = self.operand_type(body, receiver);
+                self.same_type(Some(Type::Struct(field.structure)), recv);
+                match self
+                    .module
+                    .structs
+                    .get(&field.structure)
+                    .and_then(|s| s.fields.get(field.index))
+                {
+                    Some(f) => Some(f.ty),
+                    None => {
+                        self.report(Violation::InvalidType);
+                        None
+                    }
+                }
+            }
+            Rvalue::Update(receiver, path, value) => {
+                let root = self.operand_type(body, receiver);
+                let mut ty = root;
+                if path.is_empty() || path.len() > self.module.sources.len() {
+                    self.report(Violation::InvalidArguments);
+                }
+                for field in path {
+                    self.same_type(Some(Type::Struct(field.structure)), ty);
+                    ty = match self
+                        .module
+                        .structs
+                        .get(&field.structure)
+                        .and_then(|s| s.fields.get(field.index))
+                    {
+                        Some(f) => {
+                            let mutable = f.mutable;
+                            let ty = f.ty;
+                            if !mutable {
+                                self.report(Violation::InvalidLocal);
+                            }
+                            Some(ty)
+                        }
+                        None => {
+                            self.report(Violation::InvalidType);
+                            None
+                        }
+                    };
+                }
+                let actual = self.operand_type(body, value);
+                self.same_type(ty, actual);
+                root
+            }
             Rvalue::CheckedCast(operand, dest) => {
                 if !dest.numeric() || !self.operand_type(body, operand).is_some_and(Type::numeric) {
                     self.report(Violation::TypeMismatch);
@@ -434,6 +576,7 @@ impl Validator<'_> {
                 let StatementKind::Assign(place, value) = &statement.kind;
                 match value {
                     Rvalue::Use(op)
+                    | Rvalue::Project(op, _)
                     | Rvalue::Unary(_, op)
                     | Rvalue::Widen(op, _)
                     | Rvalue::CheckedCast(op, _)
@@ -442,7 +585,11 @@ impl Validator<'_> {
                         self.read(&state, left);
                         self.read(&state, right);
                     }
-                    Rvalue::Interpolate(parts) => {
+                    Rvalue::Update(receiver, _, value) => {
+                        self.read(&state, receiver);
+                        self.read(&state, value);
+                    }
+                    Rvalue::Aggregate(_, parts) | Rvalue::Interpolate(parts) => {
                         for part in parts {
                             self.read(&state, part);
                         }

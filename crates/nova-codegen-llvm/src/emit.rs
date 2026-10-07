@@ -25,6 +25,19 @@ pub fn emit_ir(
         None
     };
     let mut emitter=Emitter {mir,output:format!("; Nova Stage A / P03 / LLVM 21.1.8\nsource_filename = \"nova-stage-a\"\ntarget triple = \"{}\"\n%String = type {{ ptr, i64 }}\n",target.triple()),strings:BTreeMap::new(),sequence:0};
+    for (id, shape) in &mir.structs {
+        let fields = shape
+            .fields
+            .iter()
+            .map(|f| ty(f.ty))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let _ = writeln!(
+            emitter.output,
+            "%nova_struct_{} = type {{ {fields} }}",
+            id.0
+        );
+    }
     let expanded = mir.callees.iter().flat_map(|c| c.parameters.iter().copied().chain([c.return_type]))
         .chain(mir.bodies.iter().flat_map(|b| b.locals.iter().map(|l| l.ty)))
         .any(|ty| ty != Type::Int32 && ty.integer().is_some())
@@ -106,25 +119,26 @@ pub fn emit_ir(
         sources: mir.sources.clone(),
     })
 }
-fn ty(ty: Type) -> &'static str {
+fn ty(ty: Type) -> String {
     match ty {
-        Type::Int8 | Type::UInt8 => "i8",
-        Type::Int16 | Type::UInt16 => "i16",
-        Type::Int32 | Type::UInt32 | Type::Char => "i32",
-        Type::Int64 | Type::UInt64 => "i64",
-        Type::Float32 => "float",
-        Type::Float64 => "double",
-        Type::Bool => "i1",
-        Type::String => "%String",
-        Type::Unit => "{}",
+        Type::Struct(id) => format!("%nova_struct_{}", id.0),
+        Type::Int8 | Type::UInt8 => "i8".into(),
+        Type::Int16 | Type::UInt16 => "i16".into(),
+        Type::Int32 | Type::UInt32 | Type::Char => "i32".into(),
+        Type::Int64 | Type::UInt64 => "i64".into(),
+        Type::Float32 => "float".into(),
+        Type::Float64 => "double".into(),
+        Type::Bool => "i1".into(),
+        Type::String => "%String".into(),
+        Type::Unit => "{}".into(),
         _ => unreachable!("verified value type"),
     }
 }
-fn return_ty(ty_: Type) -> &'static str {
-    if ty_ == Type::Unit {
-        "void"
+fn return_ty(t: Type) -> String {
+    if matches!(t, Type::Unit | Type::Struct(_)) {
+        "void".into()
     } else {
-        ty(ty_)
+        ty(t)
     }
 }
 struct Emitter<'a> {
@@ -188,6 +202,18 @@ impl Emitter<'_> {
             ),
             Operand::Constant(Constant::Bool(value)) => (Type::Bool, value.to_string()),
             Operand::Constant(Constant::Char(value)) => (Type::Char, (*value as u32).to_string()),
+            Operand::Constant(Constant::Struct(id, fields)) => {
+                let mut value = String::from("zeroinitializer");
+                for (index, field) in fields.iter().enumerate() {
+                    let (t, v) = self.operand(body, &Operand::Constant(field.clone()));
+                    value = self.instruction(format!(
+                        "insertvalue {} {value}, {} {v}, {index}",
+                        ty(Type::Struct(*id)),
+                        ty(t)
+                    ));
+                }
+                (Type::Struct(*id), value)
+            }
             Operand::Constant(Constant::Unit) => (Type::Unit, "zeroinitializer".into()),
             Operand::Constant(Constant::String(text)) => {
                 let next = self.strings.len();
@@ -347,9 +373,24 @@ impl Emitter<'_> {
             .parameters
             .iter()
             .enumerate()
-            .map(|(id, &type_)| format!("{} %arg{id}", ty(type_)))
+            .map(|(id, &type_)| {
+                if matches!(type_, Type::Struct(_)) {
+                    format!("ptr readonly %arg{id}")
+                } else {
+                    format!("{} %arg{id}", ty(type_))
+                }
+            })
             .collect::<Vec<_>>()
             .join(", ");
+        let parameters = if matches!(signature.return_type, Type::Struct(_)) {
+            if parameters.is_empty() {
+                "ptr %out".into()
+            } else {
+                format!("ptr %out, {parameters}")
+            }
+        } else {
+            parameters
+        };
         let _ = writeln!(
             self.output,
             "define internal fastcc {} @nova_fn_{}({parameters}) {{\nentry:",
@@ -359,6 +400,23 @@ impl Emitter<'_> {
         // All allocas are hoisted so a future cyclic CFG does not grow the stack.
         for (id, local) in body.locals.iter().enumerate() {
             self.line(format!("%p{id} = alloca {}", ty(local.ty)));
+        }
+        for (bb, block) in body.blocks.iter().enumerate() {
+            if let Some(Terminator {
+                kind:
+                    TerminatorKind::Call {
+                        callee, arguments, ..
+                    },
+                ..
+            }) = &block.terminator
+            {
+                for (index, _) in arguments.iter().enumerate() {
+                    let t = self.mir.callees[callee.0].parameters[index];
+                    if matches!(t, Type::Struct(_)) {
+                        self.line(format!("%call.{bb}.{index} = alloca {}", ty(t)));
+                    }
+                }
+            }
         }
         for (bb, block) in body.blocks.iter().enumerate() {
             for (s, statement) in block.statements.iter().enumerate() {
@@ -374,6 +432,12 @@ impl Emitter<'_> {
             }
         }
         for (id, parameter) in body.parameters.iter().enumerate() {
+            if matches!(signature.parameters[id], Type::Struct(_)) {
+                let t = ty(signature.parameters[id]);
+                let v = self.instruction(format!("load {t}, ptr %arg{id}"));
+                self.line(format!("store {t} {v}, ptr %p{}", parameter.0));
+                continue;
+            }
             self.line(format!(
                 "store {} %arg{id}, ptr %p{}",
                 ty(signature.parameters[id]),
@@ -387,6 +451,42 @@ impl Emitter<'_> {
                 self.source(statement.source);
                 let StatementKind::Assign(Place(destination), rvalue) = &statement.kind;
                 let result = match rvalue {
+                    Rvalue::Aggregate(id, fields) => {
+                        let mut v = String::from("zeroinitializer");
+                        for (index, field) in fields.iter().enumerate() {
+                            let (t, f) = self.operand(body, field);
+                            v = self.instruction(format!(
+                                "insertvalue {} {v}, {} {f}, {index}",
+                                ty(Type::Struct(*id)),
+                                ty(t)
+                            ));
+                        }
+                        Some((Type::Struct(*id), v))
+                    }
+                    Rvalue::Project(receiver, field) => {
+                        let (t, v) = self.operand(body, receiver);
+                        let v = self.instruction(format!(
+                            "extractvalue {} {v}, {}",
+                            ty(t),
+                            field.index
+                        ));
+                        Some((self.mir.structs[&field.structure].fields[field.index].ty, v))
+                    }
+                    Rvalue::Update(receiver, path, value) => {
+                        let (t, root) = self.operand(body, receiver);
+                        let (ft, v) = self.operand(body, value);
+                        let indices = path
+                            .iter()
+                            .map(|f| f.index.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        let result = self.instruction(format!(
+                            "insertvalue {} {root}, {} {v}, {indices}",
+                            ty(t),
+                            ty(ft)
+                        ));
+                        Some((t, result))
+                    }
                     Rvalue::CheckedCast(value, dest) => {
                         let (source, value) = self.operand(body, value);
                         Some((
@@ -616,7 +716,11 @@ impl Emitter<'_> {
                     ));
                 }
                 TerminatorKind::Return(value) => {
-                    if signature.return_type == Type::Unit {
+                    if matches!(signature.return_type, Type::Struct(_)) {
+                        let (t, v) = self.operand(body, value);
+                        self.line(format!("store {} {v}, ptr %out", ty(t)));
+                        self.line("ret void");
+                    } else if signature.return_type == Type::Unit {
                         self.line("ret void");
                     } else {
                         let (type_, value) = self.operand(body, value);
@@ -648,17 +752,30 @@ impl Emitter<'_> {
                             destination.0
                         ));
                     } else {
-                        let arguments = args
-                            .iter()
-                            .map(|(type_, value)| format!("{} {value}", ty(*type_)))
-                            .collect::<Vec<_>>()
-                            .join(", ");
+                        let mut arguments = vec![];
+                        if matches!(callee_.return_type, Type::Struct(_)) {
+                            arguments.push(format!("ptr %p{}", destination.0));
+                        }
+                        for (index, (type_, value)) in args.iter().enumerate() {
+                            if matches!(type_, Type::Struct(_)) {
+                                self.line(format!(
+                                    "store {} {value}, ptr %call.{bb}.{index}",
+                                    ty(*type_)
+                                ));
+                                arguments.push(format!("ptr %call.{bb}.{index}"));
+                            } else {
+                                arguments.push(format!("{} {value}", ty(*type_)));
+                            }
+                        }
+                        let arguments = arguments.join(", ");
                         let call = format!(
                             "call fastcc {} @nova_fn_{}({arguments})",
                             return_ty(callee_.return_type),
                             callee.0
                         );
-                        if callee_.return_type == Type::Unit {
+                        if matches!(callee_.return_type, Type::Struct(_)) {
+                            self.line(call);
+                        } else if callee_.return_type == Type::Unit {
                             self.line(call);
                             self.line(format!(
                                 "store {{}} zeroinitializer, ptr %p{}",
