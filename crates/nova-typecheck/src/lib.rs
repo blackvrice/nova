@@ -1,6 +1,7 @@
 //! P02 single-file semantic checking. Successful checking is not native execution.
 mod aggregates;
 mod enums;
+mod sums;
 pub use enums::MatchPattern;
 mod const_eval;
 mod global_consts;
@@ -27,6 +28,8 @@ pub struct Checked {
     pub types: TypeInterner,
     pub structs: nova_types::StructRegistry,
     pub enums: nova_types::EnumRegistry,
+    pub sums: nova_types::SumRegistry,
+    pub sum_origins: std::collections::BTreeMap<nova_types::EnumId, HirId>,
     pub variants: Vec<Option<nova_types::VariantId>>,
     pub patterns: Vec<Option<MatchPattern>>,
     pub exhaustive_matches: std::collections::BTreeSet<usize>,
@@ -124,6 +127,8 @@ impl fmt::Display for CheckError {
 impl std::error::Error for CheckError {}
 
 struct Checker<'a> {
+    sum_shapes: std::collections::HashMap<nova_types::SumKey, nova_types::EnumId>,
+    sum_sources: std::collections::HashMap<nova_types::SumKey, HirId>,
     attempted_variants: std::collections::BTreeSet<usize>,
     type_syntax_seen: std::collections::BTreeSet<usize>,
     tuple_shapes: std::collections::HashMap<Vec<Type>, nova_types::StructId>,
@@ -252,6 +257,8 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         types,
         structs: Default::default(),
         enums: Default::default(),
+        sums: Default::default(),
+        sum_origins: Default::default(),
         variants: vec![None; size],
         patterns: vec![None; size],
         exhaustive_matches: Default::default(),
@@ -300,6 +307,8 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 flags
             });
     let mut checker = Checker {
+        sum_shapes: Default::default(),
+        sum_sources: Default::default(),
         attempted_variants: Default::default(),
         type_syntax_seen: Default::default(),
         tuple_shapes: Default::default(),
@@ -377,6 +386,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         }
     }
     checker.check_tuple_limit();
+    checker.check_sum_limit();
     Ok(checker.result)
 }
 
@@ -417,7 +427,11 @@ impl Checker<'_> {
                 continue;
             }
             let node = &self.module.nodes()[at.0];
-            if node.kind == HirKind::TupleType && !exit {
+            if matches!(
+                node.kind,
+                HirKind::TupleType | HirKind::NullableType | HirKind::GenericType { .. }
+            ) && !exit
+            {
                 work.push((at, true));
                 work.extend(node.children.iter().rev().map(|&c| (c, false)));
                 continue;
@@ -429,6 +443,12 @@ impl Checker<'_> {
                     .map(|c| self.ty(self.result.type_table[c.0]))
                     .collect();
                 let ty = self.intern_tuple(at, fields, false);
+                self.set(at, ty);
+            } else if matches!(
+                node.kind,
+                HirKind::NullableType | HirKind::GenericType { .. }
+            ) {
+                let ty = self.sum_type_syntax(at);
                 self.set(at, ty);
             } else {
                 self.type_syntax_atom(at);
@@ -461,6 +481,15 @@ impl Checker<'_> {
                             1102,
                             node.span,
                             "this Primitive type is outside the approved subset",
+                            None,
+                        );
+                        Type::Error
+                    }
+                    "Option" | "Result" if self.builtin_family(id, name).is_some() => {
+                        self.report(
+                            2101,
+                            node.span,
+                            "builtin family requires type arguments",
                             None,
                         );
                         Type::Error
@@ -760,7 +789,12 @@ impl Checker<'_> {
                     ) =>
                 {
                     let head = node.children[0];
-                    let variant = self.resolve_variant(head);
+                    let builtin = self.sum_head(head).is_some();
+                    let variant = if builtin {
+                        self.prepare_sum(head, context.expected)
+                    } else {
+                        self.resolve_variant(head)
+                    };
                     self.result.variants[id.0] = variant;
                     for (at, &child) in node.children.iter().enumerate().rev() {
                         let expected = variant
@@ -771,6 +805,10 @@ impl Checker<'_> {
                                     .get(at.saturating_sub(1))
                             })
                             .map(|f| self.result.types.intern(f.ty));
+                        if at == 0 && builtin {
+                            self.set(child, Type::Unit);
+                            continue;
+                        }
                         pending.push(Work::Enter(
                             child,
                             Context {
@@ -1015,7 +1053,16 @@ impl Checker<'_> {
                 }
                 self.set(id, Type::Unit);
             }
+            HirKind::None => self.finish_sum_value(id, context.expected),
+            HirKind::VariantPath { .. }
+                if self.sum_head(id).is_some() && !context.direct_callee =>
+            {
+                self.finish_sum_value(id, context.expected)
+            }
             HirKind::VariantPath { .. } => self.finish_variant(id, context.direct_callee),
+            HirKind::Call if self.sum_head(node.children[0]).is_some() => {
+                self.finish_sum_call(id, context.expected)
+            }
             HirKind::Call if self.result.variants[id.0].is_some() => self.finish_variant_call(id),
             HirKind::Error => self.set(id, Type::Error),
             HirKind::Integer(spelling) => self.literal(id, spelling, false, context),
@@ -1387,7 +1434,11 @@ impl Checker<'_> {
                     self.set(id, Type::Error);
                 }
             }
-            HirKind::TypeName(_) | HirKind::UnitType | HirKind::TupleType => {
+            HirKind::TypeName(_)
+            | HirKind::UnitType
+            | HirKind::TupleType
+            | HirKind::GenericType { .. }
+            | HirKind::NullableType => {
                 self.type_syntax(id);
             }
             _ => self.set(id, Type::Unit),

@@ -10,7 +10,7 @@
 
 이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
-Copy Option<T>/Result<T,E>·T?·qualified 생성/none·문맥·match·const·private tagged ABI의 다음 최소 계약은 [P15 Draft](../OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [제안 fixture](../option-result-proposal-fixtures/README.md)에 있다. 미승인/미구현이며 try·Move/Drop·사용자 Generic과 전체 D06/D08/D09/D10/D12/D15/D16/D23/D25/D30은 후속이다.
+사용자 승인한 Copy Option<T>/Result<T,E>·T?·qualified 생성/none·문맥·match·const·private tagged ABI는 [P15 Accepted](../OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [수용 fixture](../option-result-proposal-fixtures/README.md), [구현 기록](../OPTION_RESULT_IMPLEMENTATION.md)을 따른다. try·Move/Drop·사용자 Generic과 전체 D06/D08/D09/D10/D12/D15/D16/D23/D25/D30은 후속이다.
 
 ## 확정 의미
 T?는 Option<T>; variant는 Some/None다. Result<T,E>는 Success/Error이며 try는 Error를 조기 반환한다. Success(())는 Unit 성공이다. niche는 내부 최적화이므로 source 의미와 ABI 약속을 만들지 않는다.

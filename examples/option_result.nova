@@ -1,0 +1,39 @@
+public enum Failure { Bad(int8); }
+public func maybe(flag: bool) -> int8? {
+    print("maybe")
+    if flag { return Option::Some(7) } else { return none }
+}
+public func outcome(flag: bool) -> Result<(int8,bool),Failure> {
+    if flag { return Result::Success((8,true)) } else { return Result::Error(Failure::Bad(-1)) }
+}
+public const NESTED:Option<Option<int8>>=Option::Some(none)
+public func unitResult() -> Result<(),int8> { return Result::Success(()) }
+private struct Hidden { public let value: int8 }
+public func hidden() -> Hidden? { return Option::Some(Hidden(9)) }
+
+func main() {
+    var original: int8? = maybe(true)
+    let snapshot: Option<int8> = original
+    original = none
+    match snapshot {
+        Option::Some(n) => { print("some={n}") }
+        none => { print("bad snapshot") }
+    }
+    match original { Option::Some(_) => {}, Option::None => { print("original=none") } }
+    match outcome(true) {
+        Result::Success(pair) => { print("success={pair.0}, flag={pair.1}") }
+        Result::Error(_) => { print("bad success") }
+    }
+    match outcome(false) {
+        Result::Success(_) => { print("bad error") }
+        Result::Error(error) => {
+            match error { Failure::Bad(code) => { print("error={code}") } }
+        }
+    }
+    match NESTED {
+        Option::Some(inner) => { match inner { Option::Some(_) => {}, none => { print("nested=none") } } }
+        Option::None => { print("bad nested") }
+    }
+    match hidden() { Option::Some(p) => { print("private={p.value}") }, none => {} }
+    match unitResult() { Result::Success(_) => { print("unit=success") }, Result::Error(_) => {} }
+}

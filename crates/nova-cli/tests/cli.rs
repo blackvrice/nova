@@ -644,3 +644,35 @@ fn p14_enum_failures_preserve_outputs_and_gate_native_tools() {
         }
     }
 }
+
+#[test]
+fn p15_sum_failures_preserve_outputs_and_gate_native_tools() {
+    for (source, code) in [
+        ("func main(){let x=none}", "N2103"),
+        ("func main(){let x=Result::Success(1)}", "N2103"),
+        ("func main(){let x:int?=1}", "N2101"),
+        ("func main(x:int?){match x{none=>{}}}", "N3101"),
+        ("const C:int8?=Option::Some(127+1);func main(){}", "N3201"),
+    ] {
+        let root = directory();
+        let path = root.join("main.nova");
+        let output = root.join("keep.exe");
+        std::fs::write(&path, source).unwrap();
+        std::fs::write(&output, b"keep").unwrap();
+        for command in ["check", "build", "run"] {
+            let mut cmd = Command::new(env!("CARGO_BIN_EXE_nova"));
+            cmd.arg(command)
+                .arg(&path)
+                .env("NOVA_CLANG", "missing-clang")
+                .env("NOVA_RUSTC", "missing-rustc")
+                .current_dir(&root);
+            if command == "build" {
+                cmd.arg("-o").arg(&output);
+            }
+            let r = cmd.output().unwrap();
+            assert_eq!(r.status.code(), Some(1));
+            assert!(String::from_utf8_lossy(&r.stderr).contains(code), "{r:?}");
+            assert_eq!(std::fs::read(&output).unwrap(), b"keep");
+        }
+    }
+}

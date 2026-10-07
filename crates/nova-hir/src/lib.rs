@@ -94,6 +94,13 @@ pub enum HirKind {
     },
     Tuple,
     TupleType,
+    GenericType {
+        name: SymbolId,
+        name_span: Span,
+    },
+    NullableType,
+    None,
+    PatternNone,
     TypeName(SymbolId),
     UnitType,
     Block,
@@ -268,6 +275,7 @@ impl Module {
                     | HirKind::Name(name)
                     | HirKind::TupleProjection { index: name, .. }
                     | HirKind::TypeName(name)
+                    | HirKind::GenericType { name, .. }
                     | HirKind::ImportSegment(name) => *name = mapping[name.0],
                     HirKind::VariantPath { owner, name, .. }
                     | HirKind::PatternVariant { owner, name, .. } => {
@@ -420,7 +428,8 @@ pub fn lower(
         | NodeKind::Enum { name }
         | NodeKind::Variant { name }
         | NodeKind::Binder { name }
-        | NodeKind::Projection { name } = node.kind
+        | NodeKind::Projection { name }
+        | NodeKind::GenericType { name } = node.kind
         {
             if !inside(node.span, name) || !identifier(sources.slice(name)?) {
                 return Err(LoweringError::MalformedAst);
@@ -442,6 +451,54 @@ pub fn lower(
             if !inside(node.span, keyword) || sources.slice(keyword)? != "match" {
                 return Err(LoweringError::MalformedAst);
             }
+        }
+        if node.kind == NodeKind::NullableType {
+            let child = arena
+                .get(*node.children.first().ok_or(LoweringError::MalformedAst)?)
+                .ok_or(LoweringError::MalformedAst)?;
+            if !inside(node.span, child.span)
+                || !type_punctuation(
+                    sources.slice(Span::new(
+                        node.span.file(),
+                        child.span.end(),
+                        node.span.end(),
+                    )?)?,
+                    &["?"],
+                )
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::GenericType { name } = node.kind {
+            let first = arena
+                .get(*node.children.first().ok_or(LoweringError::MalformedAst)?)
+                .ok_or(LoweringError::MalformedAst)?;
+            let last = arena
+                .get(*node.children.last().ok_or(LoweringError::MalformedAst)?)
+                .ok_or(LoweringError::MalformedAst)?;
+            if !inside(node.span, first.span)
+                || !inside(node.span, last.span)
+                || name.end() > first.span.start()
+                || !type_punctuation(
+                    sources.slice(Span::new(node.span.file(), name.end(), first.span.start())?)?,
+                    &["<"],
+                )
+                || !type_punctuation(
+                    sources.slice(Span::new(
+                        node.span.file(),
+                        last.span.end(),
+                        node.span.end(),
+                    )?)?,
+                    &[">", ",>"],
+                )
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if matches!(node.kind, NodeKind::None | NodeKind::PatternNone)
+            && sources.slice(node.span)? != "none"
+        {
+            return Err(LoweringError::MalformedAst);
         }
         if node.kind == NodeKind::Wildcard && sources.slice(node.span)? != "_" {
             return Err(LoweringError::MalformedAst);
@@ -671,6 +728,13 @@ pub fn lower(
             },
             NodeKind::Tuple => HirKind::Tuple,
             NodeKind::TupleType => HirKind::TupleType,
+            NodeKind::GenericType { name } => HirKind::GenericType {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+            },
+            NodeKind::NullableType => HirKind::NullableType,
+            NodeKind::None => HirKind::None,
+            NodeKind::PatternNone => HirKind::PatternNone,
             NodeKind::UnitType => HirKind::UnitType,
             NodeKind::Block => HirKind::Block,
             NodeKind::Binding {
@@ -832,13 +896,19 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
     let ty = |kind: NodeKind| {
         matches!(
             kind,
-            NodeKind::NamedType | NodeKind::UnitType | NodeKind::TupleType | NodeKind::Error
+            NodeKind::NamedType
+                | NodeKind::UnitType
+                | NodeKind::TupleType
+                | NodeKind::GenericType { .. }
+                | NodeKind::NullableType
+                | NodeKind::Error
         )
     };
     let expr = |kind: NodeKind| {
         matches!(
             kind,
             NodeKind::VariantPath { .. }
+                | NodeKind::None
                 | NodeKind::Name
                 | NodeKind::Integer
                 | NodeKind::Float
@@ -914,6 +984,8 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         NodeKind::Variant { .. } => kinds.iter().all(|k| ty(*k)),
         NodeKind::VariantPath { .. }
         | NodeKind::Binder { .. }
+        | NodeKind::None
+        | NodeKind::PatternNone
         | NodeKind::PatternBoolean(_)
         | NodeKind::Wildcard => kinds.is_empty(),
         NodeKind::PatternVariant { arguments, .. } => {
@@ -937,6 +1009,8 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 && matches!(
                     kinds[0],
                     NodeKind::PatternVariant { .. }
+                        | NodeKind::None
+                        | NodeKind::PatternNone
                         | NodeKind::PatternBoolean(_)
                         | NodeKind::Wildcard
                         | NodeKind::Error
@@ -951,6 +1025,8 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             kinds.len() == 1 && expr(kinds[0])
         }
         NodeKind::Tuple => !kinds.is_empty() && kinds.iter().all(|k| expr(*k)),
+        NodeKind::GenericType { .. } => !kinds.is_empty() && kinds.iter().all(|k| ty(*k)),
+        NodeKind::NullableType => kinds.len() == 1 && ty(kinds[0]),
         NodeKind::TupleType => !kinds.is_empty() && kinds.iter().all(|k| ty(*k)),
         NodeKind::Parameter { .. } => kinds.len() == 1 && ty(kinds[0]),
         NodeKind::Binding { has_type, .. } => {
@@ -1088,4 +1164,43 @@ fn decode_literal_body(text: &str, character_literal: bool) -> Result<String, Lo
         output.push(decoded);
     }
     Ok(output)
+}
+
+// Validate punctuation certificates while admitting the scanner's whitespace
+// and nested-comment trivia, without importing the lexer into semantic IR.
+fn type_punctuation(mut text: &str, expected: &[&str]) -> bool {
+    let mut punctuation = String::new();
+    while !text.is_empty() {
+        text = text.trim_start();
+        if text.is_empty() {
+            break;
+        }
+        if text.starts_with("//") {
+            text = text.find(['\n', '\r']).map_or("", |at| &text[at..]);
+        } else if text.starts_with("/*") {
+            let mut depth = 1usize;
+            text = &text[2..];
+            while depth > 0 {
+                if text.starts_with("/*") {
+                    depth += 1;
+                    text = &text[2..];
+                } else if text.starts_with("*/") {
+                    depth -= 1;
+                    text = &text[2..];
+                } else if let Some(c) = text.chars().next() {
+                    text = &text[c.len_utf8()..];
+                } else {
+                    return false;
+                }
+            }
+        } else {
+            let c = text.chars().next().expect("nonempty text");
+            if !matches!(c, '<' | '>' | ',' | '?') || punctuation.len() > 2 {
+                return false;
+            }
+            punctuation.push(c);
+            text = &text[c.len_utf8()..];
+        }
+    }
+    expected.contains(&punctuation.as_str())
 }

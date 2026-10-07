@@ -1,4 +1,4 @@
-(* P15 Copy Option/Result/nullable: Draft, user approval required.
+(* P15 Copy Option/Result/nullable: Accepted, user approved 2026-10-07.
    Extends accepted P14: three productions changed and three added (51 total).
    Only intrinsic Option/Result accept type arguments; semantics follow OPTION_RESULT_STAGE_B_PROPOSAL.md. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl | enum_decl ) }, "EOF" ;

@@ -1562,3 +1562,104 @@ fn p14_mixed_enum_constants_convert_validate_and_drop_without_host_recursion() {
         .unwrap();
     pass("enum E{A;B((int,bool));}struct P{var e:E}func f(){var p=P(E::A);p.e=E::B((1,true));let t=(p.e,);match t.0{E::A=>{},E::B(x)=>{print(\"{x.0}\")}}}");
 }
+
+#[test]
+fn p15_sum_certificate_rejects_family_identity_schema_and_tag_forgery() {
+    let source="enum User{Some(int);None;}const C:int?=Option::Some(1);func f(a:int?,b:Result<int,bool>)->int{match a{Option::Some(x)=>{return x},none=>{match b{Result::Success(x)=>{return x},Result::Error(_)=>{return 0}}}}}";
+    let m = pass(source);
+    assert_eq!(m.sums.len(), 2);
+    for change in 0..6 {
+        let mut m = pass(source);
+        let ids = m.sums.keys().copied().collect::<Vec<_>>();
+        match change {
+            0 => m.sums.get_mut(&ids[0]).unwrap().family = nova_types::SumFamily::Result,
+            1 => m.sums.get_mut(&ids[0]).unwrap().arguments[0] = Type::Bool,
+            2 => {
+                let key = m.sums[&ids[0]].clone();
+                m.sums.insert(ids[1], key);
+            }
+            3 => {
+                m.sums.clear();
+            }
+            4 => {
+                let id = *m.enums.keys().find(|id| !m.sums.contains_key(id)).unwrap();
+                let key = m.sums[&ids[0]].clone();
+                m.sums.insert(id, key);
+            }
+            _ => {
+                m.enums.get_mut(&ids[0]).unwrap().variants.swap(0, 1);
+            }
+        }
+        assert!(
+            validate(&m)
+                .iter()
+                .any(|e| e.violation == Violation::InvalidType),
+            "{change}"
+        );
+    }
+    let origin_source = "func f(x:Option<int>){}";
+    let mut forged = pass(origin_source);
+    let origin = forged
+        .sources
+        .iter_mut()
+        .find(|s| s.span.start() == origin_source.find("Option<int>").unwrap())
+        .unwrap();
+    origin.span = nova_source::Span::new(
+        origin.span.file(),
+        origin.span.start() + 1,
+        origin.span.end(),
+    )
+    .unwrap();
+    assert!(validate(&forged)
+        .iter()
+        .any(|e| e.violation == Violation::InvalidType));
+    let mut m = pass(source);
+    for body in &mut m.bodies {
+        for block in &mut body.blocks {
+            if let Some(Terminator {
+                kind: TerminatorKind::Match { arms, .. },
+                ..
+            }) = &mut block.terminator
+            {
+                let a = arms[0].1;
+                arms[0].1 = arms[1].1;
+                arms[1].1 = a;
+            }
+        }
+    }
+    assert!(!validate(&m).is_empty());
+}
+#[test]
+fn p15_deep_sum_constant_gate_and_drop_are_iterative() {
+    let mut m = pass("func main(){let x=Option::Some(1)}");
+    let eid = *m.sums.keys().next().unwrap();
+    std::thread::Builder::new()
+        .stack_size(64 * 1024)
+        .spawn(move || {
+            let v = nova_types::VariantId {
+                enumeration: eid,
+                index: 0,
+            };
+            let mut c = nova_types::ConstValue::Unit;
+            for _ in 0..30000 {
+                c = nova_types::ConstValue::Enum(v, vec![c]);
+            }
+            let value = Constant::from_const(&c);
+            drop(c);
+            let target = m.bodies[0]
+                .blocks
+                .iter_mut()
+                .flat_map(|b| &mut b.statements)
+                .find_map(|s| {
+                    let StatementKind::Assign(_, rv) = &mut s.kind;
+                    matches!(rv, Rvalue::Enum(..)).then_some(rv)
+                })
+                .unwrap();
+            *target = Rvalue::Use(Operand::Constant(value));
+            assert!(!validate(&m).is_empty());
+            drop(m);
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}

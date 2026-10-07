@@ -5,7 +5,10 @@ pub use aggregate::{
     StructShape,
 };
 mod enumeration;
-pub use enumeration::{enum_layout, EnumId, EnumRegistry, EnumShape, EnumVariant, VariantId};
+pub use enumeration::{
+    enum_layout, EnumId, EnumRegistry, EnumShape, EnumVariant, SumFamily, SumKey, SumRegistry,
+    VariantId,
+};
 mod float;
 mod integer;
 pub use float::{

@@ -36,7 +36,51 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         block: None,
         source: None,
     };
-    if module.enums != module.enums_original || module.structs != module.structs_original {
+    if module.enums != module.enums_original
+        || module.structs != module.structs_original
+        || module.sums != module.sums_original
+    {
+        validator.report(Violation::InvalidType);
+    }
+    let mut sum_keys = std::collections::HashSet::new();
+    for (&id, key) in &module.sums {
+        let names = if key.family == nova_types::SumFamily::Option {
+            ["Some", "None"]
+        } else {
+            ["Success", "Error"]
+        };
+        let arity = if key.family == nova_types::SumFamily::Option {
+            1
+        } else {
+            2
+        };
+        let origin_valid = module
+            .sum_origins
+            .get(&id)
+            .is_some_and(|at| module.sources.get(at.hir.0) == Some(at));
+        let valid = key.arguments.len() == arity
+            && sum_keys.insert(key)
+            && origin_valid
+            && !module.tuple_ids.contains(&StructId(id.0))
+            && module.enums.get(&id).is_some_and(|shape| {
+                shape.variants.len() == 2
+                    && shape.variants.iter().enumerate().all(|(at, v)| {
+                        v.name == names[at]
+                            && match key.arguments.get(at) {
+                                Some(ty) => {
+                                    v.fields.len() == 1
+                                        && v.fields[0].ty == *ty
+                                        && !v.fields[0].mutable
+                                }
+                                None => v.fields.is_empty(),
+                            }
+                    })
+            });
+        if !valid {
+            validator.report(Violation::InvalidType);
+        }
+    }
+    if module.sums.len() > 4096 {
         validator.report(Violation::InvalidType);
     }
     if module.sources.get(module.entry.hir.0) != Some(&module.entry) {

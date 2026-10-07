@@ -527,7 +527,13 @@ pub fn resolve(module: &Module) -> Resolved {
                                 || result.scopes[scope.0].failed_types.contains(spelling)
                         }) {
                             result.diagnostics.push(diagnostic(
-                                2001,
+                                if matches!(spelling, "Option" | "Result")
+                                    && !result.scopes[root_scope.0].types.contains_key(spelling)
+                                {
+                                    2101
+                                } else {
+                                    2001
+                                },
                                 node.span,
                                 &format!("undefined name {spelling}"),
                                 None,

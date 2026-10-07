@@ -111,3 +111,16 @@ mod tests {
         assert_eq!(enum_layout(&mut shape, &types), Err(0));
     }
 }
+
+/// P15 identity is independent of user Enum names and structural lookalikes.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub enum SumFamily {
+    Option,
+    Result,
+}
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+pub struct SumKey {
+    pub family: SumFamily,
+    pub arguments: Vec<crate::Type>,
+}
+pub type SumRegistry = BTreeMap<EnumId, SumKey>;

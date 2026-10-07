@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P15 Copy Option·Result·nullable 구현
+
+- 사용자 “승인 할테니 다음 개발 작업 진행해줘” 답변으로 P15를 Accepted 처리했다.
+- Generic type syntax·nullable·none·END와 >= parser adapter, builtin fallback/shadow·문맥·Copy specialization을 연결했다.
+- Enum 기반 const/MIR/Native 경로를 재사용하고 intrinsic family/key/origin certificate를 별도로 검증한다.
+- 4,096 고유 specialization·mixed cycle/layout·const 예산·coverage/flow/visibility와 손상 IR 회귀를 추가했다.
+- standalone 예제와 check/debug/release 명령·8줄 출력은 [TESTING.md](../../TESTING.md)를 따른다.
+- [구현·검증 기록](OPTION_RESULT_IMPLEMENTATION.md). 원본 148개 보존; try·Array·String/Move·사용자 Generic은 후속.
+
 ## 2026-10-07 — P15 Copy Option·Result·nullable 착수안 (Draft)
 
 - Builtin Copy family·T?·none·생성 문맥·type namespace shadow·match·const·private tagged ABI 제안.

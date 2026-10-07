@@ -20,7 +20,7 @@
 
 [P14 Copy Enum·statement match 최소 계약](ENUM_STAGE_B_PROPOSAL.md), [48-production EBNF](GRAMMAR_STAGE_B_ENUM.ebnf), [수용 fixture](enum-proposal-fixtures/README.md)는 Accepted / 구현 완료이며 [구현 기록](ENUM_IMPLEMENTATION.md)을 따른다. 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.
 
-[P15 Copy Option·Result·nullable 최소 계약](OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [수용 fixture](option-result-proposal-fixtures/README.md)는 Draft / 미승인 / 미구현이다. 현재 지원은 P14까지이며 사용자 승인이 필요하다.
+[P15 Copy Option·Result·nullable 최소 계약](OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [수용 fixture](option-result-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현·검증 기록](OPTION_RESULT_IMPLEMENTATION.md)을 따른다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

@@ -58,6 +58,13 @@ pub fn lower(
         structs: checked.structs.clone(),
         enums: checked.enums.clone(),
         enums_original: checked.enums.clone(),
+        sums: checked.sums.clone(),
+        sums_original: checked.sums.clone(),
+        sum_origins: checked
+            .sum_origins
+            .iter()
+            .map(|(&id, at)| (id, sources[at.0]))
+            .collect(),
         variant_provenance: checked
             .variants
             .iter()
@@ -596,7 +603,7 @@ impl Builder<'_> {
                             work.push(Work::Logical(id));
                             work.push(Work::Expression(node.children[0]));
                         }
-                        HirKind::VariantPath { .. } => {
+                        HirKind::VariantPath { .. } | HirKind::None => {
                             let v = self.checked.variants[id.0]
                                 .ok_or(LoweringError::InvalidAnalysis)?;
                             self.values[id.0] = Some(Operand::Constant(Constant::Enum(v, vec![])));

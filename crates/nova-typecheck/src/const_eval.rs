@@ -87,7 +87,7 @@ pub(crate) fn evaluate(
                 | Symbol::OrOr,
             ) => true,
             HirKind::Projection { .. } | HirKind::TupleProjection { .. } | HirKind::Tuple => true,
-            HirKind::VariantPath { .. } => checked.variants[id.0].is_some(),
+            HirKind::VariantPath { .. } | HirKind::None => checked.variants[id.0].is_some(),
             HirKind::Call => {
                 checked.variants[id.0].is_some()
                     || checked.calls[id.0].is_some_and(|d| {
@@ -204,7 +204,7 @@ pub(crate) fn evaluate(
                         };
                         values.push(value.clone());
                     }
-                    HirKind::VariantPath { .. } => values.push(ConstValue::Enum(
+                    HirKind::VariantPath { .. } | HirKind::None => values.push(ConstValue::Enum(
                         checked.variants[id.0].expect("variant"),
                         vec![],
                     )),

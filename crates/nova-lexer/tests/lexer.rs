@@ -506,3 +506,33 @@ fn deterministic_adversarial_inputs_preserve_all_bytes() {
         assert_lossless(&source, &sources, &first);
     }
 }
+
+#[test]
+fn p15_type_close_assignment_preserves_raw_and_normalized_greater_equal() {
+    let (db, l) = scan("func f(){let x:Option<int>=none\nlet n=2>=1\nprint(\"done\")}");
+    let n = normalize_ends(&l.tokens);
+    assert_eq!(
+        l.tokens
+            .iter()
+            .filter(|t| t.kind == TokenKind::Symbol(Symbol::GreaterEqual))
+            .count(),
+        2
+    );
+    assert_eq!(
+        n.iter()
+            .filter(|t| t.kind == TokenKind::Symbol(Symbol::GreaterEqual))
+            .count(),
+        2
+    );
+    let ends = n
+        .iter()
+        .filter(|t| matches!(t.kind, TokenKind::End(EndOrigin::NewLine)))
+        .collect::<Vec<_>>();
+    assert_eq!(ends.len(), 2);
+    for t in n
+        .iter()
+        .filter(|t| t.kind == TokenKind::Symbol(Symbol::GreaterEqual))
+    {
+        assert_eq!(db.slice(t.span).unwrap(), ">=");
+    }
+}

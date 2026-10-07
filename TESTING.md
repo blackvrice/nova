@@ -1,9 +1,47 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P14 Copy Enum·statement match까지다.
+현재 개발 완료 기능은 P15 Copy Option·Result·nullable까지다.
 
-## 현재 기능 실행 — Copy Enum·match
+## 현재 기능 실행 — Copy Option·Result·nullable
+
+```powershell
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- check examples/option_result.nova
+cargo run -p nova-cli --offline -- run examples/option_result.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/option_result.nova --profile release
+```
+
+check는 성공 시 출력 없이 exit 0, 두 실행은 다음 8줄과 각 LF, stderr 없음·exit 0이다.
+
+```text
+maybe
+some=7
+original=none
+success=8, flag=true
+error=-1
+nested=none
+private=9
+unit=success
+```
+
+[계약](docs/development-v0.1/OPTION_RESULT_STAGE_B_PROPOSAL.md),
+[구현 기록](docs/development-v0.1/OPTION_RESULT_IMPLEMENTATION.md),
+[두 파일 import·private factory fixture 실행](docs/development-v0.1/option-result-proposal-fixtures/README.md)을 제공한다.
+P15의 빠른 검증은 기본 회귀 11개, 실제 LLVM 1개, Native 2개다. O0/O2는 opt-in 테스트 안에서 검사한다.
+
+```powershell
+cargo test --workspace --offline p15_
+cargo test -p nova-codegen-llvm --test emission --offline p15_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p15_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/option-result-proposal-fixtures/untyped_none.nova
+```
+
+마지막 명령은 `none`의 타입 문맥 부족으로 N2103·exit 1이 예상된다.
+문맥 없이 `Option::Some(7)`은 Option<int32>지만 `none` 및 Result 생성자는 완성된 기대 타입이 필요하다.
+`let x:int8?=Option::Some(7)`처럼 타입을 지정할 수 있다. String/Move payload·try·사용자 Generic은 후속이다.
+
+## 기존 기능 실행 — Copy Enum·match
 
 LLVM이 PATH에 없다면 저장소 로컬 toolchain의 clang 경로를 먼저 설정한다.
 
@@ -42,8 +80,8 @@ cargo test --workspace --offline
 cargo check --workspace --all-features --offline
 ```
 
-P14 기준 기본 tests 276개가 성공하고 실제 LLVM/Native tests 46개는 ignored로 표시된다.
-이 46개를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
+P15 기준 기본 tests 287개가 성공하고 실제 LLVM/Native tests 49개는 ignored로 표시된다.
+이 49개를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
 
 ```powershell
 cargo test -p nova-codegen-llvm --test emission --offline -- --ignored --test-threads=1
@@ -66,10 +104,3 @@ cargo run -p nova-cli --offline -- check docs/development-v0.1/enum-proposal-fix
 
 Native tests는 격리된 target 경로에 실행 파일을 만들고 실행한다. ELF object 검증은 Linux Native host 실행 검증이 아니다.
 앞으로 기능 구현 완료 보고에는 새 예제의 check/debug/release 명령·예상 출력·기능별 테스트 명령을 함께 제공한다.
-
-## 다음 제안 — P15 Copy Option·Result·nullable
-
-[P15 계약](docs/development-v0.1/OPTION_RESULT_STAGE_B_PROPOSAL.md)과
-[수용 예제·제안 출력](docs/development-v0.1/option-result-proposal-fixtures/README.md)는 Draft / 미구현이다.
-현재 이 예제의 check/run 성공을 보장하지 않는다. 승인 후 사용할 check/debug/release 명령은 예제 README에 있다.
-현재 직접 실행할 예제는 위 `examples/enums.nova`와 P14 자동 테스트다.

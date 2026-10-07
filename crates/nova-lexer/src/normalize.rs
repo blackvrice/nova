@@ -138,6 +138,14 @@ pub fn normalize_ends(tokens: &[Token]) -> Vec<Token> {
             {
                 delimiters.pop();
             }
+            TokenKind::Symbol(Symbol::GreaterEqual)
+                if delimiters.last() == Some(&Delimiter::TypeArguments) =>
+            {
+                delimiters.pop();
+                binding = false;
+                type_context = false;
+                generic_candidate = false;
+            }
             TokenKind::Symbol(Symbol::Equal) => {
                 binding = false;
                 type_context = false;

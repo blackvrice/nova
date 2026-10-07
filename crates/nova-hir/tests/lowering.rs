@@ -603,3 +603,43 @@ fn p14_public_ast_pattern_metadata_cannot_bypass_validation() {
         lower_source(&source[..at]);
     }
 }
+
+#[test]
+fn p15_ast_type_and_none_certificates_reject_forged_spelling() {
+    for (text, kind, children) in [
+        ("null", NodeKind::None, false),
+        ("none", NodeKind::PatternNone, true),
+        ("int!", NodeKind::NullableType, true),
+        (
+            "int<>",
+            NodeKind::GenericType {
+                name: Span::new(nova_source::FileId::from_raw(0), 0, 3).unwrap(),
+            },
+            true,
+        ),
+    ] {
+        let mut db = SourceDatabase::default();
+        let file = db.add("api", text.into()).unwrap();
+        let mut a = Arena::default();
+        let span = |x, y| Span::new(file, x, y).unwrap();
+        let c = a.insert(NodeKind::NamedType, span(0, 3), vec![]).unwrap();
+        let n = a
+            .insert(
+                kind,
+                span(0, text.len()),
+                if children { vec![c] } else { vec![] },
+            )
+            .unwrap();
+        let e = a
+            .insert(NodeKind::Error, span(0, text.len()), vec![n])
+            .unwrap();
+        let r = a
+            .insert(NodeKind::Root, span(0, text.len()), vec![e])
+            .unwrap();
+        assert_eq!(lower(&db, &a, r), Err(LoweringError::MalformedAst));
+    }
+    let text = "func f(x:Result<Option<int>,bool,>){let y:int??=Option::Some(none)}";
+    for at in (0..=text.len()).filter(|&at| text.is_char_boundary(at)) {
+        lower_source(&text[..at]);
+    }
+}

@@ -427,7 +427,6 @@ fn missing_brace_preserves_the_next_function() {
 fn unsupported_stage_features_are_not_silently_accepted() {
     for body in [
         "struct X {}",
-        "let x=none",
         "let x=[1,2]",
         "let x=lambda () => 1",
         "let x=f(name: 1)",
@@ -453,7 +452,6 @@ fn unsupported_stage_features_are_not_silently_accepted() {
         "func f<T>() {}",
         "func f(x: int=1) {}",
         "func f(take x: int) {}",
-        "func f(x: Array<int>) {}",
     ] {
         let (_, _, parsed) = run(source);
         assert!(
@@ -991,6 +989,43 @@ fn p14_enum_match_syntax_utf8_truncation_and_recovery() {
         "func f(){{{}{} }}",
         "match true{_=>{".repeat(140),
         "}}".repeat(140)
+    );
+    assert!(run(&deep).2.has_errors());
+}
+
+#[test]
+fn p15_type_arguments_nullable_end_adapter_and_utf8_recovery() {
+    let source="// 🙂\nfunc f(x:Result<Option<(int8,bool)>,int,>)->int??{let y:Option<int>=none\nlet n=2>=1\nmatch y{none=>{},Option::Some(v)=>{}}\nreturn Option::Some(none)}";
+    let (db, lexed, p) = run(source);
+    assert!(
+        !lexed.has_errors() && !p.has_errors(),
+        "{:?}",
+        p.diagnostics
+    );
+    assert_eq!(
+        lexed
+            .tokens
+            .iter()
+            .filter(|t| t.kind == TokenKind::Symbol(nova_syntax::Symbol::GreaterEqual))
+            .count(),
+        2
+    );
+    assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::GenericType { name } if db.slice(name).unwrap()=="Result")));
+    for at in (0..=source.len()).filter(|&at| source.is_char_boundary(at)) {
+        let (_, _, p) = run(&source[..at]);
+        assert!(p.arena.iter().count() < source.len() * 3);
+    }
+    for bad in [
+        "func f(x:Option<>){}",
+        "func f(x:Result<int,,bool>){}",
+        "func f(){let x=Option<int>::Some(1)}",
+    ] {
+        assert!(run(bad).2.has_errors(), "{bad}");
+    }
+    let deep = format!(
+        "func f(x:{}int{}){{}}",
+        "Option<".repeat(140),
+        ">".repeat(140)
     );
     assert!(run(&deep).2.has_errors());
 }

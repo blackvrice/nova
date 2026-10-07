@@ -2549,3 +2549,231 @@ fn p14_module_alias_identity_visibility_and_unused_cross_file_cycles() {
         );
     }
 }
+
+#[test]
+fn p15_proposal_failures_have_exact_utf8_byte_spans() {
+    for (source, code, start, end) in [
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/untyped_none.nova"), "N2103", 37, 41),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/untyped_result.nova"), "N2103", 37, 55),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/untyped_inner_none.nova"), "N2103", 50, 54),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/raw_wrapping.nova"), "N2101", 42, 43),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/payload_type.nova"), "N2101", 55, 59),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/existing_value_widen.nova"), "N2101", 73, 74),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/missing_option.nova"), "N3101", 34, 39),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/duplicate_none.nova"), "N3102", 71, 83),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/missing_result.nova"), "N3101", 46, 51),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/wrong_family.nova"), "N2101", 54, 66),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/wrong_error_type.nova"), "N2101", 68, 73),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/string_payload.nova"), "N1102", 35, 41),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/generic_arity.nova"), "N2101", 28, 44),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/unknown_variant.nova"), "N2001", 50, 57),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/immutable_binder.nova"), "N3004", 60, 61),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/binder_scope.nova"), "N2001", 79, 80),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/recursive_value.nova"), "N2101", 44, 45),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/user_generic.nova"), "N1102", 40, 43),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/try_unsupported.nova"), "N1102", 52, 55),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/nullary_call.nova"), "N2201", 42, 56),
+        (include_str!("../../../docs/development-v0.1/option-result-proposal-fixtures/nullary_pattern_binder.nova"), "N2201", 62, 77),
+    ] {
+        let r = frontend(source);
+        assert!(!r.passed());
+        assert!(r.diagnostics().iter().any(|d| d.code.to_string() == code && (d.primary.span.start(), d.primary.span.end()) == (start, end)), "{source}\n{:?}", r.diagnostics());
+    }
+}
+#[test]
+fn p15_context_identity_shadow_const_and_match_flow() {
+    pass("const X:int8?=Option::Some(7);const N:int8?=none;func f(v:int8?)->int8{match v{Option::Some(x)=>{return x},none=>{return 0}}}func g(){var x:Option<int8>=X;let old=x;x=N;let t:(int8?,)= (Option::Some(1),);let z:int??=Option::Some(none);let r:Result<(),int8>=Result::Success(());match r{Result::Success(_)=>{},Result::Error(e)=>{print(\"{e}\")}}}");
+    pass("enum Option{Some(int8);None;}enum Result{Success(bool);Error;}func f(){let x=Option::Some(2);let y=Result::Success(true);let z:int?=none;match x{Option::Some(v)=>{},Option::None=>{}}match z{none=>{},_=>{}}}");
+    pass("func Option()->int{return 2}func Some()->int{return 3}func f(){let Option=1;let x:Option<int8>=Option::Some(2);let y=Some();let z=Option::Some(4);let q:Option<int32>=z}");
+    pass("struct S{var x:int8?}enum E{A(Result<int8,bool>);B;}func f(){var p=(S(none),);p.0.x=Option::Some(3);let e=E::A(Result::Success(1));match e{E::A(r)=>{match r{Result::Success(x)=>{},Result::Error(e)=>{}}},E::B=>{}}}");
+    for (source, code) in [
+        ("func f(){let x=Option}", "N2101"),
+        ("func f(a:Option){}", "N2101"),
+        ("func f(a:Array<int>){}", "N2001"),
+        ("func f(a:int<int>){}", "N1102"),
+        ("func f(a:Option<int>){let x=a==a}", "N2101"),
+        ("func f(a:int?){print(\"{a}\")}", "N2101"),
+        ("func f(a:int?){let x=a.0}", "N2101"),
+        ("func f(){let x:Result<int,bool>=Option::Some(1)}", "N2101"),
+        ("func f(){let x:Option<int>=Result::Error(true)}", "N2101"),
+        ("func f(){let x=Option::Some()}", "N2201"),
+        ("func f(){let x=Result::Success}", "N2201"),
+        ("const C:int8?=Option::Some(127+1);func f(){}", "N3201"),
+        (
+            "const C:int?=Option::Some(D);const D:int=C;func f(){}",
+            "N3202",
+        ),
+        (
+            "func f(x:int?)->int{match x{Option::Some(y)=>{return y},none=>{}}}",
+            "N3003",
+        ),
+    ] {
+        let r = frontend(source);
+        assert!(
+            codes(&r).contains(&code.into()),
+            "{source}\n{:?}",
+            r.diagnostics()
+        );
+    }
+    let (_, _, c) =
+        pass("func f(a:int?,b:Option<int32>,c:Result<int8,bool>,d:Result<int8,bool>,e:int??){}")
+            .semantic
+            .unwrap();
+    assert_eq!(c.sums.len(), 3);
+    assert_eq!(c.definition_types[2], c.definition_types[3]);
+    let (v, n) = constant_value("const C:int??=Option::Some(none);func f(){}", "C");
+    assert!(
+        matches!(v,ConstValue::Enum(_,ref f) if matches!(f[0],ConstValue::Enum(_,ref f) if f.is_empty()))
+    );
+    assert_eq!(n, 2);
+    let (_, n) = constant_value(
+        "const C:Result<(),bool>=Result::Success(());func f(){}",
+        "C",
+    );
+    assert_eq!(n, 2);
+}
+#[test]
+fn p15_layout_oracles_and_unique_specialization_limits() {
+    let (_,_,c)=pass("func f(a:()?,b:Option<(int8,uint64)>,c:Option<Option<(int8,uint64)>>,d:Result<(),uint64>){}").semantic.unwrap();
+    let layouts = c
+        .sums
+        .iter()
+        .map(|(id, key)| {
+            (
+                key.clone(),
+                c.structs[&nova_types::StructId(id.0)]
+                    .layout
+                    .clone()
+                    .unwrap(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(layouts.len(), 4);
+    for (key, l) in &layouts {
+        match (key.family, key.arguments.as_slice()) {
+            (nova_types::SumFamily::Option, [Type::Unit]) => assert_eq!((l.size, l.align), (4, 4)),
+            (nova_types::SumFamily::Option, [Type::Tuple(_)]) => {
+                assert_eq!((l.size, l.align), (24, 8))
+            }
+            (nova_types::SumFamily::Option, [Type::Enum(_)]) => {
+                assert_eq!((l.size, l.align), (32, 8))
+            }
+            (nova_types::SumFamily::Result, [Type::Unit, Type::UInt64]) => {
+                assert_eq!((l.size, l.align), (16, 8))
+            }
+            _ => panic!("unexpected {key:?}"),
+        }
+    }
+    let declarations = (0..512)
+        .map(|i| format!("struct S{i}{{}}"))
+        .collect::<String>();
+    let payloads = [
+        "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64",
+    ];
+    let types = (0..512)
+        .flat_map(|i| payloads.map(move |p| format!("func f{i}_{p}(x:Result<S{i},{p}>){{}}")))
+        .collect::<String>();
+    pass(&format!("{declarations}{types}"));
+    let source = format!("{declarations}{types}func over(x:Option<S0>){{}}");
+    let r = frontend(&source);
+    let diagnostics = r.diagnostics();
+    let d = diagnostics
+        .iter()
+        .find(|d| d.code.to_string() == "N8901")
+        .unwrap();
+    assert_eq!(d.primary.span.start(), source.find("Option<S0>").unwrap());
+    assert!(d.notes.iter().any(|n| n.contains("4096")));
+    let sum = vec!["0"; 5000].join("+");
+    let (_, n) = constant_value(
+        &format!("const C:int?=Option::Some({sum});func f(){{}}"),
+        "C",
+    );
+    assert_eq!(n, 10000);
+    assert!(codes(&frontend(&format!(
+        "const C:int?=Option::Some({sum}+0);func f(){{}}"
+    )))
+    .contains(&"N3202".into()));
+}
+#[test]
+fn p15_module_alias_private_factory_and_failed_import_shadow() {
+    let (_, _, c) = p12_bundle(&[
+        (
+            "main",
+            include_str!(
+                "../../../docs/development-v0.1/option-result-proposal-fixtures/main.nova"
+            ),
+        ),
+        (
+            "values",
+            include_str!(
+                "../../../docs/development-v0.1/option-result-proposal-fixtures/values.nova"
+            ),
+        ),
+    ]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    let (_, _, c) = p12_bundle(&[
+        (
+            "main",
+            "use lib::Choice as Option;func f(){let x=Option::Some(1);let y:int?=none;}",
+        ),
+        ("lib", "public enum Choice{Some(int8);None;}"),
+    ]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    let (_, _, c) = p12_bundle(&[
+        ("main", "use lib::Option;func f(x:Option<int>){}"),
+        ("lib", "private enum Option{Some(int);None;}"),
+    ]);
+    assert!(c.diagnostics.iter().any(|d| d.code.to_string() == "N2004"));
+    assert!(!c.diagnostics.iter().any(|d| d.code.to_string() == "N2001"));
+    let (_,_,c)=p12_bundle(&[("main","use lib::make;func f(){match make(){Option::Some(x)=>{print(\"{x.value}\")},none=>{}}}"),("lib","private struct H{private let value:int}public func make()->H?{return Option::Some(H(1))}")]);
+    assert!(c.diagnostics.iter().any(|d| d.code.to_string() == "N2004"));
+}
+
+#[test]
+fn p15_mixed_cycles_depth_occurrence_and_first_origin_are_bounded() {
+    pass("func f(a:Option /*a*/ <int /*b*/, /*c*/ > /*d*/ ?){let x:int /*e*/ ?=none}");
+    let mut chain = "struct S0{}".to_string();
+    for i in 1..64 {
+        chain += &format!("struct S{i}{{let x:S{}?}}", i - 1);
+    }
+    pass(&format!("{chain}func f(x:S63?){{}}"));
+    let r = frontend(&format!("{chain}struct S64{{let x:S63?}}func f(){{}}"));
+    assert!(codes(&r).contains(&"N8901".into()));
+    let mut tree = "struct S0{let x:int?}".to_string();
+    for i in 1..14 {
+        tree += &format!("struct S{i}{{let a:S{0}?;let b:S{0}?}}", i - 1);
+    }
+    pass(&format!("{tree}func f(){{}}"));
+    assert!(codes(&frontend(&format!(
+        "{tree}struct S14{{let a:S13?;let b:S13?}}func f(){{}}"
+    )))
+    .contains(&"N8901".into()));
+    for source in [
+        "struct S{let x:Result<(),S>}func f(){}",
+        "struct S{let x:(S?,)}func f(){}",
+        "enum E{A(Option<S>);}struct S{let x:Result<E,bool>}func f(){}",
+    ] {
+        assert!(
+            codes(&frontend(source)).contains(&"N2101".into()),
+            "{source}"
+        );
+    }
+    let (hir, _, c) = pass("func early(){let x=Option::Some(1)}func later(x:int?){}")
+        .semantic
+        .unwrap();
+    let eid = *c.sums.keys().next().unwrap();
+    let at = c.sum_origins[&eid];
+    assert!(matches!(hir.nodes()[at.0].kind, HirKind::Call));
+    assert_eq!(hir.nodes()[at.0].span.start(), 19);
+    for source in [
+        "func f(x:Option<string>){}",
+        "func f(x:Result<int,string>){}",
+        "func f(){let x=Option::Some(\"text\")}",
+        "func f(){let x=Option<int>::Some(1)}",
+    ] {
+        assert!(
+            codes(&frontend(source)).contains(&"N1102".into()),
+            "{source}"
+        );
+    }
+}

@@ -1355,3 +1355,60 @@ fn p14_enum_payload_checked_failure_has_exact_utf8_source_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p15_copy_option_result_fixture_numeric_payloads_effect_order_and_snapshot_o0_o2() {
+    for profile in ["debug", "release"] {
+        let main = include_str!(
+            "../../../docs/development-v0.1/option-result-proposal-fixtures/main.nova"
+        )
+        .replace("values::", "lib::");
+        let r = module_program(
+            &main,
+            include_str!(
+                "../../../docs/development-v0.1/option-result-proposal-fixtures/values.nova"
+            ),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stderr.is_empty());
+        assert_eq!(r.stdout,b"maybe\nsome=7\noriginal=none\nsuccess=8, flag=true\nerror=-1\nnested=none\nprivate=9\nunit=success\n");
+        let source = r#"struct H{var v:Result<int8,bool>}func value()->int8{print("value");return 7}func echo(v:Result<int8,bool>)->Result<int8,bool>{return v}
+func score(v:int??)->int{match v{none=>{return 0},Option::Some(inner)=>{match inner{none=>{return 1},Option::Some(x)=>{return x}}}}}
+func main(){var p=(H(echo(Result::Success(value()))),);let old=p;p.0.v=Result::Error(true);match old.0.v{Result::Success(x)=>{p.0.v=Result::Success(9);print("{x}")},Result::Error(_)=>{}}var n=0;while n<3{n=n+1;match p.0.v{Result::Success(_)=>{if n==2{continue}if n==3{break}},Result::Error(_)=>{break}}}print("{n} {score(Option::Some(none))} {score(none)} {score(Option::Some(Option::Some(8)))}");let u:Result<(),uint64>=Result::Error(18446744073709551615);match u{Result::Success(_)=>{},Result::Error(e)=>{print("{e}")}}}"#;
+        let r = program_profile(source, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"value\n7\n3 1 0 8\n18446744073709551615\n");
+        assert!(r.stderr.is_empty());
+        let source = r#"const C:Option<(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double,bool,char)>=Option::Some((-128,255,-32768,65535,-2147483648,4294967295,-9223372036854775808,18446744073709551615,0.5,-0.0,true,'🙂'))
+func echo(v:Option<(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double,bool,char)>)->Option<(int8,uint8,int16,uint16,int,uint,int64,uint64,float,double,bool,char)>{return v}
+func main(){match echo(C){none=>{},Option::Some(t)=>{print("{t.0} {t.1} {t.2} {t.3} {t.4} {t.5} {t.6} {t.7} {t.8} {t.9} {t.10} {t.11}")}}}"#;
+        let r = program_profile(source, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout,"-128 255 -32768 65535 -2147483648 4294967295 -9223372036854775808 18446744073709551615 0.5 -0 true 🙂\n".as_bytes());
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p15_option_payload_checked_failure_has_exact_utf8_source_o0_o2() {
+    let source="// 한글 🙂\nfunc main(){let x:int8?=Option::Some(127);match x{none=>{},Option::Some(y)=>{let n=y+1;print(\"unreachable\")}}}";
+    let start = source.find("y+1").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert!(!r.status.success());
+        assert!(r.stdout.is_empty());
+        let stderr = String::from_utf8(r.stderr).unwrap();
+        assert_eq!(
+            stderr.lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#0:{start}..{}",
+                    start + 3
+                )
+                .as_str()
+            )
+        );
+    }
+}

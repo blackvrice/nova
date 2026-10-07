@@ -92,6 +92,12 @@ pub enum NodeKind {
     },
     Tuple,
     TupleType,
+    GenericType {
+        name: Span,
+    },
+    NullableType,
+    None,
+    PatternNone,
     NamedType,
     UnitType,
     Block,

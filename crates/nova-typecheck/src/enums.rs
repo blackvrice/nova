@@ -279,13 +279,27 @@ impl Checker<'_> {
                         self.report(2101, p.span, "Bool pattern requires Bool scrutinee", None);
                     }
                 }
-                HirKind::PatternVariant {
-                    arguments,
-                    owner_span,
-                    name_span,
-                    ..
-                } => {
-                    if let Some(v) = self.resolve_variant(pattern) {
+                HirKind::PatternNone | HirKind::PatternVariant { .. } => {
+                    let (arguments, owner_span, name_span) = match p.kind {
+                        HirKind::PatternVariant {
+                            arguments,
+                            owner_span,
+                            name_span,
+                            ..
+                        } => (arguments, owner_span, name_span),
+                        _ => (false, p.span, p.span),
+                    };
+                    let builtin = self.sum_head(pattern).is_some();
+                    let expected = self.result.types.intern(ty);
+                    let variant = if builtin {
+                        self.prepare_sum(pattern, Some(expected))
+                    } else {
+                        self.resolve_variant(pattern)
+                    };
+                    if builtin && variant.is_none() {
+                        self.sum_error(pattern, pattern, Some(expected));
+                    }
+                    if let Some(v) = variant {
                         self.result.patterns[pattern.0] = Some(MatchPattern::Variant(v));
                         if ty == Type::Enum(v.enumeration) {
                             cases.push(v.index);

@@ -391,17 +391,17 @@ assert(fs.readFileSync(path.join(enumFixtureRoot, 'main.nova'), 'utf8').includes
   && fs.readFileSync(path.join(enumFixtureRoot, 'events.nova'), 'utf8').includes('public const BASE: Event'), 'P14 missing Copy/import/const fixture data');
 checks.push('P14 Accepted/승인·구현 ledger·P13 세 production 확장/여덟 추가·48-production EBNF·두 파일/부정 16사례 UTF-8 Span·검증 기대값 데이터 (문서 validator는 컴파일 실행 아님)');
 
-const optionResultProposal = manifest.draft_proposals?.find(p => p.id === 'P15');
-assert(optionResultProposal?.status === 'Draft' && optionResultProposal?.implementation_verified === false
-  && optionResultProposal?.authored_date === '2026-10-07' && optionResultProposal?.grammar_change === true
+const optionResultProposal = manifest.accepted_proposals?.find(p => p.id === 'P15');
+assert(optionResultProposal?.status === 'Accepted' && optionResultProposal?.implementation_verified === true
+  && optionResultProposal?.approval_date === '2026-10-07' && optionResultProposal?.grammar_change === true
   && optionResultProposal?.document === 'OPTION_RESULT_STAGE_B_PROPOSAL.md'
-  && optionResultProposal?.grammar === 'GRAMMAR_STAGE_B_OPTION_RESULT.ebnf', 'P15 missing draft/unimplemented ledger');
-assert(!manifest.accepted_proposals?.some(p => p.id === 'P15'), 'P15 must not be approved before user decision');
+  && optionResultProposal?.grammar === 'GRAMMAR_STAGE_B_OPTION_RESULT.ebnf', 'P15 missing accepted/implemented ledger');
+assert(!manifest.draft_proposals?.some(p => p.id === 'P15'), 'P15 must not remain draft after approval');
 assert(fs.readFileSync(path.join(pack, 'OPTION_RESULT_STAGE_B_PROPOSAL.md'), 'utf8')
-  .includes('Draft / 사용자 승인 대기 / 미구현'), 'P15 invalid proposal status');
+  .includes('Accepted / 사용자 승인 완료 / 구현 완료'), 'P15 invalid proposal status');
 validateGrammar('GRAMMAR_STAGE_B_OPTION_RESULT.ebnf');
 const optionResultGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_OPTION_RESULT.ebnf'), 'utf8');
-assert(optionResultGrammar.includes('Draft, user approval required'), 'P15 invalid grammar status');
+assert(optionResultGrammar.includes('Accepted, user approved 2026-10-07'), 'P15 invalid grammar status');
 const optionResultProductions = productions(optionResultGrammar);
 for (const [name, value] of enumProductions) {
   if (!['type', 'primary_expr', 'pattern'].includes(name)) {
@@ -417,13 +417,13 @@ assert(optionResultProductions.get('type_arguments') === '"<",type,{",",type},["
 assert(optionResultProductions.get('type_close')?.includes('>=tokensplitsonlyintypeargumentcontextpreservingone-byte>and=subspans'), 'P15 missing type-close byte subspan contract');
 const optionResultRoot = path.join(pack, 'option-result-proposal-fixtures');
 const optionResultFixture = JSON.parse(fs.readFileSync(path.join(optionResultRoot, 'expected.json'), 'utf8'));
-assert(optionResultFixture.proposal === 'P15' && optionResultFixture.status === 'Draft'
-  && optionResultFixture.implementation_verified === false && !optionResultFixture.validated_result, 'P15 fixture must remain proposed/unverified');
+assert(optionResultFixture.proposal === 'P15' && optionResultFixture.status === 'Accepted'
+  && optionResultFixture.implementation_verified === true && optionResultFixture.validated_result, 'P15 fixture must be verified after approval');
 assert(optionResultFixture.entry === 'main.nova' && optionResultFixture.source_root === '.'
   && JSON.stringify(optionResultFixture.reachable_modules) === '["main","values"]', 'P15 fixture graph mismatch');
-assert(optionResultFixture.proposed_result?.check_exit === 0 && optionResultFixture.proposed_result?.native_exit === 0
-  && optionResultFixture.proposed_result?.stderr === ''
-  && optionResultFixture.proposed_result?.stdout === 'maybe\nsome=7\noriginal=none\nsuccess=8, flag=true\nerror=-1\nnested=none\nprivate=9\nunit=success\n', 'P15 proposed result mismatch');
+assert(optionResultFixture.validated_result?.check_exit === 0 && optionResultFixture.validated_result?.native_exit === 0
+  && optionResultFixture.validated_result?.stderr === ''
+  && optionResultFixture.validated_result?.stdout === 'maybe\nsome=7\noriginal=none\nsuccess=8, flag=true\nerror=-1\nnested=none\nprivate=9\nunit=success\n', 'P15 validated result mismatch');
 assert(optionResultFixture.negative_cases?.length === 21
   && new Set(optionResultFixture.negative_cases.map(c => c.name)).size === 21, 'P15 negative fixture set mismatch');
 for (const name of ['main.nova', 'values.nova', ...optionResultFixture.negative_cases.map(c => c.source)]) {
@@ -446,7 +446,7 @@ assert(fs.readFileSync(path.join(optionResultRoot, 'main.nova'), 'utf8').include
   && fs.readFileSync(path.join(optionResultRoot, 'main.nova'), 'utf8').includes('match snapshot')
   && fs.readFileSync(path.join(optionResultRoot, 'values.nova'), 'utf8').includes('public const NESTED:Option<Option<int8>>=Option::Some(none)')
   && fs.readFileSync(path.join(optionResultRoot, 'values.nova'), 'utf8').includes('private struct Hidden'), 'P15 missing Copy/import/const/private fixture data');
-checks.push('P15 Draft/미승인·미구현 ledger·P14 세 production 확장/세 추가·51-production EBNF·두 파일/부정 21사례 UTF-8 Span·제안 기대값 데이터 (컴파일 실행 아님)');
+checks.push('P15 Accepted/승인·구현 ledger·P14 세 production 확장/세 추가·51-production EBNF·두 파일/부정 21사례 UTF-8 Span·검증 기대값 데이터 (문서 validator는 컴파일 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

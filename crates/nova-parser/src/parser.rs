@@ -6,6 +6,7 @@ use nova_syntax::{Keyword, Symbol, Token, TokenKind};
 
 pub(crate) struct Parser<'a> {
     tokens: &'a [Token],
+    pending_assignment: Option<Token>,
     text: &'a str,
     cursor: usize,
     last_end: usize,
@@ -29,6 +30,7 @@ impl<'a> Parser<'a> {
     ) -> Self {
         Self {
             tokens,
+            pending_assignment: None,
             text,
             cursor: 0,
             last_end: 0,
@@ -294,6 +296,10 @@ impl<'a> Parser<'a> {
     fn pattern(&mut self) -> AstNodeId {
         let token = self.current();
         let start = token.span.start();
+        if token.kind == TokenKind::Keyword(Keyword::None) {
+            self.bump();
+            return self.node(NodeKind::PatternNone, start, vec![]);
+        }
         if let TokenKind::Keyword(Keyword::True | Keyword::False) = token.kind {
             self.bump();
             return self.node(
@@ -510,7 +516,7 @@ impl<'a> Parser<'a> {
         self.node(NodeKind::Projection { name }, start, vec![receiver])
     }
     fn current(&self) -> Token {
-        self.tokens[self.cursor]
+        self.pending_assignment.unwrap_or(self.tokens[self.cursor])
     }
     fn kind(&self) -> TokenKind {
         self.current().kind
@@ -520,6 +526,10 @@ impl<'a> Parser<'a> {
     }
     fn bump(&mut self) -> Token {
         let token = self.current();
+        if self.pending_assignment.take().is_some() {
+            self.last_end = token.span.end();
+            return token;
+        }
         if token.kind != TokenKind::Eof {
             self.cursor += 1;
             self.last_end = token.span.end();
@@ -784,18 +794,59 @@ impl<'a> Parser<'a> {
 
     fn type_node_with_comparison(&mut self, comparison: bool) -> AstNodeId {
         let start = self.current().span.start();
-        match self.kind() {
+        if !self.enter() {
+            self.skip_list_element();
+            return self.node(NodeKind::Error, start, vec![]);
+        }
+        let mut value = match self.kind() {
             TokenKind::Identifier => {
-                self.bump();
-                if matches!(
-                    self.kind(),
-                    TokenKind::Symbol(Symbol::Question | Symbol::ColonColon)
-                ) || (!comparison && self.kind() == TokenKind::Symbol(Symbol::Less))
-                {
+                let name = self.bump().span;
+                if !comparison && self.eat(TokenKind::Symbol(Symbol::Less)) {
+                    let mut children = vec![];
+                    loop {
+                        let before = self.cursor;
+                        children.push(self.type_node());
+                        if !self.eat(TokenKind::Comma) || self.cursor == before {
+                            break;
+                        }
+                        if matches!(
+                            self.kind(),
+                            TokenKind::Symbol(Symbol::Greater | Symbol::GreaterEqual)
+                        ) {
+                            break;
+                        }
+                    }
+                    // Only a type argument close splits >=. The raw/normalized streams
+                    // remain intact; each parser token has its exact original byte span.
+                    let close = if self.kind() == TokenKind::Symbol(Symbol::GreaterEqual) {
+                        let original = self.bump().span;
+                        let close = Token {
+                            kind: TokenKind::Symbol(Symbol::Greater),
+                            span: self.span(original.start(), original.start() + 1),
+                        };
+                        self.pending_assignment = Some(Token {
+                            kind: TokenKind::Symbol(Symbol::Equal),
+                            span: self.span(original.start() + 1, original.end()),
+                        });
+                        self.last_end = close.span.end();
+                        close
+                    } else {
+                        self.expect(TokenKind::Symbol(Symbol::Greater))
+                    };
+                    self.node(
+                        if close.span.start() == close.span.end() {
+                            NodeKind::Error
+                        } else {
+                            NodeKind::GenericType { name }
+                        },
+                        start,
+                        children,
+                    )
+                } else if self.kind() == TokenKind::Symbol(Symbol::ColonColon) {
                     self.report(
                         1102,
                         self.current().span,
-                        "only simple type names are supported in Stage A",
+                        "qualified type syntax is unsupported",
                     );
                     self.skip_list_element();
                     self.node(NodeKind::Error, start, vec![])
@@ -804,40 +855,37 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::LeftParen => {
-                if !self.enter() {
-                    self.skip_list_element();
-                    return self.node(NodeKind::Error, start, vec![]);
-                }
                 self.open(TokenKind::LeftParen);
                 if self.kind() == TokenKind::RightParen {
                     self.close(TokenKind::RightParen);
-                    self.depth -= 1;
-                    return self.node(NodeKind::UnitType, start, vec![]);
-                }
-                let mut children = vec![self.type_node()];
-                self.expect(TokenKind::Comma);
-                while !matches!(
-                    self.kind(),
-                    TokenKind::RightParen | TokenKind::Eof | TokenKind::RightBrace
-                ) {
-                    let before = self.cursor;
-                    children.push(self.type_node());
-                    if !self.eat(TokenKind::Comma) {
-                        break;
+                    self.node(NodeKind::UnitType, start, vec![])
+                } else {
+                    let mut children = vec![self.type_node()];
+                    self.expect(TokenKind::Comma);
+                    while !matches!(
+                        self.kind(),
+                        TokenKind::RightParen | TokenKind::Eof | TokenKind::RightBrace
+                    ) {
+                        let before = self.cursor;
+                        children.push(self.type_node());
+                        if !self.eat(TokenKind::Comma) || before == self.cursor {
+                            break;
+                        }
                     }
-                    if before == self.cursor {
-                        break;
-                    }
+                    self.close(TokenKind::RightParen);
+                    self.node(NodeKind::TupleType, start, children)
                 }
-                self.close(TokenKind::RightParen);
-                self.depth -= 1;
-                self.node(NodeKind::TupleType, start, children)
             }
             _ => {
                 self.expect(TokenKind::Identifier);
                 self.node(NodeKind::Error, start, vec![])
             }
+        };
+        while self.eat(TokenKind::Symbol(Symbol::Question)) {
+            value = self.node(NodeKind::NullableType, start, vec![value]);
         }
+        self.depth -= 1;
+        value
     }
 
     fn block(&mut self) -> AstNodeId {
@@ -1047,6 +1095,50 @@ impl<'a> Parser<'a> {
         left
     }
     fn prefix(&mut self) -> AstNodeId {
+        if self.kind() == TokenKind::Identifier
+            && self
+                .tokens
+                .get(self.cursor + 1)
+                .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::Less))
+        {
+            let mut depth = 0usize;
+            let mut explicit = false;
+            for (at, token) in self.tokens.iter().enumerate().skip(self.cursor + 1) {
+                match token.kind {
+                    TokenKind::Symbol(Symbol::Less) => {
+                        depth += 1;
+                        if depth > self.options.max_nesting {
+                            break;
+                        }
+                    }
+                    TokenKind::Symbol(Symbol::Greater) if depth > 0 => {
+                        depth -= 1;
+                        if depth == 0 {
+                            explicit = self
+                                .tokens
+                                .get(at + 1)
+                                .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::ColonColon));
+                            break;
+                        }
+                    }
+                    TokenKind::End(_)
+                    | TokenKind::Eof
+                    | TokenKind::LeftBrace
+                    | TokenKind::RightBrace => break,
+                    _ => {}
+                }
+            }
+            if explicit {
+                let start = self.current().span.start();
+                self.report(
+                    1102,
+                    self.current().span,
+                    "explicit generic constructor syntax is unsupported",
+                );
+                self.skip_list_element();
+                return self.node(NodeKind::Error, start, vec![]);
+            }
+        }
         let token = self.current();
         let start = token.span.start();
         let kind = match token.kind {
@@ -1074,6 +1166,7 @@ impl<'a> Parser<'a> {
                 return self.node(NodeKind::VariantPath { owner, name }, start, vec![]);
             }
             TokenKind::Identifier => NodeKind::Name,
+            TokenKind::Keyword(Keyword::None) => NodeKind::None,
             TokenKind::Keyword(Keyword::True) => NodeKind::Boolean(true),
             TokenKind::Keyword(Keyword::False) => NodeKind::Boolean(false),
             TokenKind::LeftParen => {

@@ -1,6 +1,6 @@
 # Stage B Copy Option·Result·nullable 최소 계약 — P15
 
-작성일: 2026-10-07. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일: 2026-10-07. 상태: **Accepted / 사용자 승인 완료 / 구현 완료**.
 기존 D01~D05/P01~P14·Canonical·원본 148개 문서를 보존한다.
 전체 D06/D08/D09/D10/D12/D15/D16/D23/D25/D30 승인이 아니다.
 
@@ -139,10 +139,10 @@
 
 미포함: Array, try·exists·unwrap/메서드 API, 사용자 Generic/const generic, Move/String payload,
 일반 Read/change/take·borrow/Drop, nested pattern/guard·match expression, niche/public ABI/FFI.
-사용자 승인 전 Compiler/Runtime/accepted ledger에 적용하지 않는다.
-현재 실행 가능한 P14 명령은 [TESTING.md](../../TESTING.md)를 따른다.
+2026-10-07 사용자 “승인 할테니 다음 개발 작업 진행해줘” 답변으로 P15를 승인했다.
+[구현·검증 기록](OPTION_RESULT_IMPLEMENTATION.md)과 [사용자 실행 명령](../../TESTING.md)을 따른다.
 
-## 초안 준비 검증 기록
+## 초안 준비 시점의 검증 기록 (승인 전 이력)
 
 2026-10-07 문서 validator PASS: 원본 148개 SHA-256 보존, 51개 production 중복/참조/도달성,
 Draft ledger와 부정 21사례의 UTF-8 byte Span·제안 기대값 metadata를 확인했다.

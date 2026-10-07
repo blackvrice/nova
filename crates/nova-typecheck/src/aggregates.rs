@@ -136,7 +136,10 @@ impl Checker<'_> {
         self.collect_enums(&mut invalid);
         // Include signature/local annotations before visiting the mixed aggregate graph.
         for (index, node) in self.module.nodes().iter().enumerate() {
-            if node.kind == HirKind::TupleType {
+            if matches!(
+                node.kind,
+                HirKind::TupleType | HirKind::NullableType | HirKind::GenericType { .. }
+            ) {
                 self.type_syntax(HirId(index));
             }
         }
@@ -243,7 +246,9 @@ impl Checker<'_> {
         }
     }
     fn aggregate_span(&self, sid: StructId) -> Span {
-        if self.result.tuple_ids.contains(&sid) {
+        if let Some(at) = self.result.sum_origins.get(&nova_types::EnumId(sid.0)) {
+            self.module.nodes()[at.0].span
+        } else if self.result.tuple_ids.contains(&sid) {
             self.module.nodes()[self.result.tuple_origins[&sid].0].span
         } else {
             self.resolved.definitions[sid.0].span.expect("struct span")
@@ -312,7 +317,9 @@ impl Checker<'_> {
                 mutable: true,
             })
             .collect::<Vec<_>>();
-        let sid = StructId(self.resolved.definitions.len() + self.result.tuple_ids.len());
+        let sid = StructId(
+            self.resolved.definitions.len() + self.result.tuple_ids.len() + self.result.sums.len(),
+        );
         let layout = if ready {
             match struct_layout(&fields, &self.result.structs) {
                 Ok(layout) => Some(layout),

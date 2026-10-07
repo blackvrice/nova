@@ -126,7 +126,8 @@ nominal Copy field·위치 인수 생성·type import·field 읽기/대입·cons
 Enum/Bool의 유한 coverage·Copy payload·const·private tagged ABI를 지원한다.
 Array·Option/Result·guard/nested pattern·일반 Move/borrow/Drop과 전체 D06/D08/D09/D10/D12/D16/D25/D30은 후속이다.
 
-다음 최소 범위는 [P15 Copy Option·Result·nullable](OPTION_RESULT_STAGE_B_PROPOSAL.md),
-[51-production EBNF](GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [두 파일·부정 21사례](option-result-proposal-fixtures/README.md)다.
-Draft / 사용자 승인 대기 / 미구현이다. Builtin Copy specialization·T?·생성 문맥·none·match·const·private ABI를 제안한다.
+[P15 Copy Option·Result·nullable](OPTION_RESULT_STAGE_B_PROPOSAL.md)는 2026-10-07 사용자 승인 후 구현했다.
+[51-production EBNF](GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [두 파일·부정 21사례](option-result-proposal-fixtures/README.md),
+[구현·검증 기록](OPTION_RESULT_IMPLEMENTATION.md)과 [사용자 실행 명령](../../TESTING.md)을 제공한다.
+Builtin Copy specialization·T?·생성 문맥·none·match·const·private ABI와 제한을 지원한다.
 try·exists·method API·Array·String/Move payload·사용자 Generic·일반 borrow/Drop은 후속이다.

@@ -1,19 +1,13 @@
 {
   "proposal": "P15",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "values"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "maybe\nsome=7\noriginal=none\nsuccess=8, flag=true\nerror=-1\nnested=none\nprivate=9\nunit=success\n",
-    "stderr": ""
-  },
   "negative_cases": [
     {
       "name": "untyped_none",
@@ -51,8 +45,8 @@
       "expected_diagnostic": "N2101",
       "primary_text": "1",
       "primary": {
-        "start": 4,
-        "end": 5
+        "start": 42,
+        "end": 43
       }
     },
     {
@@ -225,5 +219,11 @@
         "end": 77
       }
     }
-  ]
+  ],
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "maybe\nsome=7\noriginal=none\nsuccess=8, flag=true\nerror=-1\nnested=none\nprivate=9\nunit=success\n",
+    "stderr": ""
+  }
 }
