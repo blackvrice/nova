@@ -1,0 +1,2 @@
+// P15 초안 🙂
+func main(){let a=Option::Some(1);let b:Option<int64>=a}

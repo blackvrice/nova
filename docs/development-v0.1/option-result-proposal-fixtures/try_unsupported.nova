@@ -1,0 +1,2 @@
+// P15 초안 🙂
+func f()->Result<int,bool>{let x=try Result::Success(1);return Result::Success(x)}

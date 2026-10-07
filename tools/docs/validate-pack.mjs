@@ -391,6 +391,63 @@ assert(fs.readFileSync(path.join(enumFixtureRoot, 'main.nova'), 'utf8').includes
   && fs.readFileSync(path.join(enumFixtureRoot, 'events.nova'), 'utf8').includes('public const BASE: Event'), 'P14 missing Copy/import/const fixture data');
 checks.push('P14 Accepted/승인·구현 ledger·P13 세 production 확장/여덟 추가·48-production EBNF·두 파일/부정 16사례 UTF-8 Span·검증 기대값 데이터 (문서 validator는 컴파일 실행 아님)');
 
+const optionResultProposal = manifest.draft_proposals?.find(p => p.id === 'P15');
+assert(optionResultProposal?.status === 'Draft' && optionResultProposal?.implementation_verified === false
+  && optionResultProposal?.authored_date === '2026-10-07' && optionResultProposal?.grammar_change === true
+  && optionResultProposal?.document === 'OPTION_RESULT_STAGE_B_PROPOSAL.md'
+  && optionResultProposal?.grammar === 'GRAMMAR_STAGE_B_OPTION_RESULT.ebnf', 'P15 missing draft/unimplemented ledger');
+assert(!manifest.accepted_proposals?.some(p => p.id === 'P15'), 'P15 must not be approved before user decision');
+assert(fs.readFileSync(path.join(pack, 'OPTION_RESULT_STAGE_B_PROPOSAL.md'), 'utf8')
+  .includes('Draft / 사용자 승인 대기 / 미구현'), 'P15 invalid proposal status');
+validateGrammar('GRAMMAR_STAGE_B_OPTION_RESULT.ebnf');
+const optionResultGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_OPTION_RESULT.ebnf'), 'utf8');
+assert(optionResultGrammar.includes('Draft, user approval required'), 'P15 invalid grammar status');
+const optionResultProductions = productions(optionResultGrammar);
+for (const [name, value] of enumProductions) {
+  if (!['type', 'primary_expr', 'pattern'].includes(name)) {
+    assert(optionResultProductions.get(name) === value, `P15 changes existing ${name}`);
+  }
+}
+assert(optionResultProductions.size === enumProductions.size + 3, 'P15 must add exactly three productions');
+assert(optionResultProductions.get('type') === 'type_atom,{"?"}', 'P15 invalid nullable type grammar');
+assert(optionResultProductions.get('primary_expr') === enumProductions.get('primary_expr').replace('|interpolated_string', '|"none"|interpolated_string'), 'P15 changes primary beyond none');
+assert(optionResultProductions.get('pattern') === enumProductions.get('pattern').replace('|"_"', '|"none"|"_"'), 'P15 changes pattern beyond none');
+assert(optionResultProductions.get('type_atom') === '"IDENT",[type_arguments]|"(",")"|tuple_type', 'P15 invalid type atom');
+assert(optionResultProductions.get('type_arguments') === '"<",type,{",",type},[","],type_close', 'P15 invalid type arguments');
+assert(optionResultProductions.get('type_close')?.includes('>=tokensplitsonlyintypeargumentcontextpreservingone-byte>and=subspans'), 'P15 missing type-close byte subspan contract');
+const optionResultRoot = path.join(pack, 'option-result-proposal-fixtures');
+const optionResultFixture = JSON.parse(fs.readFileSync(path.join(optionResultRoot, 'expected.json'), 'utf8'));
+assert(optionResultFixture.proposal === 'P15' && optionResultFixture.status === 'Draft'
+  && optionResultFixture.implementation_verified === false && !optionResultFixture.validated_result, 'P15 fixture must remain proposed/unverified');
+assert(optionResultFixture.entry === 'main.nova' && optionResultFixture.source_root === '.'
+  && JSON.stringify(optionResultFixture.reachable_modules) === '["main","values"]', 'P15 fixture graph mismatch');
+assert(optionResultFixture.proposed_result?.check_exit === 0 && optionResultFixture.proposed_result?.native_exit === 0
+  && optionResultFixture.proposed_result?.stderr === ''
+  && optionResultFixture.proposed_result?.stdout === 'maybe\nsome=7\noriginal=none\nsuccess=8, flag=true\nerror=-1\nnested=none\nprivate=9\nunit=success\n', 'P15 proposed result mismatch');
+assert(optionResultFixture.negative_cases?.length === 21
+  && new Set(optionResultFixture.negative_cases.map(c => c.name)).size === 21, 'P15 negative fixture set mismatch');
+for (const name of ['main.nova', 'values.nova', ...optionResultFixture.negative_cases.map(c => c.source)]) {
+  assert(path.basename(name) === name && name.endsWith('.nova'), `P15 invalid filename ${name}`);
+  const bytes = fs.readFileSync(path.join(optionResultRoot, name));
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  assert(text.endsWith('\n') && !text.includes('\r'), `P15 fixture encoding/newline ${name}`);
+}
+for (const c of optionResultFixture.negative_cases) {
+  assert(knownCodes.has(c.expected_diagnostic), `P15 unknown diagnostic ${c.name}`);
+  const bytes = fs.readFileSync(path.join(optionResultRoot, c.source));
+  const boundaries = new Set([0]);
+  let offset = 0;
+  for (const char of bytes.toString('utf8')) { offset += Buffer.byteLength(char); boundaries.add(offset); }
+  const { start, end } = c.primary;
+  assert(start >= 0 && start < end && end <= bytes.length && boundaries.has(start) && boundaries.has(end), `P15 invalid byte span ${c.name}`);
+  assert(bytes.subarray(start, end).toString('utf8') === c.primary_text, `P15 unexpected span text ${c.name}`);
+}
+assert(fs.readFileSync(path.join(optionResultRoot, 'main.nova'), 'utf8').includes('use values::Failure as F')
+  && fs.readFileSync(path.join(optionResultRoot, 'main.nova'), 'utf8').includes('match snapshot')
+  && fs.readFileSync(path.join(optionResultRoot, 'values.nova'), 'utf8').includes('public const NESTED:Option<Option<int8>>=Option::Some(none)')
+  && fs.readFileSync(path.join(optionResultRoot, 'values.nova'), 'utf8').includes('private struct Hidden'), 'P15 missing Copy/import/const/private fixture data');
+checks.push('P15 Draft/미승인·미구현 ledger·P14 세 production 확장/세 추가·51-production EBNF·두 파일/부정 21사례 UTF-8 Span·제안 기대값 데이터 (컴파일 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

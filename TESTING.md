@@ -66,3 +66,10 @@ cargo run -p nova-cli --offline -- check docs/development-v0.1/enum-proposal-fix
 
 Native tests는 격리된 target 경로에 실행 파일을 만들고 실행한다. ELF object 검증은 Linux Native host 실행 검증이 아니다.
 앞으로 기능 구현 완료 보고에는 새 예제의 check/debug/release 명령·예상 출력·기능별 테스트 명령을 함께 제공한다.
+
+## 다음 제안 — P15 Copy Option·Result·nullable
+
+[P15 계약](docs/development-v0.1/OPTION_RESULT_STAGE_B_PROPOSAL.md)과
+[수용 예제·제안 출력](docs/development-v0.1/option-result-proposal-fixtures/README.md)는 Draft / 미구현이다.
+현재 이 예제의 check/run 성공을 보장하지 않는다. 승인 후 사용할 check/debug/release 명령은 예제 README에 있다.
+현재 직접 실행할 예제는 위 `examples/enums.nova`와 P14 자동 테스트다.

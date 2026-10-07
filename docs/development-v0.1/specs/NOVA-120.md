@@ -10,6 +10,8 @@
 
 이 문서는 원본을 대체하는 확정 사양이 아니다. 기존 확정 기준은 [CANONICAL](../CANONICAL.md)을 따르며, 새 의미·문법·API·정책은 [DECISIONS](../DECISIONS.md)의 승인이 필요하다. D01~D05 Lexer 상세는 [승인 기준](../ACCEPTED_LEXER.md)을 따른다. [전체 색인](../INDEX.md).
 
+Copy Option<T>/Result<T,E>·T?·qualified 생성/none·문맥·match·const·private tagged ABI의 다음 최소 계약은 [P15 Draft](../OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [제안 fixture](../option-result-proposal-fixtures/README.md)에 있다. 미승인/미구현이며 try·Move/Drop·사용자 Generic과 전체 D06/D08/D09/D10/D12/D15/D16/D23/D25/D30은 후속이다.
+
 ## Result<T,E>
 Success(T)/Error(E), Unit 성공 Success(()), try Error 조기 반환을 사용한다. payload mode와 enclosing E mismatch를 검사한다.
 

@@ -1,0 +1,2 @@
+// P15 초안 🙂
+struct Bag{}func f(v:Bag<int>){}

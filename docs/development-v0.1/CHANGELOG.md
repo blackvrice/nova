@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-07 — P15 Copy Option·Result·nullable 착수안 (Draft)
+
+- Builtin Copy family·T?·none·생성 문맥·type namespace shadow·match·const·private tagged ABI 제안.
+- 원 raw token을 보존하는 type-close >= adapter/END 문맥·bounded specialization 구체화.
+- P14 세 production 확장/세 추가: 51-production EBNF와 두 파일·부정 21사례 제안 code/UTF-8 Span 작성.
+- Draft ledger·validator·승인 후 실행 명령 추가. Compiler/Runtime/accepted ledger·원본 148개는 보존.
+- try·Array·Move/Drop·사용자 Generic은 후속. 문서 검증과 실제 Compiler/Native 증거를 구분.
+
 ## 2026-10-07 — P14 승인과 Copy Enum·statement match 구현
 
 - 사용자 “P14 승인하고 Copy Enum·match 구현 진행”을 계약·48-production EBNF·accepted ledger에 기록.

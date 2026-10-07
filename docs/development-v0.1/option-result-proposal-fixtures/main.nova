@@ -1,0 +1,32 @@
+use values::maybe
+use values::outcome
+use values::Failure as F
+use values::NESTED
+use values::unitResult
+use values::hidden
+func main() {
+    var original: int8? = maybe(true)
+    let snapshot: Option<int8> = original
+    original = none
+    match snapshot {
+        Option::Some(n) => { print("some={n}") }
+        none => { print("bad snapshot") }
+    }
+    match original { Option::Some(_) => {}, Option::None => { print("original=none") } }
+    match outcome(true) {
+        Result::Success(pair) => { print("success={pair.0}, flag={pair.1}") }
+        Result::Error(_) => { print("bad success") }
+    }
+    match outcome(false) {
+        Result::Success(_) => { print("bad error") }
+        Result::Error(error) => {
+            match error { F::Bad(code) => { print("error={code}") } }
+        }
+    }
+    match NESTED {
+        Option::Some(inner) => { match inner { Option::Some(_) => {}, none => { print("nested=none") } } }
+        Option::None => { print("bad nested") }
+    }
+    match hidden() { Option::Some(p) => { print("private={p.value}") }, none => {} }
+    match unitResult() { Result::Success(_) => { print("unit=success") }, Result::Error(_) => {} }
+}

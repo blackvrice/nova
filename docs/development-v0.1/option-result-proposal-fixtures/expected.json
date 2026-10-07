@@ -1,0 +1,229 @@
+{
+  "proposal": "P15",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "values"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "maybe\nsome=7\noriginal=none\nsuccess=8, flag=true\nerror=-1\nnested=none\nprivate=9\nunit=success\n",
+    "stderr": ""
+  },
+  "negative_cases": [
+    {
+      "name": "untyped_none",
+      "source": "untyped_none.nova",
+      "expected_diagnostic": "N2103",
+      "primary_text": "none",
+      "primary": {
+        "start": 37,
+        "end": 41
+      }
+    },
+    {
+      "name": "untyped_result",
+      "source": "untyped_result.nova",
+      "expected_diagnostic": "N2103",
+      "primary_text": "Result::Success(1)",
+      "primary": {
+        "start": 37,
+        "end": 55
+      }
+    },
+    {
+      "name": "untyped_inner_none",
+      "source": "untyped_inner_none.nova",
+      "expected_diagnostic": "N2103",
+      "primary_text": "none",
+      "primary": {
+        "start": 50,
+        "end": 54
+      }
+    },
+    {
+      "name": "raw_wrapping",
+      "source": "raw_wrapping.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "1",
+      "primary": {
+        "start": 4,
+        "end": 5
+      }
+    },
+    {
+      "name": "payload_type",
+      "source": "payload_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "true",
+      "primary": {
+        "start": 55,
+        "end": 59
+      }
+    },
+    {
+      "name": "existing_value_widen",
+      "source": "existing_value_widen.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "a",
+      "primary": {
+        "start": 73,
+        "end": 74
+      }
+    },
+    {
+      "name": "missing_option",
+      "source": "missing_option.nova",
+      "expected_diagnostic": "N3101",
+      "primary_text": "match",
+      "primary": {
+        "start": 34,
+        "end": 39
+      }
+    },
+    {
+      "name": "duplicate_none",
+      "source": "duplicate_none.nova",
+      "expected_diagnostic": "N3102",
+      "primary_text": "Option::None",
+      "primary": {
+        "start": 71,
+        "end": 83
+      }
+    },
+    {
+      "name": "missing_result",
+      "source": "missing_result.nova",
+      "expected_diagnostic": "N3101",
+      "primary_text": "match",
+      "primary": {
+        "start": 46,
+        "end": 51
+      }
+    },
+    {
+      "name": "wrong_family",
+      "source": "wrong_family.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "Option::None",
+      "primary": {
+        "start": 54,
+        "end": 66
+      }
+    },
+    {
+      "name": "wrong_error_type",
+      "source": "wrong_error_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "false",
+      "primary": {
+        "start": 68,
+        "end": 73
+      }
+    },
+    {
+      "name": "string_payload",
+      "source": "string_payload.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "string",
+      "primary": {
+        "start": 35,
+        "end": 41
+      }
+    },
+    {
+      "name": "generic_arity",
+      "source": "generic_arity.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "Option<int,bool>",
+      "primary": {
+        "start": 28,
+        "end": 44
+      }
+    },
+    {
+      "name": "unknown_variant",
+      "source": "unknown_variant.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "Missing",
+      "primary": {
+        "start": 50,
+        "end": 57
+      }
+    },
+    {
+      "name": "immutable_binder",
+      "source": "immutable_binder.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "x",
+      "primary": {
+        "start": 60,
+        "end": 61
+      }
+    },
+    {
+      "name": "binder_scope",
+      "source": "binder_scope.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "x",
+      "primary": {
+        "start": 79,
+        "end": 80
+      }
+    },
+    {
+      "name": "recursive_value",
+      "source": "recursive_value.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "S",
+      "primary": {
+        "start": 44,
+        "end": 45
+      }
+    },
+    {
+      "name": "user_generic",
+      "source": "user_generic.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "Bag",
+      "primary": {
+        "start": 40,
+        "end": 43
+      }
+    },
+    {
+      "name": "try_unsupported",
+      "source": "try_unsupported.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "try",
+      "primary": {
+        "start": 52,
+        "end": 55
+      }
+    },
+    {
+      "name": "nullary_call",
+      "source": "nullary_call.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "Option::None()",
+      "primary": {
+        "start": 42,
+        "end": 56
+      }
+    },
+    {
+      "name": "nullary_pattern_binder",
+      "source": "nullary_pattern_binder.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "Option::None(x)",
+      "primary": {
+        "start": 62,
+        "end": 77
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+public enum Failure { Bad(int8); }
+public func maybe(flag: bool) -> int8? {
+    print("maybe")
+    if flag { return Option::Some(7) } else { return none }
+}
+public func outcome(flag: bool) -> Result<(int8,bool),Failure> {
+    if flag { return Result::Success((8,true)) } else { return Result::Error(Failure::Bad(-1)) }
+}
+public const NESTED:Option<Option<int8>>=Option::Some(none)
+public func unitResult() -> Result<(),int8> { return Result::Success(()) }
+private struct Hidden { public let value: int8 }
+public func hidden() -> Hidden? { return Option::Some(Hidden(9)) }

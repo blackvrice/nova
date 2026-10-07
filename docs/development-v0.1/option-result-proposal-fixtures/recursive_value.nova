@@ -1,0 +1,2 @@
+// P15 초안 🙂
+struct S{let next:Option<S>}func main(){}
