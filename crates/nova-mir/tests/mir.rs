@@ -2677,3 +2677,156 @@ fn p22_method_owner_binding_and_static_callee_tables_cannot_be_forged() {
     t.kind = TerminatorKind::Return(Operand::Constant(Constant::Int32(7)));
     assert!(!validate(&module).is_empty());
 }
+
+#[test]
+fn p23_typed_field_mapping_and_argument_identity_forgery_are_rejected() {
+    let mut db = SourceDatabase::default();
+    let file = db
+        .add(
+            "api",
+            "struct P{let x:int;let y:int}func main(){let p=P(y:2,x:1)}".into(),
+        )
+        .unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    let hir = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let resolved = resolve(&hir);
+    let original = check(&hir, &resolved).unwrap();
+    let id = original
+        .named_constructors
+        .iter()
+        .position(Option::is_some)
+        .unwrap();
+    for change in 0..5 {
+        let mut c = check(&hir, &resolved).unwrap();
+        let m = c.named_constructors[id].as_mut().unwrap();
+        match change {
+            0 => m.fields.swap(0, 1),
+            1 => m.fields[0].index = usize::MAX,
+            2 => m.fields[0].structure = nova_types::StructId(usize::MAX),
+            3 => m.arguments.swap(0, 1),
+            _ => m.structure = nova_types::StructId(usize::MAX),
+        };
+        assert_eq!(
+            lower(&hir, &resolved, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+    let mut c = check(&hir, &resolved).unwrap();
+    c.named_constructors[id] = None;
+    assert_eq!(
+        lower(&hir, &resolved, &c, false),
+        Err(LoweringError::InvalidAnalysis)
+    );
+}
+#[test]
+fn p23_same_type_aggregate_operands_effect_snapshots_and_source_cannot_be_forged() {
+    let source = r#"struct P{let x:int;let y:int}func a()->int{return 1}func b()->int{return 2}func main(){let p=P(y:b(),x:a());print("{p.x}/{p.y}")}"#;
+    let original = pass(source);
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "main")
+        .unwrap();
+    let (block, at) = original.bodies[body]
+        .blocks
+        .iter()
+        .enumerate()
+        .find_map(|(b, block)| {
+            block
+                .statements
+                .iter()
+                .position(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Aggregate(_, _))))
+                .map(|a| (b, a))
+        })
+        .unwrap();
+    for change in 0..5 {
+        let mut bad = original.clone();
+        match change {
+            0 => {
+                let StatementKind::Assign(_, Rvalue::Aggregate(_, fields)) =
+                    &mut bad.bodies[body].blocks[block].statements[at].kind
+                else {
+                    unreachable!()
+                };
+                fields.swap(0, 1)
+            }
+            1 => {
+                let snapshot = bad.bodies[body].blocks[block].statements[at - 1].clone();
+                bad.bodies[body].blocks[block]
+                    .statements
+                    .insert(at, snapshot)
+            }
+            2 => bad.bodies[body].blocks[block].statements[at].source = bad.bodies[body].source,
+            3 => {
+                let call = bad.bodies[body]
+                    .blocks
+                    .iter()
+                    .position(|b| {
+                        matches!(
+                            b.terminator.as_ref().map(|t| &t.kind),
+                            Some(TerminatorKind::Call { .. })
+                        )
+                    })
+                    .unwrap();
+                let first = bad.bodies[body].blocks[call].terminator.clone();
+                bad.bodies[body].blocks[block].terminator = first
+            }
+            _ => {
+                bad.bodies.remove(body);
+            }
+        };
+        assert!(!validate(&bad).is_empty());
+    }
+}
+#[test]
+fn p23_constructor_try_error_cfg_and_named_values_have_independent_proof() {
+    let original=pass("struct P{let x:int;let y:int}func fetch()->Result<int,int>{return Result::Error(1)}func later()->int{return 2}func relay()->Result<int,int>{let p=P(y:try fetch(),x:later());return Result::Success(p.x)}func main(){}");
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "relay")
+        .unwrap();
+    let mut bad = original.clone();
+    let success = bad.bodies[body]
+        .blocks
+        .iter()
+        .position(|b| {
+            b.statements
+                .iter()
+                .any(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Aggregate(_, _))))
+        })
+        .unwrap();
+    bad.bodies[body].entry = BlockId(success);
+    assert!(!validate(&bad).is_empty());
+}
+
+#[test]
+fn p23_1024_named_storage_fields_lower_with_complete_snapshot_proof() {
+    let fields = (0..1024)
+        .map(|i| format!("let f{i}:()"))
+        .collect::<Vec<_>>()
+        .join(";");
+    let arguments = (0..1024)
+        .rev()
+        .map(|i| format!("f{i}:()"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let module = pass(&format!(
+        "struct P{{{fields}}}func main(){{let p=P({arguments})}}"
+    ));
+    let body = body_named(&module, "main");
+    let aggregate = body
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .find_map(|s| {
+            if let StatementKind::Assign(_, Rvalue::Aggregate(_, operands)) = &s.kind {
+                Some(operands)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    assert_eq!(aggregate.len(), 1024);
+}

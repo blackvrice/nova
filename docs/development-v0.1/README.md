@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P22 Accepted / P23 및 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P23 Accepted / 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -175,5 +175,5 @@ contextual self·member scope/visibility·receiver-first snapshot·named/default
 change/take·일반 Move/borrow/Drop·init·overload·bound method·Enum method·Array는 후속이다.
 
 
-다음 검토 대상은 [P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 계획](struct-named-arguments-proposal-fixtures/README.md)이다.
-Draft / 미승인 / 미구현이며 새 문법 없이 승인 P22 EBNF를 재사용한다. 구현 완료된 P22와 구분한다.
+[P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture](struct-named-arguments-proposal-fixtures/README.md)는 Accepted / 구현·검증 완료다.
+새 문법 없이 승인 P22 EBNF를 재사용하며 [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제/명령](../../TESTING.md)을 제공한다.

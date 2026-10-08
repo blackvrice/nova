@@ -662,3 +662,230 @@ fn p22_opaque_factory_methods_use_original_owner_and_declaration_scope() {
     ]);
     unit(&loaded);
 }
+
+#[test]
+fn p23_bundle_constructor_fixture_exact_spans_and_cascade_suppression() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/struct-named-arguments-proposal-fixtures");
+    for name in [
+        "main.nova",
+        "multiline.nova",
+        "value_namespace.nova",
+        "constructor_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+    for (name, code, start, end, forbidden) in [
+        (
+            "unknown_label.nova",
+            "N2201",
+            140,
+            145,
+            &["N2101", "N2102"] as &[&str],
+        ),
+        (
+            "unicode_unknown.nova",
+            "N2201",
+            148,
+            154,
+            &["N2101", "N2102"] as &[&str],
+        ),
+        (
+            "method_label.nova",
+            "N2201",
+            140,
+            143,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "duplicate_label.nova",
+            "N2201",
+            144,
+            145,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "positional_collision.nova",
+            "N2201",
+            142,
+            143,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "positional_after_named.nova",
+            "N2201",
+            140,
+            141,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "missing_field.nova",
+            "N2201",
+            130,
+            140,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "excess_positional.nova",
+            "N2201",
+            140,
+            141,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "mapped_literal_range.nova",
+            "N2102",
+            144,
+            147,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "wrong_type.nova",
+            "N2101",
+            142,
+            146,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "nominal_mismatch.nova",
+            "N2101",
+            97,
+            103,
+            &[] as &[&str] as &[&str],
+        ),
+        ("private_field.nova", "N2004", 36, 51, &["N2201"] as &[&str]),
+        ("alias_head.nova", "N1102", 147, 161, &["N2201"] as &[&str]),
+        (
+            "enum_label.nova",
+            "N2201",
+            54,
+            59,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "option_label.nova",
+            "N2201",
+            44,
+            49,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "result_label.nova",
+            "N2201",
+            52,
+            57,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "builtin_label.nova",
+            "N2201",
+            18,
+            23,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "value_shadow.nova",
+            "N2101",
+            142,
+            147,
+            &["N2201"] as &[&str],
+        ),
+        (
+            "unresolved_head.nova",
+            "N2001",
+            18,
+            25,
+            &["N2201", "N2101"] as &[&str],
+        ),
+        (
+            "const_runtime_call.nova",
+            "N3201",
+            169,
+            178,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "skipped_const_runtime_call.nova",
+            "N3201",
+            180,
+            189,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "default_runtime_call.nova",
+            "N3201",
+            170,
+            179,
+            &[] as &[&str] as &[&str],
+        ),
+        (
+            "undefined_value.nova",
+            "N2001",
+            142,
+            149,
+            &["N2101", "N2102"] as &[&str],
+        ),
+        (
+            "empty_method_label.nova",
+            "N2201",
+            72,
+            77,
+            &[] as &[&str] as &[&str],
+        ),
+    ] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        let (_, checked) = analyzed(&loaded);
+        let diagnostics = &checked.diagnostics;
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && d.primary.span.start() == start
+                && d.primary.span.end() == end),
+            "{name}: {diagnostics:?}"
+        );
+        assert!(
+            forbidden
+                .iter()
+                .all(|code| diagnostics.iter().all(|d| d.code.to_string() != *code)),
+            "{name}: {diagnostics:?}"
+        );
+        for d in diagnostics {
+            loaded.sources.slice(d.primary.span).unwrap();
+        }
+    }
+}
+#[test]
+fn p23_private_constructor_precedes_mapping_and_original_imported_field_identity() {
+    let loaded = fixture(&[
+        (
+            "main.nova",
+            "use lib::P as Q;func main(){let p=Q(y:2,x:1);print(p.text())}",
+        ),
+        (
+            "lib.nova",
+            r#"public struct P{public let x:int8;public func text(self)->string{return "{self.x}/{self.y}"};public let y:int16}"#,
+        ),
+    ]);
+    let (_, c) = analyzed(&loaded);
+    let m = c.named_constructors.iter().flatten().next().unwrap();
+    assert_eq!(m.fields.iter().map(|f| f.index).collect::<Vec<_>>(), [1, 0]);
+    assert!(m.fields.iter().all(|f| f.structure == m.structure));
+    unit(&loaded);
+    let loaded = fixture(&[
+        ("main.nova", "use lib::P;func main(){let p=P(other:1000)}"),
+        ("lib.nova", "public struct P{private let x:int8}"),
+    ]);
+    let (_, c) = analyzed(&loaded);
+    assert_eq!(codes(&c), ["N2004"]);
+    assert!(c.diagnostics[0].notes.is_empty());
+    let loaded = fixture(&[
+        (
+            "main.nova",
+            "use lib::factory;func main(){let p=factory();print(p.get())}",
+        ),
+        (
+            "lib.nova",
+            r#"private struct P{private let x:int8;public func get(self)->string{return "{self.x}"}}public func factory()->P{return P(x:7)}"#,
+        ),
+    ]);
+    unit(&loaded);
+}

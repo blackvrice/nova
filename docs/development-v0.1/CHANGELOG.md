@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P23 승인과 Copy struct 생성자 이름 인수 구현
+
+사용자 “P23 승인하고 생성자 이름 인수 구현 진행” 답변으로 P23를 승인했다.
+field 대응·소스 순서 snapshot·const/default·private 접근·Source/MIR 검증을 구현했다. P22 58-production EBNF와 원 fixture source bytes는 보존한다.
+기본 372·LLVM 19·Native 54, 총 445 PASS / 0 FAIL. [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)과 [직접 실행 명령](../../TESTING.md)을 제공한다.
+
 ## 2026-10-08 — P23 Copy struct 생성자 이름 인수 착수안 (Draft)
 
 [최소 계약](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 계획](struct-named-arguments-proposal-fixtures/README.md)을 준비했다.

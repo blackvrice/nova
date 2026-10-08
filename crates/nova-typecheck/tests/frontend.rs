@@ -3019,7 +3019,6 @@ fn p17_diagnostics_exact_spans_mapping_and_error_cascades() {
         (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/wrong_expected_type.nova"), "N2101", 42, 43),
         (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/mapped_literal_range.nova"), "N2102", 47, 50),
         (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/builtin_label.nova"), "N2201", 18, 23),
-        (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/struct_label.nova"), "N2201", 42, 43),
         (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/enum_label.nova"), "N2201", 40, 45),
         (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/sum_label.nova"), "N2201", 52, 57),
         (include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/unresolved_callee.nova"), "N2001", 12, 19),
@@ -3050,6 +3049,10 @@ fn p17_diagnostics_exact_spans_mapping_and_error_cascades() {
 }
 #[test]
 fn p17_context_forward_shadow_alias_spelling_and_const_are_preserved() {
+    // P23 supersedes the historical P17 positional-only struct rejection.
+    pass(include_str!(
+        "../../../docs/development-v0.1/named-arguments-proposal-fixtures/struct_label.nova"
+    ));
     for source in [
         include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/function_print_shadow.nova"),
         include_str!("../../../docs/development-v0.1/named-arguments-proposal-fixtures/forward_recursive_grouped.nova"),
@@ -3839,4 +3842,137 @@ fn p22_method_and_field_limits_are_independent_and_const_permissions_are_static(
         )),
         ["N3201"]
     );
+}
+
+#[test]
+fn p23_named_fields_expected_types_const_order_and_value_namespace() {
+    let source="struct P{let x:int8;func sum(self)->int16{return self.x+self.y};let y:int16}const C=P(y:300,x:7);func f(p:P=P(y:4,x:3))->P{return p}func main(){let p=P(1,y:2);let q=f()}";
+    let (_, _, c) = pass(source).semantic.unwrap();
+    let mappings = c.named_constructors.iter().flatten().collect::<Vec<_>>();
+    assert_eq!(mappings.len(), 3);
+    assert_eq!(
+        mappings[0]
+            .fields
+            .iter()
+            .map(|f| f.index)
+            .collect::<Vec<_>>(),
+        [1, 0]
+    );
+    assert!(c
+        .named_calls
+        .iter()
+        .flatten()
+        .all(|call| call.defaults.len() == 1));
+    let value = constant_value(source, "C").0;
+    let ConstValue::Struct(_, fields) = &value else {
+        panic!("struct constant")
+    };
+    assert_eq!(fields[0].ty(), Type::Int8);
+    assert_eq!(fields[1].ty(), Type::Int16);
+    assert_eq!(constant_value(source, "C").1, 3);
+    pass(include_str!("../../../docs/development-v0.1/struct-named-arguments-proposal-fixtures/value_namespace.nova"));
+    pass(include_str!(
+        "../../../docs/development-v0.1/struct-named-arguments-proposal-fixtures/multiline.nova"
+    ));
+    pass("struct P{let _:int;let 앞:int8;let self:bool}func main(){let p=P(self:true,앞:2,_:1)}");
+    pass("struct P{let x:float32;let y:float64}const C=P(y:3.0,x:1.5);func main(){let p=P(y:2.0,x:1.0)}");
+}
+#[test]
+fn p23_const_wrapper_budget_is_transparent_at_10000_and_10001() {
+    let terms = vec!["1"; 5000].join("+");
+    for argument in [terms.clone(), format!("x:{terms}")] {
+        let source =
+            format!("struct P{{let x:int}}const C=P({argument});func f(p:P=P({argument})){{}}");
+        assert_eq!(constant_value(&source, "C").1, 10000);
+        let (_, _, checked) = pass(&source).semantic.unwrap();
+        assert!(checked
+            .defaults
+            .iter()
+            .flatten()
+            .all(|d| matches!(d.evaluation, ConstEvaluation::Value { nodes: 10000, .. })));
+        let source = format!("struct P{{let x:int}}const C=P(({argument}));func main(){{}}");
+        // Named syntax must put its label outside the value Group.
+        let source = source.replace("P((x:", "P(x:(");
+        let result = frontend(&source);
+        assert_eq!(codes(&result), ["N3202"], "{argument}");
+        assert_eq!(
+            result
+                .sources
+                .slice(result.diagnostics()[0].primary.span)
+                .unwrap(),
+            "1"
+        );
+        let default =
+            format!("struct P{{let x:int}}func f(p:P=P(({argument}))){{}}func main(){{}}")
+                .replace("P((x:", "P(x:(");
+        let result = frontend(&default);
+        assert_eq!(codes(&result), ["N3202"]);
+        assert_eq!(
+            result
+                .sources
+                .slice(result.diagnostics()[0].primary.span)
+                .unwrap(),
+            "1"
+        );
+    }
+}
+#[test]
+fn p23_const_label_is_not_dependency_and_first_failure_is_source_ordered() {
+    assert_eq!(
+        constant_value("struct P{let x:int}const x=P(x:1);func main(){}", "x").1,
+        2
+    );
+    assert!(codes(&frontend(
+        "struct P{let x:int}const A=P(x:B.x);const B=P(x:A.x);func main(){}"
+    ))
+    .contains(&"N3202".into()));
+    let source = "struct P{let x:int8;let y:int8}const C=P(y:127+1,x:126+2);func main(){}";
+    let result = frontend(source);
+    assert_eq!(codes(&result), ["N3201"]);
+    assert_eq!(
+        result
+            .sources
+            .slice(result.diagnostics()[0].primary.span)
+            .unwrap(),
+        "127+1"
+    );
+    assert_eq!(codes(&frontend("struct P{let x:int}func runtime()->int{return 1}const F=false&&P(x:runtime()).x==1;func main(){}")),["N3201"]);
+}
+#[test]
+fn p23_field_label_limit_and_known_label_note_are_bounded() {
+    let fields = (0..1024)
+        .map(|i| format!("let f{i}:()"))
+        .collect::<Vec<_>>()
+        .join(";");
+    let arguments = (0..1024)
+        .rev()
+        .map(|i| format!("f{i}:()"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let (_, _, c) = pass(&format!(
+        "struct P{{{fields}}}func main(){{let p=P({arguments})}}"
+    ))
+    .semantic
+    .unwrap();
+    let mapping = c.named_constructors.iter().flatten().next().unwrap();
+    assert_eq!(mapping.fields.len(), 1024);
+    assert_eq!(mapping.fields[0].index, 1023);
+    assert_eq!(
+        codes(&frontend(&format!(
+            "struct P{{{fields};let f1024:()}}func main(){{}}"
+        ))),
+        ["N8901"]
+    );
+    let fields = (0..11)
+        .map(|i| format!("let f{i}:int8"))
+        .collect::<Vec<_>>()
+        .join(";");
+    let r = frontend(&format!(
+        "struct P{{{fields}}}func main(){{let p=P(other:1000)}}"
+    ));
+    assert_eq!(codes(&r), ["N2201"]);
+    let notes = &r.diagnostics()[0].notes;
+    assert!(notes
+        .iter()
+        .any(|n| n.contains("f7") && n.contains("...") && !n.contains("f8")));
 }

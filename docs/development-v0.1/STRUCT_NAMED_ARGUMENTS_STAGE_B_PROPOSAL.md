@@ -1,9 +1,9 @@
 # Stage B Copy struct 생성자 이름 인수 최소 계약 — P23
 
-작성일: 2026-10-08. 상태: **Draft / 미승인 / 미구현**.
+작성일: 2026-10-08. 상태: **Accepted / 2026-10-08 사용자 승인 / 구현 완료**.
 D01~D05/P01~P22·Canonical·원본 148개를 보존한다.
 [기존 P22 58-production EBNF](GRAMMAR_STAGE_B_METHOD.ebnf)를 그대로 재사용하며 새 문법 파일은 만들지 않는다.
-[수용 계획](struct-named-arguments-proposal-fixtures/README.md)의 결과는 제안값이며 실행 검증 결과가 아니다.
+[수용 계획](struct-named-arguments-proposal-fixtures/README.md)의 validated_result는 Compiler/Native에서 검증했다.
 
 ## Specification Change Proposal
 
@@ -13,7 +13,7 @@ D01~D05/P01~P22·Canonical·원본 148개를 보존한다.
   NOVA-014/020/023/024/029/030/031/032/033/036/037/040/073~078/081/083/087/091/093~097/136와 [D09/D11/D12/D16](DECISIONS.md).
   의존 계약: [P12 struct](STRUCT_STAGE_B_PROPOSAL.md), [P17 named](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md),
   [P18 default](DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md), [P21 alias](ALIAS_STAGE_B_PROPOSAL.md), [P22 method](METHOD_STAGE_B_PROPOSAL.md).
-- 현재 사양: generated Copy struct 생성자는 field 선언 순서의 위치 인수를 요구한다. 함수/Read 메서드의 이름 인수는 지원한다.
+- P23 승인 전 사양: generated Copy struct 생성자는 field 선언 순서의 위치 인수를 요구한다. 함수/Read 메서드의 이름 인수는 지원한다.
   P12/P17의 named constructor 제외와 N2201을 이번 subset에서만 확장한다. explicit init은 별도 계약이다.
 - 발견된 문제: 생성자의 label 대상·타입 문맥·privacy·const 예산·평가 순서·aggregate provenance가 미동결이다.
 - 제안 변경: `Point(y:2,x:1)`과 위치 prefix 뒤 이름 인수를 nominal Copy struct generated constructor에 허용한다.
@@ -107,12 +107,12 @@ D01~D05/P01~P22·Canonical·원본 148개를 보존한다.
 
 - 두 파일 main/types, 추가 정상 2·부정 24·Runtime 1사례: Unicode label·field self·method interleave·import alias·
   mapped int8/int16/Bool/Char/Tuple/Option/Result·const/default scope·source effect order·try early return·checked Abort.
-  expected.json의 모든 결과는 **proposed_result**, implementation_verified=false다. 원 LF/UTF-8 byte Span을 고정한다.
-- 승인 후 Parser/AST/HIR source 변조·Resolver 선택/alias/visibility·Checked mapping 변조와 const/default/dependency·
-  10,000/10,001 비용 경계·단계별 자원 경계·MIR same-type operand/effect/try forgery 회귀를 추가한다.
-  이름/위치 생성의 동등 node 비용과 source-order 첫 overflow를 별도 검사한다.
+  expected.json의 결과는 **validated_result**, implementation_verified=true다. 원 LF/UTF-8 byte Span을 고정한다.
+- Parser/AST/HIR source 변조·Resolver 선택/alias/visibility·Checked mapping 변조와 const/default/dependency·
+  10,000/10,001 비용 경계·단계별 자원 경계·MIR same-type operand/effect/try forgery 회귀를 추가했다.
+  이름/위치 생성의 동등 node 비용과 source-order 첫 overflow를 별도 검사했다.
 - 네 Cargo gate·runtime rustfmt·문서 validator·P01~P22 regression을 통과시킨다.
-  LLVM COFF/ELF O0/O2 aggregate 경로와 Windows x64 Native debug/release에서 제안 출력/진단/Span을 검증한다.
-  문서 검사는 compiler/Native 실행을 대신하지 않는다. 통과하기 전 Accepted/implementation_verified로 바꾸지 않는다.
+  LLVM COFF/ELF O0/O2 aggregate 경로와 Windows x64 Native debug/release에서 제안 출력/진단/Span을 검증했다.
+  문서 검사는 compiler/Native 실행을 대신하지 않는다. [구현·검증 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)에 실제 결과를 기록했다.
 - Array·explicit init/Drop·field default·Enum/Option/Result named payload·generic constructor·bound method·change/take·
   일반 Move/borrow·전체 D09/D11/D12/D16/D30은 별도 제안으로 남긴다.

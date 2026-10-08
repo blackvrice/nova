@@ -75,6 +75,7 @@ pub fn lower(
         match_provenance: BTreeMap::new(),
         try_certificates: BTreeMap::new(),
         named_calls: BTreeMap::new(),
+        named_constructors: BTreeMap::new(),
         default_sources: BTreeMap::new(),
         named_bodies: BTreeMap::new(),
         loop_bodies: BTreeMap::new(),
@@ -273,6 +274,7 @@ pub fn lower(
             tries: vec![],
             named_snapshots: BTreeMap::new(),
             named_calls: vec![],
+            named_constructors: vec![],
             has_range_loop: false,
             has_exists: false,
         };
@@ -326,7 +328,7 @@ pub fn lower(
         if builder.has_exists {
             result.exists_bodies.insert(callee.0, builder.body.clone());
         }
-        if !builder.named_calls.is_empty() {
+        if !builder.named_calls.is_empty() || !builder.named_constructors.is_empty() {
             result.named_bodies.insert(callee.0, builder.body.clone());
             for certificate in &builder.named_calls {
                 for (_, _, _, snapshot) in &certificate.defaults {
@@ -338,6 +340,12 @@ pub fn lower(
             result.named_calls.extend(
                 builder
                     .named_calls
+                    .into_iter()
+                    .map(|c| ((callee.0, c.source.hir.0), c)),
+            );
+            result.named_constructors.extend(
+                builder
+                    .named_constructors
                     .into_iter()
                     .map(|c| ((callee.0, c.source.hir.0), c)),
             );
@@ -445,6 +453,7 @@ struct Builder<'a> {
     tries: Vec<TryCertificate>,
     named_snapshots: BTreeMap<usize, Vec<(BlockId, usize, Statement)>>,
     named_calls: Vec<NamedCallCertificate>,
+    named_constructors: Vec<NamedConstructorCertificate>,
     has_range_loop: bool,
     has_exists: bool,
 }
@@ -759,7 +768,9 @@ impl Builder<'_> {
                         HirKind::Call => {
                             // Callee identity is statically resolved; it is not a function value.
                             work.push(Work::FinishExpression(id));
-                            if self.checked.named_calls[id.0].is_some() {
+                            if self.checked.named_calls[id.0].is_some()
+                                || self.checked.named_constructors[id.0].is_some()
+                            {
                                 for &argument in node.children[1..].iter().rev() {
                                     work.push(Work::SnapshotArgument { call: id, argument });
                                     work.push(Work::Expression(argument));
@@ -1028,15 +1039,39 @@ impl Builder<'_> {
                                 self.resolved.definitions[definition.0].kind,
                                 DefinitionKind::Struct(_)
                             ) {
-                                let value = Rvalue::Aggregate(
-                                    StructId(definition.0),
-                                    node.children[1..]
-                                        .iter()
-                                        .map(|&c| self.value(c))
-                                        .collect::<Result<_, _>>()?,
-                                );
+                                let mut fields = node.children[1..]
+                                    .iter()
+                                    .map(|&c| self.value(c))
+                                    .collect::<Result<Vec<_>, _>>()?;
+                                if let Some(mapping) = &self.checked.named_constructors[id.0] {
+                                    let mut slots = vec![None; fields.len()];
+                                    for (field, value) in mapping.fields.iter().zip(fields) {
+                                        slots[field.index] = Some(value);
+                                    }
+                                    fields = slots
+                                        .into_iter()
+                                        .map(|v| v.ok_or(LoweringError::InvalidAnalysis))
+                                        .collect::<Result<_, _>>()?;
+                                }
+                                let value = Rvalue::Aggregate(StructId(definition.0), fields);
                                 let dest = Place(self.local(id, None)?);
                                 self.assign(dest, value, id)?;
+                                if let Some(mapping) = &self.checked.named_constructors[id.0] {
+                                    let block =
+                                        self.current.ok_or(LoweringError::InvalidAnalysis)?;
+                                    let at = self.body.blocks[block.0].statements.len() - 1;
+                                    self.named_constructors.push(NamedConstructorCertificate {
+                                        mapping: mapping.clone(),
+                                        source: self.sources[id.0],
+                                        block,
+                                        at,
+                                        aggregate: self.body.blocks[block.0].statements[at].clone(),
+                                        snapshots: self
+                                            .named_snapshots
+                                            .remove(&id.0)
+                                            .unwrap_or_default(),
+                                    });
+                                }
                                 self.values[id.0] = Some(Operand::Place(dest));
                                 continue;
                             }

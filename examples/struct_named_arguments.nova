@@ -1,0 +1,23 @@
+// P23 Copy struct 생성자의 위치 prefix와 이름 인수
+struct Point {
+    var x:int8
+    func sum(self)->int16 { return self.x+self.y }
+    let y:int16
+}
+func mark(tag:string,n:int8)->int8 { print(tag);return n }
+func build(value:Point=Point(y:6,x:5))->Point { return value }
+func main() {
+    // y의 effect가 먼저 실행되고 storage는 x, y 순서다.
+    let p=Point(y:mark("y",2),x:mark("x",1))
+    print("point={p.x}/{p.y}")
+    let mixed=Point(3,y:300)
+    print("mixed={mixed.x}/{mixed.y}")
+    const local:Point=Point(y:20,x:4)
+    print("const={local.x}/{local.y}")
+    let default=build()
+    print("default={default.x}/{default.y}")
+    var copy=p
+    copy.x=7
+    print("copy={p.x}/{copy.x}")
+    print("sum={p.sum()}")
+}

@@ -8,7 +8,7 @@ pub use defaults::{DefaultArgument, ParameterDefault};
 pub use ranges::RangeInfo;
 mod enums;
 mod sums;
-pub use arguments::NamedCall;
+pub use arguments::{NamedCall, NamedConstructor};
 pub use enums::MatchPattern;
 mod const_eval;
 mod global_consts;
@@ -55,6 +55,8 @@ pub struct Checked {
     pub calls: Vec<Option<DefId>>,
     /// P17 source argument order and its bijection to declaration parameter order.
     pub named_calls: Vec<Option<NamedCall>>,
+    /// P23 source arguments mapped to storage fields; never function/default slots.
+    pub named_constructors: Vec<Option<NamedConstructor>>,
     /// P18 declaration defaults indexed by parameter HIR ID.
     pub defaults: Vec<Option<ParameterDefault>>,
     pub integer_values: Vec<Option<i32>>,
@@ -323,6 +325,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         signatures: vec![None; resolved.definitions.len()],
         calls: vec![None; size],
         named_calls: vec![None; size],
+        named_constructors: vec![None; size],
         defaults: vec![None; size],
         ranges: vec![None; size],
         integer_values: vec![None; size],
@@ -1026,6 +1029,13 @@ impl Checker<'_> {
                 }
                 HirKind::Call => {
                     let def = self.callee_definition(node.children[0]);
+                    let constructor = self.has_named(id)
+                        && def.is_some_and(|d| {
+                            matches!(
+                                self.resolved.definitions[d.0].kind,
+                                DefinitionKind::Struct(_)
+                            )
+                        });
                     for (index, &child) in node.children.iter().enumerate().rev() {
                         let parameter = if index == 0 {
                             None
@@ -1045,16 +1055,11 @@ impl Checker<'_> {
                             child,
                             Context {
                                 expected,
-                                expected_span: if index == 0 {
-                                    None
-                                } else {
-                                    def.and_then(|d| self.result.signatures[d.0].as_ref())
-                                        .and_then(|s| {
-                                            parameter.and_then(|p| s.parameter_spans.get(p))
-                                        })
-                                        .copied()
-                                        .flatten()
-                                },
+                                expected_span: def.and_then(|d| {
+                                    parameter.and_then(|p| {
+                                        self.argument_expected_span(d, p, constructor)
+                                    })
+                                }),
                                 direct_callee: index == 0,
                                 ..context
                             },
@@ -1694,7 +1699,9 @@ impl Checker<'_> {
                     if self.ty(self.result.type_table[callee.0]) != Type::Error {
                         self.report(
                             if matches!(self.resolved.references[callee.0], Some(Resolution::Definition(def)) if matches!(self.resolved.definitions[def.0].kind, DefinitionKind::TypeAlias(_))) { 1102 } else { 2101 },
-                            if matches!(self.module.nodes()[callee.0].kind,HirKind::Name(name) if self.type_definition(callee,name).is_some()) { node.span } else { self.module.nodes()[callee.0].span },
+                            if matches!(self.module.nodes()[callee.0].kind,HirKind::Name(name) if self.type_definition(callee,name).is_some())
+                                && (!self.has_named(id) || matches!(self.resolved.references[callee.0], Some(Resolution::Definition(def)) if matches!(self.resolved.definitions[def.0].kind, DefinitionKind::TypeAlias(_))))
+                                { node.span } else { self.module.nodes()[callee.0].span },
                             "expression is not callable",
                             None,
                         );

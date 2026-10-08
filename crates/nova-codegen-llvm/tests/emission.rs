@@ -1171,3 +1171,54 @@ fn p22_real_llvm_methods_coff_elf_o0_o2() {
         }
     }
 }
+
+fn p23_constructor_unit() -> CodegenUnit {
+    unit(
+        r#"struct P{let x:int8;let y:int16;func sum(self)->int16{return self.x+self.y}}const C=P(y:300,x:7);func f(p:P=P(y:4,x:3))->P{return p}func mark(n:int8)->int8{return n}func main(){let p=P(y:mark(2),x:mark(1));let q=f();print("{p.sum()}/{q.x}/{C.y}")}"#,
+    )
+}
+#[test]
+fn p23_constructor_llvm_private_aggregate_abi_and_deterministic_mapping() {
+    let unit = p23_constructor_unit();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&unit, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&unit, target, true).unwrap());
+        assert!(ir.text.contains("insertvalue"));
+        assert!(ir.text.contains("i16"));
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 via NOVA_CLANG"]
+fn p23_real_llvm_constructors_coff_elf_o0_o2() {
+    let unit = p23_constructor_unit();
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG")),
+    };
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-p23-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
+            let object_path = root.join(format!("{}-{optimization:?}.obj", target.triple()));
+            backend
+                .codegen_unit(
+                    &unit,
+                    &target,
+                    &CodegenOptions {
+                        object_path: object_path.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(object_path).unwrap();
+            assert!(bytes.len() > 100);
+            if target == TargetSpec::WindowsX64Msvc {
+                assert_eq!(&bytes[..2], b"\x64\x86")
+            } else {
+                assert_eq!(&bytes[..4], b"\x7fELF")
+            }
+        }
+    }
+}

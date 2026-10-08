@@ -424,3 +424,49 @@ cargo run -p nova-cli --offline -- check docs/development-v0.1/enum-proposal-fix
 
 Native tests는 격리된 target 경로에 실행 파일을 만들고 실행한다. ELF object 검증은 Linux Native host 실행 검증이 아니다.
 앞으로 기능 구현 완료 보고에는 새 예제의 check/debug/release 명령·예상 출력·기능별 테스트 명령을 함께 제공한다.
+
+
+## P23 Copy struct 생성자 이름 인수
+
+독립 예제는 [struct_named_arguments.nova](examples/struct_named_arguments.nova)다. 저장소 루트 PowerShell에서 실행한다.
+
+```powershell
+cargo run -p nova-cli --offline -- check examples/struct_named_arguments.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/struct_named_arguments.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/struct_named_arguments.nova --profile release
+```
+
+check는 출력 없이 exit 0, debug/release는 다음 8줄·각 LF·빈 stderr·exit 0이다.
+
+```text
+y
+x
+point=1/2
+mixed=3/300
+const=4/20
+default=5/6
+copy=1/7
+sum=3
+```
+
+[두 파일 수용 fixture/20줄](docs/development-v0.1/struct-named-arguments-proposal-fixtures/README.md)도 직접 실행할 수 있다.
+현재 P23 구현은 생성된 Copy struct constructor의 이름 인수를 지원한다. Enum/Option/Result named payload·field default·explicit init은 범위 밖이다.
+
+```powershell
+cargo fmt --check
+cargo check --workspace --all-features --offline
+cargo clippy --workspace --all-targets --all-features --offline -- -D warnings
+cargo test --workspace --offline
+node tools/docs/validate-pack.mjs
+```
+
+LLVM/Native opt-in을 직접 검증하려면 앞의 NOVA_CLANG을 설정한 뒤 실행한다.
+
+```powershell
+cargo test -p nova-codegen-llvm --test emission --offline -- --ignored
+cargo test -p nova-cli --test native --offline -- --ignored
+```
+
+2026-10-08 실제 결과: 기본 372 PASS / 0 FAIL / 73 ignored, LLVM 전체 19 PASS, Native 전체 54 PASS.
+기본 test에서 제외된 73개는 별도 opt-in으로 모두 통과했다. P23 신규 회귀는 16개(기본 13+LLVM 1+Native 2)다.

@@ -1,19 +1,13 @@
 {
   "proposal": "P23",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "types"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "y\nx\norder=1/2\nprefix\nnamed\nmixed=3/4\nmapped=7/300\ndefault=5/6\nconst=3/20\nnested=3/true/한/true\nself=7\nprivate=8\nempty=0\ncopy=1/6\nfetch\nlater\nconstructed\nok=1\nfetch\nerror=-1\n",
-    "stderr": ""
-  },
   "negative_cases": [
     {
       "name": "unknown_label",
@@ -284,7 +278,7 @@
   "positive_cases": [
     {
       "source": "multiline.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -293,7 +287,7 @@
     },
     {
       "source": "value_namespace.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -310,12 +304,19 @@
         "start": 188,
         "end": 191
       },
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 1,
         "stdout": "before\n",
         "stderr_first_line": "Nova panic: integer overflow at file#0:188..191"
       }
     }
-  ]
+  ],
+  "approval_date": "2026-10-08",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "y\nx\norder=1/2\nprefix\nnamed\nmixed=3/4\nmapped=7/300\ndefault=5/6\nconst=3/20\nnested=3/true/한/true\nself=7\nprivate=8\nempty=0\ncopy=1/6\nfetch\nlater\nconstructed\nok=1\nfetch\nerror=-1\n",
+    "stderr": ""
+  }
 }

@@ -200,6 +200,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         }
         validator.check_tries(body);
         validator.check_named_calls(body);
+        validator.check_named_constructors(body);
         if module
             .loop_bodies
             .get(&body.callee.0)
@@ -864,6 +865,99 @@ impl Validator<'_> {
                 }
             }
             if seen.iter().any(|filled| !filled) {
+                self.report(Violation::InvalidArguments);
+            }
+        }
+    }
+
+    fn check_named_constructors(&mut self, body: &Body) {
+        let module = self.module;
+        let mut writes = vec![0usize; body.locals.len()];
+        for block in &body.blocks {
+            for statement in &block.statements {
+                let StatementKind::Assign(place, _) = statement.kind;
+                if let Some(n) = writes.get_mut(place.0 .0) {
+                    *n += 1;
+                }
+            }
+            if let Some(Terminator {
+                kind: TerminatorKind::Call { destination, .. },
+                ..
+            }) = &block.terminator
+            {
+                if let Some(n) = writes.get_mut(destination.0 .0) {
+                    *n += 1;
+                }
+            }
+        }
+        for (_, c) in module
+            .named_constructors
+            .range((body.callee.0, 0)..=(body.callee.0, usize::MAX))
+        {
+            self.source = Some(c.source);
+            self.block = Some(c.block);
+            let StatementKind::Assign(_, Rvalue::Aggregate(structure, fields)) = &c.aggregate.kind
+            else {
+                self.report(Violation::InvalidArguments);
+                continue;
+            };
+            let Some(shape) = module.structs_original.get(structure) else {
+                self.report(Violation::InvalidType);
+                continue;
+            };
+            if c.mapping.structure != *structure
+                || c.mapping.fields.len() != fields.len()
+                || c.snapshots.len() != fields.len()
+                || c.mapping.arguments.len() != fields.len()
+                || shape.fields.len() != fields.len()
+                || module.sources.get(c.source.hir.0) != Some(&c.source)
+                || module.constructor_provenance.get(&c.source.hir.0) != Some(structure)
+                || body
+                    .blocks
+                    .get(c.block.0)
+                    .and_then(|b| b.statements.get(c.at))
+                    != Some(&c.aggregate)
+            {
+                self.report(Violation::InvalidArguments);
+                continue;
+            }
+            let mut seen = vec![false; fields.len()];
+            for ((field, argument), (block, at, snapshot)) in c
+                .mapping
+                .fields
+                .iter()
+                .zip(&c.mapping.arguments)
+                .zip(&c.snapshots)
+            {
+                let StatementKind::Assign(place, Rvalue::Use(_)) = &snapshot.kind else {
+                    self.report(Violation::InvalidArguments);
+                    continue;
+                };
+                let once = writes.get(place.0 .0) == Some(&1);
+                let valid = field.structure == *structure
+                    && seen.get_mut(field.index).is_some_and(|s| {
+                        let valid = !*s;
+                        *s = true;
+                        valid
+                    })
+                    && fields.get(field.index) == Some(&Operand::Place(*place))
+                    && once
+                    && module.sources.get(argument.0) == Some(&snapshot.source)
+                    && snapshot.source.span.file() == c.source.span.file()
+                    && snapshot.source.span.start() >= c.source.span.start()
+                    && snapshot.source.span.end() <= c.source.span.end()
+                    && body.blocks.get(block.0).and_then(|b| b.statements.get(*at))
+                        == Some(snapshot)
+                    && body.locals.get(place.0 .0).is_some_and(|l| {
+                        l.definition.is_none()
+                            && l.source == snapshot.source
+                            && shape.fields.get(field.index).map(|f| f.ty) == Some(l.ty)
+                    });
+                if !valid {
+                    self.report(Violation::InvalidArguments);
+                }
+            }
+            if seen.iter().any(|v| !v) {
                 self.report(Violation::InvalidArguments);
             }
         }

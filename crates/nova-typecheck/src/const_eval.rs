@@ -52,6 +52,12 @@ pub(crate) fn evaluate(
     let mut pending = vec![root];
     let mut nodes = 0;
     while let Some(id) = pending.pop() {
+        let node = &module.nodes()[id.0];
+        // P23 labels/wrappers have no value meaning or budget cost.
+        if matches!(node.kind, HirKind::NamedArgument { .. }) {
+            pending.push(node.children[0]);
+            continue;
+        }
         nodes += 1;
         if nodes > CONST_NODE_LIMIT {
             return Err(Failure {
@@ -135,7 +141,17 @@ pub(crate) fn evaluate(
                 let tuple = module.nodes()[id.0].kind == HirKind::Tuple;
                 let count = module.nodes()[id.0].children.len()
                     - usize::from(module.nodes()[id.0].kind == HirKind::Call);
-                let fields = values.split_off(values.len() - count);
+                let mut fields = values.split_off(values.len() - count);
+                if let Some(mapping) = &checked.named_constructors[id.0] {
+                    let mut slots = vec![None; count];
+                    for (field, value) in mapping.fields.iter().zip(fields) {
+                        slots[field.index] = Some(value);
+                    }
+                    fields = slots
+                        .into_iter()
+                        .map(|v| v.expect("complete field mapping"))
+                        .collect();
+                }
                 if let Some(variant) = checked.variants[id.0] {
                     values.push(ConstValue::Enum(variant, fields));
                 } else if tuple {
@@ -239,7 +255,9 @@ pub(crate) fn evaluate(
                         work.push(Work::Exists);
                         work.push(Work::Evaluate(node.children[0]));
                     }
-                    HirKind::Group => work.push(Work::Evaluate(node.children[0])),
+                    HirKind::Group | HirKind::NamedArgument { .. } => {
+                        work.push(Work::Evaluate(node.children[0]))
+                    }
                     HirKind::Prefix(op) => {
                         work.push(Work::Unary(id, *op));
                         work.push(Work::Evaluate(node.children[0]));

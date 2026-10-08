@@ -240,6 +240,15 @@ struct NamedCallCertificate {
     call: Terminator,
 }
 #[derive(Clone, Debug, Eq, PartialEq)]
+struct NamedConstructorCertificate {
+    mapping: nova_typecheck::NamedConstructor,
+    source: SourceInfo,
+    snapshots: Vec<(BlockId, usize, Statement)>,
+    block: BlockId,
+    at: usize,
+    aggregate: Statement,
+}
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Module {
     entry: SourceInfo,
     pub structs: StructRegistry,
@@ -253,6 +262,7 @@ pub struct Module {
     try_certificates: std::collections::BTreeMap<(usize, usize), TryCertificate>,
     try_controls: std::collections::BTreeMap<usize, TryControlCertificate>,
     named_calls: std::collections::BTreeMap<(usize, usize), NamedCallCertificate>,
+    named_constructors: std::collections::BTreeMap<(usize, usize), NamedConstructorCertificate>,
     default_sources: std::collections::BTreeMap<(usize, usize), SourceInfo>,
     /// P17 freezes evaluation CFG and writes until a transform can preserve the proof.
     named_bodies: std::collections::BTreeMap<usize, Body>,

@@ -1931,3 +1931,55 @@ fn p22_method_abort_skips_arguments_and_cross_file_utf8_source_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p23_native_named_constructors_const_defaults_try_and_aggregate_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/struct-named-arguments-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="y\nx\norder=1/2\nprefix\nnamed\nmixed=3/4\nmapped=7/300\ndefault=5/6\nconst=3/20\nnested=3/true/한/true\nself=7\nprivate=8\nempty=0\ncopy=1/6\nfetch\nlater\nconstructed\nok=1\nfetch\nerror=-1\n";
+    for profile in ["debug", "release"] {
+        for (name, out) in [
+            ("main.nova", expected),
+            ("multiline.nova", ""),
+            ("value_namespace.nova", ""),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, out.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let r = program_profile(
+            r#"struct P{let unit:();let flag:bool;let value:float32}struct Q{let p:P;let pair:(char,double)}func use_unit(v:()){}func main(){let p=P(value:1.5,flag:true,unit:());let q=Q(pair:('🙂',2.5),p:p);use_unit(q.p.unit);print("{q.p.value}/{q.p.flag}/{q.pair.0}/{q.pair.1}")}"#,
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, "1.5/true/🙂/2.5\n".as_bytes());
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p23_constructor_abort_uses_first_source_value_and_skips_later_o0_o2() {
+    let source=include_str!("../../../docs/development-v0.1/struct-named-arguments-proposal-fixtures/constructor_abort.nova");
+    let at = source.find("n+1").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert_eq!(r.status.code(), Some(1));
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(format!("Nova panic: integer overflow at file#0:{at}..{}", at + 3).as_str())
+        );
+    }
+}

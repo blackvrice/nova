@@ -1083,3 +1083,65 @@ fn p22_external_method_source_receiver_owner_and_punctuation_are_proven() {
         );
     }
 }
+
+#[test]
+fn p23_constructor_labels_keep_utf8_spelling_value_children_and_truncation_recovery() {
+    let source = "struct 점{let 앞:int8;let 뒤:int16}func main(){let p=점(뒤 /*🙂*/ : 2,앞:1)}";
+    let hir = lower_source(source);
+    let names = hir
+        .nodes()
+        .iter()
+        .filter_map(|n| match n.kind {
+            HirKind::NamedArgument { name, .. } => Some(hir.symbol(name).unwrap()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(names, ["뒤", "앞"]);
+    let mut db = SourceDatabase::default();
+    let file = db.add("api", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    for change in 0..2 {
+        let mut ast = Arena::default();
+        let mut ids = vec![];
+        for (_, node) in p.arena.iter() {
+            let mut kind = node.kind;
+            if let NodeKind::NamedArgument {
+                ref mut name,
+                ref mut colon,
+            } = kind
+            {
+                if change == 0 {
+                    *name = Span::new(file, name.start(), name.end() - 1).unwrap();
+                } else {
+                    *colon = *name;
+                }
+            }
+            ids.push(
+                ast.insert(
+                    kind,
+                    node.span,
+                    node.children.iter().map(|c| ids[c.index()]).collect(),
+                )
+                .unwrap(),
+            );
+        }
+        assert!(lower(&db, &ast, ids[p.root.index()]).is_err());
+    }
+    assert!(hir
+        .nodes()
+        .iter()
+        .filter(|n| matches!(n.kind, HirKind::NamedArgument { .. }))
+        .all(|n| n.children.len() == 1));
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let mut db = SourceDatabase::default();
+        let file = db.add("prefix", source[..at].into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        let first = lower(&db, &p.arena, p.root);
+        assert_eq!(first, lower(&db, &p.arena, p.root));
+        if !l.has_errors() && !p.has_errors() {
+            assert!(first.is_ok());
+        }
+    }
+}

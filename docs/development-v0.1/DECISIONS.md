@@ -32,7 +32,7 @@
 
 2026-10-08 사용자 “승인하고 다음개발 진행해줘”로 앞서 준비한 [P22 Copy struct Read 메서드](METHOD_STAGE_B_PROPOSAL.md)·[58-production EBNF](GRAMMAR_STAGE_B_METHOD.ebnf)·[수용 fixture](method-proposal-fixtures/README.md)를 승인했다. Accepted / 구현 완료이며 contextual self·member scope/visibility·receiver-first Copy snapshot·named/default·Source/MIR 검증 subset을 구현했다. [구현 기록](METHOD_IMPLEMENTATION.md)을 따른다. D01~D05/P01~P21과 원본을 보존한다.
 
-[P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 계획](struct-named-arguments-proposal-fixtures/README.md)은 Draft / 미승인 / 미구현이다. 기존 P22 58-production EBNF를 재사용하며 generated Copy struct field 대응·source order·const/default·Source/MIR만 제안한다. P22 승인은 P23 승인이 아니다.
+2026-10-08 사용자 “P23 승인하고 생성자 이름 인수 구현 진행” 답변으로 [P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture](struct-named-arguments-proposal-fixtures/README.md)를 승인했다. Accepted / 구현 완료이며 원 P22 58-production EBNF를 재사용해 field 대응·source-order snapshot·const/default·Source/MIR를 구현했다. [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)을 제공한다. 기존 승인/원본과 explicit init·field default·Enum/sum named payload·Array·일반 Move/Drop 경계는 보존한다.
 
 ## 공통 승인 계약
 

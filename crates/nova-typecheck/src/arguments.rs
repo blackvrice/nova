@@ -10,6 +10,14 @@ pub struct NamedCall {
     pub defaults: Vec<DefaultArgument>,
 }
 
+/// P23 provided source arguments mapped to original declaration storage fields.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct NamedConstructor {
+    pub structure: nova_types::StructId,
+    pub arguments: Vec<HirId>,
+    pub fields: Vec<nova_types::FieldId>,
+}
+
 pub(super) struct ArgumentMapping {
     pub parameters: Vec<Option<usize>>,
     pub valid: bool,
@@ -18,27 +26,36 @@ pub(super) struct ArgumentMapping {
 impl Checker<'_> {
     pub(super) fn collect_parameter_indices(&mut self) {
         for (index, definition) in self.resolved.definitions.iter().enumerate() {
-            let DefinitionKind::Function(id) = definition.kind else {
-                continue;
+            let parameters = match definition.kind {
+                DefinitionKind::Function(id) => {
+                    let node = &self.module.nodes()[id.0];
+                    let HirKind::Function { parameters, .. } = node.kind else {
+                        continue;
+                    };
+                    node.children[..parameters].to_vec()
+                }
+                DefinitionKind::Struct(_) => {
+                    self.result.field_sources[&nova_types::StructId(index)].clone()
+                }
+                _ => continue,
             };
-            let node = &self.module.nodes()[id.0];
-            let HirKind::Function { parameters, .. } = node.kind else {
-                continue;
-            };
-            let names = node.children[..parameters]
+            let names = parameters
                 .iter()
                 .enumerate()
                 .filter_map(|(at, id)| {
-                    let HirKind::Parameter { name, .. } = self.module.nodes()[id.0].kind else {
+                    let (HirKind::Parameter { name, .. } | HirKind::Field { name, .. }) =
+                        self.module.nodes()[id.0].kind
+                    else {
                         return None;
                     };
                     Some((name, at))
                 })
                 .collect();
             self.parameter_indices.insert(index, names);
-            if node.children[..parameters]
-                .iter()
-                .any(|p| self.module.nodes()[p.0].children.len() == 2)
+            if matches!(definition.kind, DefinitionKind::Function(_))
+                && parameters
+                    .iter()
+                    .any(|p| self.module.nodes()[p.0].children.len() == 2)
             {
                 self.default_functions.insert(index);
             }
@@ -89,20 +106,46 @@ impl Checker<'_> {
         let Some(def) = self.callee_definition(node.children[0]) else {
             return;
         };
-        let DefinitionKind::Function(function) = self.resolved.definitions[def.0].kind else {
-            if named {
-                self.reject_named_constructor(id);
+        let constructor = matches!(
+            self.resolved.definitions[def.0].kind,
+            DefinitionKind::Struct(_)
+        );
+        let (declaration_id, declaration_parameters) = match self.resolved.definitions[def.0].kind {
+            DefinitionKind::Function(function) => {
+                let declaration = &self.module.nodes()[function.0];
+                let HirKind::Function { parameters, .. } = declaration.kind else {
+                    return;
+                };
+                (function, declaration.children[..parameters].to_vec())
             }
-            return;
+            DefinitionKind::Struct(structure) if named => {
+                // Check every storage field before exposing labels or expected types.
+                if !self.constructor_visible(def, node.span) {
+                    self.argument_mappings[id.0] = Some(ArgumentMapping {
+                        parameters: vec![None; node.children.len() - 1],
+                        valid: false,
+                    });
+                    return;
+                }
+                (
+                    structure,
+                    self.result.field_sources[&nova_types::StructId(def.0)].clone(),
+                )
+            }
+            _ => {
+                if named {
+                    self.reject_named_constructor(id);
+                }
+                return;
+            }
         };
         let offset = usize::from(self.resolved.method_owners.contains_key(&def.0));
         if !named && offset == 0 && !self.default_functions.contains(&def.0) {
             return;
         }
-        let declaration = &self.module.nodes()[function.0];
-        let HirKind::Function { parameters, .. } = declaration.kind else {
-            return;
-        };
+        let declaration = &self.module.nodes()[declaration_id.0];
+        let parameters = declaration_parameters.len();
+        let subject = if constructor { "field" } else { "parameter" };
         if !named && node.children.len() - 1 > parameters - offset {
             self.report(
                 2201,
@@ -141,14 +184,15 @@ impl Checker<'_> {
                     self.report(
                         2201,
                         name_span,
-                        "unknown parameter label",
+                        &format!("unknown {subject} label"),
                         Some(declaration.span),
                     );
-                    let labels = declaration.children[..parameters]
+                    let labels = declaration_parameters
                         .iter()
                         .take(8)
                         .filter_map(|p| {
-                            let HirKind::Parameter { name, .. } = self.module.nodes()[p.0].kind
+                            let (HirKind::Parameter { name, .. } | HirKind::Field { name, .. }) =
+                                self.module.nodes()[p.0].kind
                             else {
                                 return None;
                             };
@@ -162,7 +206,7 @@ impl Checker<'_> {
                         .expect("reported diagnostic")
                         .notes
                         .push(format!(
-                            "known parameter labels: {labels}{}",
+                            "known {subject} labels: {labels}{}",
                             if parameters > 8 {
                                 ", ... (see declaration)"
                             } else {
@@ -201,10 +245,10 @@ impl Checker<'_> {
                             HirKind::NamedArgument { name_span, .. } => name_span,
                             _ => argument.span,
                         },
-                        "parameter is supplied more than once",
+                        &format!("{subject} is supplied more than once"),
                         Some(self.module.nodes()[first.0].span),
                     );
-                    let parameter_span = self.module.nodes()[declaration.children[at].0].span;
+                    let parameter_span = self.module.nodes()[declaration_parameters[at].0].span;
                     self.result
                         .diagnostics
                         .last_mut()
@@ -212,7 +256,7 @@ impl Checker<'_> {
                         .secondary
                         .push(Label {
                             span: parameter_span,
-                            message: "parameter declared here".into(),
+                            message: format!("{subject} declared here"),
                         });
                     valid = false;
                     None
@@ -226,20 +270,21 @@ impl Checker<'_> {
         if valid {
             if let Some(at) = filled.iter().enumerate().find_map(|(at, value)| {
                 (value.is_none()
-                    && self.module.nodes()[declaration.children[at].0]
-                        .children
-                        .len()
-                        == 1)
+                    && (constructor
+                        || self.module.nodes()[declaration_parameters[at].0]
+                            .children
+                            .len()
+                            == 1))
                     .then_some(at)
             }) {
                 self.report(
                     2201,
                     node.span,
                     "missing required argument",
-                    Some(self.module.nodes()[declaration.children[at].0].span),
+                    Some(self.module.nodes()[declaration_parameters[at].0].span),
                 );
-                if let HirKind::Parameter { name, .. } =
-                    self.module.nodes()[declaration.children[at].0].kind
+                if let HirKind::Parameter { name, .. } | HirKind::Field { name, .. } =
+                    self.module.nodes()[declaration_parameters[at].0].kind
                 {
                     let name = self.module.symbol(name).unwrap_or("?");
                     self.result
@@ -247,7 +292,7 @@ impl Checker<'_> {
                         .last_mut()
                         .expect("reported diagnostic")
                         .notes
-                        .push(format!("required parameter: {name}"));
+                        .push(format!("required {subject}: {name}"));
                 }
                 valid = false;
             }
@@ -256,6 +301,30 @@ impl Checker<'_> {
             parameters: mapping,
             valid,
         });
+    }
+
+    pub(super) fn argument_expected_span(
+        &self,
+        def: DefId,
+        at: usize,
+        constructor: bool,
+    ) -> Option<Span> {
+        if constructor {
+            let field = *self
+                .result
+                .field_sources
+                .get(&nova_types::StructId(def.0))?
+                .get(at)?;
+            let ty = *self.module.nodes()[field.0].children.first()?;
+            Some(self.module.nodes()[ty.0].span)
+        } else {
+            self.result.signatures[def.0]
+                .as_ref()?
+                .parameter_spans
+                .get(at)
+                .copied()
+                .flatten()
+        }
     }
 
     pub(super) fn finish_named_call(&mut self, id: HirId) {
@@ -271,13 +340,17 @@ impl Checker<'_> {
             .as_ref()
             .expect("prepared named call");
         let parameters = mapping.parameters.clone();
-        let mut wrong = !mapping.valid || !self.constructor_visible(def, node.span);
+        let constructor = matches!(
+            self.resolved.definitions[def.0].kind,
+            DefinitionKind::Struct(_)
+        );
+        let mut wrong = !mapping.valid;
         for (&argument, parameter) in node.children[1..].iter().zip(&parameters) {
             if let Some(at) = parameter {
                 wrong |= self.mismatch(
                     self.argument_value(argument),
                     signature.parameters[*at],
-                    signature.parameter_spans[*at],
+                    self.argument_expected_span(def, *at, constructor),
                 );
             }
             wrong |= self.ty(self.result.type_table[argument.0]) == Type::Error;
@@ -285,6 +358,20 @@ impl Checker<'_> {
         self.result.calls[id.0] = Some(def);
         if wrong {
             self.set(id, Type::Error)
+        } else if constructor {
+            let structure = nova_types::StructId(def.0);
+            self.result.named_constructors[id.0] = Some(NamedConstructor {
+                structure,
+                arguments: node.children[1..].to_vec(),
+                fields: parameters
+                    .into_iter()
+                    .map(|p| nova_types::FieldId {
+                        structure,
+                        index: p.expect("complete field mapping"),
+                    })
+                    .collect(),
+            });
+            self.result.type_table[id.0] = signature.return_type;
         } else {
             let DefinitionKind::Function(function) = self.resolved.definitions[def.0].kind else {
                 self.set(id, Type::Error);
