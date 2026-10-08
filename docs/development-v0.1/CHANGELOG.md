@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P22 Copy struct Read 메서드 착수안 (Draft)
+
+[최소 계약](METHOD_STAGE_B_PROPOSAL.md)·[58-production EBNF](GRAMMAR_STAGE_B_METHOD.ebnf)·[수용 계획](method-proposal-fixtures/README.md)을 준비했다.
+Read self·member scope/visibility·receiver-first snapshot·named/default·Source/MIR 검증 subset은 미승인·미구현이다.
+두 파일·정상 1·부정 20·Runtime 1사례의 UTF-8 Span·제안 15줄을 작성했다. 기존 승인 계약/Compiler/Runtime/Cargo는 보존한다.
+
 ## 2026-10-08 — P21 비제네릭 Type Alias 구현
 
 사용자 승인 P21의 transparent type alias·forward/import·선언 module scope·canonical TypeId·반복형 SCC·1,024개 한도를 구현했다.

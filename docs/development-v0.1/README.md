@@ -166,3 +166,9 @@ Result exists·flow narrowing·Move/Drop·Array는 후속이다.
 type 위치·forward/import·선언 scope·순환/한도·Source/MIR 검증을 구현했다. P01~P20과 원본을 보존한다.
 [구현 기록](ALIAS_IMPLEMENTATION.md)·[독립 예제/실행 명령](../../TESTING.md)을 제공한다.
 generic alias·newtype·alias constructor/variant head·API leak/export 정책·Array·method·일반 Move/Drop은 후속이다.
+
+
+다음 최소 범위 [P22 Copy struct Read 메서드](METHOD_STAGE_B_PROPOSAL.md)·[58-production EBNF](GRAMMAR_STAGE_B_METHOD.ebnf)·
+[두 파일·정상 1/부정 20/Runtime 1사례](method-proposal-fixtures/README.md)는 **Draft / 미승인 / 미구현**이다.
+contextual self·member scope/visibility·receiver-first snapshot·named/default·Source/MIR 검증을 준비했다. P01~P21을 보존한다.
+change/take·일반 Move/borrow/Drop·init·overload·bound method·Enum method·Array는 후속이다.

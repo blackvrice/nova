@@ -1,0 +1,3 @@
+// 메서드 🙂 — P22 Draft / 미구현
+struct Box{var x:int8;func next(self)->int8{return self.x+1}}
+func main(){print("before");let b=Box(127);let n=b.next();print("after")}

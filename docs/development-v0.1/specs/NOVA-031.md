@@ -12,6 +12,8 @@
 
 nominal Copy struct·위치 생성·type import·가변 field 경로·const·private layout/ABI와 자원 제한은 사용자 승인 [P12](../STRUCT_STAGE_B_PROPOSAL.md)와 [37-production EBNF](../GRAMMAR_STAGE_B_STRUCT.ebnf)를 따른다. [구현·검증 기록](../STRUCT_IMPLEMENTATION.md). String field·init/Drop·일반 Move/borrow와 전체 D06/D10/D12/D16/D30은 후속이다.
 
+Copy struct Read instance method·contextual self·member scope/visibility·receiver-first snapshot·named/default·Source/MIR 검증은 [P22 Draft](../METHOD_STAGE_B_PROPOSAL.md), [58-production EBNF](../GRAMMAR_STAGE_B_METHOD.ebnf), [제안 fixture](../method-proposal-fixtures/README.md)로 준비했다. 미승인·미구현이다. change/take·Move/borrow/Drop·init·overload·bound method·Enum method·Array와 전체 D06/D09/D10/D11/D12/D16/D25/D30은 승인하지 않았다.
+
 ## Constructor 초안 — D12
 init(parameter list) { ... }를 제안하고 각 let field는 정확히 한 번 초기화해야 한다. method receiver 철자/self binding은 D11과 함께 결정한다. 생성 완료 전에 self를 외부로 노출하거나 일반 method를 호출하지 않는다.
 

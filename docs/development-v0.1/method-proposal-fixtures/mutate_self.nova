@@ -1,0 +1,2 @@
+// 메서드 🙂 — P22 Draft / 미구현
+struct P{var x:int;func update(self){self.x=2}}

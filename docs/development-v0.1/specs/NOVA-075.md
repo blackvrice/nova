@@ -44,6 +44,8 @@ structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·pr
 
 사용자 승인한 loop·정수 범위 for는 [P19 Accepted](../RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [수용 fixture](../range-loop-proposal-fixtures/README.md)를 따른다. 구현·검증 완료이며 [구현 기록](../RANGE_LOOP_IMPLEMENTATION.md)을 제공한다. 기존 P01~P18과 일반 iterable/Array/Move/Drop 경계는 보존한다.
 
+Copy struct Read instance method·contextual self·member scope/visibility·receiver-first snapshot·named/default·Source/MIR 검증은 [P22 Draft](../METHOD_STAGE_B_PROPOSAL.md), [58-production EBNF](../GRAMMAR_STAGE_B_METHOD.ebnf), [제안 fixture](../method-proposal-fixtures/README.md)로 준비했다. 미승인·미구현이다. change/take·Move/borrow/Drop·init·overload·bound method·Enum method·Array와 전체 D06/D09/D10/D11/D12/D16/D25/D30은 승인하지 않았다.
+
 ## Lowering 단계
 AST arena → HIR arena와 lexical ScopeTree. 선언 수집과 body lowering을 분리하여 forward reference를 지원한다. identifier spelling은 SymbolId로 intern하되 아직 unresolved reference일 수 있다.
 

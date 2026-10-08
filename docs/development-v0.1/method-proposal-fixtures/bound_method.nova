@@ -1,0 +1,2 @@
+// 메서드 🙂 — P22 Draft / 미구현
+struct P{func sum(self)->int{return 1}}func main(){let p=P();let f=p.sum}

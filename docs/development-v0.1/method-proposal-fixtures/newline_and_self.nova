@@ -1,0 +1,11 @@
+// 메서드 🙂 — P22 Draft / 미구현
+struct Empty {
+    func value(self,)->int { return 3 }
+}
+func self(value:int)->int { return value }
+func main() {
+    let e=Empty()
+    let n=e
+        .value()
+    let v=self(n)
+}

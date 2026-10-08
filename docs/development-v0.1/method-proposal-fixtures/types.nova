@@ -1,0 +1,18 @@
+// P22 Draft: method defaults resolve in the declaration module
+type Small=int8
+const SHIFT:Small=1
+public type PointType=Point
+public struct Point {
+    public var x:Small
+    public let y:Small
+    public func sum(self,bias:Small=SHIFT)->Small { return self.x+self.y+bias }
+    public func shifted(self,delta:Small=SHIFT)->Point { var copy=self;copy.x=copy.x+delta;return copy }
+    public func checked(self,fail:bool=false)->Result<Small,Small> {
+        if fail { return Result::Error(-1) }
+        return Result::Success(self.sum(bias:0))
+    }
+    public func text(self)->string { return "{self.x}/{self.y}" }
+    private func secret(self)->Small { return self.x }
+    public func safe(self)->Small { return self.secret() }
+    public func main(self)->Small { return self.y }
+}

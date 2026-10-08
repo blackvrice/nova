@@ -1,0 +1,247 @@
+{
+  "proposal": "P22",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "types"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "sum=8\nalias=7\ncopy=3/5\ntext=3/4\nprivate=3\nmember-main=4\ntuple=7\nreceiver\narg\norder=9\nfetch\nafter\nok=11\nfetch\nerror=-1\n",
+    "stderr": ""
+  },
+  "negative_cases": [
+    {
+      "name": "missing_receiver",
+      "source": "missing_receiver.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": ")",
+      "primary": {
+        "start": 62,
+        "end": 63
+      }
+    },
+    {
+      "name": "typed_receiver",
+      "source": "typed_receiver.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": ":",
+      "primary": {
+        "start": 66,
+        "end": 67
+      }
+    },
+    {
+      "name": "change_receiver",
+      "source": "change_receiver.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "change",
+      "primary": {
+        "start": 62,
+        "end": 68
+      }
+    },
+    {
+      "name": "take_receiver",
+      "source": "take_receiver.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "take",
+      "primary": {
+        "start": 62,
+        "end": 66
+      }
+    },
+    {
+      "name": "receiver_not_first",
+      "source": "receiver_not_first.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "x",
+      "primary": {
+        "start": 62,
+        "end": 63
+      }
+    },
+    {
+      "name": "duplicate_method",
+      "source": "duplicate_method.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "sum",
+      "primary": {
+        "start": 87,
+        "end": 90
+      }
+    },
+    {
+      "name": "field_method_collision",
+      "source": "field_method_collision.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "sum",
+      "primary": {
+        "start": 70,
+        "end": 73
+      }
+    },
+    {
+      "name": "mutate_self",
+      "source": "mutate_self.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "self",
+      "primary": {
+        "start": 81,
+        "end": 85
+      }
+    },
+    {
+      "name": "private_method",
+      "source": "private_method.nova",
+      "expected_diagnostic": "N2004",
+      "primary_text": "secret",
+      "primary": {
+        "start": 98,
+        "end": 104
+      }
+    },
+    {
+      "name": "unknown_method",
+      "source": "unknown_method.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "missing",
+      "primary": {
+        "start": 113,
+        "end": 120
+      }
+    },
+    {
+      "name": "non_struct_receiver",
+      "source": "non_struct_receiver.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "(7).sum",
+      "primary": {
+        "start": 101,
+        "end": 108
+      }
+    },
+    {
+      "name": "bound_method",
+      "source": "bound_method.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "p.sum",
+      "primary": {
+        "start": 111,
+        "end": 116
+      }
+    },
+    {
+      "name": "const_method_call",
+      "source": "const_method_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "P(1).sum()",
+      "primary": {
+        "start": 106,
+        "end": 116
+      }
+    },
+    {
+      "name": "default_method_call",
+      "source": "default_method_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "P(1).sum()",
+      "primary": {
+        "start": 111,
+        "end": 121
+      }
+    },
+    {
+      "name": "unknown_label",
+      "source": "unknown_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "nope",
+      "primary": {
+        "start": 125,
+        "end": 129
+      }
+    },
+    {
+      "name": "self_label",
+      "source": "self_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "self",
+      "primary": {
+        "start": 117,
+        "end": 121
+      }
+    },
+    {
+      "name": "missing_argument",
+      "source": "missing_argument.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "p.sum()",
+      "primary": {
+        "start": 117,
+        "end": 124
+      }
+    },
+    {
+      "name": "duplicate_self_parameter",
+      "source": "duplicate_self_parameter.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "self",
+      "primary": {
+        "start": 67,
+        "end": 71
+      }
+    },
+    {
+      "name": "return_type_mismatch",
+      "source": "return_type_mismatch.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "true",
+      "primary": {
+        "start": 80,
+        "end": 84
+      }
+    },
+    {
+      "name": "enum_method",
+      "source": "enum_method.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "func",
+      "primary": {
+        "start": 53,
+        "end": 57
+      }
+    }
+  ],
+  "positive_cases": [
+    {
+      "source": "newline_and_self.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "name": "method_abort",
+      "source": "method_abort.nova",
+      "primary_text": "self.x+1",
+      "primary": {
+        "start": 95,
+        "end": 103
+      },
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: integer overflow at file#0:95..103"
+      }
+    }
+  ]
+}

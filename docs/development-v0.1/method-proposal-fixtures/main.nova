@@ -1,0 +1,29 @@
+// 메서드 🙂 — P22 Draft / 미구현
+use types::Point
+use types::PointType
+const SHIFT:int8=20
+func make()->Point { print("receiver");return Point(3,4) }
+func mark(label:string,value:int8)->int8 { print(label);return value }
+func fetch()->Result<Point,int8> { print("fetch");return Result::Success(Point(5,6)) }
+func relay(fail:bool)->Result<int8,int8> {
+    let p:PointType=try fetch()
+    let n=try p.checked(fail:fail)
+    print("after")
+    return Result::Success(n)
+}
+func main() {
+    let p=Point(3,4)
+    print("sum={p.sum()}")
+    let alias:PointType=p
+    print("alias={alias.sum(bias:0)}")
+    let changed=p.shifted(delta:2)
+    print("copy={p.x}/{changed.x}")
+    print("text={p.text()}")
+    print("private={p.safe()}")
+    print("member-main={p.main()}")
+    print("tuple={(p,true).0.sum(bias:0)}")
+    let n=make().sum(bias:mark("arg",2))
+    print("order={n}")
+    match relay(false) { Result::Success(n)=>{print("ok={n}")},Result::Error(e)=>{print("unexpected={e}")} }
+    match relay(true) { Result::Success(n)=>{print("unexpected={n}")},Result::Error(e)=>{print("error={e}")} }
+}

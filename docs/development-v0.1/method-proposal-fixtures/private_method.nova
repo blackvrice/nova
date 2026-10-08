@@ -1,0 +1,3 @@
+// 메서드 🙂 — P22 Draft / 미구현
+use types::Point
+func main(){let p=Point(1,2);let n=p.secret()}

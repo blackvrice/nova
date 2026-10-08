@@ -1,0 +1,2 @@
+// 메서드 🙂 — P22 Draft / 미구현
+struct P{let x:int;func sum(self)->int{return self.x}}func f(n:int=P(1).sum()){}

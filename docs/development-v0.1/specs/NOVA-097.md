@@ -32,6 +32,8 @@ structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·pr
 
 사용자 승인한 Copy prefix try·Result Error 조기 반환·operand 문맥 격리·정확한 E·const 금지·Source/CFG 검증은 [P16 Accepted](../TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_TRY.ebnf), [수용 fixture](../try-proposal-fixtures/README.md), [구현 기록](../TRY_IMPLEMENTATION.md)을 따른다. Option try·error conversion·일반 Move/Drop와 전체 D08/D09/D10/D12/D16/D23/D25는 후속이다.
 
+Copy struct Read instance method·contextual self·member scope/visibility·receiver-first snapshot·named/default·Source/MIR 검증은 [P22 Draft](../METHOD_STAGE_B_PROPOSAL.md), [58-production EBNF](../GRAMMAR_STAGE_B_METHOD.ebnf), [제안 fixture](../method-proposal-fixtures/README.md)로 준비했다. 미승인·미구현이다. change/take·Move/borrow/Drop·init·overload·bound method·Enum method·Array와 전체 D06/D09/D10/D11/D12/D16/D25/D30은 승인하지 않았다.
+
 ## Symbol 초안 — D16
 Nova symbol은 language ABI version, package identity, module/item path, canonical signature/type args를 length-prefix encoding으로 포함한다. delimiter만 연결하여 이름 충돌을 만들지 않는다.
 
