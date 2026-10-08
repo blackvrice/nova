@@ -33,6 +33,7 @@ enum Work {
     Evaluate(HirId),
     Convert(HirId),
     Cast(HirId),
+    Exists,
     Aggregate(HirId),
     Project(HirId),
     Unary(HirId, Symbol),
@@ -69,6 +70,7 @@ pub(crate) fn evaluate(
             | HirKind::String(_)
             | HirKind::Unit
             | HirKind::Cast { .. }
+            | HirKind::Exists { .. }
             | HirKind::Group
             | HirKind::Prefix(Symbol::Plus | Symbol::Minus | Symbol::Bang)
             | HirKind::Binary(
@@ -158,6 +160,15 @@ pub(crate) fn evaluate(
                 };
                 values.push(fields[checked.projections[id.0].expect("field ID").index].clone());
             }
+            Work::Exists => {
+                let ConstValue::Enum(variant, _) = values.pop().expect("exists operand") else {
+                    unreachable!("checked intrinsic Option");
+                };
+                let shape = &checked.enums[&variant.enumeration];
+                values.push(ConstValue::Bool(
+                    shape.variants[variant.index].name == "Some",
+                ));
+            }
             Work::Cast(id) => {
                 let value: ConstValue = values.pop().expect("cast operand");
                 let dest = checked
@@ -222,6 +233,10 @@ pub(crate) fn evaluate(
                     }
                     HirKind::Cast { .. } => {
                         work.push(Work::Cast(id));
+                        work.push(Work::Evaluate(node.children[0]));
+                    }
+                    HirKind::Exists { .. } => {
+                        work.push(Work::Exists);
                         work.push(Work::Evaluate(node.children[0]));
                     }
                     HirKind::Group => work.push(Work::Evaluate(node.children[0])),

@@ -78,6 +78,7 @@ pub fn lower(
         default_sources: BTreeMap::new(),
         named_bodies: BTreeMap::new(),
         loop_bodies: BTreeMap::new(),
+        exists_bodies: BTreeMap::new(),
         try_controls: BTreeMap::new(),
         structs_original: checked.structs.clone(),
         tuple_ids: checked.tuple_ids.clone(),
@@ -167,6 +168,31 @@ pub fn lower(
                     .ok_or(LoweringError::InvalidAnalysis)?,
             );
         }
+        if matches!(node.kind, HirKind::Exists { .. }) {
+            let operand = ty(checked.type_table[node.children[0].0])?;
+            let Type::Enum(enumeration) = operand else {
+                return Err(LoweringError::InvalidAnalysis);
+            };
+            if checked.sums.get(&enumeration).map(|k| k.family)
+                != Some(nova_types::SumFamily::Option)
+            {
+                return Err(LoweringError::InvalidAnalysis);
+            }
+            result.match_provenance.insert(
+                index,
+                (
+                    operand,
+                    (0..2)
+                        .map(|index| {
+                            nova_typecheck::MatchPattern::Variant(nova_types::VariantId {
+                                enumeration,
+                                index,
+                            })
+                        })
+                        .collect(),
+                ),
+            );
+        }
         if node.kind == HirKind::Assignment {
             let mut root = node.children[0];
             let mut path = vec![];
@@ -238,6 +264,7 @@ pub fn lower(
             named_snapshots: BTreeMap::new(),
             named_calls: vec![],
             has_range_loop: false,
+            has_exists: false,
         };
         builder.current = Some(builder.block());
         for &parameter in &hir.nodes()[id.0].children[..parameters] {
@@ -285,6 +312,9 @@ pub fn lower(
         }
         if builder.has_range_loop {
             result.loop_bodies.insert(callee.0, builder.body.clone());
+        }
+        if builder.has_exists {
+            result.exists_bodies.insert(callee.0, builder.body.clone());
         }
         if !builder.named_calls.is_empty() {
             result.named_bodies.insert(callee.0, builder.body.clone());
@@ -335,6 +365,7 @@ enum Work {
         argument: HirId,
     },
     Try(HirId),
+    Exists(HirId),
     Binding(HirId),
     Assignment(HirId),
     Return(HirId),
@@ -399,6 +430,7 @@ struct Builder<'a> {
     named_snapshots: BTreeMap<usize, Vec<(BlockId, usize, Statement)>>,
     named_calls: Vec<NamedCallCertificate>,
     has_range_loop: bool,
+    has_exists: bool,
 }
 impl Builder<'_> {
     fn block(&mut self) -> BlockId {
@@ -730,6 +762,11 @@ impl Builder<'_> {
                             work.push(Work::Try(id));
                             work.push(Work::Expression(node.children[0]));
                         }
+                        HirKind::Exists { .. } => {
+                            self.has_exists = true;
+                            work.push(Work::Exists(id));
+                            work.push(Work::Expression(node.children[0]));
+                        }
                         HirKind::Cast { .. } => {
                             work.push(Work::FinishExpression(id));
                             work.push(Work::Expression(node.children[0]));
@@ -772,6 +809,47 @@ impl Builder<'_> {
                         .or_default()
                         .push((block, at, statement));
                     self.values[argument.0] = Some(Operand::Place(snapshot));
+                }
+                Work::Exists(id) => {
+                    let operand = self.hir.nodes()[id.0].children[0];
+                    let snapshot = Place(self.local(operand, None)?);
+                    self.assign(snapshot, Rvalue::Use(self.value(operand)?), operand)?;
+                    let Type::Enum(enumeration) = self.body.locals[snapshot.0 .0].ty else {
+                        return Err(LoweringError::InvalidAnalysis);
+                    };
+                    let destination = self.temporary(Type::Bool, id);
+                    let some = self.block();
+                    let none = self.block();
+                    let join = self.block();
+                    self.end(
+                        TerminatorKind::Match {
+                            scrutinee: Operand::Place(snapshot),
+                            arms: [some, none]
+                                .into_iter()
+                                .enumerate()
+                                .map(|(index, block)| {
+                                    (
+                                        nova_typecheck::MatchPattern::Variant(
+                                            nova_types::VariantId { enumeration, index },
+                                        ),
+                                        block,
+                                    )
+                                })
+                                .collect(),
+                        },
+                        id,
+                    )?;
+                    for (block, value) in [(some, true), (none, false)] {
+                        self.current = Some(block);
+                        self.assign(
+                            destination,
+                            Rvalue::Use(Operand::Constant(Constant::Bool(value))),
+                            id,
+                        )?;
+                        self.end(TerminatorKind::Goto(join), id)?;
+                    }
+                    self.current = Some(join);
+                    self.values[id.0] = Some(Operand::Place(destination));
                 }
                 Work::Try(id) => {
                     let node = &self.hir.nodes()[id.0];

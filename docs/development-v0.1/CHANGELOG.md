@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P20 Copy Option postfix exists 구현
+
+사용자 승인 P20의 intrinsic Copy Option Bool 존재 검사·기존 postfix/END·문맥 격리·const/default·단일 평가를 구현했다.
+Source keyword 토큰 경계·MIR snapshot/tag 방향·effect/CFG private body proof와 13개 테스트·직접 실행 예제를 추가했다.
+[구현·검증 기록](EXISTS_IMPLEMENTATION.md)을 따른다. try precedence와 const/default runtime call fixture의 기대 Span을 정정했다.
+기존 ErrorType 억제·N3201 call 진단을 보존하는 기대값 수정이며 의미 정책 변경이 아니다.
+
 ## 2026-10-08 — P20 Copy Option postfix exists 착수안 (Draft)
 
 Bool 존재 검사·postfix/END·문맥 격리·const/default·단일 평가·Source/MIR 검증 최소 계약을 준비했다.

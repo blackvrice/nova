@@ -1239,3 +1239,91 @@ fn p19_loop_nesting_limit_and_flat_parser_host_stack() {
         .join()
         .unwrap();
 }
+
+#[test]
+fn p20_postfix_exists_precedence_spans_end_and_utf8_recovery() {
+    let source="func f(){let 값=!maybe() exists==true;let ok=(try fetch()) exists;let bad=try fetch() exists;let field=box.value exists;let tuple=pair.0 exists}";
+    let (db, _, p) = run(source);
+    assert!(!p.has_errors(), "{:?}", p.diagnostics);
+    let nodes = p
+        .arena
+        .iter()
+        .filter(|(_, n)| matches!(n.kind, NodeKind::Exists { .. }))
+        .collect::<Vec<_>>();
+    assert_eq!(nodes.len(), 5);
+    for (_, n) in &nodes {
+        let NodeKind::Exists { keyword } = n.kind else {
+            unreachable!()
+        };
+        assert_eq!(db.slice(keyword).unwrap(), "exists");
+        assert_eq!(n.children.len(), 1);
+        assert_eq!(
+            p.arena.get(n.children[0]).unwrap().span.start(),
+            n.span.start()
+        );
+        assert_eq!(keyword.end(), n.span.end());
+    }
+    assert!(p
+        .arena
+        .iter()
+        .any(|(_, n)| matches!(n.kind, NodeKind::Prefix(Symbol::Bang))
+            && matches!(
+                p.arena.get(n.children[0]).unwrap().kind,
+                NodeKind::Exists { .. }
+            )));
+    assert!(p
+        .arena
+        .iter()
+        .any(|(_, n)| matches!(n.kind, NodeKind::Try { .. })
+            && matches!(
+                p.arena.get(n.children[0]).unwrap().kind,
+                NodeKind::Exists { .. }
+            )));
+    let (_, _, p) = run("func f(){let b=(x\n exists)\nlet c=x exists\nlet d=1}");
+    assert!(!p.has_errors());
+    for bad in [
+        "func f(){let b=x\nexists}\nfunc later(){}",
+        "func f(){let b=exists x}\nfunc later(){}",
+        "func f(){let b=x;exists}\nfunc later(){}",
+    ] {
+        let (db, _, p) = run(bad);
+        assert!(p.has_errors());
+        assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"));
+        assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function{name,..} if db.slice(name).unwrap()=="later")));
+    }
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let (db, _, p) = run(&source[..at]);
+        for (_, n) in p.arena.iter() {
+            db.slice(n.span).unwrap();
+        }
+        for d in p.diagnostics {
+            db.slice(d.primary.span).unwrap();
+        }
+    }
+}
+#[test]
+fn p20_flat_exists_chain_small_host_stack_and_nesting_budget() {
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let (_, _, p) = run(&format!("func f(){{let b=x{}}}", " exists".repeat(8192)));
+            assert!(!p.has_errors());
+            assert_eq!(
+                p.arena
+                    .iter()
+                    .filter(|(_, n)| matches!(n.kind, NodeKind::Exists { .. }))
+                    .count(),
+                8192
+            );
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    let source = format!(
+        "func f(){{loop{{let b={}x{} exists;break}}}}",
+        "(".repeat(129),
+        ")".repeat(129)
+    );
+    let (_, _, p) = run(&source);
+    assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N8901"));
+}

@@ -143,6 +143,9 @@ pub enum HirKind {
     Try {
         keyword: Span,
     },
+    Exists {
+        keyword: Span,
+    },
     Binary(Symbol),
     Call,
     NamedArgument {
@@ -747,6 +750,39 @@ pub fn lower(
                 return Err(LoweringError::MalformedAst);
             }
         }
+        if let NodeKind::Exists { keyword } = node.kind {
+            if node.children.len() != 1 {
+                return Err(LoweringError::MalformedAst);
+            }
+            let operand = arena
+                .get(node.children[0])
+                .ok_or(LoweringError::MalformedAst)?;
+            let text = sources.file(node.span.file())?.text();
+            if sources.slice(keyword)? != "exists"
+                || !inside(node.span, keyword)
+                || text
+                    .get(..keyword.start())
+                    .and_then(|s| s.chars().next_back())
+                    .is_some_and(unicode_ident::is_xid_continue)
+                || text
+                    .get(keyword.end()..)
+                    .and_then(|s| s.chars().next())
+                    .is_some_and(unicode_ident::is_xid_continue)
+                || operand.span.start() != node.span.start()
+                || operand.span.end() > keyword.start()
+                || keyword.end() != node.span.end()
+                || !type_punctuation(
+                    sources.slice(Span::new(
+                        node.span.file(),
+                        operand.span.end(),
+                        keyword.start(),
+                    )?)?,
+                    &[""],
+                )
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
         if let NodeKind::Cast { keyword } = node.kind {
             if sources.slice(keyword)? != "as"
                 || keyword.file() != node.span.file()
@@ -990,6 +1026,7 @@ pub fn lower(
             NodeKind::Group => HirKind::Group,
             NodeKind::Prefix(op) => HirKind::Prefix(op),
             NodeKind::Try { keyword } => HirKind::Try { keyword },
+            NodeKind::Exists { keyword } => HirKind::Exists { keyword },
             NodeKind::Binary(op) => HirKind::Binary(op),
             NodeKind::Call => HirKind::Call,
             NodeKind::NamedArgument { name, colon } => HirKind::NamedArgument {
@@ -1134,6 +1171,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 | NodeKind::Unit
                 | NodeKind::Group
                 | NodeKind::Try { .. }
+                | NodeKind::Exists { .. }
                 | NodeKind::Prefix(_)
                 | NodeKind::Binary(_)
                 | NodeKind::Cast { .. }
@@ -1318,6 +1356,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::Group
         | NodeKind::Prefix(_)
         | NodeKind::Try { .. }
+        | NodeKind::Exists { .. }
         | NodeKind::NamedArgument { .. }
         | NodeKind::Interpolation => kinds.len() == 1 && expr(kinds[0]),
         NodeKind::Binary(_) => kinds.len() == 2 && kinds.iter().all(|k| expr(*k)),

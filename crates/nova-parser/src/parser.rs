@@ -1150,6 +1150,12 @@ impl<'a> Parser<'a> {
                 left = self.projection(left);
                 continue;
             }
+            if self.kind() == TokenKind::Keyword(Keyword::Exists) && minimum <= 15 {
+                let keyword = self.bump().span;
+                let exists_start = self.arena.get(left).expect("parsed operand").span.start();
+                left = self.node(NodeKind::Exists { keyword }, exists_start, vec![left]);
+                continue;
+            }
             let Some((operator, precedence)) = binary(self.kind()) else {
                 break;
             };

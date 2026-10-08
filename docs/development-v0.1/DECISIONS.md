@@ -26,7 +26,7 @@
 
 2026-10-08 사용자 “P19 승인하고 loop·정수 범위 for 구현 진행” 답변을 승인 기록으로 반영했다. [P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md)·[54-production EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf)·[수용 fixture](range-loop-proposal-fixtures/README.md)·[구현 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다. integer peer/common type·불변 binder·단일 bound 평가·inclusive 최댓값 종료·mixed jump/try·보수적 return·Source/CFG 검증 subset을 구현했다. Array/iterable·Range 값·step/descending·일반 Move/Drop와 전체 D08/D10/D12/D16/D23/D25 승인은 아니다.
 
-2026-10-08 [P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md)·[54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf)·[수용 fixture](exists-proposal-fixtures/README.md)를 Draft로 준비했다. Bool·const/default·단일 평가·Source/MIR 검증의 새 상세는 미승인·미구현이다. P01~P19와 원본을 보존하며 사용자 승인 전에 적용하지 않는다.
+2026-10-08 사용자 “P20 승인하고 Copy Option exists 구현 진행” 답변으로 [P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md)·[54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf)·[수용 fixture](exists-proposal-fixtures/README.md)를 승인했다. [구현 기록](EXISTS_IMPLEMENTATION.md)을 따른다. Bool·const/default·단일 평가·기존 END·Source/MIR 검증 subset을 구현했다. P01~P19와 원본을 보존하며 Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인은 아니다.
 
 ## 공통 승인 계약
 

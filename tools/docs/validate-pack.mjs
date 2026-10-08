@@ -760,18 +760,18 @@ checks.push('P19 Accepted/승인·구현 ledger·P18 statement 확장/두 produc
 const rangeUnit = rangeFixture.negative_cases.find(c => c.name === 'unit_bound');
 assert(rangeUnit?.primary?.start === 22 && rangeUnit?.primary?.end === 24, 'P19 Unit bound Span must not point to function parameter parentheses');
 
-const existsProposal = manifest.draft_proposals?.find(p => p.id === 'P20');
-assert(existsProposal?.status === 'Draft' && existsProposal?.implementation_verified === false
+const existsProposal = manifest.accepted_proposals?.find(p => p.id === 'P20');
+assert(existsProposal?.status === 'Accepted' && existsProposal?.implementation_verified === true && existsProposal?.approval_date === '2026-10-08'
   && existsProposal?.document === 'EXISTS_STAGE_B_PROPOSAL.md' && existsProposal?.grammar === 'GRAMMAR_STAGE_B_EXISTS.ebnf'
-  && !manifest.accepted_proposals?.some(p => p.id === 'P20'), 'P20 invalid Draft ledger');
+  && !manifest.draft_proposals?.some(p => p.id === 'P20'), 'P20 invalid Accepted ledger');
 const existsText = fs.readFileSync(path.join(pack, 'EXISTS_STAGE_B_PROPOSAL.md'), 'utf8');
-assert(existsText.includes('Draft / 사용자 승인 대기 / 미구현') && existsText.includes('53개 보존')
+assert(existsText.includes('Accepted / 사용자 승인 / 구현 완료') && existsText.includes('53개 보존')
   && existsText.includes('10,000-node') && existsText.includes('None=0/nonnull pointer/payload truthiness')
   && existsText.includes('flow narrowing'), 'P20 missing status/scope/const/layout boundaries');
 validateGrammar('GRAMMAR_STAGE_B_EXISTS.ebnf');
 const existsGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_EXISTS.ebnf'), 'utf8');
 const existsProductions = productions(existsGrammar);
-assert(existsGrammar.includes('Draft, unapproved, unimplemented') && existsProductions.size === 54, 'P20 invalid grammar');
+assert(existsGrammar.includes('Accepted by user; recorded on 2026-10-08') && existsProductions.size === 54, 'P20 invalid grammar');
 for (const [name, value] of rangeProductions) {
   if (name !== 'postfix_expr') assert(existsProductions.get(name) === value, 'P20 changed approved production ' + name);
 }
@@ -779,11 +779,11 @@ assert(existsProductions.get('postfix_expr') === rangeProductions.get('postfix_e
 const existsRoot = path.join(pack, 'exists-proposal-fixtures');
 const existsFixture = JSON.parse(fs.readFileSync(path.join(existsRoot, 'expected.json'), 'utf8'));
 const existsOutput = 'basic=true/false\npayload=true/true\nnested=true/true\nconst=true/true\ndefault=true\nonce\nonce=true\nshort=false/true\nsnapshot=true/false\ntuple=true\nnegate=true\nsecond\nfirst\norder=false\ntry\ntry-ok=true\ntry\ntry-error=-1\n';
-assert(existsFixture.proposal === 'P20' && existsFixture.status === 'Draft' && existsFixture.implementation_verified === false
-  && !existsFixture.validated_result && !existsFixture.approval_date && existsFixture.entry === 'main.nova'
-  && existsFixture.source_root === '.' && JSON.stringify(existsFixture.reachable_modules) === '["main","helpers"]', 'P20 invalid unverified fixture status');
-assert(existsFixture.proposed_result?.check_exit === 0 && existsFixture.proposed_result?.native_exit === 0
-  && existsFixture.proposed_result?.stdout === existsOutput && existsFixture.proposed_result?.stderr === '', 'P20 proposed output mismatch');
+assert(existsFixture.proposal === 'P20' && existsFixture.status === 'Accepted' && existsFixture.implementation_verified === true
+  && !existsFixture.proposed_result && existsFixture.approval_date === '2026-10-08' && existsFixture.entry === 'main.nova'
+  && existsFixture.source_root === '.' && JSON.stringify(existsFixture.reachable_modules) === '["main","helpers"]', 'P20 invalid verified fixture status');
+assert(existsFixture.validated_result?.check_exit === 0 && existsFixture.validated_result?.native_exit === 0
+  && existsFixture.validated_result?.stdout === existsOutput && existsFixture.validated_result?.stderr === '', 'P20 verified output mismatch');
 assert(existsFixture.negative_cases?.length === 20 && existsFixture.positive_cases?.length === 2
   && existsFixture.runtime_cases?.length === 1, 'P20 invalid fixture counts');
 for (const c of [...existsFixture.negative_cases, ...existsFixture.runtime_cases]) {
@@ -794,22 +794,31 @@ for (const c of [...existsFixture.negative_cases, ...existsFixture.runtime_cases
   assert((c.forbidden_diagnostics ?? []).every(code => knownCodes.has(code) && code !== c.expected_diagnostic), 'P20 invalid cascade ' + c.name);
 }
 for (const c of existsFixture.positive_cases) {
-  assert(path.basename(c.source) === c.source && c.source.endsWith('.nova') && !c.validated_result
-    && c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
-    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '', 'P20 invalid unverified positive ' + c.source);
+  assert(path.basename(c.source) === c.source && c.source.endsWith('.nova') && !c.proposed_result
+    && c.validated_result?.check_exit === 0 && c.validated_result?.native_exit === 0
+    && c.validated_result?.stdout === '' && c.validated_result?.stderr === '', 'P20 invalid verified positive ' + c.source);
   assert(fs.existsSync(path.join(existsRoot, c.source)), 'P20 missing positive source');
 }
 const existsRuntime = existsFixture.runtime_cases[0];
-assert(!existsRuntime.validated_result && existsRuntime.expected_diagnostic === 'N5201'
-  && existsRuntime.proposed_result?.check_exit === 0 && existsRuntime.proposed_result?.native_exit_nonzero === true
-  && existsRuntime.proposed_result?.stdout === 'before\n', 'P20 invalid proposed Abort effect');
+assert(!existsRuntime.proposed_result && existsRuntime.expected_diagnostic === 'N5201'
+  && existsRuntime.validated_result?.check_exit === 0 && existsRuntime.validated_result?.native_exit_nonzero === true
+  && existsRuntime.validated_result?.stdout === 'before\n', 'P20 invalid verified Abort effect');
 const existsMain = fs.readFileSync(path.join(existsRoot, existsFixture.entry), 'utf8');
 const existsHelpers = fs.readFileSync(path.join(existsRoot, 'helpers.nova'), 'utf8');
 assert(existsMain.includes('ABSENT as 없음') && existsMain.includes('LATER exists') && existsMain.includes('data.value exists')
   && existsMain.includes('(try fetch_result(fail)) exists') && existsMain.includes('second:fetch(')
   && existsHelpers.includes('private enum Secret') && existsHelpers.includes('Option::Some(none)')
   && existsHelpers.includes('second:bool=PRESENT'), 'P20 missing import/nested/const/default/snapshot/effect/try data');
-checks.push('P20 Draft/미승인·미구현 ledger·P19 postfix 한 production 확장·54-production EBNF/기존 53개 보존·두 파일/정상 2/부정 20/Runtime 1 UTF-8 Span·cascade·제안 18줄 metadata (Compiler/Native 실행 아님)');
+checks.push('P20 Accepted/승인·구현 ledger·P19 postfix 한 production 확장·54-production EBNF/기존 53개 보존·두 파일/정상 2/부정 20/Runtime 1 UTF-8 Span·cascade·검증 18줄 metadata (Compiler/Native 실행 아님)');
+
+for (const name of ['const_runtime_call','skipped_const_runtime_call','default_runtime_call']) {
+  const c = existsFixture.negative_cases.find(c => c.name === name);
+  const bytes = fs.readFileSync(path.join(existsRoot,c.source));
+  assert(c.primary.start === bytes.lastIndexOf(Buffer.from('fetch()')), 'P20 const/default diagnostic must target call, not declaration');
+}
+const existsPrecedence = existsFixture.negative_cases.find(c => c.name === 'try_precedence');
+assert(existsPrecedence.primary_text === 'fetch()' && existsPrecedence.primary.start === 153
+  && existsPrecedence.primary.end === 160, 'P20 Result exists fails before derived try error');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

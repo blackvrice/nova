@@ -1,8 +1,10 @@
 # Stage B Copy Option postfix exists 최소 계약 — P20
 
-작성일: 2026-10-08. 상태: **Draft / 사용자 승인 대기 / 미구현**.
-기존 P01~P19 승인 사양은 보존한다. 이 문서·[전용 EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf)·
-[수용 fixture](exists-proposal-fixtures/README.md)는 검토 자료이며 구현 성공을 뜻하지 않는다.
+작성일/승인 반영일: 2026-10-08. 상태: **Accepted / 사용자 승인 / 구현 완료**.
+승인 근거: 사용자 “P20 승인하고 Copy Option exists 구현 진행” 답변.
+[구현·검증 기록](EXISTS_IMPLEMENTATION.md)을 따른다.
+기존 P01~P19 승인 사양은 보존했다. 이 문서·[전용 EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf)·
+[수용 fixture](exists-proposal-fixtures/README.md)는 승인한 최소 계약이다.
 
 ## Specification Change Proposal
 
@@ -80,9 +82,10 @@
    const A:bool=Option::Some(B) exists; const B:bool=A는 P06/P11의 static cycle N3202다.
    Some이라는 사실만 보고 operand를 생략해 cycle/effect/예산을 숨기지 않는다.
 4. non-Option N2101 primary는 원 operand 전체 byte Span이다. repeated exists의 두 번째 연산은
-   첫 exists expression을 operand Span으로 쓴다. Bool numeric cast·not-callable·try·추론 진단은
+   첫 exists expression을 operand Span으로 쓴다. Result를 반환하는 f의 try f() exists는
+   먼저 f()의 exists N2101을 보고하고 파생 try 진단을 억제한다. Bool numeric cast·not-callable·try·추론 진단은
    기존 operation/callee/operand/none Span을 사용한다. [정확한 사례](exists-proposal-fixtures/expected.json)를 따른다.
-5. Parser nesting 한도 128/P04 N8901, aggregate/specialization 한도는 P12~P15 그대로다.
+5. Parser nesting 한도 128과 기존 P01 N1102/P04 loop 내부 N8901, aggregate/specialization 한도는 P12~P15 그대로다.
    새로운 specialization이나 payload field를 생성하지 않는다. flat postfix chain은 반복형으로 처리하고
    prefix truncation·작은 host stack·깊은 expression 검사/상수 평가/해제를 시험한다.
 
@@ -98,7 +101,7 @@
   predicate direction·evaluation order·short-circuit·try bypass 위조를 CodegenUnit/LLVM 전에 거부한다.
   inactive payload access를 만들지 않는다. ABI/Runtime helper를 확장하지 않는다.
 - [두 파일 fixture](exists-proposal-fixtures/README.md)는 nullable/import/alias·opaque private payload·nested None·
-  const/default·snapshot·named effects·short-circuit·try의 **제안 18줄 출력**이다.
+  const/default·snapshot·named effects·short-circuit·try의 **검증된 18줄 출력**이다.
   정상 2·부정 20·Runtime 실패 1 source와 UTF-8 byte Span/cascade를 준비했다.
   구현 tests는 모든 Copy payload·shadow·Bool contexts/loops·reused Option match·zero/false/Unit·
   forward const·static cycle·10,000/10,001 nodes·cross-file failure Span을 포함한다.
@@ -108,12 +111,12 @@
 
 ## 승인 경계
 
-P20 Copy intrinsic Option postfix exists·Bool·const/default·Source/MIR 검증 subset만 별도 승인 대상이다.
+P20 Copy intrinsic Option postfix exists·Bool·const/default·Source/MIR 검증 subset을 승인했다.
 Result exists·flow narrowing·unwrap·Move payload·일반 borrow/Drop·Array·methods·공용 ABI/FFI·
 전체 D08/D09/D10/D16/D23/D25/D30을 승인하는 것이 아니다.
-사용자의 승인을 받기 전에는 해당 사양 변경을 적용하지 않는다. 승인 후 구현하고 실제 검증 결과를 기록한다.
+사용자 승인 후 이 subset만 구현했다. 실제 검증은 [구현 기록](EXISTS_IMPLEMENTATION.md)을 따른다.
 
-## 초안 준비 검증 — 2026-10-08
+## 초안 준비 검증 — 2026-10-08 (과거 기록)
 
 - 문서 build/validator PASS: 148개 원본 hash·링크·Draft ledger·54-production EBNF·기존 53개 production 보존,
   두 파일/정상 2/부정 20/Runtime 1 source·등록 code·UTF-8 byte Span·cascade·제안 18줄 metadata를 검사했다.

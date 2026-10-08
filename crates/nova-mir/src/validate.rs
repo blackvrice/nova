@@ -109,6 +109,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         .named_bodies
         .keys()
         .chain(module.loop_bodies.keys())
+        .chain(module.exists_bodies.keys())
         .any(|id| !body_ids.contains(id))
     {
         validator.report(Violation::InvalidBody);
@@ -191,6 +192,13 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         validator.check_named_calls(body);
         if module
             .loop_bodies
+            .get(&body.callee.0)
+            .is_some_and(|original| original != body)
+        {
+            validator.report(Violation::InvalidBody);
+        }
+        if module
+            .exists_bodies
             .get(&body.callee.0)
             .is_some_and(|original| original != body)
         {

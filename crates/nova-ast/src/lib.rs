@@ -147,6 +147,10 @@ pub enum NodeKind {
     Try {
         keyword: Span,
     },
+    /// One operand; exact postfix keyword subspan.
+    Exists {
+        keyword: Span,
+    },
     /// Left, then right operand.
     Binary(Symbol),
     /// Callee, followed by source-ordered expressions or named argument wrappers.

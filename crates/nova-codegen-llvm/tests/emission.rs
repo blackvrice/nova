@@ -1022,3 +1022,52 @@ fn p19_real_llvm_range_loop_cfg_coff_elf_o0_o2() {
         }
     }
 }
+
+fn p20_corpus() -> CodegenUnit {
+    unit("func leaf()->Result<int?,bool>{return Result::Success(Option::Some(0))}func f(x:int?)->Result<bool,bool>{let b=x exists;let c=(try leaf()) exists;return Result::Success(b&&c)}func main(){let x:int?=none;match f(x){Result::Success(b)=>{print(\"{b}\")},Result::Error(_)=>{}}}")
+}
+#[test]
+fn p20_exists_llvm_tag_cfg_determinism_and_no_payload_truthiness() {
+    let unit = p20_corpus();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&unit, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&unit, target, true).unwrap());
+        assert!(ir.text.contains("switch i32"));
+        assert!(ir.text.contains("store i1 true") && ir.text.contains("store i1 false"));
+        assert!(!ir.text.contains("invoke "));
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 via NOVA_CLANG"]
+fn p20_real_llvm_exists_cfg_coff_elf_o0_o2() {
+    let unit = p20_corpus();
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").unwrap_or_else(|| "clang".into())),
+    };
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-p20-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
+            let path = root.join(format!("{}-{optimization:?}.obj", target.triple()));
+            backend
+                .codegen_unit(
+                    &unit,
+                    &target,
+                    &CodegenOptions {
+                        object_path: path.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(path).unwrap();
+            assert!(if target == TargetSpec::WindowsX64Msvc {
+                bytes.starts_with(b"\x64\x86")
+            } else {
+                bytes.starts_with(b"\x7fELF")
+            });
+        }
+    }
+}

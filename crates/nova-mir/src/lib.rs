@@ -258,6 +258,8 @@ pub struct Module {
     named_bodies: std::collections::BTreeMap<usize, Body>,
     /// P19 retains a private full-body proof of bound evaluation and loop CFG.
     loop_bodies: std::collections::BTreeMap<usize, Body>,
+    /// P20 freezes predicate snapshots, tag direction, effects and enclosing CFG.
+    exists_bodies: std::collections::BTreeMap<usize, Body>,
     match_provenance: std::collections::BTreeMap<usize, (Type, Vec<nova_typecheck::MatchPattern>)>,
     structs_original: StructRegistry,
     tuple_ids: std::collections::BTreeSet<StructId>,

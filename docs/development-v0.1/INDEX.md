@@ -30,7 +30,7 @@
 
 [P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [두 파일·부정 18/Runtime 2사례 fixture](range-loop-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다.
 
-[P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf), [두 파일·정상 2/부정 20/Runtime 1사례](exists-proposal-fixtures/README.md)는 Draft / 미승인 / 미구현이다. 기대값을 준비했으며 Compiler 성공 결과가 아니다.
+[P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf), [두 파일·정상 2/부정 20/Runtime 1사례](exists-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](EXISTS_IMPLEMENTATION.md)을 따른다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

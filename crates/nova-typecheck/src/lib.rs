@@ -1071,7 +1071,7 @@ impl Checker<'_> {
                     };
                     pending.push(Work::Enter(child, cx));
                 }
-                HirKind::Try { .. } => {
+                HirKind::Try { .. } | HirKind::Exists { .. } => {
                     pending.push(Work::Enter(
                         node.children[0],
                         Context {
@@ -1189,6 +1189,21 @@ impl Checker<'_> {
                     };
                 }
                 self.set(id, Type::Unit);
+            }
+            HirKind::Exists { .. } => {
+                let operand = node.children[0];
+                let source = self.ty(self.result.type_table[operand.0]);
+                let valid = matches!(source, Type::Enum(e)
+                    if self.result.sums.get(&e).is_some_and(|k| k.family == nova_types::SumFamily::Option));
+                if !valid && source != Type::Error {
+                    self.report(
+                        2101,
+                        self.module.nodes()[operand.0].span,
+                        "exists operand must be an intrinsic Option",
+                        None,
+                    );
+                }
+                self.set(id, if valid { Type::Bool } else { Type::Error });
             }
             HirKind::Try { keyword } => {
                 let operand = node.children[0];

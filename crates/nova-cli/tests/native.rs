@@ -1716,3 +1716,93 @@ fn p19_range_loop_checked_failure_exact_cross_file_utf8_spans_and_effects_o0_o2(
     }
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p20_native_exists_fixture_truthiness_effects_snapshots_contexts_and_try_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/exists-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="basic=true/false\npayload=true/true\nnested=true/true\nconst=true/true\ndefault=true\nonce\nonce=true\nshort=false/true\nsnapshot=true/false\ntuple=true\nnegate=true\nsecond\nfirst\norder=false\ntry\ntry-ok=true\ntry\ntry-error=-1\n";
+    for profile in ["debug", "release"] {
+        for (name, output) in [
+            ("main.nova", expected),
+            ("newline_and_shadow.nova", ""),
+            ("skipped_abort.nova", ""),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, output.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let mut widths = String::new();
+        let mut calls = String::new();
+        let mut expected_widths = String::new();
+        for (name, min, max) in [
+            ("int8", "-128", "127"),
+            ("uint8", "0", "255"),
+            ("int16", "-32768", "32767"),
+            ("uint16", "0", "65535"),
+            ("int32", "-2147483648", "2147483647"),
+            ("uint32", "0", "4294967295"),
+            ("int64", "-9223372036854775808", "9223372036854775807"),
+            ("uint64", "0", "18446744073709551615"),
+        ] {
+            widths.push_str(&format!(
+                "func present_{name}(value:{name}?)->bool{{return value exists}}"
+            ));
+            calls.push_str(&format!("print(\"{name}={{present_{name}(Option::Some({min}))}}/{{present_{name}(Option::Some({max}))}}/{{present_{name}(none)}}\");"));
+            expected_widths.push_str(&format!("{name}=true/true/false\n"));
+        }
+        widths.push_str(&format!("func main(){{{calls}}}"));
+        let r = program_profile(&widths, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, expected_widths.as_bytes());
+        assert!(r.stderr.is_empty());
+        let source = r#"struct S{let n:int}enum E{V(S)}
+func main(){let zero:double?=Option::Some(-0.0);let character:char?=Option::Some('\0');let result:Result<int,()>?=Option::Some(Result::Error(()));print("values={zero exists}/{character exists}/{result exists}");var value:int?=Option::Some(0);var count=0;while value exists{count=count+1;value=none}loop{if !value exists{break}}for i in 0 until 2{let e:E?=Option::Some(E::V(S(i)));if e exists{count=count+1}}print("loops={count}");match value exists{true=>{print("bad")},false=>{print("absent")}}}"#;
+        let r = program_profile(source, profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"values=true/true/true\nloops=3\nabsent\n");
+        assert!(r.stderr.is_empty());
+        let r=module_program("use lib::fail;func main(){match fail(){Result::Success(_)=>{},Result::Error(_)=>{print(\"error\")}}}",
+            "func leaf()->Result<int?,bool>{print(\"leaf\");return Result::Error(true)}public func fail()->Result<bool,bool>{let b=(try leaf()) exists;print(\"after\");return Result::Success(b)}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"leaf\nerror\n");
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p20_exists_operand_abort_cross_file_utf8_span_and_effects_o0_o2() {
+    for profile in ["debug", "release"] {
+        let lib="// 한글 🙂\nfunc danger()->int?{let 値:int8=127;return Option::Some((値+1) as int)}public func fail(){print(\"before\");let present=danger() exists;print(\"after\")}";
+        let start = lib.find("値+1").unwrap();
+        let r = module_program(
+            "use lib::fail;func main(){fail();print(\"after-main\")}",
+            lib,
+            profile,
+        );
+        assert!(!r.status.success());
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#1:{start}..{}",
+                    start + "値+1".len()
+                )
+                .as_str()
+            )
+        );
+    }
+}

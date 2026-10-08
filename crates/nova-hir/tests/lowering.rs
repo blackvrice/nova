@@ -889,3 +889,72 @@ fn p19_range_loop_original_source_and_external_ast_forgery_gate() {
     let root = arena.insert(NodeKind::Root, whole, vec![error]).unwrap();
     assert_eq!(lower(&db, &arena, root), Err(LoweringError::MalformedAst));
 }
+
+#[test]
+fn p20_exists_source_origin_trivia_shape_and_external_ast_gate() {
+    let source = "func f(){let 値=some /* outer /* inner */ */ exists}";
+    let hir = lower_source(source);
+    assert_eq!(
+        hir.nodes()
+            .iter()
+            .filter(|n| matches!(n.kind, HirKind::Exists { .. }))
+            .count(),
+        1
+    );
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        lower_source(&source[..at]);
+    }
+    for (text, operand, keyword, whole, count, valid) in [
+        ("x exists", (0, 1), (2, 8), (0, 8), 1, true),
+        ("()exists", (0, 2), (2, 8), (0, 8), 1, true),
+        (
+            "x /* nested /* ok */ */ exists",
+            (0, 1),
+            (24, 30),
+            (0, 30),
+            1,
+            true,
+        ),
+        ("x exists", (0, 1), (2, 8), (0, 8), 0, false),
+        ("x exists", (0, 1), (2, 8), (0, 8), 2, false),
+        ("x exists", (0, 1), (3, 8), (0, 8), 1, false),
+        ("x + exists", (0, 1), (4, 10), (0, 10), 1, false),
+        ("x exists", (2, 8), (2, 8), (0, 8), 1, false),
+        ("x exists ", (0, 1), (2, 8), (0, 9), 1, false),
+        ("xexists", (0, 1), (1, 7), (0, 7), 1, false),
+        ("x exists_extra", (0, 1), (2, 8), (0, 8), 1, false),
+        ("x exists1", (0, 1), (2, 8), (0, 8), 1, false),
+    ] {
+        let mut db = SourceDatabase::default();
+        let file = db.add("api", text.into()).unwrap();
+        let span = |r: (usize, usize)| Span::new(file, r.0, r.1).unwrap();
+        let mut arena = Arena::default();
+        let value = arena
+            .insert(
+                if text.starts_with("()") {
+                    NodeKind::Unit
+                } else {
+                    NodeKind::Name
+                },
+                span(operand),
+                vec![],
+            )
+            .unwrap();
+        let exists = arena
+            .insert(
+                NodeKind::Exists {
+                    keyword: span(keyword),
+                },
+                span(whole),
+                vec![value; count],
+            )
+            .unwrap();
+        let error = arena
+            .insert(NodeKind::Error, span((0, text.len())), vec![exists])
+            .unwrap();
+        let root = arena
+            .insert(NodeKind::Root, span((0, text.len())), vec![error])
+            .unwrap();
+        assert_eq!(lower(&db, &arena, root).is_ok(), valid, "{text}");
+    }
+}

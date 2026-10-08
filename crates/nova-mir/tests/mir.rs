@@ -320,6 +320,10 @@ fn execute_with_fuel(
             for statement in &block.statements {
                 let StatementKind::Assign(Place(local), value) = &statement.kind;
                 let value = match value {
+                    Rvalue::Enum(variant, fields) => Constant::Enum(
+                        *variant,
+                        fields.iter().map(|field| operand(field, &locals)).collect(),
+                    ),
                     Rvalue::Use(op) => operand(op, &locals),
                     Rvalue::Unary(Symbol::Bang, op) => {
                         let Constant::Bool(value) = operand(op, &locals) else {
@@ -388,7 +392,28 @@ fn execute_with_fuel(
                     current = *target;
                 }
                 TerminatorKind::Unreachable => panic!("reachable orphan join"),
-                TerminatorKind::Match { .. } | TerminatorKind::Try { .. } => {
+                TerminatorKind::Match { scrutinee, arms } => {
+                    let value = operand(scrutinee, &locals);
+                    current = arms
+                        .iter()
+                        .find_map(|(pattern, target)| {
+                            let matches = match (pattern, &value) {
+                                (
+                                    nova_typecheck::MatchPattern::Variant(expected),
+                                    Constant::Enum(actual, _),
+                                ) => expected == actual,
+                                (
+                                    nova_typecheck::MatchPattern::Bool(expected),
+                                    Constant::Bool(actual),
+                                ) => expected == actual,
+                                (nova_typecheck::MatchPattern::Wildcard, _) => true,
+                                _ => false,
+                            };
+                            matches.then_some(*target)
+                        })
+                        .expect("exhaustive independent tag oracle");
+                }
+                TerminatorKind::Try { .. } => {
                     panic!("tag dispatch is outside this arithmetic interpreter corpus")
                 }
             }
@@ -2298,6 +2323,215 @@ fn p19_flat_loops_small_host_stack_and_cfg_fixed_point() {
             assert_eq!(
                 execute_with_fuel(&m, "f", vec![], 10000).0,
                 Constant::Int32(0)
+            );
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
+#[test]
+fn p20_exists_predicate_snapshot_direction_source_effect_and_cfg_gates() {
+    let original = pass("func f(value:int?)->bool{print(\"once\");return value exists}");
+    let b = body_named(&original, "f");
+    let Type::Enum(enumeration) = original.callees[b.callee.0].parameters[0] else {
+        panic!()
+    };
+    for (index, payload, expected) in [
+        (0, vec![Constant::Int32(0)], true),
+        (0, vec![Constant::Int32(-1)], true),
+        (1, vec![], false),
+    ] {
+        let result = execute(
+            &original,
+            "f",
+            vec![Constant::Enum(
+                nova_types::VariantId { enumeration, index },
+                payload,
+            )],
+        );
+        assert_eq!(result, (Constant::Bool(expected), vec!["print".into()]));
+    }
+    assert!(!b
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .any(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::EnumPayload(..)))));
+    let dispatch = b
+        .blocks
+        .iter()
+        .position(|b| {
+            matches!(
+                b.terminator,
+                Some(Terminator {
+                    kind: TerminatorKind::Match { .. },
+                    ..
+                })
+            )
+        })
+        .unwrap();
+    let body_index = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    for mutation in 0..8 {
+        let mut bad = original.clone();
+        let b = &mut bad.bodies[body_index];
+        match mutation {
+            0 => {
+                let TerminatorKind::Match { arms, .. } =
+                    &mut b.blocks[dispatch].terminator.as_mut().unwrap().kind
+                else {
+                    panic!()
+                };
+                let target = arms[0].1;
+                arms[0].1 = arms[1].1;
+                arms[1].1 = target;
+            }
+            1 => {
+                let statement = b
+                    .blocks
+                    .iter_mut()
+                    .flat_map(|b| &mut b.statements)
+                    .find(|s| {
+                        matches!(
+                            s.kind,
+                            StatementKind::Assign(
+                                _,
+                                Rvalue::Use(Operand::Constant(Constant::Bool(true)))
+                            )
+                        )
+                    })
+                    .unwrap();
+                let StatementKind::Assign(_, value) = &mut statement.kind;
+                *value = Rvalue::Use(Operand::Constant(Constant::Bool(false)));
+            }
+            2 => {
+                let TerminatorKind::Match { scrutinee, .. } =
+                    &mut b.blocks[dispatch].terminator.as_mut().unwrap().kind
+                else {
+                    panic!()
+                };
+                *scrutinee = Operand::Constant(Constant::Enum(
+                    nova_types::VariantId {
+                        enumeration,
+                        index: 1,
+                    },
+                    vec![],
+                ));
+            }
+            3 => b.entry = BlockId(dispatch),
+            4 => b.blocks[dispatch].terminator.as_mut().unwrap().source = b.source,
+            5 => b.blocks[dispatch].statements.clear(),
+            6 => {
+                let source = b.source;
+                b.locals
+                    .iter_mut()
+                    .find(|l| l.definition.is_none())
+                    .unwrap()
+                    .source = source;
+            }
+            _ => {
+                let statement = b.blocks[dispatch].statements.last().unwrap().clone();
+                b.blocks[dispatch].statements.push(statement);
+            }
+        }
+        assert!(!validate(&bad).is_empty(), "mutation {mutation}");
+    }
+    let mut bad = original.clone();
+    bad.sums.get_mut(&enumeration).unwrap().family = nova_types::SumFamily::Result;
+    assert!(!validate(&bad).is_empty());
+}
+#[test]
+fn p20_exists_public_typed_forgery_try_bypass_and_flat_stack() {
+    let mut db = SourceDatabase::default();
+    let file = db
+        .add(
+            "api",
+            "func f(value:int?)->bool{return value exists}".into(),
+        )
+        .unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let res = resolve(&h);
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, nova_hir::HirKind::Exists { .. }))
+        .unwrap();
+    for mutation in 0..2 {
+        let mut c = check(&h, &res).unwrap();
+        if mutation == 0 {
+            c.type_table[id] = c.types.intern(Type::Int32)
+        } else {
+            c.sums.values_mut().next().unwrap().family = nova_types::SumFamily::Result
+        }
+        assert_eq!(
+            lower(&h, &res, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+    let original=pass("func leaf()->Result<int?,bool>{return Result::Error(true)}func f()->Result<bool,bool>{let b=(try leaf()) exists;return Result::Success(b)}");
+    let mut bad = original.clone();
+    let b = bad
+        .bodies
+        .iter_mut()
+        .find(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    let target = b
+        .blocks
+        .iter()
+        .find_map(|b| {
+            if let Some(Terminator {
+                kind: TerminatorKind::Try { success, .. },
+                ..
+            }) = b.terminator
+            {
+                Some(success)
+            } else {
+                None
+            }
+        })
+        .unwrap();
+    let error = b
+        .blocks
+        .iter_mut()
+        .find(|b| {
+            matches!(
+                b.terminator,
+                Some(Terminator {
+                    kind: TerminatorKind::Return(_),
+                    ..
+                })
+            )
+        })
+        .unwrap();
+    error.terminator.as_mut().unwrap().kind = TerminatorKind::Goto(target);
+    assert!(!validate(&bad).is_empty());
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let m = pass(&format!(
+                "func f(value:int?){{{}}}",
+                (0..512)
+                    .map(|i| format!("let b{i}=value exists;"))
+                    .collect::<String>()
+            ));
+            assert_eq!(
+                body_named(&m, "f")
+                    .blocks
+                    .iter()
+                    .filter(|b| matches!(
+                        b.terminator,
+                        Some(Terminator {
+                            kind: TerminatorKind::Match { .. },
+                            ..
+                        })
+                    ))
+                    .count(),
+                512
             );
         })
         .unwrap()

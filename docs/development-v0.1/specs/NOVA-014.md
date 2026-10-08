@@ -42,7 +42,7 @@ structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·pr
 
 사용자 승인한 loop·정수 범위 for는 [P19 Accepted](../RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [수용 fixture](../range-loop-proposal-fixtures/README.md)를 따른다. 구현·검증 완료이며 [구현 기록](../RANGE_LOOP_IMPLEMENTATION.md)을 제공한다. 기존 P01~P18과 일반 iterable/Array/Move/Drop 경계는 보존한다.
 
-Copy intrinsic Option postfix exists·Bool·const/default·단일 평가·Source/MIR 검증은 [P20 Draft](../EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_EXISTS.ebnf), [제안 fixture](../exists-proposal-fixtures/README.md)로 준비했다. 미승인·미구현이며 Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인이 아니다.
+Copy intrinsic Option postfix exists·Bool·const/default·단일 평가·Source/MIR 검증은 [P20 Accepted](../EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_EXISTS.ebnf), [수용 fixture](../exists-proposal-fixtures/README.md)를 따른다. [구현 기록](../EXISTS_IMPLEMENTATION.md)에 검증을 기록했다. Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인이 아니다.
 
 ## 문법 산출물
 GRAMMAR.ebnf가 구체 Production을 담고 GRAMMAR_NOTES가 Stage와 결정 번호를 설명한다. lexer 원문과 END 정규화 후 Parser 문법을 분리한다. 현재 원본 NOVA-014에는 Production이 없으므로 새 grammar 전체는 승인 대기 초안이다.

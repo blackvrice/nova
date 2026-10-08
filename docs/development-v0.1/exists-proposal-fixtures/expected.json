@@ -1,23 +1,17 @@
 {
   "proposal": "P20",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "helpers"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "basic=true/false\npayload=true/true\nnested=true/true\nconst=true/true\ndefault=true\nonce\nonce=true\nshort=false/true\nsnapshot=true/false\ntuple=true\nnegate=true\nsecond\nfirst\norder=false\ntry\ntry-ok=true\ntry\ntry-error=-1\n",
-    "stderr": ""
-  },
   "positive_cases": [
     {
       "source": "newline_and_shadow.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -26,7 +20,7 @@
     },
     {
       "source": "skipped_abort.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -177,10 +171,10 @@
       "name": "try_precedence",
       "source": "try_precedence.nova",
       "expected_diagnostic": "N2101",
-      "primary_text": "fetch() exists",
+      "primary_text": "fetch()",
       "primary": {
         "start": 153,
-        "end": 167
+        "end": 160
       }
     },
     {
@@ -203,8 +197,8 @@
       "expected_diagnostic": "N3201",
       "primary_text": "fetch()",
       "primary": {
-        "start": 34,
-        "end": 41
+        "start": 83,
+        "end": 90
       }
     },
     {
@@ -213,8 +207,8 @@
       "expected_diagnostic": "N3201",
       "primary_text": "fetch()",
       "primary": {
-        "start": 34,
-        "end": 41
+        "start": 92,
+        "end": 99
       }
     },
     {
@@ -223,8 +217,8 @@
       "expected_diagnostic": "N3201",
       "primary_text": "fetch()",
       "primary": {
-        "start": 34,
-        "end": 41
+        "start": 85,
+        "end": 92
       }
     },
     {
@@ -258,11 +252,18 @@
         "start": 91,
         "end": 98
       },
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit_nonzero": true,
         "stdout": "before\n"
       }
     }
-  ]
+  ],
+  "approval_date": "2026-10-08",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "basic=true/false\npayload=true/true\nnested=true/true\nconst=true/true\ndefault=true\nonce\nonce=true\nshort=false/true\nsnapshot=true/false\ntuple=true\nnegate=true\nsecond\nfirst\norder=false\ntry\ntry-ok=true\ntry\ntry-error=-1\n",
+    "stderr": ""
+  }
 }

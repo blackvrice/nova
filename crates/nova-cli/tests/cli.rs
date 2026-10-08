@@ -885,3 +885,51 @@ fn p19_fixture_check_and_invalid_range_gate_preserve_outputs() {
     }
     assert!(!dir.join("target").exists());
 }
+
+#[test]
+fn p20_fixture_check_and_invalid_exists_gate_preserve_outputs() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/exists-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let dir = directory();
+    for name in [
+        "main.nova",
+        "newline_and_shadow.nova",
+        "skipped_abort.nova",
+        "operand_abort.nova",
+    ] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("check")
+            .arg(fixtures.join(name))
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stdout.is_empty() && r.stderr.is_empty());
+    }
+    let output = dir.join("keep.exe");
+    std::fs::write(&output, b"keep").unwrap();
+    for name in [
+        "shadowed_option.nova",
+        "none_without_context.nova",
+        "undefined_operand.nova",
+    ] {
+        for command in ["check", "build", "run"] {
+            let mut c = Command::new(env!("CARGO_BIN_EXE_nova"));
+            c.arg(command)
+                .arg(fixtures.join(name))
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&dir);
+            if command == "build" {
+                c.arg("-o").arg(&output);
+            }
+            let r = c.output().unwrap();
+            assert_eq!(r.status.code(), Some(1));
+            assert!(!String::from_utf8_lossy(&r.stderr).contains("N8201"));
+            assert_eq!(std::fs::read(&output).unwrap(), b"keep");
+        }
+    }
+    assert!(!dir.join("target").exists());
+}

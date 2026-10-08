@@ -3272,3 +3272,189 @@ fn p19_integer_peer_promotion_binder_scope_and_conservative_return() {
         ["N2001"]
     );
 }
+
+#[test]
+fn p20_exists_fixture_diagnostics_exact_utf8_spans_and_cascades() {
+    for (source,code,start,end,forbidden) in [
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/integer_operand.nova"),"N2101",55,56,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/float_operand.nova"),"N2101",55,58,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/bool_operand.nova"),"N2101",55,60,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/string_operand.nova"),"N2101",55,60,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/unit_operand.nova"),"N2101",69,74,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/tuple_operand.nova"),"N2101",55,63,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/user_enum.nova"),"N2101",85,98,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/result_operand.nova"),"N2101",101,106,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/shadowed_option.nova"),"N2101",87,102,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/none_without_context.nova"),"N2103",55,59,&["N2101","N3201"] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/nested_none_without_context.nova"),"N2103",68,72,&["N2101","N3201"] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/repeated_exists.nova"),"N2101",76,88,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/bool_numeric_cast.nova"),"N2101",76,95,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/try_precedence.nova"),"N2101",153,160,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/undefined_operand.nova"),"N2001",55,64,&["N2101","N3201"] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/const_runtime_call.nova"),"N3201",83,90,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/skipped_const_runtime_call.nova"),"N3201",92,99,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/default_runtime_call.nova"),"N3201",85,92,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/newline_before_exists.nova"),"N1102",93,99,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/bool_not_callable.nova"),"N2101",76,88,&[] as &[&str]),
+    ] {
+        let r=frontend(source);assert!(!r.passed(),"{source}");
+        assert!(r.diagnostics().iter().any(|d|d.code.to_string()==code&&d.primary.span.start()==start&&d.primary.span.end()==end),"{source} {:?}",r.diagnostics());
+        assert!(!r.diagnostics().iter().any(|d|forbidden.contains(&d.code.to_string().as_str())),"{source} {:?}",r.diagnostics());
+    }
+}
+#[test]
+fn p20_exists_copy_families_context_isolation_truthiness_and_scopes() {
+    let (_, _, checked) = p12_bundle(&[
+        (
+            "main",
+            include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/main.nova"),
+        ),
+        (
+            "helpers",
+            include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/helpers.nova"),
+        ),
+    ]);
+    assert!(!checked.has_errors(), "{:?}", checked.diagnostics);
+    for source in [
+        include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/newline_and_shadow.nova"),
+        include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/skipped_abort.nova"),
+        include_str!("../../../docs/development-v0.1/exists-proposal-fixtures/operand_abort.nova"),
+        "func f(x:int?)->bool{return x exists}func g(x:int?){if x exists {}while x exists {break}loop{if x exists{break}break}for i in 0 until 1 {if x exists{continue}}match x exists {true=>{},false=>{}}}",
+        "const ABSENT:int?=none;const A=Option::Some(0) exists;const B=Option::Some(false) exists;const C=Option::Some(()) exists;const D:int??=Option::Some(none);const E=D exists;const F=ABSENT exists;func f(x:bool=A){}",
+    ]{pass(source);}
+    for (ty, value) in [
+        ("int8", "-128"),
+        ("uint8", "255"),
+        ("int16", "-32768"),
+        ("uint16", "65535"),
+        ("int", "0"),
+        ("uint32", "0"),
+        ("int64", "0"),
+        ("uint64", "0"),
+        ("float", "0.0"),
+        ("double", "-0.0"),
+        ("bool", "false"),
+        ("char", "'🙂'"),
+        ("()", "()"),
+        ("(int,bool)", "(0,false)"),
+    ] {
+        let r=pass(&format!("const O:{ty}?=Option::Some({value});const PRESENT=O exists;func f(x:{ty}?)->bool{{return x exists}}"));
+        let (_, res, c) = r.semantic.unwrap();
+        let id = res
+            .definitions
+            .iter()
+            .position(|d| d.name == "PRESENT")
+            .unwrap();
+        assert!(matches!(
+            c.const_values[id],
+            ConstEvaluation::Value {
+                value: ConstValue::Bool(true),
+                ..
+            }
+        ));
+    }
+    let r =
+        pass("struct S{let n:int}enum E{V(S)}const O:E?=Option::Some(E::V(S(0)));const P=O exists");
+    let (_, res, c) = r.semantic.unwrap();
+    let id = res.definitions.iter().position(|d| d.name == "P").unwrap();
+    assert!(matches!(
+        c.const_values[id],
+        ConstEvaluation::Value {
+            value: ConstValue::Bool(true),
+            ..
+        }
+    ));
+    assert_eq!(
+        codes(&frontend("func f(){let x:bool=none exists}")),
+        ["N2103"]
+    );
+    assert_eq!(
+        codes(&frontend("func f(){let x=Option::None exists}")),
+        ["N2103"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "func f(){let x=Option::Some(1) exists exists exists}"
+        )),
+        ["N2101"]
+    );
+    assert_eq!(
+        codes(&frontend("const O:int?=none;const P=O exists")),
+        Vec::<String>::new()
+    );
+    let (_,_,c)=p12_bundle(&[
+        ("main","use lib::Option as Custom;func main(){let a:int?=none;let b=a exists;let c=Custom::Some(1)}"),
+        ("lib","public enum Option{Some(int);None}"),
+    ]);
+    assert!(!c.has_errors());
+}
+#[test]
+fn p20_exists_const_cycles_checked_evaluation_defaults_and_exact_budget() {
+    for expr in ["Option::Some(B) exists", "false && Option::Some(B) exists"] {
+        let r = frontend(&format!(
+            "const A:bool={expr};const B:bool=A;func main(){{}}"
+        ));
+        assert!(!r.passed());
+        assert!(codes(&r).contains(&"N3202".into()));
+    }
+    let (_, _, c) = p12_bundle(&[
+        (
+            "main",
+            "use lib::B;public const A:bool=Option::Some(B) exists;func main(){}",
+        ),
+        ("lib", "use main::A;public const B:bool=A"),
+    ]);
+    assert!(c.diagnostics.iter().any(|d| d.code.to_string() == "N3202"));
+    for source in [
+        "const P=Option::Some(1/0) exists;func main(){}",
+        "func f(p:bool=Option::Some(1/0) exists){}",
+    ] {
+        let r = frontend(source);
+        let d = r
+            .diagnostics()
+            .iter()
+            .find(|d| d.code.to_string() == "N3201")
+            .unwrap();
+        assert_eq!(r.sources.slice(d.primary.span).unwrap(), "1/0");
+    }
+    pass("const P=false && Option::Some(1/0) exists;func f(p:bool=true || Option::Some(1/0) exists){}");
+    let terms = vec!["0"; 4999].join("+");
+    let expr = format!("(Option::Some({terms}) exists)");
+    let r = pass(&format!(
+        "const P={expr};func f(p:bool={expr},q:bool={expr}){{const LOCAL={expr}}}"
+    ));
+    let (_, res, c) = r.semantic.unwrap();
+    for (i, d) in res
+        .definitions
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| d.constant)
+    {
+        assert!(
+            matches!(
+                c.const_values[i],
+                ConstEvaluation::Value {
+                    value: ConstValue::Bool(true),
+                    nodes: 10000
+                }
+            ),
+            "{} {:?}",
+            d.name,
+            c.const_values[i]
+        );
+    }
+    assert!(c
+        .defaults
+        .iter()
+        .flatten()
+        .all(|d| matches!(d.evaluation, ConstEvaluation::Value { nodes: 10000, .. })));
+    for source in [
+        format!("const P=({expr});func main(){{}}"),
+        format!("func f(p:bool=({expr})){{}}"),
+        format!("const P=false&&{expr};func main(){{}}"),
+    ] {
+        let r = frontend(&source);
+        assert!(codes(&r).contains(&"N3202".into()));
+        assert!(!codes(&r).contains(&"N3201".into()));
+    }
+}

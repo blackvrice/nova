@@ -14,7 +14,7 @@
 
 사용자 승인한 Copy prefix try·Result Error 조기 반환·operand 문맥 격리·정확한 E·const 금지·Source/CFG 검증은 [P16 Accepted](../TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_TRY.ebnf), [수용 fixture](../try-proposal-fixtures/README.md), [구현 기록](../TRY_IMPLEMENTATION.md)을 따른다. Option try·error conversion·일반 Move/Drop와 전체 D08/D09/D10/D12/D16/D23/D25는 후속이다.
 
-Copy intrinsic Option postfix exists·Bool·const/default·단일 평가·Source/MIR 검증은 [P20 Draft](../EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_EXISTS.ebnf), [제안 fixture](../exists-proposal-fixtures/README.md)로 준비했다. 미승인·미구현이며 Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인이 아니다.
+Copy intrinsic Option postfix exists·Bool·const/default·단일 평가·Source/MIR 검증은 [P20 Accepted](../EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_EXISTS.ebnf), [수용 fixture](../exists-proposal-fixtures/README.md)를 따른다. [구현 기록](../EXISTS_IMPLEMENTATION.md)에 검증을 기록했다. Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인이 아니다.
 
 ## 확정 의미
 T?는 Option<T>; variant는 Some/None다. Result<T,E>는 Success/Error이며 try는 Error를 조기 반환한다. Success(())는 Unit 성공이다. niche는 내부 최적화이므로 source 의미와 ABI 약속을 만들지 않는다.

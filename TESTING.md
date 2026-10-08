@@ -1,9 +1,57 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P19 loop·정수 범위 for까지다.
+현재 개발 완료 기능은 P20 Copy Option postfix exists까지다.
 
-## 현재 기능 실행 — loop·정수 범위 for
+## 현재 기능 실행 — Copy Option exists
+
+```powershell
+cargo run -p nova-cli --offline -- check examples/exists.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/exists.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/exists.nova --profile release
+```
+
+check는 출력 없이 exit 0이며 debug/release는 다음 18줄/LF·빈 stderr·exit 0이다.
+
+```text
+basic=true/false
+payload=true/true
+nested=true/true
+const=true/true
+default=true
+once
+once=true
+short=false/true
+snapshot=true/false
+tuple=true
+negate=true
+second
+first
+order=false
+try
+try-ok=true
+try
+try-error=-1
+```
+
+Some(false)·Some(0)·Some(())·Some(None)은 true, None은 false다. payload 값은 검사하지 않는다.
+operand는 한 번 평가하며 기존 &&/|| short-circuit·try·named/default 순서를 유지한다.
+괄호 없이 try f() exists는 try (f() exists)이며, Result<Option<T>,E>의 성공 Option을 검사하려면 (try f()) exists를 쓴다.
+[P20 계약](docs/development-v0.1/EXISTS_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/EXISTS_IMPLEMENTATION.md)·
+[두 파일 예제](docs/development-v0.1/exists-proposal-fixtures/README.md)를 제공한다.
+
+```powershell
+cargo test --workspace --offline p20_
+cargo test -p nova-codegen-llvm --test emission --offline p20_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p20_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/exists-proposal-fixtures/undefined_operand.nova
+```
+
+집중 검사는 기본 10개·LLVM 1개·Native 2개다. 마지막 명령은 N2001·exit 1과 파생 N2101 억제가 예상된다.
+Result exists·flow narrowing·unwrap·String/Move payload·Array는 후속이다.
+
+## 기존 기능 실행 — loop·정수 범위 for
 
 ```powershell
 cargo run -p nova-cli --offline -- check examples/range_loops.nova
@@ -273,8 +321,8 @@ cargo test --workspace --offline
 cargo check --workspace --all-features --offline
 ```
 
-P19 기준 기본 tests 326개가 성공하고 실제 LLVM/Native tests 61개는 ignored로 표시된다.
-이 61개(LLVM 15개·Native 46개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
+P20 기준 기본 tests 336개가 성공하고 실제 LLVM/Native tests 64개는 ignored로 표시된다.
+이 64개(LLVM 16개·Native 48개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
 
 ```powershell
 cargo test -p nova-codegen-llvm --test emission --offline -- --ignored --test-threads=1

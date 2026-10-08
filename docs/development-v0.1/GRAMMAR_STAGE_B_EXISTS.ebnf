@@ -1,4 +1,4 @@
-(* P20 Copy Option postfix exists: Draft, unapproved, unimplemented.
+(* P20 Copy Option postfix exists: Accepted by user; recorded on 2026-10-08, implemented and verified.
    Extends P19 postfix_expr only: 54 productions, other 53 preserved. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl | enum_decl ) }, "EOF" ;
 import_decl = "use", qualified_name, [ "as", "IDENT" ], end ;

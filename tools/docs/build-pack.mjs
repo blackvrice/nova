@@ -115,7 +115,7 @@ for (const row of rows) {
       ? `사용자 승인한 상수 표현식 함수 기본 인수·declaration scope·caller materialization·생략 인수 대응·상수 실패/예산 계약은 [P18 Accepted](../DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](../GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf), [수용 fixture](../default-arguments-proposal-fixtures/README.md), [구현 기록](../DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다. 구현·검증 완료이며 runtime/parameter 의존 default·overload·named constructor와 전체 D09/D11/D16/D25/D30 승인이 아니다.\n\n` : '') +       ([14, 26, 43, 44, 73, 74, 75, 76, 77, 78, 81, 83, 91, 136].includes(row.number)
       ? `사용자 승인한 loop·정수 범위 for는 [P19 Accepted](../RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [수용 fixture](../range-loop-proposal-fixtures/README.md)를 따른다. 구현·검증 완료이며 [구현 기록](../RANGE_LOOP_IMPLEMENTATION.md)을 제공한다. 기존 P01~P18과 일반 iterable/Array/Move/Drop 경계는 보존한다.\n\n` : '') +
     ([14, 16, 24, 28, 73, 74, 76, 77, 78, 81, 83, 87, 91, 136].includes(row.number)
-      ? `Copy intrinsic Option postfix exists·Bool·const/default·단일 평가·Source/MIR 검증은 [P20 Draft](../EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_EXISTS.ebnf), [제안 fixture](../exists-proposal-fixtures/README.md)로 준비했다. 미승인·미구현이며 Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인이 아니다.\n\n` : '') + body.trim() + '\n';
+      ? `Copy intrinsic Option postfix exists·Bool·const/default·단일 평가·Source/MIR 검증은 [P20 Accepted](../EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_EXISTS.ebnf), [수용 fixture](../exists-proposal-fixtures/README.md)를 따른다. [구현 기록](../EXISTS_IMPLEMENTATION.md)에 검증을 기록했다. Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인이 아니다.\n\n` : '') + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -142,7 +142,7 @@ fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 �
   `[P17 함수 이름 인수 최소 계약](NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf), [두 파일·부정 16사례 수용 fixture](named-arguments-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다. 기본 인수·overload·named constructor는 포함하지 않는다.\n\n` +
   `[P18 상수 표현식 함수 기본 인수 최소 계약](DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf), [두 파일·부정 20사례 수용 fixture](default-arguments-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다. runtime default·parameter 참조·overload·named constructor는 포함하지 않는다.\n\n` +
   `[P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [두 파일·부정 18/Runtime 2사례 fixture](range-loop-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다.\n\n` +
-  `[P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf), [두 파일·정상 2/부정 20/Runtime 1사례](exists-proposal-fixtures/README.md)는 Draft / 미승인 / 미구현이다. 기대값을 준비했으며 Compiler 성공 결과가 아니다.\n\n` +
+  `[P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf), [두 파일·정상 2/부정 20/Runtime 1사례](exists-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](EXISTS_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -182,10 +182,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P17', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B user function named arguments mapped expected types source-order snapshots parameter-order passing and try effect preservation', document: 'NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_NAMED_ARGUMENTS.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P18', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B constant-expression function defaults declaration-module scope checked evaluation omitted argument mapping caller materialization and Source CFG validation', document: 'DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P19', status: 'Accepted', approval_date: '2026-10-08', grammar_change: true, document: 'RANGE_LOOP_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_RANGE_LOOP.ebnf', scope: 'Stage B statement loop ascending integer range for immutable binder single evaluation snapshots inclusive max safe termination and Source CFG validation', implementation_verified: true },
+    { id: 'P20', status: 'Accepted', approval_date: '2026-10-08', document: 'EXISTS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_EXISTS.ebnf', grammar_change: true, scope: 'Stage B Copy intrinsic Option postfix exists Bool const default single evaluation and Source MIR validation', implementation_verified: true },
   ],
-  draft_proposals: [
-    { id: 'P20', status: 'Draft', document: 'EXISTS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_EXISTS.ebnf', grammar_change: true, scope: 'Stage B Copy intrinsic Option postfix exists Bool const default single evaluation and Source MIR validation', implementation_verified: false },
-  ],
+  draft_proposals: [],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);
