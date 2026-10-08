@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P19 Accepted / 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P22 Accepted / P23 및 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -19,7 +19,7 @@
 8. [수용 테스트](CONFORMANCE.md), [개발 로드맵](ROADMAP.md), [기여/운영](CONTRIBUTING.md).
 9. [기계 검증 결과](VALIDATION.md), [변경 기록](CHANGELOG.md).
 
-다음 구현의 검토 대상: [Stage A Parser·AST 착수안 P01](PARSER_STAGE_A_PROPOSAL.md)과
+Stage A Parser의 승인 기준: [Stage A Parser·AST 착수안 P01](PARSER_STAGE_A_PROPOSAL.md)과
 [Stage A EBNF](GRAMMAR_STAGE_A.ebnf). P01 subset은 2026-10-04 사용자 승인으로 Accepted다.
 현재 API와 검증 경계는 [Parser 구현 계약](PARSER_IMPLEMENTATION.md)에 기록했다.
 Stage A 의미 검사는 [사용자 승인 P02](SEMANTICS_STAGE_A_PROPOSAL.md)를 따른다.
@@ -173,3 +173,7 @@ generic alias·newtype·alias constructor/variant head·API leak/export 정책·
 contextual self·member scope/visibility·receiver-first snapshot·named/default·Source/MIR 검증을 구현했다. P01~P21을 보존한다.
 [구현 기록](METHOD_IMPLEMENTATION.md)·[독립 예제/실행 명령](../../TESTING.md)을 제공한다.
 change/take·일반 Move/borrow/Drop·init·overload·bound method·Enum method·Array는 후속이다.
+
+
+다음 검토 대상은 [P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 계획](struct-named-arguments-proposal-fixtures/README.md)이다.
+Draft / 미승인 / 미구현이며 새 문법 없이 승인 P22 EBNF를 재사용한다. 구현 완료된 P22와 구분한다.

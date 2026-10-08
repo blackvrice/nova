@@ -1,0 +1,321 @@
+{
+  "proposal": "P23",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "types"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "y\nx\norder=1/2\nprefix\nnamed\nmixed=3/4\nmapped=7/300\ndefault=5/6\nconst=3/20\nnested=3/true/한/true\nself=7\nprivate=8\nempty=0\ncopy=1/6\nfetch\nlater\nconstructed\nok=1\nfetch\nerror=-1\n",
+    "stderr": ""
+  },
+  "negative_cases": [
+    {
+      "name": "unknown_label",
+      "source": "unknown_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "other",
+      "primary": {
+        "start": 140,
+        "end": 145
+      },
+      "forbidden_diagnostics": [
+        "N2101",
+        "N2102"
+      ]
+    },
+    {
+      "name": "unicode_unknown",
+      "source": "unicode_unknown.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "잘못",
+      "primary": {
+        "start": 148,
+        "end": 154
+      },
+      "forbidden_diagnostics": [
+        "N2101",
+        "N2102"
+      ]
+    },
+    {
+      "name": "method_label",
+      "source": "method_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "sum",
+      "primary": {
+        "start": 140,
+        "end": 143
+      }
+    },
+    {
+      "name": "duplicate_label",
+      "source": "duplicate_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "x",
+      "primary": {
+        "start": 144,
+        "end": 145
+      }
+    },
+    {
+      "name": "positional_collision",
+      "source": "positional_collision.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "x",
+      "primary": {
+        "start": 142,
+        "end": 143
+      }
+    },
+    {
+      "name": "positional_after_named",
+      "source": "positional_after_named.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "2",
+      "primary": {
+        "start": 140,
+        "end": 141
+      }
+    },
+    {
+      "name": "missing_field",
+      "source": "missing_field.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "Point(y:2)",
+      "primary": {
+        "start": 130,
+        "end": 140
+      }
+    },
+    {
+      "name": "excess_positional",
+      "source": "excess_positional.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "3",
+      "primary": {
+        "start": 140,
+        "end": 141
+      }
+    },
+    {
+      "name": "mapped_literal_range",
+      "source": "mapped_literal_range.nova",
+      "expected_diagnostic": "N2102",
+      "primary_text": "128",
+      "primary": {
+        "start": 144,
+        "end": 147
+      }
+    },
+    {
+      "name": "wrong_type",
+      "source": "wrong_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "true",
+      "primary": {
+        "start": 142,
+        "end": 146
+      }
+    },
+    {
+      "name": "nominal_mismatch",
+      "source": "nominal_mismatch.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "B(x:1)",
+      "primary": {
+        "start": 97,
+        "end": 103
+      }
+    },
+    {
+      "name": "private_field",
+      "source": "private_field.nova",
+      "expected_diagnostic": "N2004",
+      "primary_text": "Hidden(value:1)",
+      "primary": {
+        "start": 36,
+        "end": 51
+      },
+      "forbidden_diagnostics": [
+        "N2201"
+      ]
+    },
+    {
+      "name": "alias_head",
+      "source": "alias_head.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "Alias(y:2,x:1)",
+      "primary": {
+        "start": 147,
+        "end": 161
+      },
+      "forbidden_diagnostics": [
+        "N2201"
+      ]
+    },
+    {
+      "name": "enum_label",
+      "source": "enum_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 54,
+        "end": 59
+      }
+    },
+    {
+      "name": "option_label",
+      "source": "option_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 44,
+        "end": 49
+      }
+    },
+    {
+      "name": "result_label",
+      "source": "result_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 52,
+        "end": 57
+      }
+    },
+    {
+      "name": "builtin_label",
+      "source": "builtin_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 18,
+        "end": 23
+      }
+    },
+    {
+      "name": "value_shadow",
+      "source": "value_shadow.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "Point",
+      "primary": {
+        "start": 142,
+        "end": 147
+      },
+      "forbidden_diagnostics": [
+        "N2201"
+      ]
+    },
+    {
+      "name": "unresolved_head",
+      "source": "unresolved_head.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "Missing",
+      "primary": {
+        "start": 18,
+        "end": 25
+      },
+      "forbidden_diagnostics": [
+        "N2201",
+        "N2101"
+      ]
+    },
+    {
+      "name": "const_runtime_call",
+      "source": "const_runtime_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "runtime()",
+      "primary": {
+        "start": 169,
+        "end": 178
+      }
+    },
+    {
+      "name": "skipped_const_runtime_call",
+      "source": "skipped_const_runtime_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "runtime()",
+      "primary": {
+        "start": 180,
+        "end": 189
+      }
+    },
+    {
+      "name": "default_runtime_call",
+      "source": "default_runtime_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "runtime()",
+      "primary": {
+        "start": 170,
+        "end": 179
+      }
+    },
+    {
+      "name": "undefined_value",
+      "source": "undefined_value.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "missing",
+      "primary": {
+        "start": 142,
+        "end": 149
+      },
+      "forbidden_diagnostics": [
+        "N2101",
+        "N2102"
+      ]
+    },
+    {
+      "name": "empty_method_label",
+      "source": "empty_method_label.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "value",
+      "primary": {
+        "start": 72,
+        "end": 77
+      }
+    }
+  ],
+  "positive_cases": [
+    {
+      "source": "multiline.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "value_namespace.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "name": "constructor_abort",
+      "source": "constructor_abort.nova",
+      "primary_text": "n+1",
+      "primary": {
+        "start": 188,
+        "end": 191
+      },
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: integer overflow at file#0:188..191"
+      }
+    }
+  ]
+}

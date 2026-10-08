@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P23 Copy struct 생성자 이름 인수 착수안 (Draft)
+
+[최소 계약](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 계획](struct-named-arguments-proposal-fixtures/README.md)을 준비했다.
+기존 P22 58-production EBNF를 변경 없이 재사용한다. 두 파일·추가 정상 2·부정 24·Runtime 1사례/UTF-8 Span·제안 20줄을 작성했다.
+미승인·미구현이며 Compiler/Runtime/Cargo·D01~D05/P01~P22·Canonical·원본 148개는 보존한다.
+
 ## 2026-10-08 — P22 승인과 Copy struct Read 메서드 구현
 
 사용자 “승인하고 다음개발 진행해줘”로 P22를 승인했다. contextual self·member registry·선언 scope/visibility·

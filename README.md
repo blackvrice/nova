@@ -198,6 +198,11 @@ runtime/parameter 의존 default·const function·overload·named constructor는
 
 [P19 loop·정수 범위 for](docs/development-v0.1/RANGE_LOOP_STAGE_B_PROPOSAL.md)는 Accepted / 구현·검증 완료다.
 
-현재 구현: [P20 Copy Option postfix exists](docs/development-v0.1/EXISTS_STAGE_B_PROPOSAL.md). Accepted / 구현·검증 완료이며 현재 실행 지원은 P20까지다.
+[P20 Copy Option postfix exists](docs/development-v0.1/EXISTS_STAGE_B_PROPOSAL.md). Accepted / 구현·검증 완료다.
 `value exists`는 intrinsic Option의 Some이면 true, None이면 false다. operand를 한 번 평가하고 const/default에서도 지원한다.
 [구현 기록](docs/development-v0.1/EXISTS_IMPLEMENTATION.md)·[독립 예제](examples/exists.nova)·[직접 실행 명령](TESTING.md)을 제공한다.
+
+
+다음 검토 대상인 [P23 Copy struct 생성자 이름 인수](docs/development-v0.1/STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)는 **Draft / 미승인 / 미구현**이다.
+`Point(y:2,x:1)`의 field 대응·source-order 평가·const/default·Source/MIR 계약과 [수용 계획](docs/development-v0.1/struct-named-arguments-proposal-fixtures/README.md)을 준비했다.
+현재 실행 구현은 P22까지다. P23 결과는 제안값이며 새 의미 구현에는 별도 사용자 승인이 필요하다.

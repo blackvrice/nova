@@ -155,3 +155,9 @@ generic alias·newtype·alias constructor/variant head·API leak/export 정책·
 contextual self·member scope/visibility·receiver-first snapshot·named/default·Source/MIR 검증을 구현했다. P01~P21을 보존한다.
 [구현 기록](METHOD_IMPLEMENTATION.md)·[독립 예제/실행 명령](../../TESTING.md)을 제공한다.
 change/take·일반 Move/borrow/Drop·init·overload·bound method·Enum method·Array는 후속이다.
+
+
+다음 검토 대상은 [P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)다.
+[수용 계획](struct-named-arguments-proposal-fixtures/README.md)은 **Draft / 미승인 / 미구현**이다.
+새 구문 없이 P22 문법을 재사용한다. field 대응·가시성·source-order snapshot·const/default·Source/MIR를 제안한다.
+사용자 승인 후 구현/테스트/Native 검증을 진행한다. explicit init·field default·Array·ownership은 별도 계약이다.

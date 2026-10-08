@@ -1,0 +1,1 @@
+func main(){let p:Option<int8>=Option::Some(value:1)}

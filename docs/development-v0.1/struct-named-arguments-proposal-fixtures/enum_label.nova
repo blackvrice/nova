@@ -1,0 +1,2 @@
+enum Value {Some(int8)}
+func main(){let p=Value::Some(value:1)}

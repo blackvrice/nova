@@ -1,0 +1,10 @@
+// P23 Draft / 미구현
+struct Point { let x:int8;func sum(self)->int8 { return self.x+self.y };let y:int8 }
+func main() {
+    let p=Point(
+        y /* label trivia */ :
+            2,
+        x:1,
+    )
+    let q=Point(1,y:2,)
+}

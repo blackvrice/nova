@@ -1,0 +1,1 @@
+func main(){let p:Result<int8,int8>=Result::Success(value:1)}

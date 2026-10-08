@@ -1,0 +1,4 @@
+// P23 Draft: value binding wins over type constructor
+struct Point { let x:int8;let y:int8 }
+func Point(value:int8=1)->int8 { return value }
+func main(){ let n=Point(value:2);let m=Point() }

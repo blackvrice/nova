@@ -1,0 +1,5 @@
+// P23 Draft / 미구현
+struct Point { let x:int8;let y:int16;func sum(self)->int16 { return self.x+self.y } }
+func runtime()->int8{return 1}
+const FLAG:bool=false && Point(y:2,x:runtime()).x==1
+func main(){}

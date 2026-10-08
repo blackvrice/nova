@@ -917,6 +917,66 @@ assert(methodMain.includes('use types::PointType') && methodMain.includes('make(
   && methodTypes.includes('var copy=self') && methodTypes.includes('type Small=int8'), 'P22 missing receiver/scope/alias/named/default/try data');
 checks.push('P22 Accepted ledger·P21 struct_decl 한 production 확장/세 production 추가·58-production EBNF/기존 54개 보존·두 파일/정상 1/부정 20/Runtime 1 UTF-8 Span·검증된 15줄 metadata (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const structNamedProposal = manifest.draft_proposals?.find(p => p.id === 'P23');
+assert(structNamedProposal?.status === 'Draft' && structNamedProposal?.implementation_verified === false
+  && structNamedProposal?.grammar_change === false && structNamedProposal?.grammar === methodProposal.grammar
+  && structNamedProposal?.document === 'STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md'
+  && !manifest.accepted_proposals?.some(p => p.id === 'P23'), 'P23 invalid Draft ledger');
+const structNamedText = fs.readFileSync(path.join(pack, 'STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md'), 'utf8');
+assert(structNamedText.includes('Draft / 미승인 / 미구현') && structNamedText.includes('58개 production')
+  && structNamedText.includes('10,000-node') && structNamedText.includes('0 node')
+  && structNamedText.includes('full-body proof') && structNamedText.includes('private field')
+  && structNamedText.includes('explicit init'), 'P23 missing scope/evaluation/privacy/const boundaries');
+const structNamedRoot = path.join(pack, 'struct-named-arguments-proposal-fixtures');
+const structNamedFixture = JSON.parse(fs.readFileSync(path.join(structNamedRoot, 'expected.json'), 'utf8'));
+const structNamedOutput = 'y\nx\norder=1/2\nprefix\nnamed\nmixed=3/4\nmapped=7/300\ndefault=5/6\nconst=3/20\nnested=3/true/한/true\nself=7\nprivate=8\nempty=0\ncopy=1/6\nfetch\nlater\nconstructed\nok=1\nfetch\nerror=-1\n';
+assert(structNamedFixture.proposal === 'P23' && structNamedFixture.status === 'Draft'
+  && structNamedFixture.implementation_verified === false && !structNamedFixture.approval_date
+  && !structNamedFixture.validated_result && structNamedFixture.entry === 'main.nova'
+  && structNamedFixture.source_root === '.' && JSON.stringify(structNamedFixture.reachable_modules) === '["main","types"]'
+  && structNamedFixture.proposed_result?.check_exit === 0 && structNamedFixture.proposed_result?.native_exit === 0
+  && structNamedFixture.proposed_result?.stdout === structNamedOutput && structNamedFixture.proposed_result?.stderr === '',
+  'P23 invalid unverified entry/output');
+assert(structNamedFixture.negative_cases?.length === 24 && structNamedFixture.positive_cases?.length === 2
+  && structNamedFixture.runtime_cases?.length === 1, 'P23 invalid fixture counts');
+const structNamedCases = [...structNamedFixture.negative_cases, ...structNamedFixture.runtime_cases];
+for (const c of structNamedCases) {
+  assert(path.basename(c.source) === c.source && c.source.endsWith('.nova'), 'P23 invalid case path '+c.name);
+  const bytes = fs.readFileSync(path.join(structNamedRoot, c.source));
+  assert(c.primary.start >= 0 && c.primary.end > c.primary.start && c.primary.end <= bytes.length
+    && bytes.subarray(c.primary.start, c.primary.end).toString('utf8') === c.primary_text, 'P23 invalid UTF-8 Span '+c.name);
+  const boundaries = new Set([0]); let offset = 0;
+  for (const char of bytes.toString('utf8')) { offset += Buffer.byteLength(char); boundaries.add(offset); }
+  assert(boundaries.has(c.primary.start) && boundaries.has(c.primary.end), 'P23 split Unicode scalar '+c.name);
+  if (c.expected_diagnostic) assert(knownCodes.has(c.expected_diagnostic), 'P23 unregistered diagnostic '+c.name);
+  assert(!c.validated_result && (c.forbidden_diagnostics ?? []).every(code => knownCodes.has(code)
+    && code !== c.expected_diagnostic), 'P23 invalid unverified/cascade data '+c.name);
+}
+for (const c of structNamedFixture.positive_cases) {
+  assert(['multiline.nova','value_namespace.nova'].includes(c.source) && !c.validated_result
+    && c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
+    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '', 'P23 invalid proposed positive');
+}
+const structNamedAbort = structNamedFixture.runtime_cases[0];
+assert(structNamedAbort.proposed_result?.check_exit === 0 && structNamedAbort.proposed_result?.native_exit === 1
+  && structNamedAbort.proposed_result?.stdout === 'before\n'
+  && structNamedAbort.proposed_result?.stderr_first_line === `Nova panic: integer overflow at file#0:${structNamedAbort.primary.start}..${structNamedAbort.primary.end}`,
+  'P23 invalid proposed checked Abort');
+for (const name of ['main.nova','types.nova', ...structNamedFixture.positive_cases.map(c => c.source), ...structNamedCases.map(c => c.source)]) {
+  const bytes = fs.readFileSync(path.join(structNamedRoot, name));
+  const text = bytes.toString('utf8');
+  assert(Buffer.from(text).equals(bytes) && text.endsWith('\n') && !text.includes('\r'), 'P23 invalid UTF-8/LF '+name);
+}
+assert(new Set(structNamedCases.map(c => c.name)).size === structNamedCases.length, 'P23 duplicate case name');
+const structNamedMain = fs.readFileSync(path.join(structNamedRoot,'main.nova'),'utf8');
+const structNamedTypes = fs.readFileSync(path.join(structNamedRoot,'types.nova'),'utf8');
+assert(structNamedMain.includes('use types::Point as 점') && structNamedMain.includes('y:try fetch(fail)')
+  && structNamedMain.includes('x:mark("x",1)') && structNamedMain.includes('y:300,x:7')
+  && structNamedMain.includes('SelfField(self:7).value()') && structNamedMain.includes('copy.x=6')
+  && structNamedTypes.includes('value:Point=Point(y:6,x:5)') && structNamedTypes.includes('private let value:int8')
+  && structNamedTypes.includes('public func sum(self)'), 'P23 missing mapping/effect/try/privacy/default/self data');
+checks.push('P23 Draft/미승인·미구현 ledger·P22 58-production EBNF 재사용/변경 없음·두 파일/정상 2/부정 24/Runtime 1 UTF-8 Span·cascade·제안 20줄 metadata (Compiler/Native 실행 검증 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

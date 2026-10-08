@@ -1,0 +1,2 @@
+struct Empty {func value(self)->int8{return 0}}
+func main(){let p=Empty(value:1)}

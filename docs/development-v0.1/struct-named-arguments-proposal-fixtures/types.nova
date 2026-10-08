@@ -1,0 +1,18 @@
+// P23 Draft / 미구현
+public struct Point {
+    public var x:int8
+    public func sum(self)->int16 { return self.x+self.y }
+    public let y:int16
+}
+public struct Envelope {
+    public let pair:(Point,bool)
+    public let symbol:char
+    public let maybe:Option<int8>
+    public let outcome:Result<int8,int8>
+}
+public struct SelfField { public let self:int8;public func value(self)->int8 { return self.self } }
+public struct Hidden { private let value:int8;public func get(self)->int8 { return self.value } }
+public struct Empty { public func value(self)->int8 { return 0 } }
+public const BASE:Point=Point(y:2,x:1)
+public func default_point(value:Point=Point(y:6,x:5))->Point { return value }
+public func make_hidden()->Hidden { return Hidden(value:8) }

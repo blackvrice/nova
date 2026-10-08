@@ -1,0 +1,3 @@
+// P23 Draft / 미구현
+struct Point { let x:int8;let y:int16;func sum(self)->int16 { return self.x+self.y } }
+func main(){let p=Point(1,2,3,x:4)}

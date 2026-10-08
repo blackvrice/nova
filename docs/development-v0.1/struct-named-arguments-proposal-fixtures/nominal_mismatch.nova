@@ -1,0 +1,4 @@
+struct A {let x:int8}
+struct B {let x:int8}
+struct Box {let value:A}
+func main(){let p=Box(value:B(x:1))}

@@ -1,0 +1,4 @@
+// 생성자 🙂 — P23 Draft / 미구현
+struct Point { let x:int8;let y:int8 }
+func later()->int8 { print("later");return 1 }
+func main(){ print("before");let n:int8=127;let p=Point(y:n+1,x:later());print("after") }

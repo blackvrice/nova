@@ -1,0 +1,43 @@
+// 생성자 🙂 — P23 Draft / 미구현
+use types::Point as 점
+use types::Envelope
+use types::SelfField
+use types::Empty
+use types::BASE as IMPORTED
+use types::default_point
+use types::make_hidden
+const BASE:int8=20
+const LOCAL:점=점(y:BASE,x:3)
+func mark(tag:string,n:int8)->int8 { print(tag);return n }
+func fetch(fail:bool)->Result<int8,int8> {
+    print("fetch")
+    if fail { return Result::Error(-1) }
+    return Result::Success(9)
+}
+func relay(fail:bool)->Result<int8,int8> {
+    let p=점(y:try fetch(fail),x:mark("later",1))
+    print("constructed")
+    return Result::Success(p.x)
+}
+func main() {
+    let p=점(y:mark("y",2),x:mark("x",1))
+    print("order={p.x}/{p.y}")
+    let mix=점(mark("prefix",3),y:mark("named",4))
+    print("mixed={mix.x}/{mix.y}")
+    let imported=IMPORTED
+    let wide=점(y:300,x:7)
+    print("mapped={wide.x}/{wide.y}")
+    let d=default_point()
+    print("default={d.x}/{d.y}")
+    print("const={LOCAL.x}/{LOCAL.y}")
+    let box=Envelope(outcome:Result::Success(4),maybe:Option::Some(3),symbol:'한',pair:(p,true))
+    print("nested={box.pair.0.sum()}/{box.pair.1}/{box.symbol}/{box.maybe exists}")
+    print("self={SelfField(self:7).value()}")
+    print("private={make_hidden().get()}")
+    print("empty={Empty().value()}")
+    var copy=p
+    copy.x=6
+    print("copy={p.x}/{copy.x}")
+    match relay(false) { Result::Success(n)=>{print("ok={n}")},Result::Error(e)=>{print("unexpected={e}")} }
+    match relay(true) { Result::Success(n)=>{print("unexpected={n}")},Result::Error(e)=>{print("error={e}")} }
+}

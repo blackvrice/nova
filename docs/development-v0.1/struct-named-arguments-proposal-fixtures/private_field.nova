@@ -1,0 +1,2 @@
+use types::Hidden
+func main(){let p=Hidden(value:1)}

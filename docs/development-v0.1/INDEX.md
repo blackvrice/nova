@@ -36,6 +36,8 @@
 
 [P22 Copy struct Read 메서드](METHOD_STAGE_B_PROPOSAL.md), [58-production EBNF](GRAMMAR_STAGE_B_METHOD.ebnf), [두 파일·정상 1/부정 20/Runtime 1사례](method-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현·검증 기록](METHOD_IMPLEMENTATION.md)을 따른다.
 
+[P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 계획: 두 파일/정상 2/부정 24/Runtime 1](struct-named-arguments-proposal-fixtures/README.md)은 Draft / 미승인 / 미구현이다. 승인 P22 58-production EBNF를 그대로 재사용한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |
