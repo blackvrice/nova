@@ -1,0 +1,3 @@
+// 한글 🙂 — P21 Draft
+type A = int
+func main() { let x=A }

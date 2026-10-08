@@ -1,0 +1,4 @@
+// 한글 🙂 — P21 Draft
+struct A { let n:int }
+type A = int
+func main() {}

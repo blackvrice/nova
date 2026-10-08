@@ -1,0 +1,18 @@
+// P21 Draft: targets resolve in this declaration module
+public type Small = Later
+type Later = int8
+public type Shape = (Small,bool)
+public struct Pair { let left:Small; let right:Small }
+public type PairType = Pair
+public type Maybe = Small?
+public type Outcome = Result<Maybe,Small>
+public enum Flag { On; Off }
+public type FlagType = Flag
+public type Code = uint8
+public type Text = string
+public type Nothing = ()
+public type Relay = Result<bool,Small>
+public func sum(fail:bool,value:Small=3)->Outcome {
+    if fail { return Result::Error(-1) }
+    return Result::Success(Option::Some(value))
+}

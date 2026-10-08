@@ -1,0 +1,4 @@
+// 한글 🙂 — P21 Draft
+type A = Node
+struct Node { let next:A }
+func main() {}

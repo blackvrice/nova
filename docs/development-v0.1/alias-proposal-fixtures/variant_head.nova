@@ -1,0 +1,4 @@
+// 한글 🙂 — P21 Draft
+enum E { V }
+type A = E
+func main() { let x=A::V }

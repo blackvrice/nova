@@ -1,0 +1,42 @@
+// 별칭 🙂 — P21 Draft / 미구현
+use types::Small as Tiny
+use types::Pair
+use types::Shape
+use types::PairType
+use types::Maybe
+use types::Outcome
+use types::Flag
+use types::FlagType
+use types::Code
+use types::Text
+use types::Nothing
+use types::Relay
+use types::sum
+type Forward = Later
+type Later = Tiny
+const ANSWER:Forward=7
+func Tiny(value:Tiny)->Tiny { return value }
+func echo(value:Text)->Text { return value }
+func empty(value:Nothing=())->Nothing { return value }
+func probe(fail:bool)->Relay {
+    let value:Maybe=try sum(fail)
+    return Result::Success(value exists)
+}
+func main() {
+    let small:Tiny=ANSWER
+    print("small={small}")
+    let shape:Shape=(Tiny(small),true)
+    let pair:PairType=Pair(shape.0,2)
+    print("pair={pair.left}/{pair.right}")
+    let value:Maybe=Option::Some(pair.left)
+    print("exists={value exists}")
+    let flag:FlagType=Flag::On
+    match flag { Flag::On=>{print("flag=on")},Flag::Off=>{print("flag=off")} }
+    let wide:Code=7
+    let narrowed:Tiny=wide as Tiny
+    print("cast={narrowed}")
+    print("text={echo(value:"한글")}")
+    empty()
+    match probe(false) { Result::Success(b)=>{print("try={b}")},Result::Error(e)=>{print("unexpected={e}")} }
+    match probe(true) { Result::Success(b)=>{print("unexpected={b}")},Result::Error(e)=>{print("error={e}")} }
+}

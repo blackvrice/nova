@@ -1,0 +1,21 @@
+// P21 Draft: RHS generic END and later comparison remain distinct.
+type Small =
+    int8
+type Pair = (
+    Small,
+    bool
+)
+type Maybe = Option<
+    Pair
+>
+type Reply = Result<Maybe,Small>
+func main() {
+    let p:Pair=(1,true)
+    let value:Maybe=Option::Some(p)
+    let reply:Reply=Result::Success(value)
+    let comparison=1 < 2
+    match reply {
+        Result::Success(v)=>{if comparison && v exists {let n=0}}
+        Result::Error(e)=>{let n=e}
+    }
+}

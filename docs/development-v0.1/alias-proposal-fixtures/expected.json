@@ -1,0 +1,190 @@
+{
+  "proposal": "P21",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "types"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "small=7\npair=7/2\nexists=true\nflag=on\ncast=7\ntext=한글\ntry=true\nerror=-1\n",
+    "stderr": ""
+  },
+  "negative_cases": [
+    {
+      "name": "unknown_target",
+      "source": "unknown_target.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "Missing",
+      "primary": {
+        "start": 38,
+        "end": 45
+      }
+    },
+    {
+      "name": "self_cycle",
+      "source": "self_cycle.nova",
+      "expected_diagnostic": "N2103",
+      "primary_text": "A",
+      "primary": {
+        "start": 38,
+        "end": 39
+      }
+    },
+    {
+      "name": "nested_cycle",
+      "source": "nested_cycle.nova",
+      "expected_diagnostic": "N2103",
+      "primary_text": "Option<A>",
+      "primary": {
+        "start": 38,
+        "end": 47
+      }
+    },
+    {
+      "name": "duplicate_alias",
+      "source": "duplicate_alias.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "A",
+      "primary": {
+        "start": 47,
+        "end": 48
+      }
+    },
+    {
+      "name": "duplicate_struct",
+      "source": "duplicate_struct.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "A",
+      "primary": {
+        "start": 57,
+        "end": 58
+      }
+    },
+    {
+      "name": "primitive_name",
+      "source": "primitive_name.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "int",
+      "primary": {
+        "start": 34,
+        "end": 37
+      }
+    },
+    {
+      "name": "generic_alias",
+      "source": "generic_alias.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "<",
+      "primary": {
+        "start": 35,
+        "end": 36
+      }
+    },
+    {
+      "name": "local_alias",
+      "source": "local_alias.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "type",
+      "primary": {
+        "start": 43,
+        "end": 47
+      }
+    },
+    {
+      "name": "generic_application",
+      "source": "generic_application.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "A<int>",
+      "primary": {
+        "start": 62,
+        "end": 68
+      }
+    },
+    {
+      "name": "bare_family",
+      "source": "bare_family.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "Option",
+      "primary": {
+        "start": 38,
+        "end": 44
+      }
+    },
+    {
+      "name": "constructor_head",
+      "source": "constructor_head.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "A(1)",
+      "primary": {
+        "start": 83,
+        "end": 87
+      }
+    },
+    {
+      "name": "variant_head",
+      "source": "variant_head.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "A::V",
+      "primary": {
+        "start": 73,
+        "end": 77
+      }
+    },
+    {
+      "name": "alias_value",
+      "source": "alias_value.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "A",
+      "primary": {
+        "start": 62,
+        "end": 63
+      }
+    },
+    {
+      "name": "string_payload",
+      "source": "string_payload.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "Text",
+      "primary": {
+        "start": 64,
+        "end": 68
+      }
+    },
+    {
+      "name": "layout_cycle",
+      "source": "layout_cycle.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "A",
+      "primary": {
+        "start": 66,
+        "end": 67
+      }
+    },
+    {
+      "name": "const_type_mismatch",
+      "source": "const_type_mismatch.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "1",
+      "primary": {
+        "start": 53,
+        "end": 54
+      }
+    }
+  ],
+  "positive_cases": [
+    {
+      "source": "multiline.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ]
+}

@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P21 비제네릭 Type Alias 착수안 (Draft)
+
+[최소 계약](ALIAS_STAGE_B_PROPOSAL.md)·[55-production EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf)·[두 파일/부정 16사례](alias-proposal-fixtures/README.md)를 준비했다.
+기존 type keyword와 P01~P20을 보존하며 type 위치·forward/import·정규화/순환·한도·Source/MIR 검증을 제안한다.
+미승인·미구현이며 Compiler/Native 성공 기록이 아니다.
+
 ## 2026-10-08 — P20 Copy Option postfix exists 구현
 
 사용자 승인 P20의 intrinsic Copy Option Bool 존재 검사·기존 postfix/END·문맥 격리·const/default·단일 평가를 구현했다.

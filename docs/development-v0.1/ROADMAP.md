@@ -141,3 +141,9 @@ Array/iterable protocol·Range 값·step/descending·일반 Move/Drop은 후속�
 Bool·const/default·단일 평가·Source/MIR 검증을 구현했고 P01~P19를 보존했다.
 [구현 기록](EXISTS_IMPLEMENTATION.md)·[독립 예제/실행 명령](../../TESTING.md)을 제공한다.
 Result exists·flow narrowing·Move/Drop·Array는 후속이다.
+
+
+다음 최소 범위 [P21 비제네릭 Type Alias](ALIAS_STAGE_B_PROPOSAL.md)·[55-production EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf)·
+[두 파일·부정 16사례](alias-proposal-fixtures/README.md)는 **Draft / 미승인 / 미구현**이다.
+type 위치·forward/import·선언 scope·순환/한도·Source/MIR 검증을 준비했다. P01~P20과 원본을 보존한다.
+generic alias·newtype·alias constructor/variant head·API leak/export 정책·Array·method·일반 Move/Drop은 후속이다.

@@ -28,6 +28,8 @@
 
 2026-10-08 사용자 “P20 승인하고 Copy Option exists 구현 진행” 답변으로 [P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md)·[54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf)·[수용 fixture](exists-proposal-fixtures/README.md)를 승인했다. [구현 기록](EXISTS_IMPLEMENTATION.md)을 따른다. Bool·const/default·단일 평가·기존 END·Source/MIR 검증 subset을 구현했다. P01~P19와 원본을 보존하며 Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인은 아니다.
 
+2026-10-08 다음 Stage B 범위 [P21 비제네릭 Type Alias](ALIAS_STAGE_B_PROPOSAL.md)·[55-production EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf)·[제안 fixture](alias-proposal-fixtures/README.md)를 준비했다. Draft / 미승인 / 미구현이며 type 위치·forward/import·cycle/자원·Source/MIR 검증 subset의 승인이 필요하다. D01의 기존 type keyword와 P01~P20은 보존한다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

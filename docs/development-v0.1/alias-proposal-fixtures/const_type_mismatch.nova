@@ -1,0 +1,4 @@
+// 한글 🙂 — P21 Draft
+type A = bool
+const X:A=1
+func main() {}

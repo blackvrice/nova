@@ -1,0 +1,3 @@
+// 한글 🙂 — P21 Draft
+type int = int8
+func main() {}

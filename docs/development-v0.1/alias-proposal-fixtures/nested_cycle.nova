@@ -1,0 +1,3 @@
+// 한글 🙂 — P21 Draft
+type A = Option<A>
+func main() {}

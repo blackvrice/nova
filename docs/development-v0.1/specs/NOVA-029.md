@@ -16,6 +16,8 @@ structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·pr
 
 사용자 승인한 Copy Option<T>/Result<T,E>·T?·qualified 생성/none·문맥·match·const·private tagged ABI는 [P15 Accepted](../OPTION_RESULT_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_OPTION_RESULT.ebnf), [수용 fixture](../option-result-proposal-fixtures/README.md), [구현 기록](../OPTION_RESULT_IMPLEMENTATION.md)을 따른다. try·Move/Drop·사용자 Generic과 전체 D06/D08/D09/D10/D12/D15/D16/D23/D25/D30은 후속이다.
 
+비제네릭 transparent type alias·type 위치·forward/import·cycle/자원·Source/MIR 검증은 [P21 Draft](../ALIAS_STAGE_B_PROPOSAL.md), [55-production EBNF](../GRAMMAR_STAGE_B_ALIAS.ebnf), [제안 fixture](../alias-proposal-fixtures/README.md)로 준비했다. 미승인·미구현이다. type은 D01에서 이미 keyword이며 전체 D06/D10/D11/D12/D16/D30·generic alias/newtype·alias constructor/variant·API leak/export 정책은 승인하지 않았다.
+
 ## Tuple/Array/Function 초안 — D12
 ()는 Unit, (x,)는 1-tuple, (x,y)는 tuple이다. tuple projection은 .0/.1을 제안한다. [a,b]는 owning Array<T>이고 원본 Array의 길이/용량/초기화 구간 의미를 유지한다. 고정 길이 const generic array는 제외다.
 

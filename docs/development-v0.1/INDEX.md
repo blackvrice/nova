@@ -32,6 +32,8 @@
 
 [P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf), [두 파일·정상 2/부정 20/Runtime 1사례](exists-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](EXISTS_IMPLEMENTATION.md)을 따른다.
 
+[P21 비제네릭 Type Alias](ALIAS_STAGE_B_PROPOSAL.md), [55-production EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf), [두 파일·부정 16사례](alias-proposal-fixtures/README.md)는 Draft / 미승인 / 미구현이다. 제안 기대값은 Compiler/Native 실행 성공 기록이 아니다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |
