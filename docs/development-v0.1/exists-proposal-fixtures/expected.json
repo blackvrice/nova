@@ -1,0 +1,268 @@
+{
+  "proposal": "P20",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "helpers"
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "basic=true/false\npayload=true/true\nnested=true/true\nconst=true/true\ndefault=true\nonce\nonce=true\nshort=false/true\nsnapshot=true/false\ntuple=true\nnegate=true\nsecond\nfirst\norder=false\ntry\ntry-ok=true\ntry\ntry-error=-1\n",
+    "stderr": ""
+  },
+  "positive_cases": [
+    {
+      "source": "newline_and_shadow.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "skipped_abort.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "integer_operand",
+      "source": "integer_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "7",
+      "primary": {
+        "start": 55,
+        "end": 56
+      }
+    },
+    {
+      "name": "float_operand",
+      "source": "float_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "1.5",
+      "primary": {
+        "start": 55,
+        "end": 58
+      }
+    },
+    {
+      "name": "bool_operand",
+      "source": "bool_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "false",
+      "primary": {
+        "start": 55,
+        "end": 60
+      }
+    },
+    {
+      "name": "string_operand",
+      "source": "string_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "\"끝\"",
+      "primary": {
+        "start": 55,
+        "end": 60
+      }
+    },
+    {
+      "name": "unit_operand",
+      "source": "unit_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "value",
+      "primary": {
+        "start": 69,
+        "end": 74
+      }
+    },
+    {
+      "name": "tuple_operand",
+      "source": "tuple_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "(1,true)",
+      "primary": {
+        "start": 55,
+        "end": 63
+      }
+    },
+    {
+      "name": "user_enum",
+      "source": "user_enum.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "Item::Some(1)",
+      "primary": {
+        "start": 85,
+        "end": 98
+      }
+    },
+    {
+      "name": "result_operand",
+      "source": "result_operand.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "value",
+      "primary": {
+        "start": 101,
+        "end": 106
+      }
+    },
+    {
+      "name": "shadowed_option",
+      "source": "shadowed_option.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "Option::Some(1)",
+      "primary": {
+        "start": 87,
+        "end": 102
+      }
+    },
+    {
+      "name": "none_without_context",
+      "source": "none_without_context.nova",
+      "expected_diagnostic": "N2103",
+      "primary_text": "none",
+      "primary": {
+        "start": 55,
+        "end": 59
+      },
+      "forbidden_diagnostics": [
+        "N2101",
+        "N3201"
+      ]
+    },
+    {
+      "name": "nested_none_without_context",
+      "source": "nested_none_without_context.nova",
+      "expected_diagnostic": "N2103",
+      "primary_text": "none",
+      "primary": {
+        "start": 68,
+        "end": 72
+      },
+      "forbidden_diagnostics": [
+        "N2101",
+        "N3201"
+      ]
+    },
+    {
+      "name": "repeated_exists",
+      "source": "repeated_exists.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "value exists",
+      "primary": {
+        "start": 76,
+        "end": 88
+      }
+    },
+    {
+      "name": "bool_numeric_cast",
+      "source": "bool_numeric_cast.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "value exists as int",
+      "primary": {
+        "start": 76,
+        "end": 95
+      }
+    },
+    {
+      "name": "try_precedence",
+      "source": "try_precedence.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "fetch() exists",
+      "primary": {
+        "start": 153,
+        "end": 167
+      }
+    },
+    {
+      "name": "undefined_operand",
+      "source": "undefined_operand.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "없는값",
+      "primary": {
+        "start": 55,
+        "end": 64
+      },
+      "forbidden_diagnostics": [
+        "N2101",
+        "N3201"
+      ]
+    },
+    {
+      "name": "const_runtime_call",
+      "source": "const_runtime_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "fetch()",
+      "primary": {
+        "start": 34,
+        "end": 41
+      }
+    },
+    {
+      "name": "skipped_const_runtime_call",
+      "source": "skipped_const_runtime_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "fetch()",
+      "primary": {
+        "start": 34,
+        "end": 41
+      }
+    },
+    {
+      "name": "default_runtime_call",
+      "source": "default_runtime_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "fetch()",
+      "primary": {
+        "start": 34,
+        "end": 41
+      }
+    },
+    {
+      "name": "newline_before_exists",
+      "source": "newline_before_exists.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "exists",
+      "primary": {
+        "start": 93,
+        "end": 99
+      }
+    },
+    {
+      "name": "bool_not_callable",
+      "source": "bool_not_callable.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "value exists",
+      "primary": {
+        "start": 76,
+        "end": 88
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "name": "operand_abort",
+      "source": "operand_abort.nova",
+      "expected_diagnostic": "N5201",
+      "primary_text": "value+1",
+      "primary": {
+        "start": 91,
+        "end": 98
+      },
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit_nonzero": true,
+        "stdout": "before\n"
+      }
+    }
+  ]
+}

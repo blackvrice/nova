@@ -135,3 +135,8 @@ runtime default·parameter 참조·overload·named constructor·일반 Move/Drop
 기존 while·정수 승격·try·P18 default를 연결하는 승인 Stage B 최소 범위다.
 단일 bound 평가·immutable binder·until/through·MAX 종료·nested jump·보수적 return 분석을 구현했다.
 Array/iterable protocol·Range 값·step/descending·일반 Move/Drop은 후속이다.
+
+[P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md)·[54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf)·
+[두 파일/정상 2/부정 20/Runtime 1사례](exists-proposal-fixtures/README.md)는 **Draft / 미승인 / 미구현**이다.
+Bool·const/default·단일 평가·Source/MIR 검증의 최소 착수안이며 P01~P19를 보존한다.
+Result exists·flow narrowing·Move/Drop·Array는 포함하지 않는다. 승인 후 구현·검증한다.

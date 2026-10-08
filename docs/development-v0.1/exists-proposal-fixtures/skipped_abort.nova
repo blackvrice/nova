@@ -1,0 +1,8 @@
+func danger()->int? { let value:int8=127; return Option::Some((value+1) as int) }
+func main() {
+    let skipped=false && danger() exists
+    let other=true || danger() exists
+    let value:int?=Option::Some(0)
+    let present=value exists
+    match value { Option::Some(n) => { let copy=n }; none => {} }
+}

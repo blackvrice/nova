@@ -1,0 +1,13 @@
+public const ABSENT:int?=none
+public const PRESENT:bool=Option::Some(0) exists
+public func fetch(tag:string,value:int=0)->int? { print(tag); return Option::Some(value) }
+public func missing(tag:string)->int? { print(tag); return none }
+public func flags(first:bool,second:bool=PRESENT)->bool { return first && second }
+public func fetch_result(fail:bool)->Result<int?,int> {
+    print("try")
+    if fail { return Result::Error(-1) }
+    return Result::Success(Option::Some(9))
+}
+private enum Secret { Token }
+public func secret()->Secret? { return Option::Some(Secret::Token) }
+public func nested()->int?? { return Option::Some(none) }

@@ -1,0 +1,12 @@
+enum Option { Some(int); None }
+func main() {
+    let value:int?=none
+    let absent=((value)
+        exists)
+    let nominal=Option::Some(7)
+    match nominal { Option::Some(n) => { let copy=n }; Option::None => {} }
+    let negated=!value exists
+    let compared=value exists == false
+    let unitValue:()?=none
+    let unit=unitValue exists
+}

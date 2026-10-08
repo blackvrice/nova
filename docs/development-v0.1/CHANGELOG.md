@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P20 Copy Option postfix exists 착수안 (Draft)
+
+Bool 존재 검사·postfix/END·문맥 격리·const/default·단일 평가·Source/MIR 검증 최소 계약을 준비했다.
+P19 postfix 한 production만 확장하는 54-production EBNF와 두 파일/정상 2/부정 20/Runtime 1 fixture·UTF-8 Span·제안 18줄 기대값을 제공한다.
+Compiler/Runtime source·기존 P01~P19 승인·원본 148개는 보존한다. 사용자 승인 전에 새 의미를 적용하지 않는다.
+
 ## 2026-10-08 — P19 loop·정수 범위 for 구현
 
 사용자 승인 P19의 loop·정수 until/through for·불변 binder·source-order bound snapshots·inclusive MAX 종료·

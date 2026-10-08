@@ -1,0 +1,3 @@
+// 값 🙂: UTF-8 byte Span
+enum Item { Some(int); None }
+func main() { let present=Item::Some(1) exists }

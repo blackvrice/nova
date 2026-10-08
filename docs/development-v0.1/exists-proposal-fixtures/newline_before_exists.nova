@@ -1,0 +1,6 @@
+// 값 🙂: UTF-8 byte Span
+func main() {
+    let value:int?=none
+    let present=value
+    exists
+}

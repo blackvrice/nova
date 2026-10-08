@@ -760,6 +760,57 @@ checks.push('P19 Accepted/승인·구현 ledger·P18 statement 확장/두 produc
 const rangeUnit = rangeFixture.negative_cases.find(c => c.name === 'unit_bound');
 assert(rangeUnit?.primary?.start === 22 && rangeUnit?.primary?.end === 24, 'P19 Unit bound Span must not point to function parameter parentheses');
 
+const existsProposal = manifest.draft_proposals?.find(p => p.id === 'P20');
+assert(existsProposal?.status === 'Draft' && existsProposal?.implementation_verified === false
+  && existsProposal?.document === 'EXISTS_STAGE_B_PROPOSAL.md' && existsProposal?.grammar === 'GRAMMAR_STAGE_B_EXISTS.ebnf'
+  && !manifest.accepted_proposals?.some(p => p.id === 'P20'), 'P20 invalid Draft ledger');
+const existsText = fs.readFileSync(path.join(pack, 'EXISTS_STAGE_B_PROPOSAL.md'), 'utf8');
+assert(existsText.includes('Draft / 사용자 승인 대기 / 미구현') && existsText.includes('53개 보존')
+  && existsText.includes('10,000-node') && existsText.includes('None=0/nonnull pointer/payload truthiness')
+  && existsText.includes('flow narrowing'), 'P20 missing status/scope/const/layout boundaries');
+validateGrammar('GRAMMAR_STAGE_B_EXISTS.ebnf');
+const existsGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_EXISTS.ebnf'), 'utf8');
+const existsProductions = productions(existsGrammar);
+assert(existsGrammar.includes('Draft, unapproved, unimplemented') && existsProductions.size === 54, 'P20 invalid grammar');
+for (const [name, value] of rangeProductions) {
+  if (name !== 'postfix_expr') assert(existsProductions.get(name) === value, 'P20 changed approved production ' + name);
+}
+assert(existsProductions.get('postfix_expr') === rangeProductions.get('postfix_expr').replace('}', '|"exists"}'), 'P20 invalid postfix extension');
+const existsRoot = path.join(pack, 'exists-proposal-fixtures');
+const existsFixture = JSON.parse(fs.readFileSync(path.join(existsRoot, 'expected.json'), 'utf8'));
+const existsOutput = 'basic=true/false\npayload=true/true\nnested=true/true\nconst=true/true\ndefault=true\nonce\nonce=true\nshort=false/true\nsnapshot=true/false\ntuple=true\nnegate=true\nsecond\nfirst\norder=false\ntry\ntry-ok=true\ntry\ntry-error=-1\n';
+assert(existsFixture.proposal === 'P20' && existsFixture.status === 'Draft' && existsFixture.implementation_verified === false
+  && !existsFixture.validated_result && !existsFixture.approval_date && existsFixture.entry === 'main.nova'
+  && existsFixture.source_root === '.' && JSON.stringify(existsFixture.reachable_modules) === '["main","helpers"]', 'P20 invalid unverified fixture status');
+assert(existsFixture.proposed_result?.check_exit === 0 && existsFixture.proposed_result?.native_exit === 0
+  && existsFixture.proposed_result?.stdout === existsOutput && existsFixture.proposed_result?.stderr === '', 'P20 proposed output mismatch');
+assert(existsFixture.negative_cases?.length === 20 && existsFixture.positive_cases?.length === 2
+  && existsFixture.runtime_cases?.length === 1, 'P20 invalid fixture counts');
+for (const c of [...existsFixture.negative_cases, ...existsFixture.runtime_cases]) {
+  assert(path.basename(c.source) === c.source && c.source.endsWith('.nova'), 'P20 invalid filename ' + c.source);
+  const bytes = fs.readFileSync(path.join(existsRoot, c.source));
+  assert(knownCodes.has(c.expected_diagnostic) && c.primary?.start >= 0 && c.primary?.end > c.primary.start
+    && c.primary.end <= bytes.length && bytes.subarray(c.primary.start, c.primary.end).toString('utf8') === c.primary_text, 'P20 invalid code/UTF-8 Span ' + c.name);
+  assert((c.forbidden_diagnostics ?? []).every(code => knownCodes.has(code) && code !== c.expected_diagnostic), 'P20 invalid cascade ' + c.name);
+}
+for (const c of existsFixture.positive_cases) {
+  assert(path.basename(c.source) === c.source && c.source.endsWith('.nova') && !c.validated_result
+    && c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
+    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '', 'P20 invalid unverified positive ' + c.source);
+  assert(fs.existsSync(path.join(existsRoot, c.source)), 'P20 missing positive source');
+}
+const existsRuntime = existsFixture.runtime_cases[0];
+assert(!existsRuntime.validated_result && existsRuntime.expected_diagnostic === 'N5201'
+  && existsRuntime.proposed_result?.check_exit === 0 && existsRuntime.proposed_result?.native_exit_nonzero === true
+  && existsRuntime.proposed_result?.stdout === 'before\n', 'P20 invalid proposed Abort effect');
+const existsMain = fs.readFileSync(path.join(existsRoot, existsFixture.entry), 'utf8');
+const existsHelpers = fs.readFileSync(path.join(existsRoot, 'helpers.nova'), 'utf8');
+assert(existsMain.includes('ABSENT as 없음') && existsMain.includes('LATER exists') && existsMain.includes('data.value exists')
+  && existsMain.includes('(try fetch_result(fail)) exists') && existsMain.includes('second:fetch(')
+  && existsHelpers.includes('private enum Secret') && existsHelpers.includes('Option::Some(none)')
+  && existsHelpers.includes('second:bool=PRESENT'), 'P20 missing import/nested/const/default/snapshot/effect/try data');
+checks.push('P20 Draft/미승인·미구현 ledger·P19 postfix 한 production 확장·54-production EBNF/기존 53개 보존·두 파일/정상 2/부정 20/Runtime 1 UTF-8 Span·cascade·제안 18줄 metadata (Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

@@ -1,0 +1,43 @@
+use helpers::ABSENT as 없음
+use helpers::PRESENT
+use helpers::fetch
+use helpers::missing
+use helpers::flags
+use helpers::fetch_result
+use helpers::secret
+use helpers::nested
+const FORWARD:bool=LATER exists
+const LATER:bool?=Option::Some(false)
+struct Holder { var value:int? }
+func probe(fail:bool)->Result<bool,int> {
+    let present=(try fetch_result(fail)) exists
+    return Result::Success(present)
+}
+func main() {
+    print("basic={Option::Some(0) exists}/{없음 exists}")
+    print("payload={Option::Some(false) exists}/{Option::Some(()) exists}")
+    print("nested={nested() exists}/{secret() exists}")
+    print("const={PRESENT}/{FORWARD}")
+    print("default={flags(first:true)}")
+    let once=fetch(tag:"once") exists
+    print("once={once}")
+    let stopped=false && fetch(tag:"skipped") exists
+    let taken=true || missing(tag:"also-skipped") exists
+    print("short={stopped}/{taken}")
+    var data=Holder(Option::Some(4))
+    let saved=data.value exists
+    data.value=none
+    print("snapshot={saved}/{data.value exists}")
+    let pair=(Option::Some(1),Option::Some(2))
+    print("tuple={pair.0 exists}")
+    print("negate={!없음 exists}")
+    print("order={flags(second:fetch(tag:"second") exists,first:missing(tag:"first") exists)}")
+    match probe(false) {
+        Result::Success(value) => { print("try-ok={value}") }
+        Result::Error(error) => { print("unexpected={error}") }
+    }
+    match probe(true) {
+        Result::Success(value) => { print("unexpected={value}") }
+        Result::Error(error) => { print("try-error={error}") }
+    }
+}

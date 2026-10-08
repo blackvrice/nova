@@ -153,3 +153,8 @@ runtime default·parameter 참조·overload·named constructor·일반 Move/Drop
 현재 Stage B 구현은 [P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md)·
 [54-production 문법](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf)·[수용 fixture](range-loop-proposal-fixtures/README.md)다.
 Accepted / 구현 완료이며 [구현 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다.
+
+[P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md)·[54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf)·
+[두 파일/정상 2/부정 20/Runtime 1사례](exists-proposal-fixtures/README.md)는 **Draft / 미승인 / 미구현**이다.
+Bool·const/default·단일 평가·Source/MIR 검증의 최소 착수안이며 P01~P19를 보존한다.
+Result exists·flow narrowing·Move/Drop·Array는 포함하지 않는다. 승인 후 구현·검증한다.

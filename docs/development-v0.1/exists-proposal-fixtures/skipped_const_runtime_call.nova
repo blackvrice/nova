@@ -1,0 +1,4 @@
+// 값 🙂: UTF-8 byte Span
+func fetch()->int? { return none }
+const PRESENT:bool=false && fetch() exists
+func main() {}

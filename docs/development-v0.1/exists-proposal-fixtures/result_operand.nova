@@ -1,0 +1,2 @@
+// 값 🙂: UTF-8 byte Span
+func main() { let value:Result<int,int>=Result::Success(1); let present=value exists }
