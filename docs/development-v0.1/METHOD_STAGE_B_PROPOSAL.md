@@ -1,8 +1,8 @@
 # Stage B Copy struct Read 메서드 최소 계약 — P22
 
-작성일: 2026-10-08. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일: 2026-10-08. 상태: **Accepted / 2026-10-08 사용자 승인 / 구현 완료**.
 D01~D05/P01~P21·Canonical·원본 148개를 보존한다.
-[58-production EBNF](GRAMMAR_STAGE_B_METHOD.ebnf)·[수용 fixture](method-proposal-fixtures/README.md)는 검토 자료다.
+[58-production EBNF](GRAMMAR_STAGE_B_METHOD.ebnf)·[수용 fixture](method-proposal-fixtures/README.md)는 승인된 최소 계약이다.
 
 ## Specification Change Proposal
 
@@ -130,7 +130,7 @@ change/take·일반 Move/borrow/Drop·explicit init·overload·bound method valu
 Package/API export·전체 D06/D09/D10/D11/D12/D16/D25/D30 승인은 아니다.
 붙여넣은 개발 지침의 “사용자의 승인을 받기 전에는 해당 사양 변경을 적용하지 마십시오”에 따라 승인 전 compiler source를 변경하지 않는다.
 
-## 초안 준비 검증 — 2026-10-08
+## 초안 준비 검증 (당시 기록) — 2026-10-08
 
 - 문서 build/validator PASS: 148개 원본 hash·Draft ledger·58-production EBNF·P21 기존 54개 production 보존·
   두 파일/정상 1/부정 20/Runtime 1 fixture의 UTF-8 Span·제안 15줄 metadata를 확인했다.
@@ -139,3 +139,9 @@ Package/API export·전체 D06/D09/D10/D11/D12/D16/D25/D30 승인은 아니다.
 - 현재 compiler의 두 파일 entry check는 **N1102 / exit 1**이다. struct method 미지원 진단을 확인했다.
 - P01~P21 승인 ledger·계약/EBNF·D01~D05·Canonical·원본 148개·Compiler/Runtime/Cargo를 보존했다.
   실제 LLVM/Native 전체 회귀는 문서 작업에서 다시 실행하지 않았다. 이전 P21 완료 증거와 구분한다.
+
+## 승인·구현 반영 — 2026-10-08
+
+사용자 “승인하고 다음개발 진행해줘”로 앞서 준비한 P22 계약을 승인했다.
+[구현·검증 기록](METHOD_IMPLEMENTATION.md)·[직접 실행](../../TESTING.md)을 따른다.
+P22 Read Copy struct subset만 적용하며 D01~D05/P01~P21·Canonical·원본은 보존한다.

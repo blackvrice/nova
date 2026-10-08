@@ -1,19 +1,13 @@
 {
   "proposal": "P22",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "types"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "sum=8\nalias=7\ncopy=3/5\ntext=3/4\nprivate=3\nmember-main=4\ntuple=7\nreceiver\narg\norder=9\nfetch\nafter\nok=11\nfetch\nerror=-1\n",
-    "stderr": ""
-  },
   "negative_cases": [
     {
       "name": "missing_receiver",
@@ -219,7 +213,7 @@
   "positive_cases": [
     {
       "source": "newline_and_self.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -236,12 +230,19 @@
         "start": 95,
         "end": 103
       },
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 1,
         "stdout": "before\n",
         "stderr_first_line": "Nova panic: integer overflow at file#0:95..103"
       }
     }
-  ]
+  ],
+  "approval_date": "2026-10-08",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "sum=8\nalias=7\ncopy=3/5\ntext=3/4\nprivate=3\nmember-main=4\ntuple=7\nreceiver\narg\norder=9\nfetch\nafter\nok=11\nfetch\nerror=-1\n",
+    "stderr": ""
+  }
 }

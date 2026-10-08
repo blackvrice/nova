@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P22 승인과 Copy struct Read 메서드 구현
+
+사용자 “승인하고 다음개발 진행해줘”로 P22를 승인했다. contextual self·member registry·선언 scope/visibility·
+receiver-first Copy snapshot·named/default·try·private struct receiver ABI·Source/MIR 검증을 구현했다.
+58-production EBNF·Accepted ledger·fixture 기대값·[구현 기록](METHOD_IMPLEMENTATION.md)·[직접 테스트 명령](../../TESTING.md)을 갱신했다.
+D01~D05/P01~P21·Canonical·원본 148개와 fixture source bytes를 보존한다.
+
 ## 2026-10-08 — P22 Copy struct Read 메서드 착수안 (Draft)
 
 [최소 계약](METHOD_STAGE_B_PROPOSAL.md)·[58-production EBNF](GRAMMAR_STAGE_B_METHOD.ebnf)·[수용 계획](method-proposal-fixtures/README.md)을 준비했다.

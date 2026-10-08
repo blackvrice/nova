@@ -48,6 +48,21 @@ pub enum NodeKind {
         parameters: usize,
         has_return_type: bool,
     },
+    /// P22 source receiver followed by ordinary parameters, optional return and body.
+    Method {
+        keyword: Span,
+        name: Span,
+        visibility: Visibility,
+        visibility_keyword: Option<Span>,
+        left_paren: Span,
+        right_paren: Span,
+        receiver_comma: Option<Span>,
+        parameters: usize,
+        has_return_type: bool,
+    },
+    Receiver {
+        name: Span,
+    },
     /// One type child.
     Parameter {
         name: Span,

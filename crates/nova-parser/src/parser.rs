@@ -263,6 +263,35 @@ impl<'a> Parser<'a> {
                 self.recover_statement();
             }
         }
+        if self.kind() == TokenKind::Keyword(Keyword::Func)
+            && self.tokens.get(self.cursor + 3).is_some_and(|t| {
+                t.kind == TokenKind::Identifier
+                    && self.text.get(t.span.start()..t.span.end()) == Some("self")
+            })
+        {
+            self.report(
+                1102,
+                self.current().span,
+                "Enum instance methods are outside P22",
+            );
+            let mut braces = 0usize;
+            while self.kind() != TokenKind::Eof {
+                if self.kind() == TokenKind::LeftBrace {
+                    braces += 1;
+                } else if self.kind() == TokenKind::RightBrace {
+                    if braces == 0 {
+                        break;
+                    }
+                    braces -= 1;
+                    self.bump();
+                    if braces == 0 {
+                        break;
+                    }
+                    continue;
+                }
+                self.bump();
+            }
+        }
         self.close(TokenKind::RightBrace);
         if variants.is_empty() {
             self.report(1102, name, "empty enums are outside P14");
@@ -413,7 +442,7 @@ impl<'a> Parser<'a> {
         while !matches!(self.kind(), TokenKind::RightBrace | TokenKind::Eof) {
             if matches!(
                 self.kind(),
-                TokenKind::Keyword(Keyword::Func | Keyword::Struct | Keyword::Use | Keyword::Const)
+                TokenKind::Keyword(Keyword::Struct | Keyword::Use | Keyword::Const)
             ) {
                 self.report(
                     1102,
@@ -427,6 +456,11 @@ impl<'a> Parser<'a> {
                 continue;
             }
             let field_start = self.current().span.start();
+            let visibility_keyword = matches!(
+                self.kind(),
+                TokenKind::Keyword(Keyword::Public | Keyword::Private | Keyword::Internal)
+            )
+            .then_some(self.current().span);
             let visibility = match self.kind() {
                 TokenKind::Keyword(Keyword::Public) => {
                     self.bump();
@@ -442,6 +476,24 @@ impl<'a> Parser<'a> {
                 }
                 _ => Visibility::Internal,
             };
+            if self.kind() == TokenKind::Keyword(Keyword::Func) {
+                let receiver = self.tokens.get(self.cursor + 3).copied();
+                if self.diagnostics.last().is_some_and(|d| {
+                    d.primary.span == self.current().span
+                        && d.message == "field initializers and unsupported members are outside P12"
+                }) && !receiver.is_some_and(|t| {
+                    t.kind == TokenKind::Identifier
+                        && self.text.get(t.span.start()..t.span.end()) == Some("self")
+                }) {
+                    break;
+                }
+                fields.push(self.function_inner(Some((
+                    field_start,
+                    visibility,
+                    visibility_keyword,
+                ))));
+                continue;
+            }
             if !matches!(self.kind(), TokenKind::Keyword(Keyword::Let | Keyword::Var)) {
                 self.report(
                     1102,
@@ -724,7 +776,14 @@ impl<'a> Parser<'a> {
     }
 
     fn function(&mut self) -> AstNodeId {
-        let start = self.bump().span.start();
+        self.function_inner(None)
+    }
+    fn function_inner(
+        &mut self,
+        method: Option<(usize, Visibility, Option<nova_source::Span>)>,
+    ) -> AstNodeId {
+        let keyword = self.bump().span;
+        let start = method.map_or(keyword.start(), |m| m.0);
         let name = self.expect(TokenKind::Identifier).span;
         if self.kind() == TokenKind::Symbol(Symbol::Less) {
             self.report(
@@ -735,8 +794,37 @@ impl<'a> Parser<'a> {
             self.recover_item();
             return self.node(NodeKind::Error, start, vec![]);
         }
+        let left_paren = self.current().span;
         self.open(TokenKind::LeftParen);
         let mut children = vec![];
+        let mut receiver_comma = None;
+        if method.is_some() {
+            if self.kind() == TokenKind::Identifier
+                && self
+                    .text
+                    .get(self.current().span.start()..self.current().span.end())
+                    == Some("self")
+            {
+                let name = self.bump().span;
+                children.push(self.node(NodeKind::Receiver { name }, name.start(), vec![]));
+                if self.kind() == TokenKind::Comma {
+                    receiver_comma = Some(self.bump().span);
+                } else if self.kind() != TokenKind::RightParen {
+                    self.report(1102, self.current().span, "Read receiver must be bare self");
+                    self.skip_list_element();
+                }
+            } else {
+                self.report(
+                    1102,
+                    self.current().span,
+                    "method requires a first bare self receiver",
+                );
+                self.skip_list_element();
+                if self.kind() == TokenKind::Comma {
+                    self.bump();
+                }
+            }
+        }
         while !matches!(
             self.kind(),
             TokenKind::RightParen
@@ -788,6 +876,7 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
         }
+        let right_paren = self.current().span;
         self.close(TokenKind::RightParen);
         let parameters = children.len();
         let has_return_type = self.eat(TokenKind::Symbol(Symbol::Arrow));
@@ -797,10 +886,24 @@ impl<'a> Parser<'a> {
         let body = self.block();
         children.push(body);
         self.node(
-            NodeKind::Function {
-                name,
-                parameters,
-                has_return_type,
+            if let Some((_, visibility, visibility_keyword)) = method {
+                NodeKind::Method {
+                    keyword,
+                    name,
+                    visibility,
+                    visibility_keyword,
+                    left_paren,
+                    right_paren,
+                    receiver_comma,
+                    parameters,
+                    has_return_type,
+                }
+            } else {
+                NodeKind::Function {
+                    name,
+                    parameters,
+                    has_return_type,
+                }
             },
             start,
             children,

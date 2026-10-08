@@ -1,9 +1,52 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P21 비제네릭 Type Alias까지다.
+현재 개발 완료 기능은 P22 Copy struct Read 메서드까지다.
 
-## 현재 기능 실행 — 비제네릭 Type Alias
+## 현재 기능 실행 — Copy struct Read 메서드
+
+```powershell
+cargo run -p nova-cli --offline -- check examples/methods.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/methods.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/methods.nova --profile release
+```
+
+check는 출력 없이 exit 0, debug/release는 다음 15줄/LF·빈 stderr·exit 0이다.
+
+```text
+sum=8
+alias=7
+copy=3/5
+text=3/4
+private=3
+member-main=4
+tuple=7
+receiver
+arg
+order=9
+fetch
+after
+ok=11
+fetch
+error=-1
+```
+
+`func sum(self,bias:Small=SHIFT)`의 self는 immutable Read Copy receiver다. 기본 인수는 선언 module에서 해석한다.
+receiver를 한 번 먼저 복사하고 일반 인수는 source order로 평가한다. var copy=self로 지역 복사본을 갱신할 수 있다.
+[계약](docs/development-v0.1/METHOD_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/METHOD_IMPLEMENTATION.md)·[두 파일 fixture](docs/development-v0.1/method-proposal-fixtures/README.md)를 제공한다.
+
+```powershell
+cargo test --workspace --offline p22_
+cargo test -p nova-codegen-llvm --test emission --offline p22_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p22_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/method-proposal-fixtures/mutate_self.nova
+```
+
+P22 기본 11개·실제 LLVM 1개·Native 2개를 검증한다. 마지막 명령은 self 위치의 N3004·exit 1이다.
+change/take·bound method value·Enum method·init·Array·일반 Move/Drop은 후속이다.
+
+## 기존 기능 실행 — 비제네릭 Type Alias
 
 ```powershell
 cargo run -p nova-cli --offline -- check examples/type_aliases.nova
@@ -37,7 +80,7 @@ cargo run -p nova-cli --offline -- check docs/development-v0.1/alias-proposal-fi
 ```
 
 P21 기본 12개·실제 LLVM 1개·Native 2개를 검증한다. 마지막 명령은 N2103·exit 1이다.
-1,024개의 flat alias chain을 허용하고 1,025번째 이름은 N8901이다. generic alias·newtype·Array·method는 후속이다.
+1,024개의 flat alias chain을 허용하고 1,025번째 이름은 N8901이다. generic alias·newtype·Array는 후속이다.
 
 ## 기존 기능 실행 — Copy Option exists
 
@@ -357,8 +400,8 @@ cargo test --workspace --offline
 cargo check --workspace --all-features --offline
 ```
 
-P21 기준 기본 tests 348개가 성공하고 실제 LLVM/Native tests 67개는 ignored로 표시된다.
-이 67개(LLVM 17개·Native 50개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
+P22 기준 기본 tests 359개가 성공하고 실제 LLVM/Native tests 70개는 ignored로 표시된다.
+이 70개(LLVM 18개·Native 52개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
 
 ```powershell
 cargo test -p nova-codegen-llvm --test emission --offline -- --ignored --test-threads=1

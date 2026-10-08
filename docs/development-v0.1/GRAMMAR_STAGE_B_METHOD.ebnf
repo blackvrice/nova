@@ -1,4 +1,4 @@
-(* P22 Copy struct Read methods: Draft, unapproved, unimplemented.
+(* P22 Copy struct Read methods: Accepted by the user on 2026-10-08, implemented.
    Extends P21 struct_decl only and adds three productions: 58 total, other 54 preserved. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl | enum_decl | alias_decl ) }, "EOF" ;
 import_decl = "use", qualified_name, [ "as", "IDENT" ], end ;

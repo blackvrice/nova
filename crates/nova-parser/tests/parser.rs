@@ -1406,3 +1406,57 @@ fn p21_alias_chain_parsing_small_stack_and_original_depth_budget() {
     assert!(p.has_errors());
     assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"));
 }
+
+#[test]
+fn p22_method_receiver_spans_member_order_and_utf8_truncation() {
+    let source="// 한글 🙂\nstruct P{public var x:int;private func 名(self,a:int=1)->int{return self.x+a};let y:bool;func empty(self,){}}func main(){let p=P(1,true);p\n.empty()}";
+    let (db, _, p) = run(source);
+    assert!(!p.has_errors(), "{:?}", p.diagnostics);
+    let (_, structure) = p
+        .arena
+        .iter()
+        .find(|(_, n)| matches!(n.kind, NodeKind::Struct { .. }))
+        .unwrap();
+    assert!(matches!(
+        p.arena.get(structure.children[0]).unwrap().kind,
+        NodeKind::Field { .. }
+    ));
+    assert!(matches!(
+        p.arena.get(structure.children[1]).unwrap().kind,
+        NodeKind::Method { .. }
+    ));
+    assert!(matches!(
+        p.arena.get(structure.children[2]).unwrap().kind,
+        NodeKind::Field { .. }
+    ));
+    for (_, m) in p
+        .arena
+        .iter()
+        .filter(|(_, n)| matches!(n.kind, NodeKind::Method { .. }))
+    {
+        let NodeKind::Method {
+            keyword,
+            left_paren,
+            right_paren,
+            receiver_comma,
+            ..
+        } = m.kind
+        else {
+            unreachable!()
+        };
+        assert_eq!(db.slice(keyword).unwrap(), "func");
+        assert_eq!(db.slice(left_paren).unwrap(), "(");
+        assert_eq!(db.slice(right_paren).unwrap(), ")");
+        assert_eq!(db.slice(receiver_comma.unwrap()).unwrap(), ",");
+        let recv = p.arena.get(m.children[0]).unwrap();
+        assert!(matches!(recv.kind, NodeKind::Receiver { .. }));
+        assert_eq!(db.slice(recv.span).unwrap(), "self");
+        assert!(recv.children.is_empty());
+    }
+    for end in (0..=source.len()).filter(|&i| source.is_char_boundary(i)) {
+        let (db, _, p) = run(&source[..end]);
+        for (_, n) in p.arena.iter() {
+            db.slice(n.span).unwrap();
+        }
+    }
+}

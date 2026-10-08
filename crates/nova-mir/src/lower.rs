@@ -106,6 +106,12 @@ pub fn lower(
             .filter(|(_, d)| d.mutable)
             .map(|(i, _)| i)
             .collect(),
+        method_owners: resolved
+            .method_owners
+            .iter()
+            .map(|(&d, o)| (d, StructId(o.0)))
+            .collect(),
+        method_bodies: BTreeMap::new(),
         entry_main: None,
         callees: vec![],
         bodies: vec![],
@@ -216,14 +222,17 @@ pub fn lower(
         let DefinitionKind::Function(id) = resolved.definitions[callee.definition.0].kind else {
             continue;
         };
-        if callee.name == "main" && result.sources[id.0].span.file() == result.entry.span.file() {
+        if callee.name == "main"
+            && hir.method_owner(id).is_none()
+            && result.sources[id.0].span.file() == result.entry.span.file()
+        {
             result.entry_main = Some((callee.clone(), result.sources[id.0]));
         }
     }
     // HIR IDs are module-wide and function trees are disjoint. Allocate the
     // expression result table once, rather than once per function.
     let mut values = vec![None; hir.nodes().len()];
-    for id in hir.items() {
+    for id in hir.semantic_items() {
         if matches!(
             hir.nodes()[id.0].kind,
             HirKind::Binding { constant: true, .. }
@@ -332,6 +341,12 @@ pub fn lower(
                     .into_iter()
                     .map(|c| ((callee.0, c.source.hir.0), c)),
             );
+        }
+        if result
+            .method_owners
+            .contains_key(&result.callees[callee.0].definition.0)
+        {
+            result.method_bodies.insert(callee.0, builder.body.clone());
         }
         result.bodies.push(builder.body);
     }
@@ -749,6 +764,14 @@ impl Builder<'_> {
                                     work.push(Work::SnapshotArgument { call: id, argument });
                                     work.push(Work::Expression(argument));
                                 }
+                                if self.checked.method_callees[node.children[0].0].is_some() {
+                                    let receiver = self.hir.nodes()[node.children[0].0].children[0];
+                                    work.push(Work::SnapshotArgument {
+                                        call: id,
+                                        argument: receiver,
+                                    });
+                                    work.push(Work::Expression(receiver));
+                                }
                             } else {
                                 work.extend(
                                     node.children[1..]
@@ -1033,6 +1056,12 @@ impl Builder<'_> {
                                     .parameters
                                     .len();
                                 let mut slots = vec![None; count];
+                                if self.checked.method_callees[node.children[0].0].is_some() {
+                                    slots[0] =
+                                        Some(self.value(
+                                            self.hir.nodes()[node.children[0].0].children[0],
+                                        )?);
+                                }
                                 for (source, &parameter) in mapping.parameters.iter().enumerate() {
                                     slots[parameter] = Some(arguments[source].clone());
                                 }
@@ -1085,7 +1114,18 @@ impl Builder<'_> {
                             )?;
                             if let Some(mapping) = &self.checked.named_calls[id.0] {
                                 self.named_calls.push(NamedCallCertificate {
-                                    mapping: mapping.clone(),
+                                    mapping: {
+                                        let mut mapping = mapping.clone();
+                                        if self.checked.method_callees[node.children[0].0].is_some()
+                                        {
+                                            mapping.arguments.insert(
+                                                0,
+                                                self.hir.nodes()[node.children[0].0].children[0],
+                                            );
+                                            mapping.parameters.insert(0, 0);
+                                        }
+                                        mapping
+                                    },
                                     defaults: default_snapshots,
                                     source: self.sources[id.0],
                                     block: source_block,

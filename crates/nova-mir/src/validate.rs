@@ -110,6 +110,7 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         .keys()
         .chain(module.loop_bodies.keys())
         .chain(module.exists_bodies.keys())
+        .chain(module.method_bodies.keys())
         .any(|id| !body_ids.contains(id))
     {
         validator.report(Violation::InvalidBody);
@@ -147,7 +148,16 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
             validator.report(Violation::InvalidCallee);
             continue;
         };
+        if let Some(owner) = module.method_owners.get(&callee.definition.0) {
+            if callee.parameters.first() != Some(&Type::Struct(*owner))
+                || !module.structs.contains_key(owner)
+                || module.method_bodies.get(&body.callee.0) != Some(body)
+            {
+                validator.report(Violation::InvalidBody);
+            }
+        }
         let actual_entry = !callee.builtin_print
+            && !module.method_owners.contains_key(&callee.definition.0)
             && callee.name == "main"
             && body.source.span.file() == module.entry.span.file();
         let certified_entry = module

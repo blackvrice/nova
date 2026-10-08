@@ -95,14 +95,15 @@ impl Checker<'_> {
             }
             return;
         };
-        if !named && !self.default_functions.contains(&def.0) {
+        let offset = usize::from(self.resolved.method_owners.contains_key(&def.0));
+        if !named && offset == 0 && !self.default_functions.contains(&def.0) {
             return;
         }
         let declaration = &self.module.nodes()[function.0];
         let HirKind::Function { parameters, .. } = declaration.kind else {
             return;
         };
-        if !named && node.children.len() - 1 > parameters {
+        if !named && node.children.len() - 1 > parameters - offset {
             self.report(
                 2201,
                 node.span,
@@ -111,13 +112,16 @@ impl Checker<'_> {
             );
             self.argument_mappings[id.0] = Some(ArgumentMapping {
                 parameters: (0..node.children.len() - 1)
-                    .map(|i| (i < parameters).then_some(i))
+                    .map(|i| (i + offset < parameters).then_some(i + offset))
                     .collect(),
                 valid: false,
             });
             return;
         }
         let mut filled: Vec<Option<HirId>> = vec![None; parameters];
+        if offset == 1 {
+            filled[0] = Some(self.module.nodes()[node.children[0].0].children[0]);
+        }
         let mut mapping = Vec::with_capacity(node.children.len() - 1);
         let mut first_label = None;
         let mut valid = true;
@@ -177,7 +181,7 @@ impl Checker<'_> {
                 );
                 valid = false;
                 None
-            } else if ordinal >= parameters {
+            } else if ordinal + offset >= parameters {
                 self.report(
                     2201,
                     argument.span,
@@ -187,7 +191,7 @@ impl Checker<'_> {
                 valid = false;
                 None
             } else {
-                Some(ordinal)
+                Some(ordinal + offset)
             };
             let parameter = parameter.and_then(|at| {
                 if let Some(first) = filled[at] {
@@ -288,6 +292,9 @@ impl Checker<'_> {
             };
             let declaration = &self.module.nodes()[function.0];
             let mut supplied = vec![false; signature.parameters.len()];
+            if self.resolved.method_owners.contains_key(&def.0) {
+                supplied[0] = true;
+            }
             for at in parameters.iter().flatten() {
                 supplied[*at] = true;
             }

@@ -996,3 +996,47 @@ fn p21_alias_fixture_check_and_invalid_gate_preserve_outputs() {
     }
     assert!(!dir.join("target").exists());
 }
+
+#[test]
+fn p22_method_failures_gate_tools_and_member_main_is_not_executable_entry() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/method-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for (name, code) in [
+        ("mutate_self.nova", "N3004"),
+        ("private_method.nova", "N2004"),
+        ("bound_method.nova", "N1102"),
+        ("const_method_call.nova", "N3201"),
+    ] {
+        for command in ["check", "build", "run"] {
+            let root = directory();
+            let out = root.join("keep.exe");
+            std::fs::write(&out, b"keep").unwrap();
+            let mut c = Command::new(env!("CARGO_BIN_EXE_nova"));
+            c.arg(command)
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .env("NOVA_CLANG", root.join("no-clang.exe"));
+            if command == "build" {
+                c.arg("-o").arg(&out);
+            }
+            let r = c.output().unwrap();
+            assert!(!r.status.success());
+            assert!(String::from_utf8_lossy(&r.stderr).contains(code));
+            assert_eq!(std::fs::read(out).unwrap(), b"keep");
+        }
+    }
+    let root = directory();
+    let source = root.join("main.nova");
+    std::fs::write(&source, "struct P{func main(self){}}").unwrap();
+    let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+        .args(["build"])
+        .arg(source)
+        .env("NOVA_CLANG", root.join("no-clang.exe"))
+        .output()
+        .unwrap();
+    assert!(!r.status.success());
+    assert!(String::from_utf8_lossy(&r.stderr).contains("N2001"));
+}

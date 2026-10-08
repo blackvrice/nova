@@ -47,6 +47,9 @@ pub enum Resolution {
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Resolved {
+    /// P22 canonical nominal owner and member namespace; methods never enter root value scopes.
+    pub method_owners: BTreeMap<usize, DefId>,
+    pub methods: BTreeMap<(usize, String), DefId>,
     pub definitions: Vec<Definition>,
     pub scopes: Vec<Scope>,
     pub node_scopes: Vec<Option<ScopeId>>,
@@ -88,6 +91,8 @@ enum Work {
 pub fn resolve(module: &Module) -> Resolved {
     let size = module.nodes().len();
     let mut result = Resolved {
+        method_owners: BTreeMap::new(),
+        methods: BTreeMap::new(),
         definitions: vec![],
         scopes: vec![Scope {
             parent: None,
@@ -199,6 +204,67 @@ pub fn resolve(module: &Module) -> Resolved {
             if let Some(def) = result.declaration_ids[item.0] {
                 result.definitions[def.0].constant = true;
             }
+        }
+    }
+    let mut method_count = 0;
+    for &owner in &items {
+        if !matches!(module.nodes()[owner.0].kind, HirKind::Struct { .. }) {
+            continue;
+        }
+        let Some(owner_def) = result.declaration_ids[owner.0] else {
+            continue;
+        };
+        let scope = scopes[module.owner(owner).expect("struct owner")];
+        let mut members = BTreeMap::new();
+        for &member in &module.nodes()[owner.0].children {
+            let (name, span, method) = match module.nodes()[member.0].kind {
+                HirKind::Field {
+                    name, name_span, ..
+                } => (name, name_span, false),
+                HirKind::Function {
+                    name, name_span, ..
+                } => (name, name_span, true),
+                _ => continue,
+            };
+            let name = module.symbol(name).expect("member symbol");
+            if let Some(&(previous, was_method)) = members.get(name) {
+                if method || was_method {
+                    result.diagnostics.push(diagnostic(
+                        2002,
+                        span,
+                        "duplicate struct member",
+                        Some(previous),
+                    ));
+                }
+            } else {
+                members.insert(name.to_owned(), (span, method));
+            }
+            if !method {
+                continue;
+            }
+            method_count += 1;
+            if method_count == 1025 {
+                let mut error = diagnostic(8901, span, "P22 method limit exceeded", None);
+                error
+                    .notes
+                    .push("maximum 1024 instance methods per bundle".into());
+                result.diagnostics.push(error);
+            }
+            let def = DefId(result.definitions.len());
+            result.definitions.push(Definition {
+                name: name.into(),
+                kind: DefinitionKind::Function(member),
+                span: Some(span),
+                scope,
+                mutable: false,
+                constant: false,
+            });
+            result.declaration_ids[member.0] = Some(def);
+            result.method_owners.insert(def.0, owner_def);
+            result
+                .methods
+                .entry((owner_def.0, name.into()))
+                .or_insert(def);
         }
     }
     // Capture direct declarations before any alias is inserted. Reexports do
@@ -412,7 +478,7 @@ pub fn resolve(module: &Module) -> Resolved {
         .filter_map(|n| n.children.first())
         .map(|id| id.0)
         .collect::<BTreeSet<_>>();
-    for &item in &items {
+    for item in module.semantic_items() {
         let root_scope = scopes[module.owner(item).expect("file ownership")];
         let node = &module.nodes()[item.0];
         let mut pending;
@@ -420,7 +486,11 @@ pub fn resolve(module: &Module) -> Resolved {
         if let HirKind::Function { parameters, .. } = node.kind {
             let function_scope = new_scope(&mut result, root_scope);
             for &parameter in &node.children[..parameters] {
-                if let HirKind::Parameter { name, name_span } = module.nodes()[parameter.0].kind {
+                if let HirKind::Parameter { name, name_span }
+                | HirKind::Receiver {
+                    name, name_span, ..
+                } = module.nodes()[parameter.0].kind
+                {
                     declare(
                         &mut result,
                         function_scope,

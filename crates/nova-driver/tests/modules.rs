@@ -581,3 +581,84 @@ fn p16_two_file_alias_fixture_reaches_verified_mir() {
             nova_mir::TerminatorKind::Try { .. }
         )));
 }
+
+#[test]
+fn p22_method_contract_bundle_and_exact_diagnostic_spans() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/method-proposal-fixtures");
+    for name in ["main.nova", "newline_and_self.nova", "method_abort.nova"] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        let unit = unit(&loaded);
+        assert!(nova_mir::validate(unit.mir()).is_empty());
+        let module = loaded.module.as_ref().unwrap();
+        for method in module
+            .semantic_items()
+            .into_iter()
+            .filter(|id| module.method_owner(*id).is_some())
+        {
+            let source = module.method_source(method).unwrap();
+            assert!(matches!(
+                module.nodes()[source.owner.0].kind,
+                HirKind::Struct { .. }
+            ));
+            assert_eq!(loaded.sources.slice(source.keyword).unwrap(), "func");
+            assert_eq!(loaded.sources.slice(source.left_paren).unwrap(), "(");
+            assert_eq!(loaded.sources.slice(source.right_paren).unwrap(), ")");
+            assert_eq!(source.keyword.file(), module.nodes()[method.0].span.file());
+        }
+    }
+    for (name, code, start, end) in [
+        ("missing_receiver.nova", "N1102", 62, 63),
+        ("typed_receiver.nova", "N1102", 66, 67),
+        ("change_receiver.nova", "N1102", 62, 68),
+        ("take_receiver.nova", "N1102", 62, 66),
+        ("receiver_not_first.nova", "N1102", 62, 63),
+        ("duplicate_method.nova", "N2002", 87, 90),
+        ("field_method_collision.nova", "N2002", 70, 73),
+        ("mutate_self.nova", "N3004", 81, 85),
+        ("private_method.nova", "N2004", 98, 104),
+        ("unknown_method.nova", "N2001", 113, 120),
+        ("non_struct_receiver.nova", "N2101", 101, 108),
+        ("bound_method.nova", "N1102", 111, 116),
+        ("const_method_call.nova", "N3201", 106, 116),
+        ("default_method_call.nova", "N3201", 111, 121),
+        ("unknown_label.nova", "N2201", 125, 129),
+        ("self_label.nova", "N2201", 117, 121),
+        ("missing_argument.nova", "N2201", 117, 124),
+        ("duplicate_self_parameter.nova", "N2002", 67, 71),
+        ("return_type_mismatch.nova", "N2101", 80, 84),
+        ("enum_method.nova", "N1102", 53, 57),
+    ] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        let diagnostic = if let Some(module) = &loaded.module {
+            let resolved = nova_resolve::resolve(module);
+            let checked = nova_typecheck::check(module, &resolved).unwrap();
+            resolved
+                .diagnostics
+                .into_iter()
+                .chain(checked.diagnostics)
+                .next()
+                .unwrap()
+        } else {
+            loaded.diagnostics[0].clone()
+        };
+        assert_eq!(diagnostic.code.to_string(), code, "{name}");
+        assert_eq!(
+            (
+                diagnostic.primary.span.start(),
+                diagnostic.primary.span.end()
+            ),
+            (start, end),
+            "{name}: {diagnostic:?}"
+        );
+        loaded.sources.slice(diagnostic.primary.span).unwrap();
+    }
+}
+#[test]
+fn p22_opaque_factory_methods_use_original_owner_and_declaration_scope() {
+    let loaded = fixture(&[
+        ("main.nova", "use lib::factory;func main(){let p=factory();print(p.text())}"),
+        ("lib.nova", "private struct Hidden{private let x:int;public func text(self)->string{return self.secret()};private func secret(self)->string{return \"{self.x}\"}}public func factory()->Hidden{return Hidden(7)}"),
+    ]);
+    unit(&loaded);
+}

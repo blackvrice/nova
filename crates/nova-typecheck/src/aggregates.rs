@@ -68,7 +68,14 @@ impl Checker<'_> {
             let HirKind::Struct { name, name_span } = node.kind else {
                 continue;
             };
-            if position >= 1024 || node.children.len() > 1024 {
+            if position >= 1024
+                || node
+                    .children
+                    .iter()
+                    .filter(|c| matches!(self.module.nodes()[c.0].kind, HirKind::Field { .. }))
+                    .count()
+                    > 1024
+            {
                 self.report(
                     8901,
                     name_span,
@@ -82,6 +89,9 @@ impl Checker<'_> {
             let mut names = BTreeMap::new();
             for &field in &node.children {
                 let f = &self.module.nodes()[field.0];
+                if matches!(f.kind, HirKind::Function { .. }) {
+                    continue;
+                }
                 let HirKind::Field {
                     name,
                     name_span,
@@ -438,17 +448,55 @@ impl Checker<'_> {
         }
         valid
     }
-    pub(super) fn projection(&mut self, id: HirId, name: SymbolId, span: Span) {
+    pub(super) fn projection(&mut self, id: HirId, name: SymbolId, span: Span, direct: bool) {
+        let direct = direct && self.method_heads.contains(&id.0);
         let recv = self.module.nodes()[id.0].children[0];
         let ty = self.ty(self.result.type_table[recv.0]);
         let Type::Struct(sid) = ty else {
             if ty != Type::Error {
-                self.report(2101, span, "field receiver must be a struct", None);
+                self.report(
+                    2101,
+                    if direct {
+                        self.module.nodes()[id.0].span
+                    } else {
+                        span
+                    },
+                    "field receiver must be a struct",
+                    None,
+                );
             }
             self.set(id, Type::Error);
             return;
         };
         let spelling = self.module.symbol(name).expect("field symbol");
+        if let Some(&def) = self.resolved.methods.get(&(sid.0, spelling.to_owned())) {
+            let DefinitionKind::Function(method) = self.resolved.definitions[def.0].kind else {
+                unreachable!()
+            };
+            if !direct {
+                self.report(
+                    1102,
+                    self.module.nodes()[id.0].span,
+                    "bound method values are outside P22",
+                    None,
+                );
+                self.set(id, Type::Error);
+            } else if self.module.visibility(method) == Visibility::Private
+                && self.module.owner(id) != self.module.owner(method)
+            {
+                self.report(
+                    2004,
+                    span,
+                    "struct method is private",
+                    self.resolved.definitions[def.0].span,
+                );
+                self.set(id, Type::Error);
+            } else {
+                self.result.method_callees[id.0] = Some(def);
+                self.set(id, Type::Function);
+            }
+            return;
+        }
         let Some(index) = self.result.structs[&sid]
             .fields
             .iter()

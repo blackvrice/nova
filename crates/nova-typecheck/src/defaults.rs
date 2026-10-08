@@ -15,7 +15,7 @@ pub struct ParameterDefault {
 
 impl Checker<'_> {
     pub(super) fn check_defaults(&mut self) {
-        for function in self.module.items() {
+        for function in self.module.semantic_items() {
             let declaration = &self.module.nodes()[function.0];
             let HirKind::Function { parameters, .. } = declaration.kind else {
                 continue;

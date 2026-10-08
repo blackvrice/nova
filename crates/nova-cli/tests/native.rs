@@ -1870,3 +1870,64 @@ fn p21_alias_checked_abort_cross_file_utf8_span_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p22_native_methods_receiver_default_try_opaque_and_abi_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/method-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for profile in ["debug", "release"] {
+        for (name,output) in [("main.nova","sum=8\nalias=7\ncopy=3/5\ntext=3/4\nprivate=3\nmember-main=4\ntuple=7\nreceiver\narg\norder=9\nfetch\nafter\nok=11\nfetch\nerror=-1\n"),("newline_and_self.nova","")] {
+            let r=Command::new(env!("CARGO_BIN_EXE_nova")).arg("run").arg(fixtures.join(name)).arg("--source-root").arg(&fixtures).args(["--profile",profile]).current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")).output().unwrap();
+            assert!(r.status.success(),"{}",String::from_utf8_lossy(&r.stderr));assert_eq!(r.stdout,output.as_bytes());assert!(r.stderr.is_empty());
+        }
+        let r=module_program("use lib::factory;func main(){let p=factory();print(p.text())}","private struct Hidden{private let x:int;public func text(self)->string{return self.secret()};private func secret(self)->string{return \"{self.x}\"}}public func factory()->Hidden{return Hidden(7)}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"7\n");
+        assert!(r.stderr.is_empty());
+        let r=program_profile("struct P{var x:int;func rec(self,n:int)->int{if n==0{return self.x}else{return self.rec(n-1)}}func copied(self)->P{var p=self;p.x=9;return p}func payload(self,f:double,c:char)->(double,char,Option<int>){return (f,c,Option::Some(self.x))}}func main(){let p=P(3);let q=p.copied();let t=p.payload(1.5,'🙂');print(\"{p.rec(4)}/{q.x}/{p.x}/{t.0}/{t.1}/{t.2 exists}\")}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, "3/9/3/1.5/🙂/true\n".as_bytes());
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p22_method_abort_skips_arguments_and_cross_file_utf8_source_o0_o2() {
+    for profile in ["debug", "release"] {
+        let lib="// 한글 🙂\npublic struct P{public let x:int8;public func fail(self,n:int8=0)->int8{return self.x+1}}public func make()->P{print(\"before\");let p=P(127);let x=p.fail();print(\"after\");return p}";
+        let start = lib.find("self.x+1").unwrap();
+        let r=module_program("use lib::make;func arg()->int8{print(\"arg\");return 1}func main(){let v=make().fail(arg());print(\"after-main\")}",lib,profile);
+        assert!(!r.status.success());
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#1:{start}..{}",
+                    start + "self.x+1".len()
+                )
+                .as_str()
+            )
+        );
+        let source = include_str!(
+            "../../../docs/development-v0.1/method-proposal-fixtures/method_abort.nova"
+        );
+        let r = program_profile(source, profile);
+        assert!(!r.status.success());
+        assert_eq!(r.stdout, b"before\n");
+        let start = source.find("self.x+1").unwrap();
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#0:{start}..{}",
+                    start + "self.x+1".len()
+                )
+                .as_str()
+            )
+        );
+    }
+}

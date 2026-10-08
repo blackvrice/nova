@@ -2590,3 +2590,90 @@ fn p21_alias_checked_and_resolution_metadata_forgeries_are_rejected() {
         Err(nova_typecheck::CheckError::InvalidResolution)
     );
 }
+
+#[test]
+fn p22_method_main_is_not_entry_and_receiver_snapshot_proof_survives_forgery() {
+    let source="struct P{let x:int;func main(self)->int{return self.x};func f(self,n:int=2)->int{return self.x+n}}func main(){let p=P(3);let x=p.f()}";
+    let module = pass(source);
+    let entry = CalleeId(
+        module
+            .callees
+            .iter()
+            .position(|c| Some(c.definition) == module.entry_definition())
+            .unwrap(),
+    );
+    assert!(module.callees[entry.0].parameters.is_empty());
+    let main = body_named(&module, "main");
+    // The method main has a receiver; the executable root has no parameters.
+    assert_eq!(main.parameters.len(), 1);
+    let index = module
+        .bodies
+        .iter()
+        .position(|b| b.callee == entry)
+        .unwrap();
+    let mut bad = pass(source);
+    let statement = bad.bodies[index]
+        .blocks
+        .iter_mut()
+        .flat_map(|b| &mut b.statements)
+        .find(|s| {
+            matches!(
+                s.kind,
+                StatementKind::Assign(_, Rvalue::Use(Operand::Place(_)))
+            )
+        })
+        .unwrap();
+    let StatementKind::Assign(_, ref mut value) = statement.kind;
+    *value = Rvalue::Use(Operand::Constant(Constant::Int32(3)));
+    assert!(!validate(&bad).is_empty());
+    let mut bad = pass(source);
+    let call = bad.bodies[index]
+        .blocks
+        .iter_mut()
+        .filter_map(|b| b.terminator.as_mut())
+        .find(|t| matches!(t.kind, TerminatorKind::Call { .. }))
+        .unwrap();
+    if let TerminatorKind::Call { arguments, .. } = &mut call.kind {
+        arguments.swap(0, 1);
+    }
+    assert!(!validate(&bad).is_empty());
+}
+
+#[test]
+fn p22_method_owner_binding_and_static_callee_tables_cannot_be_forged() {
+    let source =
+        "struct P{let x:int;func f(self)->int{return self.x}}func main(){let p=P(2);let x=p.f()}";
+    let mut db = SourceDatabase::default();
+    let file = db.add("method.nova", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    let hir = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let mut resolved = resolve(&hir);
+    let mut checked = check(&hir, &resolved).unwrap();
+    let projection = checked
+        .method_callees
+        .iter()
+        .position(Option::is_some)
+        .unwrap();
+    checked.method_callees[projection] = Some(nova_resolve::DefId(0));
+    assert!(lower(&hir, &resolved, &checked, false).is_err());
+    let method = *resolved.method_owners.keys().next().unwrap();
+    resolved
+        .method_owners
+        .insert(method, nova_resolve::DefId(0));
+    assert!(check(&hir, &resolved).is_err());
+    let mut module = pass(source);
+    let body = module
+        .bodies
+        .iter_mut()
+        .find(|b| module.callees[b.callee.0].name == "f")
+        .unwrap();
+    let t = body
+        .blocks
+        .iter_mut()
+        .filter_map(|b| b.terminator.as_mut())
+        .find(|t| matches!(t.kind, TerminatorKind::Return(_)))
+        .unwrap();
+    t.kind = TerminatorKind::Return(Operand::Constant(Constant::Int32(7)));
+    assert!(!validate(&module).is_empty());
+}

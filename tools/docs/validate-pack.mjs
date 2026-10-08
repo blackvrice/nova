@@ -864,18 +864,18 @@ assert(aliasMain.includes('use types::Small as Tiny') && aliasMain.includes('fun
   && aliasTypes.includes('value:Small=3'), 'P21 missing forward/scope/namespace/Tuple/cast/try/default data');
 checks.push('P21 Accepted ledger·P20 program 한 production 확장/alias_decl 추가·55-production EBNF/기존 53개 보존·두 파일/정상 1/부정 16 UTF-8 Span·검증된 8줄 metadata (문서 검사 자체는 Compiler/Native 실행 아님)');
 
-const methodProposal = manifest.draft_proposals?.find(p => p.id === 'P22');
-assert(methodProposal?.status === 'Draft' && methodProposal?.implementation_verified === false
+const methodProposal = manifest.accepted_proposals?.find(p => p.id === 'P22');
+assert(methodProposal?.status === 'Accepted' && methodProposal?.implementation_verified === true && methodProposal?.approval_date === '2026-10-08'
   && methodProposal?.document === 'METHOD_STAGE_B_PROPOSAL.md' && methodProposal?.grammar === 'GRAMMAR_STAGE_B_METHOD.ebnf'
-  && !manifest.accepted_proposals?.some(p => p.id === 'P22'), 'P22 invalid Draft ledger');
+  && !manifest.draft_proposals?.some(p => p.id === 'P22'), 'P22 invalid Accepted ledger');
 const methodText = fs.readFileSync(path.join(pack, 'METHOD_STAGE_B_PROPOSAL.md'), 'utf8');
-assert(methodText.includes('Draft / 사용자 승인 대기 / 미구현') && methodText.includes('54개 보존')
+assert(methodText.includes('Accepted / 2026-10-08 사용자 승인 / 구현 완료') && methodText.includes('54개 보존')
   && methodText.includes('bundle 1,024개') && methodText.includes('immutable Read') && methodText.includes('10,000-node')
   && methodText.includes('receiver slot') && methodText.includes('API leak'), 'P22 missing boundaries');
 validateGrammar('GRAMMAR_STAGE_B_METHOD.ebnf');
 const methodGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_METHOD.ebnf'), 'utf8');
 const methodProductions = productions(methodGrammar);
-assert(methodGrammar.includes('Draft, unapproved, unimplemented') && methodProductions.size === 58, 'P22 invalid grammar');
+assert(methodGrammar.includes('Accepted by the user on 2026-10-08') && methodProductions.size === 58, 'P22 invalid grammar');
 for (const [name, value] of aliasProductions) {
   if (name !== 'struct_decl') assert(methodProductions.get(name) === value, 'P22 changed approved production '+name);
 }
@@ -886,36 +886,36 @@ assert(methodProductions.get('struct_member') === 'field_decl|[visibility],metho
 const methodRoot=path.join(pack,'method-proposal-fixtures');
 const methodFixture=JSON.parse(fs.readFileSync(path.join(methodRoot,'expected.json'),'utf8'));
 const methodOutput='sum=8\nalias=7\ncopy=3/5\ntext=3/4\nprivate=3\nmember-main=4\ntuple=7\nreceiver\narg\norder=9\nfetch\nafter\nok=11\nfetch\nerror=-1\n';
-assert(methodFixture.proposal === 'P22' && methodFixture.status === 'Draft' && methodFixture.implementation_verified === false
-  && !methodFixture.approval_date && !methodFixture.validated_result && methodFixture.entry === 'main.nova'
-  && methodFixture.source_root === '.' && JSON.stringify(methodFixture.reachable_modules) === '["main","types"]', 'P22 invalid unverified fixture ledger');
-assert(methodFixture.proposed_result?.check_exit === 0 && methodFixture.proposed_result?.native_exit === 0
-  && methodFixture.proposed_result?.stdout === methodOutput && methodFixture.proposed_result?.stderr === '', 'P22 proposed output mismatch');
+assert(methodFixture.proposal === 'P22' && methodFixture.status === 'Accepted' && methodFixture.implementation_verified === true
+  && methodFixture.approval_date === '2026-10-08' && !methodFixture.proposed_result && methodFixture.entry === 'main.nova'
+  && methodFixture.source_root === '.' && JSON.stringify(methodFixture.reachable_modules) === '["main","types"]', 'P22 invalid verified fixture ledger');
+assert(methodFixture.validated_result?.check_exit === 0 && methodFixture.validated_result?.native_exit === 0
+  && methodFixture.validated_result?.stdout === methodOutput && methodFixture.validated_result?.stderr === '', 'P22 validated output mismatch');
 assert(methodFixture.negative_cases?.length === 20 && methodFixture.positive_cases?.length === 1
   && methodFixture.runtime_cases?.length === 1, 'P22 invalid case counts');
 for (const c of [...methodFixture.negative_cases, ...methodFixture.runtime_cases]) {
   const bytes=fs.readFileSync(path.join(methodRoot,c.source));
   assert(path.basename(c.source) === c.source && c.primary.start >= 0 && c.primary.end <= bytes.length
     && c.primary.end > c.primary.start && bytes.subarray(c.primary.start,c.primary.end).toString('utf8') === c.primary_text
-    && !c.validated_result, 'P22 invalid UTF-8 Span '+c.name);
+, 'P22 invalid UTF-8 Span '+c.name);
   if (c.expected_diagnostic) assert(knownCodes.has(c.expected_diagnostic), 'P22 unknown code '+c.name);
 }
 for (const c of methodFixture.positive_cases) {
-  assert(c.source === 'newline_and_self.nova' && fs.existsSync(path.join(methodRoot,c.source)) && !c.validated_result
-    && c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
-    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '', 'P22 invalid unverified positive');
+  assert(c.source === 'newline_and_self.nova' && fs.existsSync(path.join(methodRoot,c.source)) && !c.proposed_result
+    && c.validated_result?.check_exit === 0 && c.validated_result?.native_exit === 0
+    && c.validated_result?.stdout === '' && c.validated_result?.stderr === '', 'P22 invalid verified positive');
 }
 const methodAbort=methodFixture.runtime_cases[0];
-assert(methodAbort.proposed_result?.check_exit === 0 && methodAbort.proposed_result?.native_exit === 1
-  && methodAbort.proposed_result?.stdout === 'before\n'
-  && methodAbort.proposed_result?.stderr_first_line === `Nova panic: integer overflow at file#0:${methodAbort.primary.start}..${methodAbort.primary.end}`, 'P22 invalid proposed checked Abort');
+assert(methodAbort.validated_result?.check_exit === 0 && methodAbort.validated_result?.native_exit === 1
+  && methodAbort.validated_result?.stdout === 'before\n'
+  && methodAbort.validated_result?.stderr_first_line === `Nova panic: integer overflow at file#0:${methodAbort.primary.start}..${methodAbort.primary.end}`, 'P22 invalid validated checked Abort');
 const methodMain=fs.readFileSync(path.join(methodRoot,'main.nova'),'utf8');
 const methodTypes=fs.readFileSync(path.join(methodRoot,'types.nova'),'utf8');
 assert(methodMain.includes('use types::PointType') && methodMain.includes('make().sum(bias:mark("arg",2))')
   && methodMain.includes('try p.checked(fail:fail)') && methodMain.includes('p.main()') && methodMain.includes('SHIFT:int8=20')
   && methodTypes.includes('func sum(self,bias:Small=SHIFT)') && methodTypes.includes('private func secret(self)')
   && methodTypes.includes('var copy=self') && methodTypes.includes('type Small=int8'), 'P22 missing receiver/scope/alias/named/default/try data');
-checks.push('P22 Draft/미승인·미구현 ledger·P21 struct_decl 한 production 확장/세 production 추가·58-production EBNF/기존 54개 보존·두 파일/정상 1/부정 20/Runtime 1 UTF-8 Span·제안 15줄 metadata (Compiler/Native 실행 아님)');
+checks.push('P22 Accepted ledger·P21 struct_decl 한 production 확장/세 production 추가·58-production EBNF/기존 54개 보존·두 파일/정상 1/부정 20/Runtime 1 UTF-8 Span·검증된 15줄 metadata (문서 검사 자체는 Compiler/Native 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

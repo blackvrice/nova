@@ -1025,3 +1025,61 @@ fn p21_alias_source_shape_token_boundaries_and_file_origins_gate_external_ast() 
         assert!(lower(&db, &ast, r).is_err());
     }
 }
+
+#[test]
+fn p22_external_method_source_receiver_owner_and_punctuation_are_proven() {
+    let text = "struct P{private func 名(self, a:int=1)->int{return a}}";
+    let mut db = SourceDatabase::default();
+    let file = db.add("method.nova", text.into()).unwrap();
+    let lexed = nova_lexer::lex(&db, file).unwrap();
+    let p = nova_parser::parse(&db, file, &nova_lexer::normalize_ends(&lexed.tokens)).unwrap();
+    assert!(!p.has_errors());
+    lower(&db, &p.arena, p.root).unwrap();
+    for change in 0..8 {
+        let mut ast = Arena::default();
+        let mut ids = vec![];
+        for (id, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let mut span = n.span;
+            if let NodeKind::Method {
+                ref mut keyword,
+                ref mut name,
+                ref mut visibility,
+                ref mut visibility_keyword,
+                ref mut left_paren,
+                ref mut right_paren,
+                ref mut receiver_comma,
+                ..
+            } = kind
+            {
+                match change {
+                    0 => *keyword = *left_paren,
+                    1 => *name = Span::new(file, name.start(), name.end() - 1).unwrap(),
+                    2 => *visibility = nova_ast::Visibility::Public,
+                    3 => *visibility_keyword = None,
+                    4 => *left_paren = *right_paren,
+                    5 => *right_paren = *left_paren,
+                    6 => *receiver_comma = None,
+                    _ => {}
+                }
+            }
+            if change == 7 && matches!(kind, NodeKind::Receiver { .. }) {
+                span = Span::new(file, span.start(), span.end() - 1).unwrap();
+                kind = NodeKind::Receiver { name: span };
+            }
+            ids.push(
+                ast.insert(
+                    kind,
+                    span,
+                    n.children.iter().map(|c| ids[c.index()]).collect(),
+                )
+                .unwrap(),
+            );
+            assert_eq!(ids.last().unwrap().index(), id.index());
+        }
+        assert!(
+            lower(&db, &ast, ids[p.root.index()]).is_err(),
+            "change {change}"
+        );
+    }
+}

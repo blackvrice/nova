@@ -3756,3 +3756,87 @@ fn p21_alias_1024_1025_small_stack_and_expansion_limits() {
         .iter()
         .any(|d| d.code.to_string() == "N1102"));
 }
+
+#[test]
+fn p22_methods_forward_mutual_recursion_self_shadow_and_member_namespaces() {
+    pass("struct P{var x:int;func one(self,n:int)->int{if n==0{return self.x}else{return self.two(n-1)}}func two(self,n:int)->int{return self.one(n)}func copied(self)->P{var p=self;p.x=2;return p}func shadow(self)->int{if true{var self=3;self=4;return self}else{return 0}}}struct Q{func one(self)->int{return 7}}func one()->int{return 1}func main(){let p=P(1);let v=p.one(4);let q=Q();let n=q.one()}");
+    assert_eq!(
+        codes(&frontend("struct P{func f(self,self:int){}}")),
+        ["N2002"]
+    );
+    assert_eq!(
+        codes(&frontend("struct P{func f(self){self=P()}}")),
+        ["N3004"]
+    );
+    assert_eq!(codes(&frontend("struct P{func f(self){f()}}")), ["N2001"]);
+    assert_eq!(
+        codes(&frontend(
+            "struct P{func f(self){}}func main(){let p=P();let v=(p.f)()}"
+        )),
+        ["N1102"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct P{func f(self){}}func main(){let p=P();let v=p.f as int}"
+        )),
+        ["N1102"]
+    );
+}
+#[test]
+fn p22_receiver_slot_defaults_and_method_calls_cannot_be_forged() {
+    let source="const self=3;struct P{let x:int;func f(self,n:int=self)->int{return self.x+n}}func main(){let p=P(1);let v=p.f(n:2);let d=p.f()}";
+    let (hir, resolved, checked) = pass(source).semantic.unwrap();
+    let method = resolved.method_owners.keys().copied().next().unwrap();
+    assert_eq!(
+        checked.signatures[method]
+            .as_ref()
+            .unwrap()
+            .parameters
+            .len(),
+        2
+    );
+    for mapping in checked.named_calls.iter().flatten() {
+        assert!(mapping.parameters.iter().all(|i| *i >= 1));
+    }
+    let projection = checked
+        .method_callees
+        .iter()
+        .position(Option::is_some)
+        .unwrap();
+    assert_eq!(checked.method_callees[projection].unwrap().0, method);
+    assert!(hir
+        .method_owner(match resolved.definitions[method].kind {
+            DefinitionKind::Function(id) => id,
+            _ => panic!(),
+        })
+        .is_some());
+}
+#[test]
+fn p22_method_and_field_limits_are_independent_and_const_permissions_are_static() {
+    let mut source = String::from("struct P{let x:int;");
+    for i in 0..1024 {
+        source.push_str(&format!("func m{i}(self){{}}"));
+    }
+    source.push('}');
+    pass(&source);
+    source.pop();
+    let at = source.len() + 5;
+    source.push_str("func overflow(self){}}");
+    let f = frontend(&source);
+    assert_eq!(codes(&f), ["N8901"]);
+    let d = &f.semantic.as_ref().unwrap().2.diagnostics;
+    let r = &f.semantic.as_ref().unwrap().1.diagnostics;
+    let diagnostic = r
+        .iter()
+        .chain(d)
+        .find(|d| d.code.to_string() == "N8901")
+        .unwrap();
+    assert_eq!(diagnostic.primary.span.start(), at);
+    assert!(!diagnostic.notes.is_empty());
+    assert_eq!(
+        codes(&frontend(
+            "struct P{func yes(self)->bool{return true}}const C=false&&P().yes()"
+        )),
+        ["N3201"]
+    );
+}

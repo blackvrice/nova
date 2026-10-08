@@ -32,6 +32,8 @@ pub struct Signature {
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Checked {
+    /// P22 direct method projection identity; no bound function values.
+    pub method_callees: Vec<Option<DefId>>,
     /// P21 original alias DefId to canonical TypeId; source target remains in HIR.
     pub aliases: std::collections::BTreeMap<usize, TypeId>,
     pub ranges: Vec<Option<RangeInfo>>,
@@ -164,6 +166,7 @@ impl fmt::Display for CheckError {
 impl std::error::Error for CheckError {}
 
 struct Checker<'a> {
+    method_heads: std::collections::BTreeSet<usize>,
     parameter_indices:
         std::collections::HashMap<usize, std::collections::HashMap<nova_hir::SymbolId, usize>>,
     argument_mappings: Vec<Option<arguments::ArgumentMapping>>,
@@ -203,6 +206,7 @@ enum Work {
     Exit(HirId, Context),
     AssignmentValue(HirId, Context),
     MatchArms(HirId, Context),
+    MethodArguments(HirId, Context),
     Peer {
         literal: HirId,
         typed: HirId,
@@ -260,6 +264,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             | (DefinitionKind::Struct(_), HirKind::Struct { name, .. })
             | (DefinitionKind::Function(_), HirKind::Function { name, .. })
             | (DefinitionKind::Parameter(_), HirKind::Parameter { name, .. })
+            | (DefinitionKind::Parameter(_), HirKind::Receiver { name, .. })
             | (DefinitionKind::Local(_), HirKind::Binding { name, .. }) => name,
             (
                 DefinitionKind::GlobalConst(_),
@@ -299,6 +304,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         types.intern(ty);
     }
     let result = Checked {
+        method_callees: vec![None; size],
         aliases: Default::default(),
         types,
         structs: Default::default(),
@@ -356,6 +362,12 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 flags
             });
     let mut checker = Checker {
+        method_heads: module
+            .nodes()
+            .iter()
+            .filter(|n| n.kind == HirKind::Call)
+            .filter_map(|n| n.children.first().map(|c| c.0))
+            .collect(),
         parameter_indices: Default::default(),
         argument_mappings: (0..size).map(|_| None).collect(),
         default_functions: Default::default(),
@@ -397,7 +409,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     checker.collect_parameter_indices();
     checker.check_globals();
     checker.check_defaults();
-    let items = module.items().collect::<Vec<_>>();
+    let items = module.semantic_items();
     for item in items {
         let node = &module.nodes()[item.0];
         let HirKind::Function { parameters, .. } = node.kind else {
@@ -584,6 +596,20 @@ impl Checker<'_> {
                             spans.push(None);
                             continue;
                         }
+                        if matches!(
+                            self.module.nodes()[parameter.0].kind,
+                            HirKind::Receiver { .. }
+                        ) {
+                            let owner = self.resolved.method_owners[&index];
+                            let ty = self
+                                .result
+                                .types
+                                .intern(Type::Struct(nova_types::StructId(owner.0)));
+                            self.result.type_table[parameter.0] = ty;
+                            parameter_types.push(ty);
+                            spans.push(Some(self.module.nodes()[parameter.0].span));
+                            continue;
+                        }
                         let ty_id = self.module.nodes()[parameter.0].children[0];
                         parameter_types.push(self.type_syntax(ty_id));
                         spans.push(Some(self.module.nodes()[ty_id.0].span));
@@ -621,6 +647,10 @@ impl Checker<'_> {
                 }
                 DefinitionKind::TypeAlias(_) => {}
                 DefinitionKind::Parameter(id) => {
+                    if matches!(self.module.nodes()[id.0].kind, HirKind::Receiver { .. }) {
+                        self.result.definition_types[index] = self.result.type_table[id.0];
+                        continue;
+                    }
                     let ty_id = self.module.nodes()[id.0].children[0];
                     // Function signatures have already visited parameter syntax.
                     let ty = self.result.type_table[ty_id.0];
@@ -762,6 +792,34 @@ impl Checker<'_> {
                     ));
                     continue;
                 }
+                Work::MethodArguments(id, cx) => {
+                    self.prepare_named_call(id);
+                    let node = &self.module.nodes()[id.0];
+                    let def = self.callee_definition(node.children[0]);
+                    for (ordinal, &child) in node.children[1..].iter().enumerate().rev() {
+                        let at = self.argument_mappings[id.0]
+                            .as_ref()
+                            .map_or(Some(ordinal), |m| m.parameters[ordinal]);
+                        let signature = def.and_then(|d| self.result.signatures[d.0].as_ref());
+                        let expected = signature
+                            .and_then(|s| at.and_then(|a| s.parameters.get(a)))
+                            .copied();
+                        let expected_span = signature
+                            .and_then(|s| at.and_then(|a| s.parameter_spans.get(a)))
+                            .copied()
+                            .flatten();
+                        pending.push(Work::Enter(
+                            child,
+                            Context {
+                                expected,
+                                expected_span,
+                                direct_callee: false,
+                                ..cx
+                            },
+                        ));
+                    }
+                    continue;
+                }
                 Work::Enter(id, cx) => (id, cx, false),
                 Work::Exit(id, cx) => (id, cx, true),
             };
@@ -773,6 +831,24 @@ impl Checker<'_> {
             }
             let node = &self.module.nodes()[id.0];
             pending.push(Work::Exit(id, context));
+            if node.kind == HirKind::Call
+                && matches!(
+                    self.module.nodes()[node.children[0].0].kind,
+                    HirKind::Projection { .. }
+                )
+            {
+                pending.push(Work::MethodArguments(id, context));
+                pending.push(Work::Enter(
+                    node.children[0],
+                    Context {
+                        expected: None,
+                        expected_span: None,
+                        direct_callee: true,
+                        ..context
+                    },
+                ));
+                continue;
+            }
             if node.kind == HirKind::Call {
                 self.prepare_named_call(id);
             }
@@ -1159,6 +1235,9 @@ impl Checker<'_> {
         }
     }
     fn callee_definition(&self, mut id: HirId) -> Option<DefId> {
+        if let Some(def) = self.result.method_callees[id.0] {
+            return Some(def);
+        }
         while self.module.nodes()[id.0].kind == HirKind::Group {
             id = self.module.nodes()[id.0].children[0];
         }
@@ -1471,7 +1550,9 @@ impl Checker<'_> {
             HirKind::TupleProjection { index, index_span } => {
                 self.tuple_projection(id, *index, *index_span)
             }
-            HirKind::Projection { name, name_span } => self.projection(id, *name, *name_span),
+            HirKind::Projection { name, name_span } => {
+                self.projection(id, *name, *name_span, context.direct_callee)
+            }
             HirKind::Break | HirKind::Continue => {
                 if context.loop_depth == 0 {
                     self.report(3002, node.span, "jump requires an enclosing loop", None);

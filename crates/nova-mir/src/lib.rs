@@ -268,6 +268,8 @@ pub struct Module {
     constructor_provenance: std::collections::BTreeMap<usize, StructId>,
     mutation_provenance: std::collections::BTreeMap<usize, (DefId, Vec<FieldId>)>,
     mutable_definitions: std::collections::BTreeSet<usize>,
+    method_owners: std::collections::BTreeMap<usize, StructId>,
+    method_bodies: std::collections::BTreeMap<usize, Body>,
     entry_main: Option<(Callee, SourceInfo)>,
     pub callees: Vec<Callee>,
     pub bodies: Vec<Body>,

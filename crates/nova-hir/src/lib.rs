@@ -39,6 +39,11 @@ pub enum HirKind {
         name_span: Span,
         parameters: usize,
     },
+    Receiver {
+        name: SymbolId,
+        name_span: Span,
+        visibility: Visibility,
+    },
     Parameter {
         name: SymbolId,
         name_span: Span,
@@ -174,8 +179,20 @@ pub struct HirNode {
     pub children: Vec<HirId>,
 }
 
+/// P22 original method punctuation and nominal owner, retained across bundle rebasing.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MethodSource {
+    pub owner: HirId,
+    pub keyword: Span,
+    pub name: Span,
+    pub visibility_keyword: Option<Span>,
+    pub left_paren: Span,
+    pub right_paren: Span,
+    pub receiver_comma: Option<Span>,
+}
 #[derive(Debug, Eq, PartialEq)]
 pub struct Module {
+    method_sources: HashMap<usize, MethodSource>,
     nodes: Vec<HirNode>,
     symbols: Vec<String>,
     root: HirId,
@@ -209,6 +226,29 @@ impl Module {
                 }
             })
     }
+    /// Top-level items and nested methods in declaration order.
+    pub fn semantic_items(&self) -> Vec<HirId> {
+        let mut out = vec![];
+        for item in self.items() {
+            out.push(item);
+            if matches!(self.nodes[item.0].kind, HirKind::Struct { .. }) {
+                out.extend(
+                    self.nodes[item.0]
+                        .children
+                        .iter()
+                        .copied()
+                        .filter(|id| matches!(self.nodes[id.0].kind, HirKind::Function { .. })),
+                );
+            }
+        }
+        out
+    }
+    pub fn method_source(&self, id: HirId) -> Option<&MethodSource> {
+        self.method_sources.get(&id.0)
+    }
+    pub fn method_owner(&self, id: HirId) -> Option<HirId> {
+        self.method_source(id).map(|m| m.owner)
+    }
     pub fn owner(&self, id: HirId) -> Option<usize> {
         let node = self.node(id)?;
         self.units
@@ -216,6 +256,13 @@ impl Module {
             .position(|unit| unit.file == node.span.file())
     }
     pub fn visibility(&self, id: HirId) -> Visibility {
+        if self.method_owner(id).is_some() {
+            if let Some(receiver) = self.nodes[id.0].children.first() {
+                if let HirKind::Receiver { visibility, .. } = self.nodes[receiver.0].kind {
+                    return visibility;
+                }
+            }
+        }
         let Some(unit) = self.owner(id) else {
             return Visibility::Private;
         };
@@ -263,6 +310,7 @@ impl Module {
             return Err(LoweringError::MalformedAst);
         }
         let mut out = Self {
+            method_sources: HashMap::new(),
             nodes: vec![],
             symbols: vec![],
             root: HirId(0),
@@ -283,6 +331,11 @@ impl Module {
                 return Err(LoweringError::MalformedAst);
             }
             let offset = out.nodes.len();
+            for (&id, original) in &module.method_sources {
+                let mut source = original.clone();
+                source.owner.0 += offset;
+                out.method_sources.insert(id + offset, source);
+            }
             let mapping = module
                 .symbols
                 .iter()
@@ -301,6 +354,7 @@ impl Module {
                     | HirKind::Binder { name, .. }
                     | HirKind::Field { name, .. }
                     | HirKind::Projection { name, .. }
+                    | HirKind::Receiver { name, .. }
                     | HirKind::Parameter { name, .. }
                     | HirKind::NamedArgument { name, .. }
                     | HirKind::Binding { name, .. }
@@ -431,6 +485,8 @@ pub fn lower(
     for (id, node) in arena.iter() {
         sources.slice(node.span)?;
         if let NodeKind::Function { name, .. }
+        | NodeKind::Method { name, .. }
+        | NodeKind::Receiver { name }
         | NodeKind::Parameter { name }
         | NodeKind::Binding { name, .. } = node.kind
         {
@@ -439,6 +495,153 @@ pub fn lower(
                 || name.start() < node.span.start()
                 || name.end() > node.span.end()
             {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if matches!(node.kind, NodeKind::Struct { .. })
+            && node
+                .children
+                .iter()
+                .any(|c| matches!(arena.get(*c).unwrap().kind, NodeKind::Method { .. }))
+            && node.children.windows(2).any(|pair| {
+                arena.get(pair[0]).unwrap().span.end() > arena.get(pair[1]).unwrap().span.start()
+            })
+        {
+            return Err(LoweringError::MalformedAst);
+        }
+        if let NodeKind::Receiver { name } = node.kind {
+            let text = sources.file(name.file())?.text();
+            if name != node.span
+                || sources.slice(name)? != "self"
+                || !token_boundary(text, name)
+                || arena
+                    .iter()
+                    .filter(|(_, p)| {
+                        matches!(p.kind, NodeKind::Method { .. }) && p.children.first() == Some(&id)
+                    })
+                    .count()
+                    != 1
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::Method {
+            keyword,
+            name,
+            visibility,
+            visibility_keyword,
+            left_paren,
+            right_paren,
+            receiver_comma,
+            parameters,
+            has_return_type,
+        } = node.kind
+        {
+            if !valid_shape(arena, node)
+                || arena
+                    .iter()
+                    .filter(|(_, p)| {
+                        matches!(p.kind, NodeKind::Struct { .. }) && p.children.contains(&id)
+                    })
+                    .count()
+                    != 1
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+            let text = sources.file(node.span.file())?.text();
+            let receiver = arena
+                .get(node.children[0])
+                .ok_or(LoweringError::MalformedAst)?
+                .span;
+            let body = arena
+                .get(*node.children.last().ok_or(LoweringError::MalformedAst)?)
+                .ok_or(LoweringError::MalformedAst)?
+                .span;
+            let gap = |a: Span, b: Span, punctuation: &[&str]| -> Result<bool, LoweringError> {
+                Ok(a.file() == b.file()
+                    && a.end() <= b.start()
+                    && type_punctuation(
+                        sources.slice(Span::new(a.file(), a.end(), b.start())?)?,
+                        punctuation,
+                    ))
+            };
+            for (span, spelling) in [(keyword, "func"), (left_paren, "("), (right_paren, ")")] {
+                if !inside(node.span, span) || sources.slice(span)? != spelling {
+                    return Err(LoweringError::MalformedAst);
+                }
+            }
+            if !inside(node.span, name)
+                || !identifier(sources.slice(name)?)
+                || !token_boundary(text, name)
+                || !token_boundary(text, keyword)
+                || !gap(keyword, name, &[""])?
+                || !gap(name, left_paren, &[""])?
+                || !gap(left_paren, receiver, &[""])?
+                || body.end() != node.span.end()
+                || node.children.windows(2).any(|pair| {
+                    arena.get(pair[0]).unwrap().span.end()
+                        > arena.get(pair[1]).unwrap().span.start()
+                })
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+            if let Some(v) = visibility_keyword {
+                let spelling = match visibility {
+                    Visibility::Public => "public",
+                    Visibility::Private => "private",
+                    Visibility::Internal => "internal",
+                };
+                if !inside(node.span, v)
+                    || sources.slice(v)? != spelling
+                    || !token_boundary(text, v)
+                    || v.start() != node.span.start()
+                    || !gap(v, keyword, &[""])?
+                {
+                    return Err(LoweringError::MalformedAst);
+                }
+            } else if visibility != Visibility::Internal || keyword.start() != node.span.start() {
+                return Err(LoweringError::MalformedAst);
+            }
+            let after_receiver = if parameters > 1 {
+                arena.get(node.children[1]).unwrap().span
+            } else {
+                right_paren
+            };
+            if let Some(comma) = receiver_comma {
+                if !inside(node.span, comma)
+                    || sources.slice(comma)? != ","
+                    || !gap(receiver, comma, &[""])?
+                    || !gap(comma, after_receiver, &[""])?
+                {
+                    return Err(LoweringError::MalformedAst);
+                }
+            } else if parameters != 1 || !gap(receiver, right_paren, &[""])? {
+                return Err(LoweringError::MalformedAst);
+            }
+            for pair in node.children[1..parameters].windows(2) {
+                if !gap(
+                    arena.get(pair[0]).unwrap().span,
+                    arena.get(pair[1]).unwrap().span,
+                    &[","],
+                )? {
+                    return Err(LoweringError::MalformedAst);
+                }
+            }
+            if parameters > 1
+                && !gap(
+                    arena.get(node.children[parameters - 1]).unwrap().span,
+                    right_paren,
+                    &["", ","],
+                )?
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+            if has_return_type {
+                let ty = arena.get(node.children[parameters]).unwrap().span;
+                if !gap(right_paren, ty, &["->"])? || !gap(ty, body, &[""])? {
+                    return Err(LoweringError::MalformedAst);
+                }
+            } else if !gap(right_paren, body, &[""])? {
                 return Err(LoweringError::MalformedAst);
             }
         }
@@ -870,6 +1073,7 @@ pub fn lower(
         }
     }
     let mut module = Module {
+        method_sources: HashMap::new(),
         nodes: vec![],
         symbols: vec![],
         root: HirId(0),
@@ -928,6 +1132,8 @@ pub fn lower(
             }
             NodeKind::Error => HirKind::Error,
             NodeKind::Function { name, .. }
+            | NodeKind::Method { name, .. }
+            | NodeKind::Receiver { name }
             | NodeKind::Parameter { name }
             | NodeKind::Binding { name, .. }
                 if name.start() == name.end() =>
@@ -938,6 +1144,12 @@ pub fn lower(
                 name,
                 parameters,
                 has_return_type,
+            }
+            | NodeKind::Method {
+                name,
+                parameters,
+                has_return_type,
+                ..
             } => {
                 if !has_return_type {
                     let unit = HirId(module.nodes.len());
@@ -1019,6 +1231,24 @@ pub fn lower(
                 name_span: name,
             },
             NodeKind::DefaultValue { equals } => HirKind::DefaultValue { equals },
+            NodeKind::Receiver { name } => {
+                let visibility = arena
+                    .iter()
+                    .find_map(|(_, parent)| {
+                        if let NodeKind::Method { visibility, .. } = parent.kind {
+                            if parent.children.first() == Some(&id) {
+                                return Some(visibility);
+                            }
+                        }
+                        None
+                    })
+                    .ok_or(LoweringError::MalformedAst)?;
+                HirKind::Receiver {
+                    name: intern(name, &mut module, &mut interned)?,
+                    name_span: name,
+                    visibility,
+                }
+            }
             NodeKind::Parameter { name } => HirKind::Parameter {
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
@@ -1112,6 +1342,29 @@ pub fn lower(
             NodeKind::Interpolation => HirKind::Interpolation,
         };
         let hir = HirId(module.nodes.len());
+        if let NodeKind::Method {
+            keyword,
+            name,
+            visibility_keyword,
+            left_paren,
+            right_paren,
+            receiver_comma,
+            ..
+        } = node.kind
+        {
+            module.method_sources.insert(
+                hir.0,
+                MethodSource {
+                    owner: HirId(0),
+                    keyword,
+                    name,
+                    visibility_keyword,
+                    left_paren,
+                    right_paren,
+                    receiver_comma,
+                },
+            );
+        }
         module.nodes.push(HirNode {
             kind,
             span: node.span,
@@ -1119,6 +1372,15 @@ pub fn lower(
             children,
         });
         mapping.push(hir);
+    }
+    for (owner, node) in module.nodes.iter().enumerate() {
+        if matches!(node.kind, HirKind::Struct { .. }) {
+            for member in &node.children {
+                if let Some(source) = module.method_sources.get_mut(&member.0) {
+                    source.owner = HirId(owner);
+                }
+            }
+        }
     }
     module.root = mapping[root.index()];
     module.units.push(ModuleUnit {
@@ -1142,6 +1404,16 @@ fn identifier(text: &str) -> bool {
         && nova_syntax::Keyword::from_spelling(text).is_none()
 }
 
+fn token_boundary(text: &str, span: Span) -> bool {
+    !text
+        .get(..span.start())
+        .and_then(|s| s.chars().next_back())
+        .is_some_and(unicode_ident::is_xid_continue)
+        && !text
+            .get(span.end()..)
+            .and_then(|s| s.chars().next())
+            .is_some_and(unicode_ident::is_xid_continue)
+}
 fn inside(parent: Span, child: Span) -> bool {
     parent.file() == child.file() && parent.start() <= child.start() && child.end() <= parent.end()
 }
@@ -1289,6 +1561,21 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 && (!has_return_type || ty(kinds[parameters]))
                 && matches!(kinds.last(), Some(NodeKind::Block | NodeKind::Error))
         }
+        NodeKind::Method {
+            parameters,
+            has_return_type,
+            ..
+        } => {
+            parameters > 0
+                && kinds.len() == parameters + usize::from(has_return_type) + 1
+                && matches!(kinds.first(), Some(NodeKind::Receiver { .. }))
+                && kinds[1..parameters]
+                    .iter()
+                    .all(|k| matches!(k, NodeKind::Parameter { .. } | NodeKind::Error))
+                && (!has_return_type || ty(kinds[parameters]))
+                && matches!(kinds.last(), Some(NodeKind::Block | NodeKind::Error))
+        }
+        NodeKind::Receiver { .. } => kinds.is_empty(),
         NodeKind::Visible { .. } => {
             kinds.len() == 1
                 && matches!(
@@ -1347,9 +1634,12 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 )
                 && matches!(kinds[1], NodeKind::Block | NodeKind::Error)
         }
-        NodeKind::Struct { .. } => kinds
-            .iter()
-            .all(|k| matches!(k, NodeKind::Field { .. } | NodeKind::Error)),
+        NodeKind::Struct { .. } => kinds.iter().all(|k| {
+            matches!(
+                k,
+                NodeKind::Field { .. } | NodeKind::Method { .. } | NodeKind::Error
+            )
+        }),
         NodeKind::Field { .. } | NodeKind::TypeAlias { .. } => kinds.len() == 1 && ty(kinds[0]),
         NodeKind::Projection { .. } | NodeKind::TupleProjection { .. } => {
             kinds.len() == 1 && expr(kinds[0])
@@ -1551,7 +1841,7 @@ fn type_punctuation(mut text: &str, expected: &[&str]) -> bool {
             }
         } else {
             let c = text.chars().next().expect("nonempty text");
-            if !matches!(c, '<' | '>' | ',' | '?') || punctuation.len() > 2 {
+            if !matches!(c, '<' | '>' | ',' | '?' | '-') || punctuation.len() > 2 {
                 return false;
             }
             punctuation.push(c);
