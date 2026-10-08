@@ -1,7 +1,7 @@
 {
   "proposal": "P24",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
@@ -14,7 +14,7 @@
     {
       "name": "partial_overlap",
       "source": "partial_overlap.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "partial\n",
@@ -24,7 +24,7 @@
     {
       "name": "union_coverage",
       "source": "union_coverage.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "union\n",
@@ -34,7 +34,7 @@
     {
       "name": "bare_binder",
       "source": "bare_binder.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "binder=2\n",
@@ -281,7 +281,7 @@
         "start": 131,
         "end": 134
       },
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 1,
         "stdout": "before\n",
@@ -289,10 +289,37 @@
       }
     }
   ],
-  "proposed_result": {
+  "approval_date": "2026-10-08",
+  "validated_result": {
     "check_exit": 0,
     "native_exit": 0,
     "stdout": "scrutinee\nnested=7\npacket=9/false/한\nsnapshot=true/6\noriginal=false/false\nsingle=true\nunit\nclassify=3\nafter try\nok=4\nerror=5\nloop=2\n",
     "stderr": ""
+  },
+  "source_sha256": {
+    "alias_head.nova": "69502e3c5ca1c7bed64303cbe209378cef5ec7a1b15d689bcb62cf43f827e4c6",
+    "bare_binder.nova": "7a3a202d24fdd53faf752d65ed8295365525ea5bf7c626493c5c1dcde74964db",
+    "binder_escape.nova": "eb1d59746c2fe73ffb7165f38fbd1183ec61427e0803943a04fe04d1c5fefd73",
+    "bool_on_integer.nova": "0424395d5c1b791b77e910de7094a97e205d6a6e04d1ae9bf6bd15f0b9980cbe",
+    "duplicate_binder.nova": "f10ddf9b7b0f8f084af0b2094cd37e179bf1ac93d39778a7e336e91bca13284f",
+    "duplicate_nested.nova": "13a6ed7f4c2cd2744bffcd98ebe95dc02a8cdd4a76768e0c082e39bfd83da820",
+    "grouped_pattern.nova": "79f181ef3ae53522e9a89d4c9d784237256dbf4dfe5fcdb561b398c2fc1f4525",
+    "immutable_binder.nova": "f5d55c0a8cf0e2aa011f3f28b490a7a42d2e047c42cb3ecfd11d4dfb8c12f32c",
+    "literal_pattern.nova": "2f2aacab3482c1de93ad61cd0c669f2f06099a6ef61903b9a5fc41804c7a8a26",
+    "main.nova": "f577c28d279a3725b6a401569505d44a21b4163f77808bd3e3c69330b3c6affc",
+    "missing_nested.nova": "e802a2b3d491619921186fa28c1c769f3ce0740f774fdd8951defe08b6646907",
+    "nested_abort.nova": "b7bb2e86d372152a6cb9f84a848c625a5e470eeee33d5585ea74e3256cfee698",
+    "nullary_parentheses.nova": "204507f7c0bacfff7aab2a9629c52228a5da8380b628f1f453545c47cb1143d8",
+    "partial_overlap.nova": "a17117e7999ed8d6f758194139cebaf18b4401bf935b72c6eae81093f5137ac3",
+    "payload_arity.nova": "4103a72f519368c0cdb110ff1f1127deb0dcab0757d107c048062c78cd3262be",
+    "root_scalar.nova": "31530c7dbc2f3535ad03ea39e66d42aaa233d0a6a9d714fec5fcf767ab6992da",
+    "tuple_arity.nova": "d79a7f5069fd4b2007167db8b6d34070962983f0fcb9b6352b38cbe820c3bf48",
+    "tuple_on_bool.nova": "8775b6a29857bb743fd4a82ef0b556c9ff5c05089ec6c8adca20709279320fbc",
+    "types.nova": "24276e59f35e821f0076acc83e5cf770b17b4ca7fbcf2121b1772cc4cb7ac783",
+    "union_coverage.nova": "a112475e57c571dfbd7fd81f432714f6418211f20e625587a3b3f76d98185115",
+    "union_unreachable.nova": "fe4feee940c9bfcd0b1213cd43fb8b11117d7352122935f421e9b7a5f322dd91",
+    "unit_on_bool.nova": "7018437ccc1a2c6154d1a07ae53f7db11190eeeea26c228ba7b585b7aa842983",
+    "unknown_variant.nova": "fca38245d9ff4158578413d57299ed4464b1fe4a92e37c41a14f01de25d309dc",
+    "variant_mismatch.nova": "235e50453eb200c2fc34434e4fbfbd9ce5d60fb949d9f0b4b5a1fafddf665bf4"
   }
 }

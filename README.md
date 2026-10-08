@@ -206,8 +206,9 @@ Copy struct 이름 생성자는 P23을 따른다. runtime/parameter 의존 defau
 [P23 Copy struct 생성자 이름 인수](docs/development-v0.1/STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)는 **Accepted / 구현·검증 완료**다.
 `Point(y:2,x:1)`의 field 대응·source-order 평가/snapshot·const/default·private 접근·Source/MIR 검증을 지원한다.
 [구현 기록](docs/development-v0.1/STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제](examples/struct_named_arguments.nova)·[직접 실행 명령](TESTING.md)을 제공한다.
-현재 실행 구현은 P23까지다. explicit init·field default·Enum/sum named payload·Array·일반 Move/Drop은 후속이다.
+P23 생성자 기능을 지원한다. explicit init·field default·Enum/sum named payload·Array·일반 Move/Drop은 후속이다.
 
-[P24 중첩 Copy 패턴·Tuple match](docs/development-v0.1/NESTED_PATTERN_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.
-[수용 예제](docs/development-v0.1/nested-pattern-proposal-fixtures/README.md)와 독립 coverage oracle을 준비했다.
-현재 문서 검사는 `node tools/docs/validate-pack.mjs`, oracle 검사는 `node tools/tests/nested-pattern-oracle.mjs`로 실행한다.
+[P24 중첩 Copy 패턴·Tuple match](docs/development-v0.1/NESTED_PATTERN_STAGE_B_PROPOSAL.md)는 **Accepted / 구현·검증 완료**다.
+중첩 Enum/Option/Result·Copy Tuple/Unit 패턴, 불변 binder와 합집합 완전성·도달성 검사, 자원·Source/MIR 검증을 지원한다.
+[60-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 fixture](docs/development-v0.1/nested-pattern-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/NESTED_PATTERN_IMPLEMENTATION.md)·[독립 예제/명령](TESTING.md)을 제공한다.
+guard·or/range·일반 literal·struct destructuring·Array·Move/Drop은 후속 계약이다.

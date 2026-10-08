@@ -80,6 +80,8 @@ pub fn lower(
         named_bodies: BTreeMap::new(),
         loop_bodies: BTreeMap::new(),
         exists_bodies: BTreeMap::new(),
+        nested_bodies: BTreeMap::new(),
+        nested_sinks: Default::default(),
         try_controls: BTreeMap::new(),
         structs_original: checked.structs.clone(),
         tuple_ids: checked.tuple_ids.clone(),
@@ -145,7 +147,7 @@ pub fn lower(
     }
     result.callee_provenance = result.callees.clone();
     for (index, node) in hir.nodes().iter().enumerate() {
-        if matches!(node.kind, HirKind::Match { .. }) {
+        if matches!(node.kind, HirKind::Match { .. }) && !checked.nested_matches.contains(&index) {
             let mut patterns = vec![];
             for &arm in &node.children[1..] {
                 let pattern = hir.nodes()[arm.0].children[0];
@@ -219,6 +221,49 @@ pub fn lower(
             }
         }
     }
+    for (index, p) in checked.recursive_patterns.iter().enumerate() {
+        let Some(p) = p else {
+            continue;
+        };
+        use nova_typecheck::RecursivePatternKind as Kind;
+        let patterns = match p.kind {
+            Kind::Bool(_) => Some(vec![
+                nova_typecheck::MatchPattern::Bool(false),
+                nova_typecheck::MatchPattern::Bool(true),
+            ]),
+            Kind::Variant(v) => Some(
+                (0..checked.enums[&v.enumeration].variants.len())
+                    .map(|index| {
+                        nova_typecheck::MatchPattern::Variant(nova_types::VariantId {
+                            enumeration: v.enumeration,
+                            index,
+                        })
+                    })
+                    .collect(),
+            ),
+            _ => None,
+        };
+        if let Some(patterns) = patterns {
+            result.match_provenance.insert(index, (p.ty, patterns));
+        }
+        for (at, child) in p.children.iter().enumerate() {
+            match p.kind {
+                Kind::Variant(v) => {
+                    result.binder_provenance.insert(child.0, (v, at));
+                }
+                Kind::Tuple(structure) => {
+                    result.projection_provenance.insert(
+                        child.0,
+                        nova_types::FieldId {
+                            structure,
+                            index: at,
+                        },
+                    );
+                }
+                _ => {}
+            }
+        }
+    }
     for callee in &result.callees {
         let DefinitionKind::Function(id) = resolved.definitions[callee.definition.0].kind else {
             continue;
@@ -277,6 +322,8 @@ pub fn lower(
             named_constructors: vec![],
             has_range_loop: false,
             has_exists: false,
+            has_nested_match: false,
+            nested_sinks: vec![],
         };
         builder.current = Some(builder.block());
         for &parameter in &hir.nodes()[id.0].children[..parameters] {
@@ -324,6 +371,12 @@ pub fn lower(
         }
         if builder.has_range_loop {
             result.loop_bodies.insert(callee.0, builder.body.clone());
+        }
+        if builder.has_nested_match {
+            result.nested_bodies.insert(callee.0, builder.body.clone());
+            result
+                .nested_sinks
+                .extend(builder.nested_sinks.iter().map(|b| (callee.0, b.0)));
         }
         if builder.has_exists {
             result.exists_bodies.insert(callee.0, builder.body.clone());
@@ -410,6 +463,7 @@ enum Work {
         block: BlockId,
         snapshot: Place,
         join: BlockId,
+        components: Option<BTreeMap<usize, Place>>,
     },
     ArmDone {
         arm: HirId,
@@ -456,8 +510,102 @@ struct Builder<'a> {
     named_constructors: Vec<NamedConstructorCertificate>,
     has_range_loop: bool,
     has_exists: bool,
+    has_nested_match: bool,
+    nested_sinks: Vec<BlockId>,
 }
 impl Builder<'_> {
+    fn pattern_test(
+        &mut self,
+        root: HirId,
+        snapshot: Place,
+        failure: BlockId,
+    ) -> Result<BTreeMap<usize, Place>, LoweringError> {
+        enum Step {
+            Test(HirId, Place),
+            Project(HirId, Rvalue),
+        }
+        use nova_typecheck::RecursivePatternKind as Kind;
+        let mut work = vec![Step::Test(root, snapshot)];
+        let mut components = BTreeMap::new();
+        while let Some(step) = work.pop() {
+            let (id, value) = match step {
+                Step::Project(id, rvalue) => {
+                    let value = Place(self.local(id, None)?);
+                    self.assign(value, rvalue, id)?;
+                    (id, value)
+                }
+                Step::Test(id, value) => (id, value),
+            };
+            components.insert(id.0, value);
+            let p = self.checked.recursive_patterns[id.0]
+                .as_ref()
+                .ok_or(LoweringError::InvalidAnalysis)?;
+            match p.kind {
+                Kind::Bool(wanted) => {
+                    let success = self.block();
+                    self.end(
+                        TerminatorKind::Match {
+                            scrutinee: Operand::Place(value),
+                            arms: (0..2)
+                                .map(|index| {
+                                    (
+                                        nova_typecheck::MatchPattern::Bool(index == 1),
+                                        if (index == 1) == wanted {
+                                            success
+                                        } else {
+                                            failure
+                                        },
+                                    )
+                                })
+                                .collect(),
+                        },
+                        id,
+                    )?;
+                    self.current = Some(success);
+                }
+                Kind::Variant(variant) => {
+                    let success = self.block();
+                    self.end(
+                        TerminatorKind::Match {
+                            scrutinee: Operand::Place(value),
+                            arms: (0..self.checked.enums[&variant.enumeration].variants.len())
+                                .map(|index| {
+                                    (
+                                        nova_typecheck::MatchPattern::Variant(
+                                            nova_types::VariantId {
+                                                enumeration: variant.enumeration,
+                                                index,
+                                            },
+                                        ),
+                                        if index == variant.index {
+                                            success
+                                        } else {
+                                            failure
+                                        },
+                                    )
+                                })
+                                .collect(),
+                        },
+                        id,
+                    )?;
+                    self.current = Some(success);
+                }
+                _ => {}
+            }
+            for (index, &child) in p.children.iter().enumerate().rev() {
+                let projection = match p.kind {
+                    Kind::Tuple(structure) => Rvalue::Project(
+                        Operand::Place(value),
+                        nova_types::FieldId { structure, index },
+                    ),
+                    Kind::Variant(v) => Rvalue::EnumPayload(Operand::Place(value), v, index),
+                    _ => return Err(LoweringError::InvalidAnalysis),
+                };
+                work.push(Step::Project(child, projection));
+            }
+        }
+        Ok(components)
+    }
     fn block(&mut self) -> BlockId {
         let id = BlockId(self.body.blocks.len());
         self.body.blocks.push(BasicBlockData {
@@ -612,6 +760,30 @@ impl Builder<'_> {
                     let snapshot = Place(self.local(expression, None)?);
                     self.assign(snapshot, Rvalue::Use(self.value(expression)?), expression)?;
                     let join = self.block();
+                    if self.checked.nested_matches.contains(&id.0) {
+                        self.has_nested_match = true;
+                        let mut entries = vec![];
+                        for &arm in &node.children[1..] {
+                            let pattern = self.hir.nodes()[arm.0].children[0];
+                            let failure = self.block();
+                            let components = self.pattern_test(pattern, snapshot, failure)?;
+                            let block = self.current.ok_or(LoweringError::InvalidAnalysis)?;
+                            entries.push(Work::ArmEntry {
+                                arm,
+                                block,
+                                snapshot,
+                                join,
+                                components: Some(components),
+                            });
+                            self.current = Some(failure);
+                        }
+                        self.nested_sinks
+                            .push(self.current.ok_or(LoweringError::InvalidAnalysis)?);
+                        self.end(TerminatorKind::Unreachable, id)?;
+                        work.push(Work::MatchDone { id, join });
+                        work.extend(entries.into_iter().rev());
+                        continue;
+                    }
                     let mut arms = vec![];
                     let mut entries = vec![];
                     for &arm in &node.children[1..] {
@@ -627,6 +799,7 @@ impl Builder<'_> {
                             block,
                             snapshot,
                             join,
+                            components: None,
                         });
                     }
                     self.end(
@@ -644,10 +817,24 @@ impl Builder<'_> {
                     block,
                     snapshot,
                     join,
+                    components,
                 } => {
                     self.current = Some(block);
                     let pattern = self.hir.nodes()[arm.0].children[0];
-                    if let Some(nova_typecheck::MatchPattern::Variant(v)) =
+                    if let Some(components) = components {
+                        for (pattern, value) in components {
+                            if let Some(def) = self.resolved.declaration_ids[pattern] {
+                                let binder = HirId(pattern);
+                                let local = self.local(binder, Some(def))?;
+                                self.declarations.insert(def.0, local);
+                                self.assign(
+                                    Place(local),
+                                    Rvalue::Use(Operand::Place(value)),
+                                    binder,
+                                )?;
+                            }
+                        }
+                    } else if let Some(nova_typecheck::MatchPattern::Variant(v)) =
                         self.checked.patterns[pattern.0]
                     {
                         for (at, &binder) in self.hir.nodes()[pattern.0].children.iter().enumerate()

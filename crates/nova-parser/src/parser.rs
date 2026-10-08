@@ -17,6 +17,7 @@ pub(crate) struct Parser<'a> {
     synthetic: Vec<SyntheticToken>,
     delimiters: Vec<Token>,
     depth: usize,
+    pattern_depth: usize,
     loop_depth: usize,
     options: ParserOptions,
 }
@@ -41,6 +42,7 @@ impl<'a> Parser<'a> {
             synthetic: vec![],
             delimiters: vec![],
             depth: 0,
+            pattern_depth: 0,
             loop_depth: 0,
             options,
         }
@@ -326,12 +328,13 @@ impl<'a> Parser<'a> {
             }
             let before = self.cursor;
             let start = self.current().span.start();
+            let diagnostics_before = self.diagnostics.len();
             let pattern = self.pattern();
             if self.kind() != TokenKind::Symbol(Symbol::FatArrow) {
                 self.report(
                     1102,
                     self.current().span,
-                    "guards and nested patterns are outside P14",
+                    "guards and other pattern extensions are outside P24",
                 );
                 while !matches!(
                     self.kind(),
@@ -343,7 +346,15 @@ impl<'a> Parser<'a> {
             }
             self.expect(TokenKind::Symbol(Symbol::FatArrow));
             let body = self.block();
-            children.push(self.node(NodeKind::Arm, start, vec![pattern, body]));
+            children.push(self.node(
+                if self.diagnostics.len() == diagnostics_before {
+                    NodeKind::Arm
+                } else {
+                    NodeKind::Error
+                },
+                start,
+                vec![pattern, body],
+            ));
             if !self.eat(TokenKind::Comma) && !self.at_end() && self.kind() != TokenKind::RightBrace
             {
                 self.report(1101, self.current().span, "expected arm END or comma");
@@ -353,12 +364,64 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
         }
+        let closed = self.kind() == TokenKind::RightBrace;
         self.close(TokenKind::RightBrace);
         self.depth -= 1;
-        self.node(NodeKind::Match { keyword }, keyword.start(), children)
+        self.node(
+            if closed {
+                NodeKind::Match { keyword }
+            } else {
+                NodeKind::Error
+            },
+            keyword.start(),
+            children,
+        )
     }
 
     fn pattern(&mut self) -> AstNodeId {
+        let start = self.current().span.start();
+        let compound = self.kind() == TokenKind::LeftParen
+            || self.kind() == TokenKind::Identifier
+                && self
+                    .tokens
+                    .get(self.cursor + 1)
+                    .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::ColonColon));
+        if compound && self.pattern_depth == self.options.max_nesting {
+            self.report(
+                8901,
+                self.current().span,
+                "P24 pattern nesting limit exceeded",
+            );
+            self.diagnostics
+                .last_mut()
+                .expect("depth error")
+                .notes
+                .push(format!(
+                    "configured nesting limit: {}",
+                    self.options.max_nesting
+                ));
+            while !matches!(
+                self.kind(),
+                TokenKind::RightParen
+                    | TokenKind::RightBrace
+                    | TokenKind::Eof
+                    | TokenKind::Symbol(Symbol::FatArrow)
+            ) {
+                self.bump();
+            }
+            return self.node(NodeKind::Error, start, vec![]);
+        }
+        if compound {
+            self.pattern_depth += 1;
+        }
+        let result = self.pattern_inner();
+        if compound {
+            self.pattern_depth -= 1;
+        }
+        result
+    }
+
+    fn pattern_inner(&mut self) -> AstNodeId {
         let token = self.current();
         let start = token.span.start();
         if token.kind == TokenKind::Keyword(Keyword::None) {
@@ -373,18 +436,65 @@ impl<'a> Parser<'a> {
                 vec![],
             );
         }
+        if token.kind == TokenKind::LeftParen {
+            self.open(TokenKind::LeftParen);
+            if self.kind() == TokenKind::RightParen {
+                self.close(TokenKind::RightParen);
+                return self.node(NodeKind::PatternUnit, start, vec![]);
+            }
+            let first = self.pattern();
+            if !self.eat(TokenKind::Comma) {
+                self.close(TokenKind::RightParen);
+                let id = self.node(NodeKind::Error, start, vec![first]);
+                self.report(
+                    1102,
+                    self.arena.get(id).expect("pattern").span,
+                    "grouped patterns are outside P24",
+                );
+                return id;
+            }
+            let mut children = vec![first];
+            while !matches!(
+                self.kind(),
+                TokenKind::RightParen
+                    | TokenKind::RightBrace
+                    | TokenKind::Eof
+                    | TokenKind::Symbol(Symbol::FatArrow)
+            ) {
+                let before = self.cursor;
+                children.push(self.pattern());
+                if !self.eat(TokenKind::Comma) || before == self.cursor {
+                    break;
+                }
+            }
+            let closed = self.kind() == TokenKind::RightParen;
+            self.close(TokenKind::RightParen);
+            return self.node(
+                if closed {
+                    NodeKind::PatternTuple
+                } else {
+                    NodeKind::Error
+                },
+                start,
+                children,
+            );
+        }
         if token.kind == TokenKind::Identifier {
             self.bump();
             if self.text.get(token.span.start()..token.span.end()) == Some("_") {
                 return self.node(NodeKind::Wildcard, start, vec![]);
             }
-            self.expect(TokenKind::Symbol(Symbol::ColonColon));
+            if self.kind() != TokenKind::Symbol(Symbol::ColonColon) {
+                return self.node(NodeKind::Binder { name: token.span }, start, vec![]);
+            }
+            self.bump();
             let name = self.expect(TokenKind::Identifier).span;
             if name.start() == name.end() {
                 return self.node(NodeKind::Error, start, vec![]);
             }
             let arguments = self.kind() == TokenKind::LeftParen;
-            let mut binders = vec![];
+            let mut children = vec![];
+            let mut closed = true;
             if arguments {
                 self.open(TokenKind::LeftParen);
                 while !matches!(
@@ -395,39 +505,36 @@ impl<'a> Parser<'a> {
                         | TokenKind::Symbol(Symbol::FatArrow)
                 ) {
                     let before = self.cursor;
-                    let b = self.expect(TokenKind::Identifier).span;
-                    if b.start() != b.end() {
-                        let kind = if self.text.get(b.start()..b.end()) == Some("_") {
-                            NodeKind::Wildcard
-                        } else {
-                            NodeKind::Binder { name: b }
-                        };
-                        binders.push(self.node(kind, b.start(), vec![]));
-                    }
+                    children.push(self.pattern());
                     if !self.eat(TokenKind::Comma) || before == self.cursor {
                         break;
                     }
                 }
+                closed = self.kind() == TokenKind::RightParen;
                 self.close(TokenKind::RightParen);
             }
             return self.node(
-                NodeKind::PatternVariant {
-                    owner: token.span,
-                    name,
-                    arguments,
+                if closed {
+                    NodeKind::PatternVariant {
+                        owner: token.span,
+                        name,
+                        arguments,
+                    }
+                } else {
+                    NodeKind::Error
                 },
                 start,
-                binders,
+                children,
             );
         }
-        self.report(
-            1102,
-            token.span,
-            "only Enum/Bool and wildcard patterns are supported",
-        );
+        self.report(1102, token.span, "pattern form is outside P24");
         if !matches!(
             self.kind(),
-            TokenKind::RightBrace | TokenKind::Eof | TokenKind::Symbol(Symbol::FatArrow)
+            TokenKind::RightParen
+                | TokenKind::Comma
+                | TokenKind::RightBrace
+                | TokenKind::Eof
+                | TokenKind::Symbol(Symbol::FatArrow)
         ) {
             self.bump();
         }

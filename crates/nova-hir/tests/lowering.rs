@@ -1145,3 +1145,71 @@ fn p23_constructor_labels_keep_utf8_spelling_value_children_and_truncation_recov
         }
     }
 }
+
+#[test]
+fn p24_nested_pattern_prefix_recovery_is_deterministic_and_valid_input_lowers() {
+    let source="func f(v:Option<(int8,bool)>){match v{Option::Some((値,true))=>{print(\"🙂{値}\")},_=>{}}}func later(){}";
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let mut db = SourceDatabase::default();
+        let file = db.add("prefix", source[..at].into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        let a = lower(&db, &p.arena, p.root);
+        assert_eq!(a, lower(&db, &p.arena, p.root));
+        if !l.has_errors() && !p.has_errors() {
+            assert!(a.is_ok(), "{}: {a:?}", &source[..at]);
+        }
+    }
+    lower_source(source);
+}
+#[test]
+fn p24_external_ast_pattern_paths_punctuation_order_unit_and_utf8_forgery() {
+    let source =
+        "func f(v:Option<(int8,bool)>){match v{Option /*🙂*/ :: Some((値,true))=>{},none=>{}}}";
+    let mut db = SourceDatabase::default();
+    let file = db.add("api", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    for change in 0..5 {
+        let mut ast = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let mut children = n
+                .children
+                .iter()
+                .map(|c| ids[c.index()])
+                .collect::<Vec<_>>();
+            let mut span = n.span;
+            match (&mut kind, change) {
+                (NodeKind::PatternVariant { owner, .. }, 0) => {
+                    *owner = Span::new(file, owner.start() + 1, owner.end()).unwrap();
+                }
+                (NodeKind::Binder { name }, 1) => {
+                    *name = Span::new(file, name.start(), name.end() - 1).unwrap();
+                }
+                (NodeKind::PatternTuple, 2) => {
+                    children.reverse();
+                }
+                (NodeKind::PatternTuple, 3) => {
+                    kind = NodeKind::PatternUnit;
+                    children.clear();
+                }
+                (NodeKind::PatternBoolean(_), 4) => {
+                    span = Span::new(file, span.start() + 1, span.end()).unwrap();
+                }
+                _ => {}
+            }
+            match ast.insert(kind, span, children) {
+                Ok(id) => ids.push(id),
+                Err(_) => break,
+            }
+        }
+        if ids.len() == p.arena.iter().len() {
+            assert!(
+                lower(&db, &ast, ids[p.root.index()]).is_err(),
+                "forgery {change}"
+            );
+        }
+    }
+}

@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P24 승인과 중첩 Copy 패턴·Tuple match 구현
+
+사용자 “P24 승인하고 중첩 Copy 패턴·Tuple match 구현 진행” 답변으로 P24를 승인했다.
+recursive pattern·불변 binder·합집합 matrix coverage·자원 제한·Source/Checked/MIR 검증을 구현했다.
+기본 392·LLVM 20·Native 56, 총 468 PASS / 0 FAIL. 새 테스트는 기본 20·LLVM 1·Native 2다.
+원본 148개·Canonical·P01~P23·P24 원 fixture bytes를 보존한다. [구현 기록](NESTED_PATTERN_IMPLEMENTATION.md)·[직접 실행 명령](../../TESTING.md)을 제공한다.
+
 ## 2026-10-08 — P24 중첩 Copy 패턴·Tuple match 착수안 (Draft)
 
 [최소 계약](NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 계획](nested-pattern-proposal-fixtures/README.md)을 준비했다.

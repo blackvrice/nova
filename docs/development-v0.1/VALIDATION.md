@@ -5,7 +5,7 @@
 결과: **PASS**
 
 - 148개 NOVA ID 연속성/중복/원본·보완 SHA-256/상태/본문 섹션
-- 3771개 로컬 Markdown 링크/코드 fence/D·T 참조
+- 3805개 로컬 Markdown 링크/코드 fence/D·T 참조
 - 30개 결정 (Accepted 5 / Draft 25), 60개 수용 묶음, 42개 진단 코드 유일성/영역
 - GRAMMAR.ebnf: 94개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_A.ebnf: 26개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
@@ -51,7 +51,7 @@
 - P22 Accepted ledger·P21 struct_decl 한 production 확장/세 production 추가·58-production EBNF/기존 54개 보존·두 파일/정상 1/부정 20/Runtime 1 UTF-8 Span·검증된 15줄 metadata (문서 검사 자체는 Compiler/Native 실행 아님)
 - P23 Accepted/승인·구현 ledger·P22 58-production EBNF 재사용/변경 없음·두 파일/정상 2/부정 24/Runtime 1 UTF-8 Span·cascade·검증된 20줄 metadata (문서 validator 자체는 Compiler/Native 실행 아님)
 - GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf: 60개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
-- P24 Draft/미승인·미구현 ledger·60-production 제안 EBNF/기존 56개 보존·두 파일/정상 3/부정 18/Runtime 1 UTF-8 Span·proposed 12줄·finite coverage vector 6개 (Compiler/Native 실행 아님)
+- P24 Accepted/승인·구현 ledger·60-production EBNF/기존 56개 보존·원 source 24개 hash·두 파일/정상 3/부정 18/Runtime 1 UTF-8 Span·검증된 12줄 metadata·finite coverage vector 6개 (문서 validator 자체는 Compiler/Native 실행 아님)
 - 20개 예제 sidecar/UTF-8 byte Span/등록 code 검사 (컴파일 실행 아님)
 
 ## 검증의 범위

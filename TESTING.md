@@ -1,15 +1,41 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P23 Copy struct 생성자 이름 인수까지다. [P23 실행 명령](#p23-copy-struct-생성자-이름-인수)을 따른다.
-P24 중첩 패턴은 Draft / 미구현이며 아래 검사는 문서 기대값을 확인한다.
+현재 개발 완료 기능은 P24 중첩 Copy 패턴·Tuple match까지다.
+
+## P24 중첩 Copy 패턴·Tuple match
 
 ```powershell
+cargo run -p nova-cli --offline -- check examples/nested_patterns.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/nested_patterns.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/nested_patterns.nova --profile release
+```
+
+check는 exit 0, debug/release는 다음 4줄/LF·빈 stderr·exit 0이다.
+
+```text
+nested=7
+classify=-1
+singleton=true
+unit
+```
+
+[두 파일 수용 예제](docs/development-v0.1/nested-pattern-proposal-fixtures/README.md)는 추가로 12줄 출력과 snapshot·try·loop를 검증한다.
+[계약](docs/development-v0.1/NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/NESTED_PATTERN_IMPLEMENTATION.md)을 제공한다.
+
+```powershell
+cargo test --workspace --offline p24_
+cargo test -p nova-codegen-llvm --test emission --offline p24_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p24_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/nested-pattern-proposal-fixtures/union_unreachable.nova
 node tools/docs/validate-pack.mjs
 node tools/tests/nested-pattern-oracle.mjs
 ```
 
-[P24 제안 예제·향후 수용 명령](docs/development-v0.1/nested-pattern-proposal-fixtures/README.md)은 Compiler/Native 실행 성공 기록이 아니다.
+새 기본 20개·실제 LLVM 1개·Native 2개다. 부정 예제 check는 N3102·exit 1이다.
+729개 Bool-pair 패턴 조합을 독립 유한 값 열거와 대조하며 node/task/cell 예산과 손상된 Source/Checked/MIR 입력을 검사한다.
+guard·or/range·일반 literal·struct destructuring·Array·Move/Drop은 후속 계약이다.
 
 ## 현재 기능 실행 — Copy struct Read 메서드
 

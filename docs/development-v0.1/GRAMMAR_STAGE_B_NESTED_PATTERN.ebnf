@@ -1,4 +1,4 @@
-(* P24 nested Copy patterns: Draft, not approved or implemented.
+(* P24 nested Copy patterns: Accepted 2026-10-08; implemented and verified.
    Extends P22 pattern/pattern_arguments only; adds tuple_pattern/unit_pattern.
    60 productions total, other 56 preserved. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl | enum_decl | alias_decl ) }, "EOF" ;

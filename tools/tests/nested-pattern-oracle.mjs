@@ -1,5 +1,5 @@
-// Independent, small finite-domain reference for P24 draft coverage vectors.
-// Nova's proposed implementation uses bounded symbolic coverage, not enumeration.
+// Independent, small finite-domain reference for P24 fixed coverage vectors.
+// Nova's implementation uses bounded symbolic coverage, not enumeration.
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 
@@ -37,4 +37,4 @@ for (const c of ledger.cases) {
   assert.deepEqual(missing, c.missing_indexes, `${c.name}: missing cases`);
   assert.deepEqual(unreachable, c.unreachable_arms, `${c.name}: unreachable arms`);
 }
-console.log('PASS: 6 P24 finite-domain draft coverage vectors (not Compiler/Native validation).');
+console.log('PASS: 6 P24 finite-domain reference coverage vectors (not Compiler/Native validation).');

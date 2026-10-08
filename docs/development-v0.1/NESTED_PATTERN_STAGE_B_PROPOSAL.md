@@ -1,10 +1,10 @@
 # Stage B 중첩 Copy 패턴·Tuple match 최소 계약 — P24
 
-작성일: 2026-10-08. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일·승인일: 2026-10-08. 상태: **Accepted / 구현·검증 완료**.
+사용자 “P24 승인하고 중첩 Copy 패턴·Tuple match 구현 진행” 답변으로 이 범위를 승인했다.
 D01~D05/P01~P23·Canonical·원본 148개 문서를 보존한다.
-[60-production 제안 EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)와 [수용 계획](nested-pattern-proposal-fixtures/README.md)을 함께 검토한다.
-이 문서와 fixture는 승인 또는 Compiler/Native 실행 성공의 증거가 아니다.
-[착수 준비 검증 기록](NESTED_PATTERN_PREPARATION.md)에 현재 회귀 검사와 미구현 fixture 진단을 기록했다.
+[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 fixture](nested-pattern-proposal-fixtures/README.md)·[구현·검증 기록](NESTED_PATTERN_IMPLEMENTATION.md)을 따른다.
+[착수 준비 기록](NESTED_PATTERN_PREPARATION.md)은 승인 전의 역사이며 현재 구현 결과는 별도 기록한다.
 
 ## Specification Change Proposal
 
@@ -128,12 +128,12 @@ D01~D05/P01~P23·Canonical·원본 148개 문서를 보존한다.
 
 ## 수용 계획·승인 경계
 
-- 두 파일 main/types·추가 정상 3·부정 18·Runtime 1의 고정 UTF-8/LF source와 proposed_result/byte Span을 작성했다.
+- 두 파일 main/types·추가 정상 3·부정 18·Runtime 1의 고정 UTF-8/LF source와 validated_result/byte Span을 검증했다.
   finite-domain coverage oracle 6개로 product/sum·union·partial overlap·누락/unreachable의 기대 결과를 독립 계산한다.
   oracle는 문서 기대값 검증이며 실제 Compiler/Native 검증을 대신하지 않는다.
-- 승인 후 Parser prefix/recovery·Source tampering·nested scope/type/cascade·자원 경계·Checked/MIR forgery 회귀를 구현한다.
+- Parser prefix/recovery·Source tampering·nested scope/type/cascade·자원 경계·Checked/MIR forgery 회귀를 구현했다.
   node 10,000/10,001·task 100,000/100,001·live cell 1,000,000/1,000,001 경계와 기존 flat 경로 회귀를 분리 검증한다.
 - 기존 Cargo fmt/check/clippy/test·runtime rustfmt·원본 hash·P01~P23 승인 ledger/fixture를 보존한다.
-  fixture Compiler 진단/Span과 Native 출력이 검증되기 전 implementation_verified를 true로 바꾸지 않는다.
+  fixture Compiler 진단/Span과 Native debug/release 출력을 검증한 뒤 implementation_verified=true를 기록했다.
 - guard/or/range·일반 literal·struct destructuring·irrefutable let destructuring·match expression·Read loan/take pattern·
   Array·Move/Drop·전체 D08/D10/D12/D16/D25/D30은 별도 계약으로 남긴다.

@@ -111,6 +111,8 @@ pub enum NodeKind {
         arguments: bool,
     },
     PatternBoolean(bool),
+    PatternTuple,
+    PatternUnit,
     Wildcard,
     Binder {
         name: Span,

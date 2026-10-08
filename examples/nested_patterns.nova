@@ -1,0 +1,29 @@
+// P24: recursive Copy sum/tuple patterns and statement match.
+enum Packet {
+    Empty
+    Point((int8,bool))
+}
+
+func classify(value:Option<Packet>)->int8 {
+    match value {
+        none => { return 0 }
+        Option::Some(Packet::Empty) => { return 1 }
+        Option::Some(Packet::Point((n,true))) => { return n }
+        Option::Some(Packet::Point((_,false))) => { return -1 }
+    }
+}
+
+func main() {
+    let value:Option<Packet> = Option::Some(Packet::Point((7,true)))
+    match (value,()) {
+        (Option::Some(Packet::Point((n,true))),()) => { print("nested={n}") }
+        _ => { print("other") }
+    }
+    print("classify={classify(Option::Some(Packet::Point((9,false))))}")
+    match (true,) {
+        (flag,) => { print("singleton={flag}") }
+    }
+    match () {
+        () => { print("unit") }
+    }
+}

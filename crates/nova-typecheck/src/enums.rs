@@ -248,6 +248,10 @@ impl Checker<'_> {
     }
 
     pub(super) fn prepare_match(&mut self, id: HirId) {
+        if self.is_nested_match(id) {
+            self.prepare_nested_match(id);
+            return;
+        }
         let node = &self.module.nodes()[id.0];
         let HirKind::Match { keyword } = node.kind else {
             return;

@@ -162,7 +162,7 @@ P22 문법을 재사용하며 field 대응·가시성·source-order snapshot·co
 [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제/명령](../../TESTING.md)을 제공한다.
 explicit init·field default·Enum/sum named payload·Array·일반 Move/Drop은 별도 계약으로 남긴다.
 
-[P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.
-기존 sum·Copy Tuple/Unit·recursive immutable binder·product/sum coverage와 Source/MIR 안전성 계약을 제안한다.
-[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[두 파일/정상 3/부정 18/Runtime 1 수용 계획](nested-pattern-proposal-fixtures/README.md)을 제공한다.
-Array 실행은 ownership/Drop 선행 조건을 유지하며 guard·일반 literal·struct destructuring·Move pattern은 이번 범위 밖이다.
+[P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)는 **Accepted / 구현·검증 완료**다.
+중첩 Enum/Option/Result·Copy Tuple/Unit 패턴, 불변 binder와 합집합 완전성·도달성 검사, 자원·Source/MIR 검증을 지원한다.
+[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 fixture](nested-pattern-proposal-fixtures/README.md)·[구현 기록](NESTED_PATTERN_IMPLEMENTATION.md)·[독립 예제/명령](../../TESTING.md)을 제공한다.
+guard·or/range·일반 literal·struct destructuring·Array·Move/Drop은 후속 계약이다.

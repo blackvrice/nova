@@ -180,3 +180,9 @@ change/take·일반 Move/borrow/Drop·init·overload·bound method·Enum method�
 
 [P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture](struct-named-arguments-proposal-fixtures/README.md)는 Accepted / 구현·검증 완료다.
 새 문법 없이 승인 P22 EBNF를 재사용하며 [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제/명령](../../TESTING.md)을 제공한다.
+
+
+[P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)는 **Accepted / 구현·검증 완료**다.
+중첩 Enum/Option/Result·Copy Tuple/Unit 패턴, 불변 binder와 합집합 완전성·도달성 검사, 자원·Source/MIR 검증을 지원한다.
+[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 fixture](nested-pattern-proposal-fixtures/README.md)·[구현 기록](NESTED_PATTERN_IMPLEMENTATION.md)·[독립 예제/명령](../../TESTING.md)을 제공한다.
+guard·or/range·일반 literal·struct destructuring·Array·Move/Drop은 후속 계약이다.

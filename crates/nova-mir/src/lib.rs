@@ -270,6 +270,9 @@ pub struct Module {
     loop_bodies: std::collections::BTreeMap<usize, Body>,
     /// P20 freezes predicate snapshots, tag direction, effects and enclosing CFG.
     exists_bodies: std::collections::BTreeMap<usize, Body>,
+    /// P24 freezes recursive tag/projection ancestry, binder paths and effects.
+    nested_bodies: std::collections::BTreeMap<usize, Body>,
+    nested_sinks: std::collections::BTreeSet<(usize, usize)>,
     match_provenance: std::collections::BTreeMap<usize, (Type, Vec<nova_typecheck::MatchPattern>)>,
     structs_original: StructRegistry,
     tuple_ids: std::collections::BTreeSet<StructId>,

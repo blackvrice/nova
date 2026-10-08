@@ -101,6 +101,8 @@ pub enum HirKind {
         arguments: bool,
     },
     PatternBoolean(bool),
+    PatternTuple,
+    PatternUnit,
     Wildcard,
     Binder {
         name: SymbolId,
@@ -894,6 +896,18 @@ pub fn lower(
                 return Err(LoweringError::MalformedAst);
             }
         }
+        if matches!(
+            node.kind,
+            NodeKind::PatternTuple
+                | NodeKind::PatternVariant { .. }
+                | NodeKind::PatternUnit
+                | NodeKind::Binder { .. }
+                | NodeKind::Arm
+                | NodeKind::Match { .. }
+        ) && !valid_pattern_source(sources, arena, node)?
+        {
+            return Err(LoweringError::MalformedAst);
+        }
         if let NodeKind::Match { keyword } = node.kind {
             if !inside(node.span, keyword) || sources.slice(keyword)? != "match" {
                 return Err(LoweringError::MalformedAst);
@@ -1201,6 +1215,8 @@ pub fn lower(
             NodeKind::Match { keyword } => HirKind::Match { keyword },
             NodeKind::Arm => HirKind::Arm,
             NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
+            NodeKind::PatternTuple => HirKind::PatternTuple,
+            NodeKind::PatternUnit => HirKind::PatternUnit,
             NodeKind::Wildcard => HirKind::Wildcard,
             NodeKind::Struct { name } => HirKind::Struct {
                 name: intern(name, &mut module, &mut interned)?,
@@ -1472,7 +1488,152 @@ fn intern_symbol(
     id
 }
 
+fn valid_pattern_source(
+    sources: &SourceDatabase,
+    arena: &Arena,
+    node: &AstNode,
+) -> Result<bool, LoweringError> {
+    let gap = |start, end, allowed: &[&str]| -> Result<bool, LoweringError> {
+        if start > end {
+            return Ok(false);
+        }
+        Ok(type_punctuation(
+            sources.slice(Span::new(node.span.file(), start, end)?)?,
+            allowed,
+        ))
+    };
+    if let NodeKind::Binder { name } = node.kind {
+        return Ok(name == node.span
+            && token_boundary(sources.file(name.file())?.text(), name)
+            && sources.slice(name)? != "_");
+    }
+    if node.kind == NodeKind::PatternUnit {
+        return gap(node.span.start(), node.span.end(), &["()"]);
+    }
+    if !valid_shape(arena, node) {
+        return Ok(false);
+    }
+    let children = node
+        .children
+        .iter()
+        .map(|id| arena.get(*id).expect("valid shape"))
+        .collect::<Vec<_>>();
+    if children.iter().any(|n| !inside(node.span, n.span))
+        || children
+            .windows(2)
+            .any(|p| p[0].span.end() > p[1].span.start())
+    {
+        return Ok(false);
+    }
+    if let NodeKind::Match { keyword } = node.kind {
+        let punctuation = |start, end| -> Result<Option<String>, LoweringError> {
+            Ok(source_punctuation(sources.slice(Span::new(
+                node.span.file(),
+                start,
+                end,
+            )?)?))
+        };
+        if keyword.start() != node.span.start()
+            || !gap(keyword.end(), children[0].span.start(), &[""])?
+        {
+            return Ok(false);
+        }
+        let separator = |s: &str| s.strip_prefix(',').unwrap_or(s).chars().all(|c| c == ';');
+        if children.len() == 1 {
+            return Ok(
+                punctuation(children[0].span.end(), node.span.end())?.is_some_and(|s| {
+                    s.starts_with('{')
+                        && s.ends_with('}')
+                        && s[1..s.len() - 1].chars().all(|c| c == ';')
+                }),
+            );
+        }
+        if !punctuation(children[0].span.end(), children[1].span.start())?
+            .is_some_and(|s| s.starts_with('{') && s[1..].chars().all(|c| c == ';'))
+        {
+            return Ok(false);
+        }
+        for pair in children[1..].windows(2) {
+            let raw = sources.slice(Span::new(
+                node.span.file(),
+                pair[0].span.end(),
+                pair[1].span.start(),
+            )?)?;
+            if !source_punctuation(raw)
+                .is_some_and(|s| separator(&s) && (!s.is_empty() || raw.contains(['\n', '\r'])))
+            {
+                return Ok(false);
+            }
+        }
+        return Ok(punctuation(
+            children.last().expect("match arm").span.end(),
+            node.span.end(),
+        )?
+        .is_some_and(|s| s.ends_with('}') && separator(&s[..s.len() - 1])));
+    }
+    if node.kind == NodeKind::Arm {
+        return Ok(children[0].span.start() == node.span.start()
+            && children[1].span.end() == node.span.end()
+            && gap(children[0].span.end(), children[1].span.start(), &["=>"])?);
+    }
+    let start = if let NodeKind::PatternVariant {
+        owner,
+        name,
+        arguments,
+    } = node.kind
+    {
+        let text = sources.file(node.span.file())?.text();
+        if owner.start() != node.span.start()
+            || !token_boundary(text, owner)
+            || !token_boundary(text, name)
+            || !gap(owner.end(), name.start(), &["::"])?
+        {
+            return Ok(false);
+        }
+        if !arguments {
+            return Ok(children.is_empty() && name.end() == node.span.end());
+        }
+        if children.is_empty() {
+            return gap(name.end(), node.span.end(), &["()"]);
+        }
+        name.end()
+    } else {
+        node.span.start()
+    };
+    if !gap(start, children[0].span.start(), &["("])? {
+        return Ok(false);
+    }
+    for pair in children.windows(2) {
+        if !gap(pair[0].span.end(), pair[1].span.start(), &[","])? {
+            return Ok(false);
+        }
+    }
+    gap(
+        children.last().expect("pattern child").span.end(),
+        node.span.end(),
+        if node.kind == NodeKind::PatternTuple && children.len() == 1 {
+            &[",)"]
+        } else {
+            &[",)", ")"]
+        },
+    )
+}
+
 fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
+    fn pattern(kind: NodeKind) -> bool {
+        matches!(
+            kind,
+            NodeKind::PatternVariant { .. }
+                | NodeKind::PatternTuple
+                | NodeKind::PatternUnit
+                | NodeKind::Binder { .. }
+                | NodeKind::Wildcard
+                | NodeKind::PatternNone
+                | NodeKind::None
+                | NodeKind::PatternBoolean(_)
+                | NodeKind::Error
+        )
+    }
     if matches!(
         node.kind,
         NodeKind::Binding {
@@ -1604,15 +1765,10 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::None
         | NodeKind::PatternNone
         | NodeKind::PatternBoolean(_)
+        | NodeKind::PatternUnit
         | NodeKind::Wildcard => kinds.is_empty(),
         NodeKind::PatternVariant { arguments, .. } => {
-            (arguments || kinds.is_empty())
-                && kinds.iter().all(|k| {
-                    matches!(
-                        k,
-                        NodeKind::Binder { .. } | NodeKind::Wildcard | NodeKind::Error
-                    )
-                })
+            (arguments || kinds.is_empty()) && kinds.iter().all(|k| pattern(*k))
         }
         NodeKind::Match { .. } => {
             !kinds.is_empty()
@@ -1623,15 +1779,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         }
         NodeKind::Arm => {
             kinds.len() == 2
-                && matches!(
-                    kinds[0],
-                    NodeKind::PatternVariant { .. }
-                        | NodeKind::None
-                        | NodeKind::PatternNone
-                        | NodeKind::PatternBoolean(_)
-                        | NodeKind::Wildcard
-                        | NodeKind::Error
-                )
+                && pattern(kinds[0])
                 && matches!(kinds[1], NodeKind::Block | NodeKind::Error)
         }
         NodeKind::Struct { .. } => kinds.iter().all(|k| {
@@ -1644,6 +1792,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         NodeKind::Projection { .. } | NodeKind::TupleProjection { .. } => {
             kinds.len() == 1 && expr(kinds[0])
         }
+        NodeKind::PatternTuple => !kinds.is_empty() && kinds.iter().all(|k| pattern(*k)),
         NodeKind::Tuple => !kinds.is_empty() && kinds.iter().all(|k| expr(*k)),
         NodeKind::GenericType { .. } => !kinds.is_empty() && kinds.iter().all(|k| ty(*k)),
         NodeKind::NullableType => kinds.len() == 1 && ty(kinds[0]),
@@ -1814,7 +1963,11 @@ fn decode_literal_body(text: &str, character_literal: bool) -> Result<String, Lo
 
 // Validate punctuation certificates while admitting the scanner's whitespace
 // and nested-comment trivia, without importing the lexer into semantic IR.
-fn type_punctuation(mut text: &str, expected: &[&str]) -> bool {
+fn type_punctuation(text: &str, expected: &[&str]) -> bool {
+    source_punctuation(text).is_some_and(|p| expected.contains(&p.as_str()))
+}
+
+fn source_punctuation(mut text: &str) -> Option<String> {
     let mut punctuation = String::new();
     while !text.is_empty() {
         text = text.trim_start();
@@ -1833,20 +1986,22 @@ fn type_punctuation(mut text: &str, expected: &[&str]) -> bool {
                 } else if text.starts_with("*/") {
                     depth -= 1;
                     text = &text[2..];
-                } else if let Some(c) = text.chars().next() {
-                    text = &text[c.len_utf8()..];
                 } else {
-                    return false;
+                    let c = text.chars().next()?;
+                    text = &text[c.len_utf8()..];
                 }
             }
         } else {
             let c = text.chars().next().expect("nonempty text");
-            if !matches!(c, '<' | '>' | ',' | '?' | '-') || punctuation.len() > 2 {
-                return false;
+            if !matches!(
+                c,
+                '<' | '>' | ',' | '?' | '-' | '(' | ')' | ':' | '=' | '{' | '}' | ';'
+            ) {
+                return None;
             }
             punctuation.push(c);
             text = &text[c.len_utf8()..];
         }
     }
-    expected.contains(&punctuation.as_str())
+    Some(punctuation)
 }

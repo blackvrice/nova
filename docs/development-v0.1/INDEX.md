@@ -38,7 +38,7 @@
 
 [P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture: 두 파일/정상 2/부정 24/Runtime 1](struct-named-arguments-proposal-fixtures/README.md)은 Accepted / 구현 완료다. [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)을 제공하며 승인 P22 58-production EBNF를 그대로 재사용한다.
 
-[P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production 제안 EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 계획](nested-pattern-proposal-fixtures/README.md)은 Draft / 미승인·미구현이다. 기존 56개 production과 P01~P23 승인 범위를 보존한다.
+[P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 fixture](nested-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](NESTED_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 56개 production과 P01~P23 승인 범위를 보존한다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

@@ -7,6 +7,8 @@ mod ranges;
 pub use defaults::{DefaultArgument, ParameterDefault};
 pub use ranges::RangeInfo;
 mod enums;
+mod nested_patterns;
+pub use nested_patterns::{RecursivePattern, RecursivePatternKind};
 mod sums;
 pub use arguments::{NamedCall, NamedConstructor};
 pub use enums::MatchPattern;
@@ -44,6 +46,8 @@ pub struct Checked {
     pub sum_origins: std::collections::BTreeMap<nova_types::EnumId, HirId>,
     pub variants: Vec<Option<nova_types::VariantId>>,
     pub patterns: Vec<Option<MatchPattern>>,
+    pub recursive_patterns: Vec<Option<RecursivePattern>>,
+    pub nested_matches: std::collections::BTreeSet<usize>,
     pub exhaustive_matches: std::collections::BTreeSet<usize>,
     pub tuple_ids: std::collections::BTreeSet<nova_types::StructId>,
     pub tuple_origins: std::collections::BTreeMap<nova_types::StructId, HirId>,
@@ -102,6 +106,11 @@ impl Checked {
                     range.binder.0,
                     self.types.get(range.ty)
                 );
+            }
+        }
+        for (index, pattern) in self.recursive_patterns.iter().enumerate() {
+            if let Some(pattern) = pattern {
+                let _ = writeln!(output, "pattern {index} {pattern:?}");
             }
         }
         for (index, &ty) in self.type_table.iter().enumerate() {
@@ -315,6 +324,8 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         sum_origins: Default::default(),
         variants: vec![None; size],
         patterns: vec![None; size],
+        recursive_patterns: vec![None; size],
+        nested_matches: Default::default(),
         exhaustive_matches: Default::default(),
         tuple_ids: Default::default(),
         tuple_origins: Default::default(),

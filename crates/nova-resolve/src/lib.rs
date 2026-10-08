@@ -583,20 +583,21 @@ pub fn resolve(module: &Module) -> Resolved {
                 HirKind::Arm => {
                     let arm_scope = new_scope(&mut result, scope);
                     result.node_scopes[id.0] = Some(arm_scope);
-                    let pattern = node.children[0];
-                    result.node_scopes[pattern.0] = Some(arm_scope);
-                    for &binder in &module.nodes()[pattern.0].children {
-                        result.node_scopes[binder.0] = Some(arm_scope);
-                        if let HirKind::Binder { name, name_span } = module.nodes()[binder.0].kind {
+                    let mut patterns = vec![node.children[0]];
+                    while let Some(pattern) = patterns.pop() {
+                        result.node_scopes[pattern.0] = Some(arm_scope);
+                        if let HirKind::Binder { name, name_span } = module.nodes()[pattern.0].kind
+                        {
                             declare(
                                 &mut result,
                                 arm_scope,
                                 module.symbol(name).expect("binder symbol"),
-                                DefinitionKind::Local(binder),
+                                DefinitionKind::Local(pattern),
                                 name_span,
-                                binder,
+                                pattern,
                             );
                         }
+                        patterns.extend(module.nodes()[pattern.0].children.iter().rev().copied());
                     }
                     pending.push(Work::Body(node.children[1], arm_scope));
                 }

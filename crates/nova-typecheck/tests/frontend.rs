@@ -3976,3 +3976,235 @@ fn p23_field_label_limit_and_known_label_note_are_bounded() {
         .iter()
         .any(|n| n.contains("f7") && n.contains("...") && !n.contains("f8")));
 }
+
+#[test]
+fn p24_finite_product_sum_coverage_union_partial_overlap_and_witnesses() {
+    for source in [
+        "func f(x:(bool,bool)){match x{(true,_)=>{},(false,true)=>{},(false,false)=>{}}}",
+        "func f(x:(bool,bool)){match x{(true,_)=>{},(_,true)=>{},(false,false)=>{}}}",
+        "func f(x:Option<(bool,bool)>){match x{Option::Some((true,_))=>{},Option::Some((false,true))=>{},Option::Some((false,false))=>{},none=>{}}}",
+        "func f(x:Result<Option<(int8,bool)>,int32>)->int8{match x{Result::Success(Option::Some((n,true)))=>{return n},Result::Success(Option::Some((_,false)))=>{return 0},Result::Success(none)=>{return 0},Result::Error(_)=>{return -1}}}",
+        "type Pair=(int8,bool);func f(x:Pair){match x{(n,flag)=>{print(\"{n}/{flag}\")}}}",
+    ] {let r=pass(source);let (_,_,c)=r.semantic.unwrap();assert!(!c.nested_matches.is_empty());assert!(c.nested_matches.iter().all(|id|c.exhaustive_matches.contains(id)));}
+    let r=frontend("func f(x:(bool,bool)){match x{(true,true)=>{},(true,false)=>{},(true,_)=>{},(false,_)=>{}}}");
+    assert_eq!(codes(&r), ["N3102"]);
+    assert_eq!(r.diagnostics()[0].secondary.len(), 2);
+    let r = frontend("func f(x:(bool,bool)){match x{(true,_)=>{}}}");
+    assert_eq!(codes(&r), ["N3101"]);
+    assert!(r.diagnostics()[0]
+        .notes
+        .iter()
+        .any(|n| n.contains("(false, _)")));
+    let r =
+        frontend("func f(x:Option<(bool,bool)>){match x{none=>{},Option::Some((_,_))=>{},_=>{}}}");
+    assert_eq!(codes(&r), ["N3102"]);
+}
+
+#[test]
+fn p24_recursive_scopes_shadow_copy_and_independent_errors() {
+    pass("struct P{var x:int8}const 値=99;func f(p:(P,())){match p{(値,())=>{var q=値;q.x=2;print(\"{値.x}/{q.x}\")}}}");
+    for (source, code) in [
+        ("func f(){match (1,true){(n,_)=>{n=2}}}", "N3004"),
+        (
+            "func f(){match (1,true){(n,_)=>{}};print(\"{n}\")}",
+            "N2001",
+        ),
+        ("func f(){match (1,true){(n,n)=>{},_=>{}}}", "N2002"),
+        (
+            "func f(){match (1,true){(true,_)=>{print(missing)},_=>{}}}",
+            "N2101",
+        ),
+        ("func f(){match (1,true){(n,_)=>{let n=2}}}", "N2002"),
+    ] {
+        let r = frontend(source);
+        assert!(codes(&r).contains(&code.into()), "{:?}", r.diagnostics());
+        assert!(!codes(&r)
+            .iter()
+            .any(|c| matches!(c.as_str(), "N3101" | "N3102")));
+    }
+    let r = frontend("func f(){match (1,true){(true,_)=>{print(missing)},_=>{}}}");
+    assert!(codes(&r).contains(&"N2001".into()));
+}
+
+#[test]
+fn p24_import_alias_identity_opaque_factory_and_private_access() {
+    let (_,_,c)=p12_bundle(&[("main","use lib::Event as E;use lib::make;func f(){match (make(),()){(E::A(n),())=>{print(\"{n}\")},(E::B,())=>{}}}"),("lib","public enum Event{A(int8);B}public func make()->Event{return Event::A(7)}")]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    let (_, _, c) = p12_bundle(&[
+        (
+            "main",
+            "use lib::make;func f(){match (make(),()){(value,())=>{match value{_=>{}}}}}",
+        ),
+        (
+            "lib",
+            "private enum Hidden{A(int8);B}public func make()->Hidden{return Hidden::A(7)}",
+        ),
+    ]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    let (_, _, c) = p12_bundle(&[
+        (
+            "main",
+            "use lib::make;func f(){match (make(),()){(value,())=>{print(\"{value.x}\")}}}",
+        ),
+        (
+            "lib",
+            "private struct Hidden{private let x:int8}public func make()->Hidden{return Hidden(7)}",
+        ),
+    ]);
+    assert_eq!(
+        c.diagnostics
+            .iter()
+            .map(|d| d.code.to_string())
+            .collect::<Vec<_>>(),
+        ["N2004"]
+    );
+}
+
+#[test]
+fn p24_pattern_10000_node_boundary_and_flat_path_preserved() {
+    fn source(extra: usize, nested: bool) -> String {
+        let mut variants = vec![];
+        let mut arms = vec![];
+        for variant in 0..10 {
+            let arity = if variant == 9 { 990 + extra } else { 1000 };
+            variants.push(format!("V{variant}({})", vec!["()"; arity].join(",")));
+            let mut fields = vec!["_"; arity];
+            if variant == 0 && nested {
+                fields[0] = "()";
+            }
+            arms.push(format!("E::V{variant}({})=>{{}}", fields.join(",")));
+        }
+        format!(
+            "enum E{{{}}}func f(x:E){{match x{{{}}}}}",
+            variants.join(";"),
+            arms.join(",")
+        )
+    }
+    let good = pass(&source(0, true));
+    assert_eq!(
+        good.semantic
+            .unwrap()
+            .2
+            .recursive_patterns
+            .iter()
+            .flatten()
+            .count(),
+        10_000
+    );
+    let text = source(1, true);
+    let r = frontend(&text);
+    assert_eq!(codes(&r), ["N8901"]);
+    assert_eq!(
+        r.sources.slice(r.diagnostics()[0].primary.span).unwrap(),
+        "_"
+    );
+    assert!(r.diagnostics()[0].notes.iter().any(|n| n.contains("10000")));
+    let flat = pass(&source(1, false));
+    assert!(flat.semantic.unwrap().2.nested_matches.is_empty());
+}
+
+#[test]
+fn p24_tuple_unit_wildcards_and_finite_exhaustive_reference() {
+    for source in [
+        "func f(x:(bool,bool)){match x{_=>{}}}",
+        "func f(x:()){match x{_=>{}}}",
+        "func f(x:(bool,)){match x{pair=>{}}}",
+    ] {
+        assert!(!pass(source).semantic.unwrap().2.nested_matches.is_empty());
+    }
+    // Independent reference: enumerate the four actual values, rather than
+    // specializing the compiler's constructor matrix.
+    let patterns = ["_", "false", "true"];
+    for first in 0..9 {
+        for second in 0..9 {
+            for third in 0..9 {
+                let mut covered = [false; 4];
+                let mut unreachable = 0;
+                let mut arms = Vec::new();
+                for pattern in [first, second, third] {
+                    let (left, right) = (pattern / 3, pattern % 3);
+                    let accepts = |slot: usize, value: bool| slot == 0 || (slot == 2) == value;
+                    let matching: Vec<_> = (0..4)
+                        .filter(|v| accepts(left, v & 2 != 0) && accepts(right, v & 1 != 0))
+                        .collect();
+                    if matching.iter().all(|&v| covered[v]) {
+                        unreachable += 1;
+                    }
+                    for v in matching {
+                        covered[v] = true;
+                    }
+                    arms.push(format!("({},{})=>{{}}", patterns[left], patterns[right]));
+                }
+                let source = format!("func f(x:(bool,bool)){{match x{{{}}}}}", arms.join(","));
+                let result = frontend(&source);
+                let actual = codes(&result);
+                assert_eq!(
+                    actual.iter().filter(|c| *c == "N3102").count(),
+                    unreachable,
+                    "{source}"
+                );
+                assert_eq!(
+                    actual.iter().filter(|c| *c == "N3101").count(),
+                    usize::from(covered.contains(&false)),
+                    "{source}"
+                );
+                assert!(
+                    actual
+                        .iter()
+                        .all(|c| matches!(c.as_str(), "N3101" | "N3102")),
+                    "{source}: {actual:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn p24_source_matrix_cell_limit_suppresses_derived_coverage() {
+    fn source(width: usize) -> String {
+        let types = vec!["bool"; width].join(",");
+        let mut pattern = vec!["_"; width];
+        pattern[width - 1] = "true";
+        let first = pattern.join(",");
+        pattern[width - 1] = "false";
+        format!(
+            "func f(x:({types})){{match x{{({first})=>{{}},({})=>{{}}}}}}",
+            pattern.join(",")
+        )
+    }
+    pass(&source(64));
+    let result = frontend(&source(1024));
+    assert_eq!(codes(&result), ["N8901"]);
+    assert_eq!(
+        result
+            .sources
+            .slice(result.diagnostics()[0].primary.span)
+            .unwrap(),
+        "match"
+    );
+    assert!(result.diagnostics()[0]
+        .notes
+        .iter()
+        .any(|n| n.contains("1000000")));
+}
+
+#[test]
+fn p24_missing_witnesses_bounded_and_in_constructor_order() {
+    let variants = (0..10)
+        .map(|i| format!("V{i}(bool)"))
+        .collect::<Vec<_>>()
+        .join(";");
+    let result = frontend(&format!(
+        "enum E{{{variants}}}func f(x:E){{match x{{E::V0(true)=>{{}}}}}}"
+    ));
+    assert_eq!(codes(&result), ["N3101"]);
+    let notes = &result.diagnostics()[0].notes;
+    let missing: Vec<_> = notes.iter().filter(|n| n.starts_with("missing:")).collect();
+    assert_eq!(missing.len(), 8);
+    assert_eq!(missing[0], "missing: E::V0(false)");
+    assert_eq!(missing[1], "missing: E::V1(_)");
+    assert_eq!(missing[7], "missing: E::V7(_)");
+    assert!(notes
+        .iter()
+        .any(|n| n.contains("additional missing cases omitted")));
+}

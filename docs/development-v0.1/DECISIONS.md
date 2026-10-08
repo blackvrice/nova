@@ -34,7 +34,7 @@
 
 2026-10-08 사용자 “P23 승인하고 생성자 이름 인수 구현 진행” 답변으로 [P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture](struct-named-arguments-proposal-fixtures/README.md)를 승인했다. Accepted / 구현 완료이며 원 P22 58-production EBNF를 재사용해 field 대응·source-order snapshot·const/default·Source/MIR를 구현했다. [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)을 제공한다. 기존 승인/원본과 explicit init·field default·Enum/sum named payload·Array·일반 Move/Drop 경계는 보존한다.
 
-2026-10-08 다음 Stage B 작업으로 [P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production 제안 EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 계획](nested-pattern-proposal-fixtures/README.md)을 준비했다. Draft / 미승인·미구현이며 P01~P23 승인으로 해석하지 않는다. P14/P15 flat 검사·Copy/Source/MIR 경계를 보존하며 guard·일반 literal·struct destructuring·Array·Move/loan/Drop은 제외한다.
+2026-10-08 사용자 “P24 승인하고 중첩 Copy 패턴·Tuple match 구현 진행” 답변으로 [P24 계약](NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)을 승인했다. Accepted / 구현·검증 완료이며 [구현 기록](NESTED_PATTERN_IMPLEMENTATION.md)을 따른다. 기존 56개 production·P01~P23·flat match 경계를 보존하며 전체 D08/D10/D12/D16/D25/D30·guard·일반 literal·struct destructuring·Array·Move/loan/Drop은 제외한다.
 
 ## 공통 승인 계약
 

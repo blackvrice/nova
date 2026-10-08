@@ -1460,3 +1460,35 @@ fn p22_method_receiver_spans_member_order_and_utf8_truncation() {
         }
     }
 }
+
+#[test]
+fn p24_nested_pattern_trailing_commas_and_separate_pattern_depth() {
+    let source="func f(x:Option<(bool,bool)>){match x{Option::Some((true,flag,),)=>{},none=>{}}}func later(){}";
+    let mut db = SourceDatabase::default();
+    let file = db.add("p24", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let tokens = normalize_ends(&l.tokens);
+    let p = parse(&db, file, &tokens).unwrap();
+    assert!(!p.has_errors(), "{:?}", p.diagnostics);
+    assert!(p
+        .arena
+        .iter()
+        .any(|(_, n)| n.kind == NodeKind::PatternTuple));
+    for depth in [127, 128, 129] {
+        let source = format!(
+            "func f(){{match true{{{}true{}=>{{}}}}}}",
+            "E::A(".repeat(depth),
+            ")".repeat(depth)
+        );
+        let mut db = SourceDatabase::default();
+        let file = db.add("deep", source).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        assert_eq!(
+            p.diagnostics.iter().any(|d| d.code.to_string() == "N8901"),
+            depth == 129,
+            "depth {depth}: {:?}",
+            p.diagnostics
+        );
+    }
+}

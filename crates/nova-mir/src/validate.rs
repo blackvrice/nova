@@ -121,6 +121,18 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
             validator.report(Violation::InvalidSource);
         }
     }
+    for (&callee, original) in &module.nested_bodies {
+        if module
+            .bodies
+            .iter()
+            .filter(|b| b.callee.0 == callee)
+            .count()
+            != 1
+            || !module.bodies.iter().any(|b| b == original)
+        {
+            validator.report(Violation::InvalidBody);
+        }
+    }
     for callee in &module.callees {
         if !definitions.insert(callee.definition.0) {
             validator.report(Violation::DuplicateDefinition);
@@ -1288,7 +1300,13 @@ impl Validator<'_> {
                             self.read(&state, op);
                         }
                     }
-                    TerminatorKind::Unreachable => self.report(Violation::ReachableUnreachable),
+                    TerminatorKind::Unreachable => {
+                        if !self.module.nested_sinks.contains(&(body.callee.0, index))
+                            || self.module.nested_bodies.get(&body.callee.0) != Some(body)
+                        {
+                            self.report(Violation::ReachableUnreachable);
+                        }
+                    }
                     TerminatorKind::Goto(_) => {}
                 }
             }

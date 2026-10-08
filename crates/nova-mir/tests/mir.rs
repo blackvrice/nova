@@ -2830,3 +2830,162 @@ fn p23_1024_named_storage_fields_lower_with_complete_snapshot_proof() {
         .unwrap();
     assert_eq!(aggregate.len(), 1024);
 }
+
+#[test]
+fn p24_recursive_checked_plan_kind_type_order_and_root_deletion_are_rejected() {
+    let text = "func f(v:(bool,bool)){match v{(true,_)=>{},(false,_)=>{}}}func main(){}";
+    for change in 0..4 {
+        let mut db = SourceDatabase::default();
+        let file = db.add("p24", text.into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        let hir = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+        let resolved = resolve(&hir);
+        let mut c = check(&hir, &resolved).unwrap();
+        let tuple = c
+            .recursive_patterns
+            .iter()
+            .position(|p| {
+                p.as_ref().is_some_and(|p| {
+                    matches!(p.kind, nova_typecheck::RecursivePatternKind::Tuple(_))
+                })
+            })
+            .unwrap();
+        match change {
+            0 => c.recursive_patterns[tuple]
+                .as_mut()
+                .unwrap()
+                .children
+                .reverse(),
+            1 => c.recursive_patterns[tuple].as_mut().unwrap().ty = Type::Bool,
+            2 => c.recursive_patterns[tuple] = None,
+            _ => c.nested_matches.clear(),
+        }
+        assert_eq!(
+            lower(&hir, &resolved, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+fn p24_mir_program() -> Module {
+    pass("func f(v:(Option<int>,Option<int>))->int{match v{(Option::Some(a),Option::Some(b))=>{return a-b},_=>{return 0}}}func main(){print(\"{f((Option::Some(7),Option::Some(2)))}\")}")
+}
+#[test]
+fn p24_same_type_recursive_payload_path_and_tag_effect_forgery_rejected() {
+    let original = p24_mir_program();
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    let payloads = original.bodies[body]
+        .blocks
+        .iter()
+        .enumerate()
+        .flat_map(|(b, block)| {
+            block
+                .statements
+                .iter()
+                .enumerate()
+                .filter_map(move |(s, statement)| {
+                    matches!(
+                        statement.kind,
+                        StatementKind::Assign(_, Rvalue::EnumPayload(..))
+                    )
+                    .then_some((b, s))
+                })
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(payloads.len(), 2);
+    let operand = match &original.bodies[body].blocks[payloads[1].0].statements[payloads[1].1].kind
+    {
+        StatementKind::Assign(_, Rvalue::EnumPayload(op, ..)) => op.clone(),
+        _ => panic!(),
+    };
+    let mut bad = original.clone();
+    if let StatementKind::Assign(_, Rvalue::EnumPayload(op, ..)) =
+        &mut bad.bodies[body].blocks[payloads[0].0].statements[payloads[0].1].kind
+    {
+        *op = operand;
+    }
+    assert!(validate(&bad)
+        .iter()
+        .any(|e| e.violation == Violation::InvalidBody));
+    let mut bad = original.clone();
+    let block = bad.bodies[body]
+        .blocks
+        .iter_mut()
+        .find(|b| {
+            matches!(
+                b.terminator.as_ref().map(|t| &t.kind),
+                Some(TerminatorKind::Match { .. })
+            )
+        })
+        .unwrap();
+    if let TerminatorKind::Match { arms, .. } = &mut block.terminator.as_mut().unwrap().kind {
+        let target = arms[0].1;
+        arms[0].1 = arms[1].1;
+        arms[1].1 = target;
+    }
+    assert!(!validate(&bad).is_empty());
+    let mut bad = original.clone();
+    bad.bodies[body].entry = BlockId(payloads[0].0);
+    assert!(validate(&bad)
+        .iter()
+        .any(|e| e.violation == Violation::InactivePayload));
+}
+#[test]
+fn p24_snapshot_source_same_type_projection_sink_and_body_proof() {
+    let original = p24_mir_program();
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    for change in 0..5 {
+        let mut bad = original.clone();
+        match change {
+            0 => {
+                let statement = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .flat_map(|b| &mut b.statements)
+                    .find(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Project(..))))
+                    .unwrap();
+                if let StatementKind::Assign(_, Rvalue::Project(_, field)) = &mut statement.kind {
+                    field.index = 1 - field.index;
+                }
+            }
+            1 => {
+                let statement = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .flat_map(|b| &mut b.statements)
+                    .find(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::EnumPayload(..))))
+                    .unwrap();
+                statement.source = original.bodies[body].source;
+            }
+            2 => {
+                let entry = bad.bodies[body].entry;
+                bad.bodies[body].blocks[entry.0]
+                    .terminator
+                    .as_mut()
+                    .unwrap()
+                    .kind = TerminatorKind::Unreachable;
+            }
+            3 => {
+                bad.bodies.remove(body);
+            }
+            _ => {
+                let entry = bad.bodies[body].entry;
+                let snapshot = bad.bodies[body].blocks[entry.0]
+                    .statements
+                    .last()
+                    .unwrap()
+                    .clone();
+                bad.bodies[body].blocks[entry.0].statements.push(snapshot);
+            }
+        }
+        assert!(!validate(&bad).is_empty(), "change {change}");
+    }
+}

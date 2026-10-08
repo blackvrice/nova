@@ -977,22 +977,22 @@ assert(structNamedMain.includes('use types::Point as 점') && structNamedMain.in
   && structNamedTypes.includes('public func sum(self)'), 'P23 missing mapping/effect/try/privacy/default/self data');
 checks.push('P23 Accepted/승인·구현 ledger·P22 58-production EBNF 재사용/변경 없음·두 파일/정상 2/부정 24/Runtime 1 UTF-8 Span·cascade·검증된 20줄 metadata (문서 validator 자체는 Compiler/Native 실행 아님)');
 
-const nestedProposal = manifest.draft_proposals?.find(p => p.id === 'P24');
-assert(nestedProposal?.status === 'Draft' && nestedProposal?.implementation_verified === false
+const nestedProposal = manifest.accepted_proposals?.find(p => p.id === 'P24');
+assert(nestedProposal?.status === 'Accepted' && nestedProposal?.implementation_verified === true
   && nestedProposal?.document === 'NESTED_PATTERN_STAGE_B_PROPOSAL.md'
   && nestedProposal?.grammar === 'GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf'
-  && nestedProposal?.grammar_change === true && !nestedProposal?.approval_date
-  && !manifest.accepted_proposals?.some(p => p.id === 'P24'), 'P24 incorrectly approved/verified');
+  && nestedProposal?.grammar_change === true && nestedProposal?.approval_date === '2026-10-08'
+  && !manifest.draft_proposals?.some(p => p.id === 'P24'), 'P24 invalid approval ledger');
 const nestedText = fs.readFileSync(path.join(pack, 'NESTED_PATTERN_STAGE_B_PROPOSAL.md'), 'utf8');
-for (const requirement of ['Draft / 사용자 승인 대기 / 미구현', '기존 56개 보존', '10,000개', '100,000개',
+for (const requirement of ['Accepted / 구현·검증 완료', '기존 56개 보존', '10,000개', '100,000개',
   '1,000,000개', '합집합', 'N3101', 'N3102', 'ancestor', 'flat-only', 'guard', 'Move/Drop']) {
   assert(nestedText.includes(requirement), 'P24 missing boundary ' + requirement);
 }
 validateGrammar('GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf');
 const nestedGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf'), 'utf8');
 const nestedProductions = productions(nestedGrammar);
-assert(nestedGrammar.includes('Draft, not approved or implemented') && nestedProductions.size === 60,
-  'P24 invalid Draft grammar');
+assert(nestedGrammar.includes('Accepted 2026-10-08; implemented and verified') && nestedProductions.size === 60,
+  'P24 invalid Accepted grammar');
 for (const [name, value] of methodProductions) {
   if (!['pattern', 'pattern_arguments'].includes(name)) {
     assert(nestedProductions.get(name) === value, 'P24 changed approved production ' + name);
@@ -1006,14 +1006,14 @@ assert(nestedProductions.get('pattern') === methodProductions.get('pattern').rep
 const nestedRoot = path.join(pack, 'nested-pattern-proposal-fixtures');
 const nestedFixture = JSON.parse(fs.readFileSync(path.join(nestedRoot, 'expected.json'), 'utf8'));
 const nestedOutput = 'scrutinee\nnested=7\npacket=9/false/한\nsnapshot=true/6\noriginal=false/false\nsingle=true\nunit\nclassify=3\nafter try\nok=4\nerror=5\nloop=2\n';
-assert(nestedFixture.proposal === 'P24' && nestedFixture.status === 'Draft'
-  && nestedFixture.implementation_verified === false && !nestedFixture.approval_date
-  && !nestedFixture.validated_result && nestedFixture.entry === 'main.nova'
+assert(nestedFixture.proposal === 'P24' && nestedFixture.status === 'Accepted'
+  && nestedFixture.implementation_verified === true && nestedFixture.approval_date === '2026-10-08'
+  && !nestedFixture.proposed_result && nestedFixture.entry === 'main.nova'
   && nestedFixture.source_root === '.' && nestedFixture.grammar_productions === 60
   && JSON.stringify(nestedFixture.reachable_modules) === '["main","types"]'
-  && nestedFixture.proposed_result?.check_exit === 0 && nestedFixture.proposed_result?.native_exit === 0
-  && nestedFixture.proposed_result?.stdout === nestedOutput && nestedFixture.proposed_result?.stderr === '',
-  'P24 invalid draft entry or proposed output');
+  && nestedFixture.validated_result?.check_exit === 0 && nestedFixture.validated_result?.native_exit === 0
+  && nestedFixture.validated_result?.stdout === nestedOutput && nestedFixture.validated_result?.stderr === '',
+  'P24 invalid verified entry or output');
 assert(nestedFixture.positive_cases?.length === 3 && nestedFixture.negative_cases?.length === 18
   && nestedFixture.runtime_cases?.length === 1, 'P24 invalid fixture counts');
 const nestedCases = [...nestedFixture.positive_cases, ...nestedFixture.negative_cases, ...nestedFixture.runtime_cases];
@@ -1021,11 +1021,11 @@ assert(new Set(nestedCases.map(c => c.name)).size === nestedCases.length, 'P24 d
 const nestedSources = new Set(['main.nova', 'types.nova']);
 for (const c of nestedCases) {
   assert(path.basename(c.source) === c.source && c.source.endsWith('.nova'), 'P24 invalid source path ' + c.name);
-  assert(!c.validated_result, 'P24 case must not claim validation ' + c.name);
+  assert(!c.proposed_result, 'P24 case must not retain proposed result ' + c.name);
   nestedSources.add(c.source);
   if (c.expected_diagnostic) {
     assert(knownCodes.has(c.expected_diagnostic), 'P24 unknown diagnostic ' + c.name);
-    assert(!c.proposed_result, 'P24 negative cannot claim Native output ' + c.name);
+    assert(!c.validated_result, 'P24 negative cannot claim Native output ' + c.name);
   }
   if (c.primary) {
     const bytes = fs.readFileSync(path.join(nestedRoot, c.source));
@@ -1043,21 +1043,23 @@ for (const c of nestedCases) {
 for (const name of nestedSources) {
   const bytes = fs.readFileSync(path.join(nestedRoot, name));
   const text = bytes.toString('utf8');
+  assert(nestedFixture.source_sha256?.[name] === hash(bytes), 'P24 original source hash changed '+name);
   assert(Buffer.from(text).equals(bytes) && text.endsWith('\n') && !text.includes('\r') && text.includes('P24 Draft'),
-    'P24 invalid UTF-8/LF/Draft source ' + name);
+    'P24 invalid UTF-8/LF/historical Draft source ' + name);
 }
-for (const c of nestedFixture.positive_cases) assert(c.proposed_result?.check_exit === 0
-  && c.proposed_result?.native_exit === 0 && c.proposed_result?.stdout.endsWith('\n')
-  && c.proposed_result?.stderr === '', 'P24 invalid proposed positive ' + c.name);
+for (const c of nestedFixture.positive_cases) assert(c.validated_result?.check_exit === 0
+  && c.validated_result?.native_exit === 0 && c.validated_result?.stdout.endsWith('\n')
+  && c.validated_result?.stderr === '', 'P24 invalid verified positive ' + c.name);
 const nestedAbort = nestedFixture.runtime_cases[0];
-assert(nestedAbort.proposed_result?.check_exit === 0 && nestedAbort.proposed_result?.native_exit === 1
-  && nestedAbort.proposed_result?.stdout === 'before\n'
-  && nestedAbort.proposed_result?.stderr_first_line === `Nova panic: integer overflow at file#0:${nestedAbort.primary.start}..${nestedAbort.primary.end}`,
-  'P24 invalid proposed Abort');
+assert(nestedAbort.validated_result?.check_exit === 0 && nestedAbort.validated_result?.native_exit === 1
+  && nestedAbort.validated_result?.stdout === 'before\n'
+  && nestedAbort.validated_result?.stderr_first_line === `Nova panic: integer overflow at file#0:${nestedAbort.primary.start}..${nestedAbort.primary.end}`,
+  'P24 invalid verified Abort');
 const nestedVectors = JSON.parse(fs.readFileSync(path.join(nestedRoot, 'coverage-vectors.json'), 'utf8'));
 assert(nestedVectors.proposal === 'P24' && nestedVectors.finite_domain_reference_only === true
   && nestedVectors.cases?.length === 6, 'P24 invalid finite-domain oracle ledger');
-checks.push('P24 Draft/미승인·미구현 ledger·60-production 제안 EBNF/기존 56개 보존·두 파일/정상 3/부정 18/Runtime 1 UTF-8 Span·proposed 12줄·finite coverage vector 6개 (Compiler/Native 실행 아님)');
+assert(Object.keys(nestedFixture.source_sha256 ?? {}).length === nestedSources.size, 'P24 source hash count');
+checks.push('P24 Accepted/승인·구현 ledger·60-production EBNF/기존 56개 보존·원 source 24개 hash·두 파일/정상 3/부정 18/Runtime 1 UTF-8 Span·검증된 12줄 metadata·finite coverage vector 6개 (문서 validator 자체는 Compiler/Native 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

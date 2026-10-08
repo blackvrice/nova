@@ -889,3 +889,149 @@ fn p23_private_constructor_precedes_mapping_and_original_imported_field_identity
     ]);
     unit(&loaded);
 }
+
+#[test]
+fn p24_fixture_bundle_and_all_proposed_positive_units() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/nested-pattern-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "partial_overlap.nova",
+        "union_coverage.nova",
+        "bare_binder.nova",
+        "nested_abort.nova",
+    ] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        unit(&loaded);
+        for node in loaded.module.as_ref().unwrap().nodes() {
+            loaded.sources.slice(node.span).unwrap();
+        }
+    }
+}
+#[test]
+fn p24_fixed_diagnostics_utf8_primary_and_cascade_suppression() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/nested-pattern-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for (name, code, start, end, forbidden) in [
+        (
+            "tuple_arity.nova",
+            "N2201",
+            77,
+            84,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "tuple_on_bool.nova",
+            "N2101",
+            69,
+            81,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "bool_on_integer.nova",
+            "N2101",
+            74,
+            78,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "unit_on_bool.nova",
+            "N2101",
+            74,
+            76,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "variant_mismatch.nova",
+            "N2101",
+            88,
+            103,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "unknown_variant.nova",
+            "N2001",
+            96,
+            103,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "payload_arity.nova",
+            "N2201",
+            88,
+            105,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "nullary_parentheses.nova",
+            "N2201",
+            106,
+            120,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "duplicate_binder.nova",
+            "N2002",
+            83,
+            86,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        ("missing_nested.nova", "N3101", 48, 53, &[] as &[&str]),
+        ("duplicate_nested.nova", "N3102", 99, 111, &[] as &[&str]),
+        ("union_unreachable.nova", "N3102", 130, 138, &[] as &[&str]),
+        (
+            "grouped_pattern.nova",
+            "N1102",
+            82,
+            88,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "literal_pattern.nova",
+            "N1102",
+            74,
+            75,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        ("immutable_binder.nova", "N3004", 55, 56, &[] as &[&str]),
+        ("binder_escape.nova", "N2001", 67, 68, &[] as &[&str]),
+        ("root_scalar.nova", "N2101", 33, 34, &[] as &[&str]),
+        (
+            "alias_head.nova",
+            "N1102",
+            86,
+            94,
+            &["N3101", "N3102"] as &[&str],
+        ),
+    ] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = loaded.diagnostics.clone();
+        if let Some(hir) = &loaded.module {
+            let resolved = nova_resolve::resolve(hir);
+            let checked = nova_typecheck::check(hir, &resolved).unwrap();
+            diagnostics.extend(checked.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && d.primary.span.start() == start
+                && d.primary.span.end() == end),
+            "{name}: {diagnostics:?}"
+        );
+        assert!(
+            forbidden
+                .iter()
+                .all(|code| diagnostics.iter().all(|d| d.code.to_string() != *code)),
+            "{name}: {diagnostics:?}"
+        );
+        for d in diagnostics {
+            loaded.sources.slice(d.primary.span).unwrap();
+            for note in d.secondary {
+                loaded.sources.slice(note.span).unwrap();
+            }
+        }
+    }
+}
