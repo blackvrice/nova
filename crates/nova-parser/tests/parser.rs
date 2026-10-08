@@ -1170,3 +1170,72 @@ fn p18_default_parameter_spans_split_tokens_and_utf8_recovery() {
         .iter()
         .any(|d| d.code.to_string() == "N1101"));
 }
+
+#[test]
+fn p19_range_loop_source_order_spans_end_recovery_and_utf8_prefixes() {
+    let source = "func f(){for 値 in 0\nuntil\n3 {loop {break};continue}}";
+    let (db, _, p) = run(source);
+    assert!(!p.has_errors(), "{:?}", p.diagnostics);
+    let n = p
+        .arena
+        .iter()
+        .find(|(_, n)| matches!(n.kind, NodeKind::For { .. }))
+        .unwrap()
+        .1;
+    let NodeKind::For {
+        keyword,
+        in_keyword,
+        operator,
+        inclusive,
+        range,
+    } = n.kind
+    else {
+        unreachable!()
+    };
+    assert_eq!(db.slice(keyword).unwrap(), "for");
+    assert_eq!(db.slice(in_keyword).unwrap(), "in");
+    assert_eq!(db.slice(operator).unwrap(), "until");
+    assert!(!inclusive);
+    assert_eq!(db.slice(range).unwrap(), "0\nuntil\n3");
+    assert_eq!(n.children.len(), 4);
+    assert!(matches!(
+        p.arena.get(n.children[0]).unwrap().kind,
+        NodeKind::Binder { .. }
+    ));
+    for end in (0..=source.len()).filter(|&i| source.is_char_boundary(i)) {
+        let (db, _, p) = run(&source[..end]);
+        assert_spans(&db, &p);
+    }
+    for bad in [
+        "for _ in 0 until 1 {}",
+        "for i in (1,2) {}",
+        "for i in 0 until 1 through 2 {}",
+        "loop",
+        "for i:int in 0 until 1 {}",
+    ] {
+        let (db, _, p) = run(&format!("func f(){{{bad}}}func later(){{}}"));
+        assert!(p.has_errors(), "{bad}");
+        assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function {name,..} if db.slice(name).unwrap()=="later")),"{bad}");
+    }
+}
+#[test]
+fn p19_loop_nesting_limit_and_flat_parser_host_stack() {
+    let (_, _, p) = run(&format!(
+        "func f(){{{}break{} }}func later(){{}}",
+        "loop {".repeat(129),
+        "}".repeat(129)
+    ));
+    assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N8901"));
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let (_, _, p) = run(&format!(
+                "func f(){{{} }}",
+                "for i in 0 until 1 {loop {break}}".repeat(1024)
+            ));
+            assert!(!p.has_errors(), "{:?}", p.diagnostics);
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}

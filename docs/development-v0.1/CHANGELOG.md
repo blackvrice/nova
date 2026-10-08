@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P19 loop·정수 범위 for 구현
+
+사용자 승인 P19의 loop·정수 until/through for·불변 binder·source-order bound snapshots·inclusive MAX 종료·
+nested jump/try·보수적 return 분석과 Source/MIR private body proof를 구현했다.
+기본 10·LLVM 1·Native 2 테스트와 직접 실행 예제를 추가했다. [구현·검증 기록](RANGE_LOOP_IMPLEMENTATION.md).
+Unit bound fixture의 기대 Span을 함수 괄호에서 실제 bound 22..24로 정정했다. 새 의미 정책 변경은 없다.
+
+
 ## 2026-10-07 — P19 loop·정수 범위 for 착수안 (Draft)
 
 loop/정수 전용 until·through for·불변 binder·bound snapshot·inclusive MAX 종료·mixed jump·return 분석·Source/CFG 검증의

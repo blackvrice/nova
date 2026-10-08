@@ -926,6 +926,12 @@ impl<'a> Parser<'a> {
         if self.kind() == TokenKind::Keyword(Keyword::While) {
             return self.while_statement();
         }
+        if matches!(
+            self.kind(),
+            TokenKind::Keyword(Keyword::For | Keyword::Loop)
+        ) {
+            return self.range_loop_statement();
+        }
         if self.kind() == TokenKind::Keyword(Keyword::Match) {
             return self.match_statement();
         }
@@ -1044,6 +1050,80 @@ impl<'a> Parser<'a> {
         self.depth -= 1;
         self.loop_depth -= 1;
         self.node(NodeKind::While, start, vec![condition, body])
+    }
+
+    fn range_loop_statement(&mut self) -> AstNodeId {
+        let token = self.current();
+        let keyword = token.span;
+        self.loop_depth += 1;
+        if !self.enter() {
+            self.bump();
+            self.recover_statement();
+            self.loop_depth -= 1;
+            return self.node(NodeKind::Error, keyword.start(), vec![]);
+        }
+        self.bump();
+        let id = if token.kind == TokenKind::Keyword(Keyword::Loop) {
+            let body = self.block();
+            self.node(NodeKind::Loop { keyword }, keyword.start(), vec![body])
+        } else {
+            let name = self.expect(TokenKind::Identifier).span;
+            if name.start() == name.end() {
+                self.recover_statement();
+                self.depth -= 1;
+                self.loop_depth -= 1;
+                return self.node(NodeKind::Error, keyword.start(), vec![]);
+            }
+            if self.text.get(name.start()..name.end()) == Some("_") {
+                self.report(1102, name, "wildcard range binder is unsupported");
+            }
+            let binder = self.node(NodeKind::Binder { name }, name.start(), vec![]);
+            let in_keyword = self.expect(TokenKind::Keyword(Keyword::In)).span;
+            let start = self.expression(0);
+            if !matches!(
+                self.kind(),
+                TokenKind::Keyword(Keyword::Until | Keyword::Through)
+            ) {
+                let at = self.arena.get(start).expect("parsed bound").span;
+                self.report(1102, at, "for requires an integer until/through range");
+                if self.kind() == TokenKind::LeftBrace {
+                    self.block();
+                } else {
+                    self.recover_statement();
+                }
+                self.node(NodeKind::Error, keyword.start(), vec![])
+            } else {
+                let op = self.bump();
+                let end = self.expression(0);
+                let range = self.span(
+                    self.arena.get(start).expect("start").span.start(),
+                    self.arena.get(end).expect("end").span.end(),
+                );
+                while matches!(
+                    self.kind(),
+                    TokenKind::Keyword(Keyword::Until | Keyword::Through)
+                ) {
+                    let chained = self.bump().span;
+                    self.report(1103, chained, "range operators cannot be chained");
+                    self.expression(0);
+                }
+                let body = self.block();
+                self.node(
+                    NodeKind::For {
+                        keyword,
+                        in_keyword,
+                        operator: op.span,
+                        inclusive: op.kind == TokenKind::Keyword(Keyword::Through),
+                        range,
+                    },
+                    keyword.start(),
+                    vec![binder, start, end, body],
+                )
+            }
+        };
+        self.depth -= 1;
+        self.loop_depth -= 1;
+        id
     }
 
     fn expression(&mut self, minimum: u8) -> AstNodeId {

@@ -2,7 +2,9 @@
 mod aggregates;
 mod arguments;
 mod defaults;
+mod ranges;
 pub use defaults::{DefaultArgument, ParameterDefault};
+pub use ranges::RangeInfo;
 mod enums;
 mod sums;
 pub use arguments::NamedCall;
@@ -29,6 +31,7 @@ pub struct Signature {
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Checked {
+    pub ranges: Vec<Option<RangeInfo>>,
     pub types: TypeInterner,
     pub structs: nova_types::StructRegistry,
     pub enums: nova_types::EnumRegistry,
@@ -81,6 +84,16 @@ impl Checked {
     }
     pub fn dump(&self) -> String {
         let mut output = String::new();
+        for (index, range) in self.ranges.iter().enumerate() {
+            if let Some(range) = range {
+                let _ = writeln!(
+                    output,
+                    "range {index} binder {} {:?}",
+                    range.binder.0,
+                    self.types.get(range.ty)
+                );
+            }
+        }
         for (index, &ty) in self.type_table.iter().enumerate() {
             let _ = writeln!(
                 output,
@@ -179,6 +192,7 @@ struct Context {
     const_declaration: Option<HirId>,
 }
 enum Work {
+    RangeBody(HirId, Context),
     Enter(HirId, Context),
     Exit(HirId, Context),
     AssignmentValue(HirId, Context),
@@ -295,6 +309,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         calls: vec![None; size],
         named_calls: vec![None; size],
         defaults: vec![None; size],
+        ranges: vec![None; size],
         integer_values: vec![None; size],
         integer_literals: vec![None; size],
         float_literals: vec![None; size],
@@ -660,6 +675,20 @@ impl Checker<'_> {
         let mut pending = vec![Work::Enter(root, context)];
         while let Some(work) = pending.pop() {
             let (id, context, exit) = match work {
+                Work::RangeBody(id, cx) => {
+                    self.prepare_range(id);
+                    pending.push(Work::Enter(
+                        self.module.nodes()[id.0].children[3],
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: false,
+                            loop_depth: cx.loop_depth + 1,
+                            ..cx
+                        },
+                    ));
+                    continue;
+                }
                 Work::Peer {
                     literal,
                     typed,
@@ -737,6 +766,46 @@ impl Checker<'_> {
                 self.prepare_named_call(id);
             }
             match node.kind {
+                HirKind::For { .. } => {
+                    pending.push(Work::RangeBody(id, context));
+                    let left = node.children[1];
+                    let right = node.children[2];
+                    let clean = Context {
+                        expected: None,
+                        expected_span: None,
+                        direct_callee: false,
+                        ..context
+                    };
+                    if self.literal_only[left.0] != self.literal_only[right.0] {
+                        let (literal, typed) = if self.literal_only[left.0] {
+                            (left, right)
+                        } else {
+                            (right, left)
+                        };
+                        pending.push(Work::Peer {
+                            literal,
+                            typed,
+                            context: clean,
+                            floating: false,
+                        });
+                        pending.push(Work::Enter(typed, clean));
+                    } else {
+                        pending.push(Work::Enter(right, clean));
+                        pending.push(Work::Enter(left, clean));
+                    }
+                }
+                HirKind::Loop { .. } => {
+                    pending.push(Work::Enter(
+                        node.children[0],
+                        Context {
+                            expected: None,
+                            expected_span: None,
+                            direct_callee: false,
+                            loop_depth: context.loop_depth + 1,
+                            ..context
+                        },
+                    ));
+                }
                 HirKind::Match { .. } => {
                     pending.push(Work::MatchArms(id, context));
                     pending.push(Work::Enter(
@@ -1379,16 +1448,12 @@ impl Checker<'_> {
             HirKind::Projection { name, name_span } => self.projection(id, *name, *name_span),
             HirKind::Break | HirKind::Continue => {
                 if context.loop_depth == 0 {
-                    self.report(
-                        3002,
-                        node.span,
-                        "jump requires an enclosing while loop",
-                        None,
-                    );
+                    self.report(3002, node.span, "jump requires an enclosing loop", None);
                 }
                 self.flow[id.0] = Flow::Jump;
                 self.set(id, Type::Unit);
             }
+            HirKind::For { .. } | HirKind::Loop { .. } => self.set(id, Type::Unit),
             HirKind::If | HirKind::While => {
                 let condition = node.children[0];
                 if !matches!(

@@ -3192,3 +3192,83 @@ fn p18_default_budget_is_per_declaration_and_includes_skipped_rhs() {
         assert!(!codes(&r).contains(&"N3201".into()));
     }
 }
+
+#[test]
+fn p19_range_loop_fixture_diagnostics_exact_spans_and_error_cascades() {
+    for (source,code,start,end,forbidden) in [
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/float_bound.nova"),"N2101",22,25,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/string_bound.nova"),"N2101",30,35,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/bool_bound.nova"),"N2101",22,26,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/char_bound.nova"),"N2101",22,25,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/unit_bound.nova"),"N2101",22,24,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/aggregate_bound.nova"),"N2101",22,27,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/no_common_integer.nova"),"N2101",55,66,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/peer_literal_range.nova"),"N2102",40,43,&["N2101"] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/undefined_bound.nova"),"N2001",22,29,&["N2101"] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/binder_not_in_bound_scope.nova"),"N2001",26,31,&["N2101"] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/binder_outside.nova"),"N2001",45,48,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/immutable_binder.nova"),"N3004",38,43,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/duplicate_binder.nova"),"N2002",42,47,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/chained_range.nova"),"N1103",32,39,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/range_value.nova"),"N1102",25,30,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/iterable_value.nova"),"N1102",22,27,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/wildcard_binder.nova"),"N1102",17,18,&[] as &[&str]),
+(include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/loop_missing_return.nova"),"N3003",14,35,&[] as &[&str])
+    ] {
+        let result=frontend(source);assert!(!result.passed(),"{source}");
+        assert!(result.diagnostics().iter().any(|d|d.code.to_string()==code&&d.primary.span.start()==start&&d.primary.span.end()==end),"{source} {:?}",result.diagnostics());
+        assert!(!result.diagnostics().iter().any(|d|forbidden.contains(&d.code.to_string().as_str())),"{source} {:?}",result.diagnostics());
+    }
+}
+#[test]
+fn p19_integer_peer_promotion_binder_scope_and_conservative_return() {
+    for (name, ty, min, max) in INTEGER_CASES {
+        let r=pass(&format!("func f(){{const LOW:{name}={min};const HIGH:{name}={max};for value in LOW until HIGH {{let n:{name}=value;break}}for value in HIGH through HIGH {{continue}}}}"));
+        let (_, _, c) = r.semantic.unwrap();
+        assert!(c
+            .ranges
+            .iter()
+            .flatten()
+            .all(|i| c.types.get(i.ty) == Some(ty)));
+    }
+    for source in [include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/unicode_scope_and_snapshots.nova"),include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/integer_edges_and_mixed_jumps.nova"),
+        "func f()->int{loop{return 1}return 2}","func f()->int{for i in 0 through 1{return i}return 2}",
+        "func f(){for i in 0 until 1 {break;let never=1}loop {break;continue}}",
+        "func f(){let hi:int8=3;for i in (0+1) until hi {let v:int8=i}let lo:int8=-1;let end:uint8=2;for i in lo until end {let v:int16=i}}",
+    ] {pass(source);}
+    let (_, _, c) = p12_bundle(&[
+        (
+            "main",
+            include_str!("../../../docs/development-v0.1/range-loop-proposal-fixtures/main.nova"),
+        ),
+        (
+            "helpers",
+            include_str!(
+                "../../../docs/development-v0.1/range-loop-proposal-fixtures/helpers.nova"
+            ),
+        ),
+    ]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    for source in [
+        "func f()->int{for i in 0 through 1{return i}}",
+        "func f()->int{loop{break}}",
+    ] {
+        assert!(codes(&frontend(source)).contains(&"N3003".into()));
+    }
+    let r = pass("func f(){var value=3;for value in value until 4 {if true {let value=99}}}");
+    let (_, resolved, c) = r.semantic.unwrap();
+    let binders = resolved
+        .definitions
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| d.name == "value" && !d.mutable)
+        .collect::<Vec<_>>();
+    assert_eq!(binders.len(), 2);
+    assert_eq!(c.ranges.iter().flatten().count(), 1);
+    assert_eq!(
+        codes(&frontend(
+            "func f(){for i in 0 until 1 {break;let never=missing}}"
+        )),
+        ["N2001"]
+    );
+}

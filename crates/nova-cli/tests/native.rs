@@ -1631,3 +1631,88 @@ fn p18_default_callee_overflow_has_exact_cross_file_span_and_effects_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p19_native_range_loop_fixture_edges_effects_snapshots_jumps_try_o0_o2() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/range-loop-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for profile in ["debug", "release"] {
+        for (name,expected) in [("main.nova","range=8\nstart\nend\nbounds=23\nempty-start\nempty-end\nempty=0\nmaximum=2/255\nmixed=0\nshadow=99/3\nnested=4\nloop=3\ntry-start\ntry-end\ntry-ok=3\ntry-start\ntry-end\ntry-error=-1\n"),("unicode_scope_and_snapshots.nova",""),("integer_edges_and_mixed_jumps.nova","")] {
+            let r=Command::new(env!("CARGO_BIN_EXE_nova")).arg("run").arg(root.join(name)).args(["--profile",profile]).current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")).output().unwrap();
+            assert!(r.status.success(),"{name}: {}",String::from_utf8_lossy(&r.stderr));assert_eq!(r.stdout,expected.as_bytes());assert!(r.stderr.is_empty());
+        }
+        let edges = [
+            ("int8", "-128", "127"),
+            ("uint8", "0", "255"),
+            ("int16", "-32768", "32767"),
+            ("uint16", "0", "65535"),
+            ("int32", "-2147483648", "2147483647"),
+            ("uint32", "0", "4294967295"),
+            ("int64", "-9223372036854775808", "9223372036854775807"),
+            ("uint64", "0", "18446744073709551615"),
+        ];
+        // Distinct helper functions keep each type's declarations in their own scope.
+        let mut source = String::new();
+        let mut calls = String::new();
+        for (n, lo, hi) in edges {
+            source.push_str(&format!("func test_{n}(){{const LOW:{n}={lo};const HIGH:{n}={hi};var count=0;for i in LOW until LOW+1{{count=count+1}}for i in HIGH through HIGH{{count=count+1;continue}}for i in HIGH through HIGH{{count=count+1}}for i in HIGH until HIGH{{count=100}}for i in HIGH through LOW{{count=100}}print(\"{n}={{count}}\")}}"));
+            calls.push_str(&format!("test_{n}();"));
+        }
+        source.push_str(&format!("func main(){{{calls}}}"));
+        let result = program_profile(&source, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(
+            result.stdout,
+            b"int8=3\nuint8=3\nint16=3\nuint16=3\nint32=3\nuint32=3\nint64=3\nuint64=3\n"
+        );
+        assert!(result.stderr.is_empty());
+        let early="func edge(ok:bool,tag:string)->Result<int,bool>{print(tag);if ok{return Result::Success(1)}return Result::Error(true)}func f()->Result<int,bool>{for i in try edge(false,\"start\") until try edge(true,\"end\"){print(\"body\")}return Result::Success(0)}func main(){match f(){Result::Success(_)=>{},Result::Error(_)=>{print(\"error\")}}}";
+        let result = program_profile(early, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, b"start\nerror\n");
+        assert!(result.stderr.is_empty());
+        let returns="func f()->int{for i in 1 through 3{loop{if i==2{return i}break}}return 9}func main(){print(\"{f()}\")}";
+        let result = program_profile(returns, profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, b"2\n");
+        let result=program_profile("struct S{let n:int;}func main(){var text=\"first{0}\";let saved=text;var unit:()=();for i in 0 through 1 {let s=S(i);let t=(s,i);text=\"next{t.0.n}\";unit=()}loop{unit=();break}print(\"{saved}/{text}\")}",profile);
+        assert!(
+            result.status.success(),
+            "{}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        assert_eq!(result.stdout, b"first0/next1\n");
+        assert!(result.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p19_range_loop_checked_failure_exact_cross_file_utf8_spans_and_effects_o0_o2() {
+    for profile in ["debug", "release"] {
+        for (body,expression,stdout) in [
+        ("let 値:int8=127;for i in begin() until 値+1{print(\"body\")}","値+1","start\n"),
+        ("let 値:int8=127;for i in 値+1 until 値{print(\"body\")}","値+1",""),
+        ("let 値:int8=127;for i in 0 through 1{print(\"before\");let bad=値+1;print(\"after\")}","値+1","before\n"),
+    ] {
+        let lib=format!("// 한글 🙂\nfunc begin()->int8{{print(\"start\");return 0}}public func fail(){{{body}}}");let start=lib.find(expression).unwrap();
+        let result=module_program("use lib::fail;func main(){fail();print(\"after-main\")}",&lib,profile);
+        assert!(!result.status.success());assert_eq!(result.stdout,stdout.as_bytes());
+        assert_eq!(String::from_utf8(result.stderr).unwrap().lines().next(),Some(format!("Nova panic: integer overflow at file#1:{start}..{}",start+expression.len()).as_str()));
+    }
+    }
+}

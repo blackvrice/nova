@@ -485,6 +485,24 @@ pub fn resolve(module: &Module) -> Resolved {
             };
             result.node_scopes[id.0] = Some(scope);
             match node.kind {
+                HirKind::For { .. } => {
+                    let body_scope = new_scope(&mut result, scope);
+                    let binder = node.children[0];
+                    result.node_scopes[binder.0] = Some(body_scope);
+                    if let HirKind::Binder { name, name_span } = module.nodes()[binder.0].kind {
+                        declare(
+                            &mut result,
+                            body_scope,
+                            module.symbol(name).expect("range binder"),
+                            DefinitionKind::Local(binder),
+                            name_span,
+                            binder,
+                        );
+                    }
+                    pending.push(Work::Body(node.children[3], body_scope));
+                    pending.push(Work::Visit(node.children[2], scope));
+                    pending.push(Work::Visit(node.children[1], scope));
+                }
                 HirKind::Arm => {
                     let arm_scope = new_scope(&mut result, scope);
                     result.node_scopes[id.0] = Some(arm_scope);

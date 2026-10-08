@@ -1,23 +1,17 @@
 {
   "proposal": "P19",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "helpers"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "range=8\nstart\nend\nbounds=23\nempty-start\nempty-end\nempty=0\nmaximum=2/255\nmixed=0\nshadow=99/3\nnested=4\nloop=3\ntry-start\ntry-end\ntry-ok=3\ntry-start\ntry-end\ntry-error=-1\n",
-    "stderr": ""
-  },
   "positive_cases": [
     {
       "source": "unicode_scope_and_snapshots.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -26,7 +20,7 @@
     },
     {
       "source": "integer_edges_and_mixed_jumps.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
@@ -81,8 +75,8 @@
       "expected_diagnostic": "N2101",
       "primary_text": "()",
       "primary": {
-        "start": 9,
-        "end": 11
+        "start": 22,
+        "end": 24
       }
     },
     {
@@ -235,7 +229,7 @@
         "start": 39,
         "end": 44
       },
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit_nonzero": true,
         "stdout": ""
@@ -250,11 +244,18 @@
         "start": 78,
         "end": 83
       },
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit_nonzero": true,
         "stdout": "before\n"
       }
     }
-  ]
+  ],
+  "approval_date": "2026-10-08",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "range=8\nstart\nend\nbounds=23\nempty-start\nempty-end\nempty=0\nmaximum=2/255\nmixed=0\nshadow=99/3\nnested=4\nloop=3\ntry-start\ntry-end\ntry-ok=3\ntry-start\ntry-end\ntry-error=-1\n",
+    "stderr": ""
+  }
 }

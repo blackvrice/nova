@@ -28,7 +28,7 @@
 
 [P18 상수 표현식 함수 기본 인수 최소 계약](DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf), [두 파일·부정 20사례 수용 fixture](default-arguments-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다. runtime default·parameter 참조·overload·named constructor는 포함하지 않는다.
 
-[P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [두 파일·부정 18/Runtime 2사례 fixture](range-loop-proposal-fixtures/README.md)는 Draft / 사용자 승인 대기 / 미구현이다.
+[P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [두 파일·부정 18/Runtime 2사례 fixture](range-loop-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다.
 
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 

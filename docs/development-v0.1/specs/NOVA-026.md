@@ -26,7 +26,7 @@ binary32/64 literal·손실 없는 숫자 승격·IEEE 산술/비교·canonical 
 
 숫자 10종의 postfix as·operand literal 문맥 격리·checked 범위/직접 RN 반올림·float truncation·const N3201/Runtime Abort는 사용자 승인 [P10](../CAST_STAGE_B_PROPOSAL.md)과 [전용 EBNF](../GRAMMAR_STAGE_B_CAST.ebnf)를 따른다. [구현·검증 기록](../CAST_IMPLEMENTATION.md). Bool/Char/unsafe cast와 전체 D07은 Draft다.
 
-다음 단계 loop·정수 범위 for는 [P19 Draft](../RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [수용 fixture](../range-loop-proposal-fixtures/README.md)로 제안했다. 사용자 승인 대기이며 Compiler에는 적용하지 않았다. 기존 P01~P18과 일반 iterable/Array/Move/Drop 경계는 보존한다.
+사용자 승인한 loop·정수 범위 for는 [P19 Accepted](../RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [수용 fixture](../range-loop-proposal-fixtures/README.md)를 따른다. 구현·검증 완료이며 [구현 기록](../RANGE_LOOP_IMPLEMENTATION.md)을 제공한다. 기존 P01~P18과 일반 iterable/Array/Move/Drop 경계는 보존한다.
 
 ## Primitive 계약
 int/uint는 32-bit, float/double은 binary32/binary64 alias다. fixed-width signed/unsigned, bool, Unicode char, owned UTF-8 string, Unit, Never를 구분한다.

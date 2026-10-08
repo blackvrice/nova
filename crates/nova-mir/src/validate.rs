@@ -105,7 +105,12 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         .iter()
         .map(|b| b.callee.0)
         .collect::<BTreeSet<_>>();
-    if module.named_bodies.keys().any(|id| !body_ids.contains(id)) {
+    if module
+        .named_bodies
+        .keys()
+        .chain(module.loop_bodies.keys())
+        .any(|id| !body_ids.contains(id))
+    {
         validator.report(Violation::InvalidBody);
     }
     let mut definitions = module.structs.keys().map(|s| s.0).collect::<BTreeSet<_>>();
@@ -184,6 +189,13 @@ pub fn validate(module: &Module) -> Vec<ValidationError> {
         }
         validator.check_tries(body);
         validator.check_named_calls(body);
+        if module
+            .loop_bodies
+            .get(&body.callee.0)
+            .is_some_and(|original| original != body)
+        {
+            validator.report(Violation::InvalidBody);
+        }
         for (block_index, block) in body.blocks.iter().enumerate() {
             validator.block = Some(BlockId(block_index));
             for statement in &block.statements {

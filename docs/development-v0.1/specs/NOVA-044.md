@@ -18,7 +18,7 @@ Stage B 가변 지역 변수·반복문 최소 부분은 사용자 진행 요청
 
 사용자 승인한 Copy prefix try·Result Error 조기 반환·operand 문맥 격리·정확한 E·const 금지·Source/CFG 검증은 [P16 Accepted](../TRY_STAGE_B_PROPOSAL.md), [51-production EBNF](../GRAMMAR_STAGE_B_TRY.ebnf), [수용 fixture](../try-proposal-fixtures/README.md), [구현 기록](../TRY_IMPLEMENTATION.md)을 따른다. Option try·error conversion·일반 Move/Drop와 전체 D08/D09/D10/D12/D16/D23/D25는 후속이다.
 
-다음 단계 loop·정수 범위 for는 [P19 Draft](../RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [수용 fixture](../range-loop-proposal-fixtures/README.md)로 제안했다. 사용자 승인 대기이며 Compiler에는 적용하지 않았다. 기존 P01~P18과 일반 iterable/Array/Move/Drop 경계는 보존한다.
+사용자 승인한 loop·정수 범위 for는 [P19 Accepted](../RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [수용 fixture](../range-loop-proposal-fixtures/README.md)를 따른다. 구현·검증 완료이며 [구현 기록](../RANGE_LOOP_IMPLEMENTATION.md)을 제공한다. 기존 P01~P18과 일반 iterable/Array/Move/Drop 경계는 보존한다.
 
 ## Jump 의미
 return은 enclosing function, break/continue는 가장 가까운 loop에 대응한다. lambda 내부 jump가 바깥 function/loop를 벗어나지 않는다. labeled jump 문법은 이번 초안에서 제외한다.

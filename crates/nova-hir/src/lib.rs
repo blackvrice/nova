@@ -118,6 +118,16 @@ pub enum HirKind {
     Return,
     If,
     While,
+    For {
+        keyword: Span,
+        in_keyword: Span,
+        operator: Span,
+        inclusive: bool,
+        range: Span,
+    },
+    Loop {
+        keyword: Span,
+    },
     Break,
     Continue,
     ExpressionStatement,
@@ -418,6 +428,82 @@ pub fn lower(
             if name.file() != node.span.file()
                 || name.start() < node.span.start()
                 || name.end() > node.span.end()
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::For {
+            keyword,
+            in_keyword,
+            operator,
+            inclusive,
+            range,
+        } = node.kind
+        {
+            if node.children.len() != 4 {
+                return Err(LoweringError::MalformedAst);
+            }
+            let children = node
+                .children
+                .iter()
+                .map(|&c| arena.get(c).ok_or(LoweringError::MalformedAst))
+                .collect::<Result<Vec<_>, _>>()?;
+            let NodeKind::Binder { name } = children[0].kind else {
+                return Err(LoweringError::MalformedAst);
+            };
+            let left = children[1].span;
+            let right = children[2].span;
+            let body = children[3].span;
+            for (span, spelling) in [
+                (keyword, "for"),
+                (in_keyword, "in"),
+                (operator, if inclusive { "through" } else { "until" }),
+            ] {
+                if !inside(node.span, span) || sources.slice(span)? != spelling {
+                    return Err(LoweringError::MalformedAst);
+                }
+            }
+            if keyword.start() != node.span.start()
+                || body.end() != node.span.end()
+                || range != Span::new(node.span.file(), left.start(), right.end())?
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+            for (before, after) in [
+                (keyword, name),
+                (name, in_keyword),
+                (in_keyword, left),
+                (left, operator),
+                (operator, right),
+                (right, body),
+            ] {
+                if before.end() > after.start()
+                    || !type_punctuation(
+                        sources.slice(Span::new(node.span.file(), before.end(), after.start())?)?,
+                        &[""],
+                    )
+                {
+                    return Err(LoweringError::MalformedAst);
+                }
+            }
+        }
+        if let NodeKind::Loop { keyword } = node.kind {
+            if node.children.len() != 1 {
+                return Err(LoweringError::MalformedAst);
+            }
+            let body = arena
+                .get(node.children[0])
+                .ok_or(LoweringError::MalformedAst)?
+                .span;
+            if !inside(node.span, keyword)
+                || sources.slice(keyword)? != "loop"
+                || keyword.start() != node.span.start()
+                || body.end() != node.span.end()
+                || keyword.end() > body.start()
+                || !type_punctuation(
+                    sources.slice(Span::new(node.span.file(), keyword.end(), body.start())?)?,
+                    &[""],
+                )
             {
                 return Err(LoweringError::MalformedAst);
             }
@@ -863,6 +949,20 @@ pub fn lower(
             NodeKind::Return => HirKind::Return,
             NodeKind::If => HirKind::If,
             NodeKind::While => HirKind::While,
+            NodeKind::For {
+                keyword,
+                in_keyword,
+                operator,
+                inclusive,
+                range,
+            } => HirKind::For {
+                keyword,
+                in_keyword,
+                operator,
+                inclusive,
+                range,
+            },
+            NodeKind::Loop { keyword } => HirKind::Loop { keyword },
             NodeKind::Break => HirKind::Break,
             NodeKind::Continue => HirKind::Continue,
             NodeKind::ExpressionStatement => HirKind::ExpressionStatement,
@@ -1180,6 +1280,16 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 && expr(kinds[0])
                 && matches!(kinds[1], NodeKind::Block | NodeKind::Error)
         }
+        NodeKind::For { .. } => {
+            kinds.len() == 4
+                && matches!(kinds[0], NodeKind::Binder { .. })
+                && expr(kinds[1])
+                && expr(kinds[2])
+                && matches!(kinds[3], NodeKind::Block | NodeKind::Error)
+        }
+        NodeKind::Loop { .. } => {
+            kinds.len() == 1 && matches!(kinds[0], NodeKind::Block | NodeKind::Error)
+        }
         NodeKind::If => {
             (kinds.len() == 2 || kinds.len() == 3)
                 && expr(kinds[0])
@@ -1193,6 +1303,8 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 NodeKind::Binding { .. }
                     | NodeKind::Assignment
                     | NodeKind::While
+                    | NodeKind::For { .. }
+                    | NodeKind::Loop { .. }
                     | NodeKind::Match { .. }
                     | NodeKind::Break
                     | NodeKind::Continue

@@ -969,3 +969,56 @@ fn p18_real_llvm_default_calls_coff_elf_o0_o2() {
         }
     }
 }
+
+fn p19_corpus() -> CodegenUnit {
+    unit("func leaf(n:int=1)->Result<int,bool>{return Result::Success(n)}func f()->Result<int,bool>{var sum=0;for i in try leaf() until 3 {sum=sum+i;continue}for i in (255 as uint8) through (255 as uint8){continue}loop{break}return Result::Success(sum)}func main(){match f(){Result::Success(n)=>{print(\"{n}\")},Result::Error(_)=>{}}}")
+}
+#[test]
+fn p19_range_loop_llvm_cfg_is_deterministic_and_signedness_is_explicit() {
+    let u = p19_corpus();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&u, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&u, target, true).unwrap());
+        assert!(
+            ir.text.contains("icmp slt i32")
+                && ir.text.contains("icmp ule i8")
+                && ir.text.contains("icmp eq i8")
+        );
+        assert!(ir.text.contains("try.invalid."));
+        assert!(!ir.text.contains("invoke "));
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 via NOVA_CLANG"]
+fn p19_real_llvm_range_loop_cfg_coff_elf_o0_o2() {
+    let u = p19_corpus();
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").unwrap_or_else(|| "clang".into())),
+    };
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-p19-tests")
+        .join(std::process::id().to_string());
+    std::fs::create_dir_all(&root).unwrap();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
+            let path = root.join(format!("{}-{optimization:?}.obj", target.triple()));
+            backend
+                .codegen_unit(
+                    &u,
+                    &target,
+                    &CodegenOptions {
+                        object_path: path.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(path).unwrap();
+            assert!(if target == TargetSpec::WindowsX64Msvc {
+                bytes.starts_with(b"\x64\x86")
+            } else {
+                bytes.starts_with(b"\x7fELF")
+            });
+        }
+    }
+}

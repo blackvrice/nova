@@ -683,18 +683,19 @@ assert(defaultMain.includes('use helpers::compose as joined') && defaultMain.inc
   && defaultHelpers.includes("value:(int8,char)=(BASE,'🙂')"), 'P18 missing scope/context/default/effect proposal data');
 checks.push('P18 Accepted/승인·구현 ledger·P17 parameter 한 production 확장·52-production EBNF/기존 51개 보존·두 파일/정상 2/부정 20사례 UTF-8 Span·cascade·검증 20줄 출력 metadata (Compiler/Native 실행 아님)');
 
-const rangeProposal = manifest.draft_proposals?.find(p => p.id === 'P19');
-assert(rangeProposal?.status === 'Draft' && rangeProposal?.implementation_verified === false
+const rangeProposal = manifest.accepted_proposals?.find(p => p.id === 'P19');
+assert(rangeProposal?.status === 'Accepted' && rangeProposal?.implementation_verified === true
+  && rangeProposal?.approval_date === '2026-10-08'
   && rangeProposal?.document === 'RANGE_LOOP_STAGE_B_PROPOSAL.md'
   && rangeProposal?.grammar === 'GRAMMAR_STAGE_B_RANGE_LOOP.ebnf'
-  && !manifest.accepted_proposals?.some(p => p.id === 'P19'), 'P19 invalid Draft ledger');
+  && !manifest.draft_proposals?.some(p => p.id === 'P19'), 'P19 invalid Accepted ledger');
 const rangeText = fs.readFileSync(path.join(pack, rangeProposal?.document ?? 'RANGE_LOOP_STAGE_B_PROPOSAL.md'), 'utf8');
-assert(rangeText.includes('Draft / 사용자 승인 대기 / 미구현')
+assert(rangeText.includes('Accepted / 사용자 승인 / 구현 완료')
   && rangeText.includes('증가시키지 않고 종료') && rangeText.includes('보수적으로 분석')
   && rangeText.includes('기존 나머지 51개'), 'P19 missing scope/termination/status boundaries');
 validateGrammar('GRAMMAR_STAGE_B_RANGE_LOOP.ebnf');
 const rangeGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_RANGE_LOOP.ebnf'), 'utf8');
-assert(rangeGrammar.includes('Draft, unapproved, unimplemented'), 'P19 invalid grammar status');
+assert(rangeGrammar.includes('Accepted by user; recorded on 2026-10-08'), 'P19 invalid grammar status');
 const rangeProductions = productions(rangeGrammar);
 assert(rangeProductions.size === 54 && defaultProductions.size === 52, 'P19 production count mismatch');
 for (const [name, value] of defaultProductions) {
@@ -705,13 +706,13 @@ assert(rangeProductions.get('statement') === 'if_stmt|while_stmt|for_stmt|loop_s
   && rangeProductions.get('loop_stmt') === '"loop",block', 'P19 invalid minimal statement grammar');
 const rangeRoot = path.join(pack, 'range-loop-proposal-fixtures');
 const rangeFixture = JSON.parse(fs.readFileSync(path.join(rangeRoot, 'expected.json'), 'utf8'));
-assert(rangeFixture.proposal === 'P19' && rangeFixture.status === 'Draft'
-  && rangeFixture.implementation_verified === false && !rangeFixture.validated_result
+assert(rangeFixture.proposal === 'P19' && rangeFixture.status === 'Accepted'
+  && rangeFixture.implementation_verified === true && rangeFixture.approval_date === '2026-10-08' && !rangeFixture.proposed_result
   && rangeFixture.entry === 'main.nova' && rangeFixture.source_root === '.'
-  && JSON.stringify(rangeFixture.reachable_modules) === '["main","helpers"]', 'P19 invalid unverified fixture graph/status');
+  && JSON.stringify(rangeFixture.reachable_modules) === '["main","helpers"]', 'P19 invalid verified fixture graph/status');
 const rangeOutput = 'range=8\nstart\nend\nbounds=23\nempty-start\nempty-end\nempty=0\nmaximum=2/255\nmixed=0\nshadow=99/3\nnested=4\nloop=3\ntry-start\ntry-end\ntry-ok=3\ntry-start\ntry-end\ntry-error=-1\n';
-assert(rangeFixture.proposed_result?.check_exit === 0 && rangeFixture.proposed_result?.native_exit === 0
-  && rangeFixture.proposed_result?.stdout === rangeOutput && rangeFixture.proposed_result?.stderr === '', 'P19 proposed output mismatch');
+assert(rangeFixture.validated_result?.check_exit === 0 && rangeFixture.validated_result?.native_exit === 0
+  && rangeFixture.validated_result?.stdout === rangeOutput && rangeFixture.validated_result?.stderr === '', 'P19 verified output mismatch');
 assert(rangeFixture.negative_cases?.length === 18 && rangeFixture.runtime_cases?.length === 2
   && rangeFixture.positive_cases?.length === 2, 'P19 fixture counts mismatch');
 const rangeCases = [...rangeFixture.negative_cases, ...rangeFixture.runtime_cases];
@@ -731,15 +732,15 @@ for (const c of rangeCases) {
   }
 }
 for (const c of rangeFixture.positive_cases) {
-  assert(!c.validated_result && c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
-    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '', `P19 invalid unverified positive ${c.source}`);
+  assert(!c.proposed_result && c.validated_result?.check_exit === 0 && c.validated_result?.native_exit === 0
+    && c.validated_result?.stdout === '' && c.validated_result?.stderr === '', `P19 invalid verified positive ${c.source}`);
 }
 for (const c of rangeFixture.runtime_cases) {
-  assert(c.expected_diagnostic === 'N5201' && c.proposed_result?.check_exit === 0
-    && c.proposed_result?.native_exit_nonzero === true, `P19 invalid proposed Runtime failure ${c.name}`);
+  assert(c.expected_diagnostic === 'N5201' && c.validated_result?.check_exit === 0
+    && c.validated_result?.native_exit_nonzero === true, `P19 invalid verified Runtime failure ${c.name}`);
 }
-assert(rangeFixture.runtime_cases.find(c => c.name === 'body_overflow')?.proposed_result?.stdout === 'before\n'
-  && rangeFixture.runtime_cases.find(c => c.name === 'bound_overflow')?.proposed_result?.stdout === '', 'P19 Abort effect data mismatch');
+assert(rangeFixture.runtime_cases.find(c => c.name === 'body_overflow')?.validated_result?.stdout === 'before\n'
+  && rangeFixture.runtime_cases.find(c => c.name === 'bound_overflow')?.validated_result?.stdout === '', 'P19 Abort effect data mismatch');
 for (const name of [rangeFixture.entry, 'helpers.nova', ...rangeFixture.positive_cases.map(c => c.source), ...rangeCases.map(c => c.source)]) {
   assert(path.basename(name) === name && name.endsWith('.nova'), `P19 invalid filename ${name}`);
   const text = fs.readFileSync(path.join(rangeRoot, name), 'utf8');
@@ -754,7 +755,10 @@ assert(rangeMain.includes('use helpers::edge as bound') && rangeMain.includes('t
   && rangeMain.includes('tag:"empty-start"') && rangeMain.includes('let lo:int8=-1')
   && rangeMain.includes('until try fetch') && rangeMain.includes('loop {') && rangeMain.includes('continue'),
   'P19 missing bound/effect/max/jump/context proposal cases');
-checks.push('P19 Draft/미승인·미구현 ledger·P18 statement 확장/두 production 추가·54-production EBNF/기존 51개 보존·두 파일/정상 2/부정 18/Runtime 2 UTF-8 Span·cascade·제안 18줄 metadata (Compiler/Native 통과 기록 아님)');
+checks.push('P19 Accepted/승인·구현 ledger·P18 statement 확장/두 production 추가·54-production EBNF/기존 51개 보존·두 파일/정상 2/부정 18/Runtime 2 UTF-8 Span·cascade·검증 18줄 metadata (문서 validator는 Compiler/Native 실행 아님)');
+
+const rangeUnit = rangeFixture.negative_cases.find(c => c.name === 'unit_bound');
+assert(rangeUnit?.primary?.start === 22 && rangeUnit?.primary?.end === 24, 'P19 Unit bound Span must not point to function parameter parentheses');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

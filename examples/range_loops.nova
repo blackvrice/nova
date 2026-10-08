@@ -1,0 +1,51 @@
+func bound(value:int,tag:string="bound")->int { print(tag); return value }
+func fetch(value:int,tag:string,ok:bool=true)->Result<int,int> {
+    print(tag)
+    if ok { return Result::Success(value) }
+    return Result::Error(-1)
+}
+func propagated(flag:bool)->Result<int,int> {
+    var sum=0
+    for i in try fetch(value:1,tag:"try-start") until try fetch(value:3,tag:"try-end",ok:flag) { sum=sum+i }
+    return Result::Success(sum)
+}
+func main() {
+    var sum=0
+    for i in 1 until 6 {
+        if i==2 { continue }
+        if i==5 { break }
+        sum=sum+i
+    }
+    print("range={sum}")
+    var encoded=0
+    for value in bound(tag:"start",value:2) until bound(value:4,tag:"end") { encoded=encoded*10+value }
+    print("bounds={encoded}")
+    var empty=0
+    for value in bound(value:3,tag:"empty-start") until bound(value:1,tag:"empty-end") { empty=empty+1 }
+    print("empty={empty}")
+    const MAX:uint8=255
+    var count=0
+    var last:uint8=0
+    for value in (254 as uint8) through MAX { count=count+1; last=value; continue }
+    print("maximum={count}/{last}")
+    let lo:int8=-1
+    let hi:uint8=2
+    var mixed:int16=0
+    for value in lo until hi { let widened:int16=value; mixed=mixed+widened }
+    print("mixed={mixed}")
+    let i=99
+    var shadow=0
+    for i in 1 through 2 { shadow=shadow+i }
+    print("shadow={i}/{shadow}")
+    var nested=0
+    for outer in 1 through 2 {
+        var inner=0
+        while inner<3 { inner=inner+1; if inner==2 { continue }; nested=nested+1 }
+    }
+    print("nested={nested}")
+    var n=0
+    loop { n=n+1; if n<3 { continue }; break }
+    print("loop={n}")
+    match propagated(true) { Result::Success(value)=>{ print("try-ok={value}") },Result::Error(error)=>{ print("unexpected={error}") } }
+    match propagated(false) { Result::Success(value)=>{ print("unexpected={value}") },Result::Error(error)=>{ print("try-error={error}") } }
+}

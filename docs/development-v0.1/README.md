@@ -1,6 +1,6 @@
 # Nova 0.1 — 개발 문서 보완팩
 
-작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P18 Accepted / 나머지 Draft**
+작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P19 Accepted / 나머지 Draft**
 
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
@@ -150,6 +150,6 @@ Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09
 선언 module의 상수 default·필수/default 혼합·생략 대응·caller materialization·Source/CFG 검증을 구현했다.
 runtime default·parameter 참조·overload·named constructor·일반 Move/Drop은 후속이다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.
 
-다음 Stage B 검토 자료는 [P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md)·
+현재 Stage B 구현은 [P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md)·
 [54-production 문법](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf)·[수용 fixture](range-loop-proposal-fixtures/README.md)다.
-Draft / 사용자 승인 대기이며 아직 Compiler에 적용하지 않았다.
+Accepted / 구현 완료이며 [구현 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다.

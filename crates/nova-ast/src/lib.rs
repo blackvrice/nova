@@ -120,6 +120,17 @@ pub enum NodeKind {
     If,
     /// Condition, then loop body.
     While,
+    /// Binder, start bound, end bound, body in source order.
+    For {
+        keyword: Span,
+        in_keyword: Span,
+        operator: Span,
+        inclusive: bool,
+        range: Span,
+    },
+    Loop {
+        keyword: Span,
+    },
     Break,
     Continue,
     ExpressionStatement,

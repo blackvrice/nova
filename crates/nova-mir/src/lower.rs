@@ -77,6 +77,7 @@ pub fn lower(
         named_calls: BTreeMap::new(),
         default_sources: BTreeMap::new(),
         named_bodies: BTreeMap::new(),
+        loop_bodies: BTreeMap::new(),
         try_controls: BTreeMap::new(),
         structs_original: checked.structs.clone(),
         tuple_ids: checked.tuple_ids.clone(),
@@ -236,6 +237,7 @@ pub fn lower(
             tries: vec![],
             named_snapshots: BTreeMap::new(),
             named_calls: vec![],
+            has_range_loop: false,
         };
         builder.current = Some(builder.block());
         for &parameter in &hir.nodes()[id.0].children[..parameters] {
@@ -281,6 +283,9 @@ pub fn lower(
                     .map(|c| ((c.callee.0, c.source.hir.0), c)),
             );
         }
+        if builder.has_range_loop {
+            result.loop_bodies.insert(callee.0, builder.body.clone());
+        }
         if !builder.named_calls.is_empty() {
             result.named_bodies.insert(callee.0, builder.body.clone());
             for certificate in &builder.named_calls {
@@ -308,6 +313,19 @@ pub fn lower(
 }
 
 enum Work {
+    RangeStart(HirId),
+    RangeEnd {
+        id: HirId,
+        counter: Place,
+    },
+    RangeDone {
+        id: HirId,
+        counter: Place,
+        end: Place,
+        header: BlockId,
+        advance: BlockId,
+        exit: BlockId,
+    },
     Statement(HirId),
     Expression(HirId),
     Convert(HirId),
@@ -380,6 +398,7 @@ struct Builder<'a> {
     tries: Vec<TryCertificate>,
     named_snapshots: BTreeMap<usize, Vec<(BlockId, usize, Statement)>>,
     named_calls: Vec<NamedCallCertificate>,
+    has_range_loop: bool,
 }
 impl Builder<'_> {
     fn block(&mut self) -> BlockId {
@@ -450,6 +469,25 @@ impl Builder<'_> {
                     }
                     let node = &self.hir.nodes()[id.0];
                     match node.kind {
+                        HirKind::For { .. } => {
+                            self.has_range_loop = true;
+                            work.push(Work::RangeStart(id));
+                            work.push(Work::Expression(node.children[1]));
+                        }
+                        HirKind::Loop { .. } => {
+                            self.has_range_loop = true;
+                            let body = self.block();
+                            let exit = self.block();
+                            self.end(TerminatorKind::Goto(body), id)?;
+                            self.current = Some(body);
+                            self.loops.push((body, exit));
+                            work.push(Work::AfterLoop {
+                                id,
+                                condition: body,
+                                exit,
+                            });
+                            work.push(Work::Statement(node.children[0]));
+                        }
                         HirKind::Block => {
                             work.extend(node.children.iter().rev().copied().map(Work::Statement))
                         }
@@ -1071,6 +1109,146 @@ impl Builder<'_> {
                         },
                         id,
                     )?;
+                }
+                Work::RangeStart(id) => {
+                    let start = self.hir.nodes()[id.0].children[1];
+                    let info = self.checked.ranges[id.0].ok_or(LoweringError::InvalidAnalysis)?;
+                    let ty = self
+                        .checked
+                        .types
+                        .get(info.ty)
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    let counter = self.temporary(ty, start);
+                    self.assign(counter, Rvalue::Use(self.value(start)?), start)?;
+                    work.push(Work::RangeEnd { id, counter });
+                    work.push(Work::Expression(self.hir.nodes()[id.0].children[2]));
+                }
+                Work::RangeEnd { id, counter } => {
+                    let node = &self.hir.nodes()[id.0];
+                    let HirKind::For { inclusive, .. } = node.kind else {
+                        return Err(LoweringError::InvalidAnalysis);
+                    };
+                    let info = self.checked.ranges[id.0].ok_or(LoweringError::InvalidAnalysis)?;
+                    let ty = self
+                        .checked
+                        .types
+                        .get(info.ty)
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    let end = self.temporary(ty, node.children[2]);
+                    self.assign(
+                        end,
+                        Rvalue::Use(self.value(node.children[2])?),
+                        node.children[2],
+                    )?;
+                    let header = self.block();
+                    let body = self.block();
+                    let advance = self.block();
+                    let exit = self.block();
+                    self.end(TerminatorKind::Goto(header), id)?;
+                    self.current = Some(header);
+                    let guard = self.temporary(Type::Bool, id);
+                    self.assign(
+                        guard,
+                        Rvalue::Binary(
+                            if inclusive {
+                                Symbol::LessEqual
+                            } else {
+                                Symbol::Less
+                            },
+                            Operand::Place(counter),
+                            Operand::Place(end),
+                        ),
+                        id,
+                    )?;
+                    self.end(
+                        TerminatorKind::Branch {
+                            condition: Operand::Place(guard),
+                            then_block: body,
+                            else_block: exit,
+                        },
+                        id,
+                    )?;
+                    self.current = Some(body);
+                    let binder = self.local(node.children[0], Some(info.binder))?;
+                    self.declarations.insert(info.binder.0, binder);
+                    self.assign(
+                        Place(binder),
+                        Rvalue::Use(Operand::Place(counter)),
+                        node.children[0],
+                    )?;
+                    self.loops.push((advance, exit));
+                    work.push(Work::RangeDone {
+                        id,
+                        counter,
+                        end,
+                        header,
+                        advance,
+                        exit,
+                    });
+                    work.push(Work::Statement(node.children[3]));
+                }
+                Work::RangeDone {
+                    id,
+                    counter,
+                    end,
+                    header,
+                    advance,
+                    exit,
+                } => {
+                    if self.current.is_some() {
+                        self.end(TerminatorKind::Goto(advance), id)?;
+                    }
+                    if self.loops.pop() != Some((advance, exit)) {
+                        return Err(LoweringError::InvalidAnalysis);
+                    }
+                    self.current = Some(advance);
+                    if matches!(
+                        self.hir.nodes()[id.0].kind,
+                        HirKind::For {
+                            inclusive: true,
+                            ..
+                        }
+                    ) {
+                        let guard = self.temporary(Type::Bool, id);
+                        let increment = self.block();
+                        self.assign(
+                            guard,
+                            Rvalue::Binary(
+                                Symbol::EqualEqual,
+                                Operand::Place(counter),
+                                Operand::Place(end),
+                            ),
+                            id,
+                        )?;
+                        self.end(
+                            TerminatorKind::Branch {
+                                condition: Operand::Place(guard),
+                                then_block: exit,
+                                else_block: increment,
+                            },
+                            id,
+                        )?;
+                        self.current = Some(increment);
+                    }
+                    let ty = self.body.locals[counter.0 .0].ty;
+                    let one = Constant::from_const(&nova_types::ConstValue::Integer(
+                        nova_types::IntegerValue::new(
+                            ty.integer().ok_or(LoweringError::InvalidAnalysis)?,
+                            1,
+                        )
+                        .ok_or(LoweringError::InvalidAnalysis)?,
+                    ));
+                    self.assign(
+                        counter,
+                        Rvalue::Binary(
+                            Symbol::Plus,
+                            Operand::Place(counter),
+                            Operand::Constant(one),
+                        ),
+                        id,
+                    )?;
+                    self.end(TerminatorKind::Goto(header), id)?;
+                    self.current = Some(exit);
                 }
                 Work::While {
                     id,

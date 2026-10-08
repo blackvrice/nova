@@ -293,6 +293,14 @@ fn operand(op: &Operand, locals: &[Option<Constant>]) -> Constant {
     }
 }
 fn execute(module: &Module, name: &str, args: Vec<Constant>) -> (Constant, Vec<String>) {
+    execute_with_fuel(module, name, args, 1000)
+}
+fn execute_with_fuel(
+    module: &Module,
+    name: &str,
+    args: Vec<Constant>,
+    mut fuel: usize,
+) -> (Constant, Vec<String>) {
     let mut calls = vec![];
     fn run(
         module: &Module,
@@ -327,7 +335,11 @@ fn execute(module: &Module, name: &str, args: Vec<Constant>) -> (Constant, Vec<S
                         };
                         Constant::Int32(left.checked_add(right).expect("in-range fixture"))
                     }
-                    Rvalue::Binary(op @ (Symbol::Less | Symbol::EqualEqual), left, right) => {
+                    Rvalue::Binary(
+                        op @ (Symbol::Less | Symbol::LessEqual | Symbol::EqualEqual),
+                        left,
+                        right,
+                    ) => {
                         let (Constant::Int32(left), Constant::Int32(right)) =
                             (operand(left, &locals), operand(right, &locals))
                         else {
@@ -335,6 +347,8 @@ fn execute(module: &Module, name: &str, args: Vec<Constant>) -> (Constant, Vec<S
                         };
                         Constant::Bool(if *op == Symbol::Less {
                             left < right
+                        } else if *op == Symbol::LessEqual {
+                            left <= right
                         } else {
                             left == right
                         })
@@ -385,7 +399,7 @@ fn execute(module: &Module, name: &str, args: Vec<Constant>) -> (Constant, Vec<S
         body_named(module, name),
         args,
         &mut calls,
-        &mut 1000,
+        &mut fuel,
     );
     (result, calls)
 }
@@ -2102,6 +2116,189 @@ fn p18_flat_defaults_and_omissions_use_bounded_host_stack() {
                 "func many({params})->int{{return p0+p1023}}func f()->int{{return many()}}"
             ));
             assert_eq!(execute(&module, "f", vec![]).0, Constant::Int32(1023));
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+}
+
+#[test]
+fn p19_range_loop_snapshots_advance_jump_and_mutation_certificates() {
+    let source="func end()->int{return 4}func f()->int{var bound=1;var total=0;for i in bound until end(){bound=0;if i==2{continue}total=total+i}loop{total=total+1;break}return total}";
+    let original = pass(source);
+    assert_eq!(execute(&original, "f", vec![]).0, Constant::Int32(5));
+    let b = body_named(&original, "f");
+    assert!(b.locals.iter().any(|l| l.definition.is_none()
+        && &source[l.source.span.start()..l.source.span.end()] == "bound"));
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    let guard = b
+        .blocks
+        .iter()
+        .position(|b| {
+            b.statements.iter().any(|s| {
+                matches!(
+                    s.kind,
+                    StatementKind::Assign(_, Rvalue::Binary(Symbol::Less, _, _))
+                )
+            })
+        })
+        .unwrap();
+    for mutation in 0..8 {
+        let mut bad = original.clone();
+        let b = &mut bad.bodies[body];
+        match mutation {
+            0 => b.entry = BlockId(guard),
+            1 => {
+                let TerminatorKind::Branch {
+                    then_block,
+                    else_block,
+                    ..
+                } = &mut b.blocks[guard].terminator.as_mut().unwrap().kind
+                else {
+                    unreachable!()
+                };
+                std::mem::swap(then_block, else_block);
+            }
+            2 => {
+                let s = b.blocks[guard].statements.first_mut().unwrap();
+                let StatementKind::Assign(_, v) = &mut s.kind;
+                *v = Rvalue::Use(Operand::Constant(Constant::Bool(true)));
+            }
+            3 => {
+                let s = b.blocks[guard].statements[0].clone();
+                b.blocks[b.entry.0].statements.push(s);
+            }
+            4 => {
+                b.blocks[guard].statements[0].source = b.source;
+            }
+            5 => {
+                let t = b.blocks[guard].terminator.clone();
+                b.blocks[b.entry.0].terminator = t;
+            }
+            6 => b.locals[0].source = b.source,
+            _ => {
+                let i = b
+                    .blocks
+                    .iter()
+                    .position(|b| {
+                        b.statements.iter().any(|s| {
+                            matches!(
+                                s.kind,
+                                StatementKind::Assign(_, Rvalue::Binary(Symbol::Plus, _, _))
+                            )
+                        })
+                    })
+                    .unwrap();
+                b.blocks[i].statements.clear();
+            }
+        }
+        assert!(!validate(&bad).is_empty(), "mutation {mutation}");
+    }
+    let original = pass(
+        "func f()->int{var n=0;for i in 2147483647 through 2147483647{n=n+1;continue}return n}",
+    );
+    assert_eq!(execute(&original, "f", vec![]).0, Constant::Int32(1));
+    let b = body_named(&original, "f");
+    let at = b
+        .blocks
+        .iter()
+        .position(|b| {
+            b.statements.iter().any(|s| {
+                matches!(
+                    s.kind,
+                    StatementKind::Assign(_, Rvalue::Binary(Symbol::EqualEqual, _, _))
+                )
+            })
+        })
+        .unwrap();
+    let mut bad = original.clone();
+    let b = &mut bad.bodies[0];
+    let TerminatorKind::Branch {
+        then_block,
+        else_block,
+        ..
+    } = &mut b.blocks[at].terminator.as_mut().unwrap().kind
+    else {
+        unreachable!()
+    };
+    std::mem::swap(then_block, else_block);
+    assert!(!validate(&bad).is_empty());
+}
+#[test]
+fn p19_public_range_metadata_and_try_bypass_are_rejected() {
+    let mut sources = SourceDatabase::default();
+    let file = sources
+        .add("api", "func f(){for i in 0 until 3{}}".into())
+        .unwrap();
+    let lexed = lex(&sources, file).unwrap();
+    let p = parse(&sources, file, &normalize_ends(&lexed.tokens)).unwrap();
+    let hir = nova_hir::lower(&sources, &p.arena, p.root).unwrap();
+    let res = resolve(&hir);
+    for mutation in 0..3 {
+        let mut bad = check(&hir, &res).unwrap();
+        let range = bad.ranges.iter_mut().find(|r| r.is_some()).unwrap();
+        match mutation {
+            0 => *range = None,
+            1 => range.as_mut().unwrap().binder = nova_resolve::DefId(0),
+            _ => range.as_mut().unwrap().ty = bad.types.intern(Type::Bool),
+        }
+        assert_eq!(
+            lower(&hir, &res, &bad, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+    let original=pass("func leaf()->Result<int,bool>{return Result::Error(true)}func f()->Result<int,bool>{for i in try leaf() until 3 {}return Result::Success(7)}");
+    let mut bad = original.clone();
+    let b = bad
+        .bodies
+        .iter_mut()
+        .find(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    let header = b
+        .blocks
+        .iter()
+        .position(|b| {
+            b.statements.iter().any(|s| {
+                matches!(
+                    s.kind,
+                    StatementKind::Assign(_, Rvalue::Binary(Symbol::Less, _, _))
+                )
+            })
+        })
+        .unwrap();
+    let error = b
+        .blocks
+        .iter_mut()
+        .find(|b| {
+            matches!(
+                b.terminator,
+                Some(Terminator {
+                    kind: TerminatorKind::Return(_),
+                    ..
+                })
+            )
+        })
+        .unwrap();
+    error.terminator.as_mut().unwrap().kind = TerminatorKind::Goto(BlockId(header));
+    assert!(!validate(&bad).is_empty());
+}
+#[test]
+fn p19_flat_loops_small_host_stack_and_cfg_fixed_point() {
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let m = pass(&format!(
+                "func f()->int{{var total=0;{}return total}}",
+                "for i in 0 until 1 {total=total+i}loop{break}".repeat(256)
+            ));
+            assert_eq!(
+                execute_with_fuel(&m, "f", vec![], 10000).0,
+                Constant::Int32(0)
+            );
         })
         .unwrap()
         .join()

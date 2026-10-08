@@ -1,8 +1,10 @@
 # Stage B loop·정수 범위 for 최소 계약 — P19
 
-작성일: 2026-10-07. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일: 2026-10-07. 승인 반영/구현일: 2026-10-08. 상태: **Accepted / 사용자 승인 / 구현 완료**.
+승인 근거: 사용자 “P19 승인하고 loop·정수 범위 for 구현 진행” 답변.
+[구현·검증 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다.
 P01~P18은 보존한다. 이 문서·[전용 EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf)·
-[수용 fixture](range-loop-proposal-fixtures/README.md)는 검토 자료이며 승인 전 Compiler 의미에 적용하지 않는다.
+[수용 fixture](range-loop-proposal-fixtures/README.md)는 승인한 최소 계약이다. 기존 P01~P18의 의미를 보존하며 구현했다.
 
 ## Specification Change Proposal
 
@@ -74,7 +76,7 @@ P01~P18은 보존한다. 이 문서·[전용 EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.eb
     기존 continuation을 사용한다. body recovery 뒤 다음 함수 분석을 계속한다. general Drop/iteration cleanup은 약속하지 않는다.
     dynamic String arena는 기존 entry 종료 수명이며 loop 생성량에 비례해 늘어날 수 있다.
 
-## MIR·검증·수용 계획
+## MIR·검증·수용 기준
 
 - AST/HIR는 for/loop keyword·binder name·in/range operator·각 bound/whole header/body·원 FileId/byte Span을 보존한다.
   외부 AST child shape/order·token spelling·UTF-8/parent 포함을 검사한다. [54-production EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf)는
@@ -91,19 +93,19 @@ P01~P18은 보존한다. 이 문서·[전용 EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.eb
   nested mixed loops·match jump·return/try·default/named/import·checked failure Source Span을 시험한다.
   const initializer/default 안 loop/for statement를 값으로 받아들이지 않고 기존 const subset을 보존한다.
 - 두 파일 정상·별도 정상 2개·부정 18개 exact byte Span/cascade·Runtime 실패 2개를 [fixture](range-loop-proposal-fixtures/README.md)로 준비했다.
-  18줄 stdout은 **제안 기대값**이다. Compiler 구현·Native 성공 기록은 아직 없다.
-- 승인 후 Windows Native debug/release, real LLVM COFF/ELF O0/O2, 전체 fmt/clippy/test/all-features와 Runtime fmt·문서 검사를 실행한다.
+  18줄 stdout은 **검증된 기대값**이다. Compiler와 Windows Native debug/release로 확인했다.
+- Windows Native debug/release, real LLVM COFF/ELF O0/O2, 전체 fmt/clippy/test/all-features와 Runtime fmt·문서 검사를 실행한다.
   flat 대량 loops·128/129 nesting·작은 host stack·일반 CFG fixed point 성능 회귀를 확인한다.
   Linux Native 실행·MSRV 실행은 별도 환경 검증이다.
 
 ## 승인 경계
 
-P19 loop·정수 range 전용 for subset만 승인 대상이다. Array/iterable protocol·Range 값·step/descending·
+P19 loop·정수 range 전용 for subset만 승인했다. Array/iterable protocol·Range 값·step/descending·
 pattern binder·labeled/value jump·Never/termination inference·일반 Move/borrow/Drop·사용자 Generic·
 공용 ABI/FFI·전체 D08/D10/D12/D16/D23/D25는 승인하지 않는다.
-기존 P01~P18·원본 148개·Canonical은 보존한다. 승인 전에는 draft ledger·검토 문서·fixture만 작성한다.
+기존 P01~P18·원본 148개·Canonical은 보존한다. 승인한 P19 subset만 Compiler와 accepted ledger에 적용했다.
 
-## 초안 준비 검증 — 2026-10-07
+## 초안 준비 검증 — 2026-10-07 (과거 기록)
 
 - 문서 build/validator PASS: 148개 원본 hash·로컬 링크·Draft ledger·54-production EBNF와 P18의 기존 51개 production 보존,
   두 파일/정상 2/부정 18/Runtime 2 fixture의 UTF-8 byte Span·cascade·제안 18줄 metadata를 검사했다.
@@ -116,4 +118,4 @@ pattern binder·labeled/value jump·Never/termination inference·일반 Move/bor
 - ignored target의 **기존 P18 문법·while/명시적 counter만 사용하는 대조 프로그램**을 check 및 Windows Native debug/release로 실행했다.
   check는 출력 없이 exit 0, Native는 제안과 같은 18줄 UTF-8/LF stdout·빈 stderr·exit 0이다.
   이는 기존 숫자/출력 값 검산이며 P19 구문·새 binder scope·range promotion·단일 평가·guard/advance CFG의 구현 증거가 아니다.
-  tracked P19 fixture는 Draft / implementation_verified:false를 유지한다.
+  당시 tracked P19 fixture는 Draft / implementation_verified:false였다. 현재 결과는 [구현 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다.

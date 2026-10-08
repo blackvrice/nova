@@ -797,3 +797,95 @@ fn p18_default_source_metadata_and_external_ast_are_checked() {
         assert_eq!(lower(&db, &arena, root).is_ok(), valid, "{text}");
     }
 }
+
+#[test]
+fn p19_range_loop_original_source_and_external_ast_forgery_gate() {
+    let source = "func f(){for 値 in 0 through 1 {loop {break}}}";
+    let hir = lower_source(source);
+    assert_eq!(
+        hir.nodes()
+            .iter()
+            .filter(|n| matches!(n.kind, HirKind::For { .. } | HirKind::Loop { .. }))
+            .count(),
+        2
+    );
+    for end in (0..=source.len()).filter(|&i| source.is_char_boundary(i)) {
+        lower_source(&source[..end]);
+    }
+    let text = "for i in 0 through 1 {}";
+    for mutation in 0..9 {
+        let mut db = SourceDatabase::default();
+        let file = db.add("api", text.into()).unwrap();
+        let s = |a, b| Span::new(file, a, b).unwrap();
+        let mut arena = Arena::default();
+        let binder = arena
+            .insert(NodeKind::Binder { name: s(4, 5) }, s(4, 5), vec![])
+            .unwrap();
+        let left = arena.insert(NodeKind::Integer, s(9, 10), vec![]).unwrap();
+        let right = arena.insert(NodeKind::Integer, s(19, 20), vec![]).unwrap();
+        let body = arena.insert(NodeKind::Block, s(21, 23), vec![]).unwrap();
+        let mut children = vec![binder, left, right, body];
+        let mut kind = NodeKind::For {
+            keyword: s(0, 3),
+            in_keyword: s(6, 8),
+            operator: s(11, 18),
+            inclusive: true,
+            range: s(9, 20),
+        };
+        match mutation {
+            1 => children.clear(),
+            2 => children.swap(1, 2),
+            3 => children[0] = left,
+            4 => {
+                if let NodeKind::For { inclusive, .. } = &mut kind {
+                    *inclusive = false
+                }
+            }
+            5 => {
+                if let NodeKind::For { in_keyword, .. } = &mut kind {
+                    *in_keyword = s(4, 5)
+                }
+            }
+            6 => {
+                if let NodeKind::For { range, .. } = &mut kind {
+                    *range = s(9, 18)
+                }
+            }
+            7 => children.push(body),
+            8 => {
+                if let NodeKind::For { keyword, .. } = &mut kind {
+                    *keyword = s(1, 3)
+                }
+            }
+            _ => {}
+        }
+        let node = arena.insert(kind, s(0, text.len()), children).unwrap();
+        let error = arena
+            .insert(NodeKind::Error, s(0, text.len()), vec![node])
+            .unwrap();
+        let root = arena
+            .insert(NodeKind::Root, s(0, text.len()), vec![error])
+            .unwrap();
+        assert_eq!(
+            lower(&db, &arena, root).is_ok(),
+            mutation == 0,
+            "{mutation}"
+        );
+    }
+    let mut db = SourceDatabase::default();
+    let file = db.add("api", "loop {}".into()).unwrap();
+    let mut arena = Arena::default();
+    let whole = Span::new(file, 0, 7).unwrap();
+    let node = arena
+        .insert(
+            NodeKind::Loop {
+                keyword: Span::new(file, 0, 4).unwrap(),
+            },
+            whole,
+            vec![],
+        )
+        .unwrap();
+    let error = arena.insert(NodeKind::Error, whole, vec![node]).unwrap();
+    let root = arena.insert(NodeKind::Root, whole, vec![error]).unwrap();
+    assert_eq!(lower(&db, &arena, root), Err(LoweringError::MalformedAst));
+}

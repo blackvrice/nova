@@ -1,11 +1,11 @@
 # 문서 기계 검증 결과
 
-검사일: 2026-10-07. 명령: node tools/docs/validate-pack.mjs
+검사일: 2026-10-08. 명령: node tools/docs/validate-pack.mjs
 
 결과: **PASS**
 
 - 148개 NOVA ID 연속성/중복/원본·보완 SHA-256/상태/본문 섹션
-- 3140개 로컬 Markdown 링크/코드 fence/D·T 참조
+- 3170개 로컬 Markdown 링크/코드 fence/D·T 참조
 - 30개 결정 (Accepted 5 / Draft 25), 60개 수용 묶음, 42개 진단 코드 유일성/영역
 - GRAMMAR.ebnf: 94개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_A.ebnf: 26개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
@@ -42,7 +42,7 @@
 - GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf: 52개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - P18 Accepted/승인·구현 ledger·P17 parameter 한 production 확장·52-production EBNF/기존 51개 보존·두 파일/정상 2/부정 20사례 UTF-8 Span·cascade·검증 20줄 출력 metadata (Compiler/Native 실행 아님)
 - GRAMMAR_STAGE_B_RANGE_LOOP.ebnf: 54개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
-- P19 Draft/미승인·미구현 ledger·P18 statement 확장/두 production 추가·54-production EBNF/기존 51개 보존·두 파일/정상 2/부정 18/Runtime 2 UTF-8 Span·cascade·제안 18줄 metadata (Compiler/Native 통과 기록 아님)
+- P19 Accepted/승인·구현 ledger·P18 statement 확장/두 production 추가·54-production EBNF/기존 51개 보존·두 파일/정상 2/부정 18/Runtime 2 UTF-8 Span·cascade·검증 18줄 metadata (문서 validator는 Compiler/Native 실행 아님)
 - 20개 예제 sidecar/UTF-8 byte Span/등록 code 검사 (컴파일 실행 아님)
 
 ## 검증의 범위

@@ -1,4 +1,4 @@
-(* P19 loop and integer range for: Draft, unapproved, unimplemented.
+(* P19 loop and integer range for: Accepted by user; recorded on 2026-10-08, implemented and verified.
    Extends P18 statement and adds for_stmt/loop_stmt only: 54 productions. *)
 program = { "END" | import_decl | [ visibility ], ( function_decl | global_const_decl | struct_decl | enum_decl ) }, "EOF" ;
 import_decl = "use", qualified_name, [ "as", "IDENT" ], end ;
