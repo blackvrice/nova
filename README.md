@@ -188,13 +188,13 @@ Copy payload·T?·문맥/none·match·const·private ABI를 지원한다. try는
 `f(right:2,left:1)`과 leading positional/named 혼합, import alias·Unicode label·mapped 타입 문맥을 지원한다.
 인수는 소스 순서로 한 번씩 평가·snapshot한 뒤 매개변수 순서로 전달한다. try Error는 뒤 인수와 호출을 건너뛴다.
 [구현 기록](docs/development-v0.1/NAMED_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제](examples/named_arguments.nova)·[직접 실행 명령](TESTING.md)을 제공한다.
-overload·named constructor는 후속이다. 기본 인수는 P18, Read 메서드는 P22를 따른다.
+기본 인수는 P18, Read 메서드는 P22, Copy struct 이름 생성자는 P23을 따른다. overload·Enum/sum 이름 생성자는 후속이다.
 
 [P18 상수 표현식 함수 기본 인수](docs/development-v0.1/DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md)는 Accepted / 구현 완료다.
 `func f(a:int8=1,b:int8=2)`의 생략 인수를 declaration-module scope의 typed 상수로 채운다.
 제공 인수를 소스 순서로 평가·snapshot한 뒤 caller에서 생략 기본값을 declaration order로 materialize한다.
 [구현 기록](docs/development-v0.1/DEFAULT_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제](examples/default_arguments.nova)·[직접 실행 명령](TESTING.md)을 제공한다.
-runtime/parameter 의존 default·const function·overload·named constructor는 후속이다.
+Copy struct 이름 생성자는 P23을 따른다. runtime/parameter 의존 default·const function·overload·Enum/sum 이름 생성자는 후속이다.
 
 [P19 loop·정수 범위 for](docs/development-v0.1/RANGE_LOOP_STAGE_B_PROPOSAL.md)는 Accepted / 구현·검증 완료다.
 

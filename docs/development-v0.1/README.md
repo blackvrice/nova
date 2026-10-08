@@ -148,7 +148,7 @@ Option try·error conversion·String/Move payload·일반 Drop와 전체 D08/D09
 [두 파일·부정 20사례 수용 fixture](default-arguments-proposal-fixtures/README.md)는 **Accepted / 구현 완료**다.
 [구현 기록](DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다.
 선언 module의 상수 default·필수/default 혼합·생략 대응·caller materialization·Source/CFG 검증을 구현했다.
-runtime default·parameter 참조·overload·named constructor·일반 Move/Drop은 후속이다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.
+Copy struct 이름 생성자는 P23을 따른다. runtime default·parameter 참조·overload·Enum/sum 이름 생성자·일반 Move/Drop은 후속이다. 현재 실행 명령은 [TESTING.md](../../TESTING.md)를 따른다.
 
 현재 Stage B 구현은 [P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md)·
 [54-production 문법](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf)·[수용 fixture](range-loop-proposal-fixtures/README.md)다.
