@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P24 중첩 Copy 패턴·Tuple match 착수안 (Draft)
+
+[최소 계약](NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 계획](nested-pattern-proposal-fixtures/README.md)을 준비했다.
+기존 pattern 두 production만 확장·두 production 추가이며 나머지 56개를 보존한다. 두 파일/정상 3/부정 18/Runtime 1·coverage oracle 6개다.
+미승인·미구현이다. 원본·Canonical·P01~P23 승인 ledger/계약/fixture·Compiler/Runtime/Cargo는 보존한다.
+
 ## 2026-10-08 — P23 승인과 Copy struct 생성자 이름 인수 구현
 
 사용자 “P23 승인하고 생성자 이름 인수 구현 진행” 답변으로 P23를 승인했다.

@@ -1,0 +1,4 @@
+// P24 Draft
+enum E { A(bool) }
+type Alias=E
+func main() { match (E::A(true),true) { (Alias::A(x),_) => {} } }

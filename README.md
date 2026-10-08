@@ -207,3 +207,7 @@ Copy struct 이름 생성자는 P23을 따른다. runtime/parameter 의존 defau
 `Point(y:2,x:1)`의 field 대응·source-order 평가/snapshot·const/default·private 접근·Source/MIR 검증을 지원한다.
 [구현 기록](docs/development-v0.1/STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)·[독립 예제](examples/struct_named_arguments.nova)·[직접 실행 명령](TESTING.md)을 제공한다.
 현재 실행 구현은 P23까지다. explicit init·field default·Enum/sum named payload·Array·일반 Move/Drop은 후속이다.
+
+[P24 중첩 Copy 패턴·Tuple match](docs/development-v0.1/NESTED_PATTERN_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.
+[수용 예제](docs/development-v0.1/nested-pattern-proposal-fixtures/README.md)와 독립 coverage oracle을 준비했다.
+현재 문서 검사는 `node tools/docs/validate-pack.mjs`, oracle 검사는 `node tools/tests/nested-pattern-oracle.mjs`로 실행한다.

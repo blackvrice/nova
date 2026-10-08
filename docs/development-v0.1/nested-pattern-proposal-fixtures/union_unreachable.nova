@@ -1,0 +1,9 @@
+// P24 Draft — UTF-8 고정
+func main() {
+    match (true,false) {
+        (true,true) => {}
+        (true,false) => {}
+        (true,_) => {}
+        (false,_) => {}
+    }
+}

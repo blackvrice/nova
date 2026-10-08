@@ -50,6 +50,8 @@ Copy struct Read instance method·contextual self·member scope/visibility·rece
 
 Copy struct generated constructor 이름 인수·field mapping·source-order snapshot·const/default·Source/MIR 계약은 [P23 Accepted](../STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture](../struct-named-arguments-proposal-fixtures/README.md)·[구현 기록](../STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다. 구현·검증 완료이며 승인 P22 58-production EBNF를 변경 없이 재사용한다. explicit init·field default·Enum/sum named constructor·Array·일반 Move/Drop은 범위 밖이다.
 
+중첩 Copy sum/tuple pattern·Unit/Copy Tuple statement match·recursive binder·matrix coverage·Source/MIR 검증은 [P24 Draft](../NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production 제안 EBNF](../GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 계획](../nested-pattern-proposal-fixtures/README.md)에 제안했다. 미승인·미구현이며 P14/P15의 flat match와 P01~P23 승인 범위를 보존한다. guard/일반 literal/struct destructuring·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.
+
 ## 문법 산출물
 GRAMMAR.ebnf가 구체 Production을 담고 GRAMMAR_NOTES가 Stage와 결정 번호를 설명한다. lexer 원문과 END 정규화 후 Parser 문법을 분리한다. 현재 원본 NOVA-014에는 Production이 없으므로 새 grammar 전체는 승인 대기 초안이다.
 

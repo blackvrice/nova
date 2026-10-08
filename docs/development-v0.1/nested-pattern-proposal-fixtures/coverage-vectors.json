@@ -1,0 +1,300 @@
+{
+  "proposal": "P24",
+  "finite_domain_reference_only": true,
+  "cases": [
+    {
+      "name": "product_complete",
+      "domain": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "patterns": [
+        [
+          true,
+          "_"
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          false,
+          false
+        ]
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": []
+    },
+    {
+      "name": "partial_overlap_useful",
+      "domain": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "patterns": [
+        [
+          true,
+          "_"
+        ],
+        [
+          "_",
+          true
+        ],
+        [
+          false,
+          false
+        ]
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": []
+    },
+    {
+      "name": "union_unreachable",
+      "domain": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "patterns": [
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          "_"
+        ],
+        [
+          false,
+          "_"
+        ]
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": [
+        2
+      ]
+    },
+    {
+      "name": "missing_product",
+      "domain": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "patterns": [
+        [
+          true,
+          "_"
+        ]
+      ],
+      "missing_indexes": [
+        0,
+        1
+      ],
+      "unreachable_arms": []
+    },
+    {
+      "name": "nested_sum_product",
+      "domain": [
+        {
+          "ctor": "None",
+          "args": []
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              false,
+              false
+            ]
+          ]
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              false,
+              true
+            ]
+          ]
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              true,
+              false
+            ]
+          ]
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              true,
+              true
+            ]
+          ]
+        }
+      ],
+      "patterns": [
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              true,
+              "_"
+            ]
+          ]
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              false,
+              true
+            ]
+          ]
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              false,
+              false
+            ]
+          ]
+        },
+        {
+          "ctor": "None",
+          "args": []
+        }
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": []
+    },
+    {
+      "name": "wildcard_after_union",
+      "domain": [
+        {
+          "ctor": "None",
+          "args": []
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              false,
+              false
+            ]
+          ]
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              false,
+              true
+            ]
+          ]
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              true,
+              false
+            ]
+          ]
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              true,
+              true
+            ]
+          ]
+        }
+      ],
+      "patterns": [
+        {
+          "ctor": "None",
+          "args": []
+        },
+        {
+          "ctor": "Some",
+          "args": [
+            [
+              "_",
+              "_"
+            ]
+          ]
+        },
+        "_"
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": [
+        2
+      ]
+    }
+  ]
+}

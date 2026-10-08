@@ -1,0 +1,7 @@
+// P24 Draft
+func main() {
+    match (true,Option::Some(127 as int8)) {
+        (true,Option::Some(n)) => { print("before"); let x=n+1; print("after={x}") }
+        _ => { print("wrong arm") }
+    }
+}

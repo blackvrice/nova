@@ -1,0 +1,8 @@
+// P24 Draft
+func main() {
+    match (true,false) {
+        (true,true) => {}
+        (true,false) => { print("union") }
+        (false,_) => {}
+    }
+}

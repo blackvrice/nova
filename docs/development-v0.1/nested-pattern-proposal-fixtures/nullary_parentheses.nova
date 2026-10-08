@@ -1,0 +1,8 @@
+// P24 Draft — UTF-8 고정
+func main() {
+    let opt:Option<int8>=none
+    match (opt,true) {
+        (Option::None(),_) => {}
+        _ => {}
+    }
+}

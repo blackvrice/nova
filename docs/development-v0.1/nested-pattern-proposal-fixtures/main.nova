@@ -1,0 +1,56 @@
+// P24 Draft: proposed output is not Native validation.
+use types::Packet as P
+use types::packet
+func make()->(bool,Result<Option<(int8,bool)>,int32>) {
+    print("scrutinee")
+    return (true,Result::Success(Option::Some((7,true))))
+}
+func classify(value:Result<Option<int8>,int32>)->int8 {
+    match value {
+        Result::Success(Option::Some(n)) => { return n }
+        Result::Success(none) => { return 0 }
+        Result::Error(_) => { return -1 }
+    }
+}
+func fetch(fail:bool)->Result<int8,int32> {
+    if fail { return Result::Error(5) }
+    return Result::Success(4)
+}
+func inside(fail:bool)->Result<int8,int32> {
+    match (true,()) {
+        (true,()) => { let n=try fetch(fail); print("after try"); return Result::Success(n) }
+        (false,()) => { return Result::Success(0) }
+    }
+}
+func main() {
+    match make() {
+        (true,Result::Success(Option::Some((n,true)))) => { print("nested={n}") }
+        (true,Result::Success(Option::Some((_,false)))) => { print("bad flag") }
+        (true,Result::Success(none)) => { print("bad none") }
+        (true,Result::Error(_)) => { print("bad error") }
+        (false,_) => { print("bad outer") }
+    }
+    match packet() {
+        P::Data((n,flag),Option::Some(ch)) => { print("packet={n}/{flag}/{ch}") }
+        P::Data(_,none) => { print("bad packet none") }
+        P::Empty => { print("bad packet empty") }
+    }
+    var original:(bool,int8?)=(true,Option::Some(6))
+    match original {
+        (flag,Option::Some(n)) => { original=(false,none); print("snapshot={flag}/{n}") }
+        (_,none) => { print("bad snapshot") }
+    }
+    let present=original.1 exists
+    print("original={original.0}/{present}")
+    match (true,) { (flag,) => { print("single={flag}") } }
+    match () { () => { print("unit") } }
+    print("classify={classify(Result::Success(Option::Some(3)))}")
+    match inside(false) { Result::Success(n) => { print("ok={n}") }, Result::Error(_) => {} }
+    match inside(true) { Result::Success(_) => {}, Result::Error(n) => { print("error={n}") } }
+    var index=0
+    loop {
+        index=index+1
+        match (index==1,true) { (true,_) => { continue }, (false,true) => { break }, (false,false) => {} }
+    }
+    print("loop={index}")
+}

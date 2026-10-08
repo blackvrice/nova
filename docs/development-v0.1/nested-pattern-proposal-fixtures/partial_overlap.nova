@@ -1,0 +1,8 @@
+// P24 Draft
+func main() {
+    match (false,true) {
+        (true,_) => { print("bad first") }
+        (_,true) => { print("partial") }
+        (false,false) => { print("bad last") }
+    }
+}

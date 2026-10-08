@@ -34,6 +34,8 @@
 
 2026-10-08 사용자 “P23 승인하고 생성자 이름 인수 구현 진행” 답변으로 [P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture](struct-named-arguments-proposal-fixtures/README.md)를 승인했다. Accepted / 구현 완료이며 원 P22 58-production EBNF를 재사용해 field 대응·source-order snapshot·const/default·Source/MIR를 구현했다. [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)을 제공한다. 기존 승인/원본과 explicit init·field default·Enum/sum named payload·Array·일반 Move/Drop 경계는 보존한다.
 
+2026-10-08 다음 Stage B 작업으로 [P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production 제안 EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 계획](nested-pattern-proposal-fixtures/README.md)을 준비했다. Draft / 미승인·미구현이며 P01~P23 승인으로 해석하지 않는다. P14/P15 flat 검사·Copy/Source/MIR 경계를 보존하며 guard·일반 literal·struct destructuring·Array·Move/loan/Drop은 제외한다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

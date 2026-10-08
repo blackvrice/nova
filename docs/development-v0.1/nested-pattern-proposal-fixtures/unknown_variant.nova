@@ -1,0 +1,7 @@
+// P24 Draft — UTF-8 고정
+func main() {
+    match (Option::Some(1),true) {
+        (Option::Missing(n),_) => {}
+        _ => {}
+    }
+}

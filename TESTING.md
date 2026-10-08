@@ -1,7 +1,15 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P22 Copy struct Read 메서드까지다.
+현재 개발 완료 기능은 P23 Copy struct 생성자 이름 인수까지다. [P23 실행 명령](#p23-copy-struct-생성자-이름-인수)을 따른다.
+P24 중첩 패턴은 Draft / 미구현이며 아래 검사는 문서 기대값을 확인한다.
+
+```powershell
+node tools/docs/validate-pack.mjs
+node tools/tests/nested-pattern-oracle.mjs
+```
+
+[P24 제안 예제·향후 수용 명령](docs/development-v0.1/nested-pattern-proposal-fixtures/README.md)은 Compiler/Native 실행 성공 기록이 아니다.
 
 ## 현재 기능 실행 — Copy struct Read 메서드
 

@@ -2,6 +2,9 @@
 
 작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P23 Accepted / 나머지 Draft**
 
+다음 작업 [P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.
+[60-production 제안 EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 계획](nested-pattern-proposal-fixtures/README.md)을 검토한다.
+
 기존 Documentation Pack의 148개 주제에 대해 구현 계약, 오류 조건, 검증 사례를 작성했다.
 추가로 실제 EBNF, lexical/END/숫자 모델, 표준 API, 파일/schema 계약, 진단 코드,
 결정 기록, conformance 계획, 개발/배포 지침을 제공한다. 범위는 Nova 0.1과 그 개발에

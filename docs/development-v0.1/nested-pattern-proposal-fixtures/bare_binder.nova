@@ -1,0 +1,6 @@
+// P24 Draft
+struct Pair { let x:int8; let y:bool }
+const 값=99
+func main() {
+    match (Pair(2,true),()) { (값,()) => { print("binder={값.x}") } }
+}

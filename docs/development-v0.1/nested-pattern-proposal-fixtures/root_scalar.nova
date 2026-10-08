@@ -1,0 +1,2 @@
+// P24 Draft
+func main() { match 7 { n => {} } }

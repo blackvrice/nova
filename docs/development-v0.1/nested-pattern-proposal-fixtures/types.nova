@@ -1,0 +1,4 @@
+// P24 Draft: compiler support is not implemented.
+public enum Packet { Empty; Data((int8,bool),Option<char>) }
+public enum Other { Item }
+public func packet()->Packet { return Packet::Data((9,false),Option::Some('한')) }
