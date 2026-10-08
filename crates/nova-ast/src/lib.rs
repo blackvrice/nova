@@ -59,6 +59,12 @@ pub enum NodeKind {
     Struct {
         name: Span,
     },
+    /// One target type child; source tokens are retained independently.
+    TypeAlias {
+        keyword: Span,
+        name: Span,
+        equals: Span,
+    },
     Field {
         name: Span,
         mutable: bool,

@@ -3458,3 +3458,301 @@ fn p20_exists_const_cycles_checked_evaluation_defaults_and_exact_budget() {
         assert!(!codes(&r).contains(&"N3201".into()));
     }
 }
+
+#[test]
+fn p21_alias_fixture_exact_diagnostics_and_cycle_cascade_suppression() {
+    for (source, code, start, end) in [
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/unknown_target.nova"
+            ),
+            "N2001",
+            38,
+            45,
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/alias-proposal-fixtures/self_cycle.nova"),
+            "N2103",
+            38,
+            39,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/nested_cycle.nova"
+            ),
+            "N2103",
+            38,
+            47,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/duplicate_alias.nova"
+            ),
+            "N2002",
+            47,
+            48,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/duplicate_struct.nova"
+            ),
+            "N2002",
+            57,
+            58,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/primitive_name.nova"
+            ),
+            "N2002",
+            34,
+            37,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/generic_alias.nova"
+            ),
+            "N1102",
+            35,
+            36,
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/alias-proposal-fixtures/local_alias.nova"),
+            "N1102",
+            43,
+            47,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/generic_application.nova"
+            ),
+            "N1102",
+            62,
+            68,
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/alias-proposal-fixtures/bare_family.nova"),
+            "N2101",
+            38,
+            44,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/constructor_head.nova"
+            ),
+            "N1102",
+            83,
+            87,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/variant_head.nova"
+            ),
+            "N1102",
+            73,
+            77,
+        ),
+        (
+            include_str!("../../../docs/development-v0.1/alias-proposal-fixtures/alias_value.nova"),
+            "N2001",
+            62,
+            63,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/string_payload.nova"
+            ),
+            "N1102",
+            64,
+            68,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/layout_cycle.nova"
+            ),
+            "N2101",
+            66,
+            67,
+        ),
+        (
+            include_str!(
+                "../../../docs/development-v0.1/alias-proposal-fixtures/const_type_mismatch.nova"
+            ),
+            "N2101",
+            53,
+            54,
+        ),
+    ] {
+        let f = frontend(source);
+        assert!(!f.passed(), "{source}");
+        assert!(
+            f.diagnostics().iter().any(|d| d.code.to_string() == code
+                && d.primary.span.start() == start
+                && d.primary.span.end() == end),
+            "{source} {:?}",
+            f.diagnostics()
+        );
+    }
+    let f = frontend("type A=B\ntype B=Option<A>\nfunc f(x:A)->B{return x}");
+    assert_eq!(
+        f.diagnostics()
+            .iter()
+            .filter(|d| d.code.to_string() == "N2103")
+            .count(),
+        2
+    );
+    assert!(!f
+        .diagnostics()
+        .iter()
+        .any(|d| matches!(d.code.to_string().as_str(), "N2001" | "N2101")));
+    for d in f.diagnostics() {
+        assert_eq!(d.secondary.len(), 2);
+        assert_eq!(d.secondary[0].message, "alias A in this cycle");
+    }
+}
+#[test]
+fn p21_alias_canonical_identity_all_primitives_sum_cache_const_and_defaults() {
+    let (_, _, c) = p12_bundle(&[
+        (
+            "main",
+            include_str!("../../../docs/development-v0.1/alias-proposal-fixtures/main.nova"),
+        ),
+        (
+            "types",
+            include_str!("../../../docs/development-v0.1/alias-proposal-fixtures/types.nova"),
+        ),
+    ]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    pass(include_str!(
+        "../../../docs/development-v0.1/alias-proposal-fixtures/multiline.nova"
+    ));
+    for (ty, value) in [
+        ("int8", "-128"),
+        ("uint8", "255"),
+        ("int16", "-32768"),
+        ("uint16", "65535"),
+        ("int64", "-9223372036854775808"),
+        ("uint64", "18446744073709551615"),
+        ("int", "1"),
+        ("uint", "1"),
+        ("float", "1.5"),
+        ("double", "-0.0"),
+        ("char", "'🙂'"),
+        ("bool", "false"),
+        ("()", "()"),
+        ("string", "\"x\""),
+    ] {
+        let (_,r,c)=pass(&format!("type A=B\ntype B={ty}\nconst C:A={value}\nfunc f(x:A=C)->B{{return x}}func main(){{let a:A=f();let b:{ty}=a}}")).semantic.unwrap();
+        let index = |name: &str| r.definitions.iter().position(|d| d.name == name).unwrap();
+        assert_eq!(c.aliases[&index("A")], c.aliases[&index("B")]);
+        assert_eq!(
+            c.definition_types[index("a")],
+            c.definition_types[index("b")]
+        );
+    }
+    let (_,r,c)=pass("type A=int?\ntype B=Option<int32>\nconst X:A=Option::Some(0);func f(a:B=none)->A{return a}").semantic.unwrap();
+    assert_eq!(c.sums.len(), 1);
+    let ids = r
+        .definitions
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| matches!(d.kind, DefinitionKind::TypeAlias(_)))
+        .map(|(i, _)| c.aliases[&i])
+        .collect::<Vec<_>>();
+    assert_eq!(ids[0], ids[1]);
+    pass("type Option=int;func f(x:Option)->int{return x}func g(x:int?)->bool{return x exists}");
+    let f = frontend("type Option=int;type A=Option<int>");
+    assert!(f
+        .diagnostics()
+        .iter()
+        .any(|d| d.code.to_string() == "N1102"));
+}
+#[test]
+fn p21_alias_declaration_scopes_visibility_dual_import_atomicity_and_cycles() {
+    let (_,_,c)=p12_bundle(&[("main","use lib::A;use lib::factory;type T=bool;func f(x:A)->A{return x}func main(){let a:A=factory();let b=f(a)}"),("lib","type T=int8;private struct Hidden{private let n:T}public type A=Hidden;public func factory()->A{return Hidden(7)}")]);
+    assert!(!c.has_errors(), "{:?}", c.diagnostics);
+    let (_, _, c) = p12_bundle(&[
+        ("main", "use lib::A;func f(x:A){}"),
+        ("lib", "private type A=int"),
+    ]);
+    assert!(c.diagnostics.iter().any(|d| d.code.to_string() == "N2004"));
+    assert!(!c.diagnostics.iter().any(|d| d.code.to_string() == "N2001"));
+    let (_, r, c) = p12_bundle(&[
+        ("main", "use lib::A;func f(x:A){}"),
+        ("lib", "public type A=int;private func A(){}"),
+    ]);
+    assert!(c.diagnostics.iter().any(|d| d.code.to_string() == "N2004"));
+    assert!(r.scopes.iter().any(|s| s.failed_types.contains("A")
+        && !s.types.contains_key("A")
+        && s.failed_imports.contains("A")
+        && !s.definitions.contains_key("A")));
+    let (_, _, c) = p12_bundle(&[
+        ("main", "use lib::B;public type A=B;func f(x:A){}"),
+        ("lib", "use main::A;public type B=(A,)"),
+    ]);
+    assert_eq!(
+        c.diagnostics
+            .iter()
+            .filter(|d| d.code.to_string() == "N2103")
+            .count(),
+        2
+    );
+    assert!(!c.diagnostics.iter().any(|d| d.code.to_string() == "N2101"));
+    let (_, _, c) = p12_bundle(&[
+        ("main", "use lib::A;func main(){let a:A=none}"),
+        ("dep", "public type X=int?"),
+        ("lib", "use dep::X;public type A=X"),
+    ]);
+    assert!(!c.has_errors());
+    let f = frontend("type A=Node;struct Node{let n:A}");
+    assert!(f
+        .diagnostics()
+        .iter()
+        .any(|d| d.code.to_string() == "N2101"));
+    assert!(!f
+        .diagnostics()
+        .iter()
+        .any(|d| d.code.to_string() == "N2103"));
+}
+#[test]
+fn p21_alias_1024_1025_small_stack_and_expansion_limits() {
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let mut s = String::new();
+            for n in 0..1023 {
+                s.push_str(&format!("type A{n}=A{}\n", n + 1));
+            }
+            s.push_str("type A1023=int8\nfunc main(){let a:A0=7}");
+            pass(&s);
+            s.push_str("type Excess=int\n");
+            let f = frontend(&s);
+            let d = f
+                .diagnostics()
+                .iter()
+                .find(|d| d.code.to_string() == "N8901")
+                .unwrap();
+            assert_eq!(f.sources.slice(d.primary.span).unwrap(), "Excess");
+            assert!(!d.notes.is_empty());
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    let mut s = "type A0=int\n".to_string();
+    for n in 1..25 {
+        s.push_str(&format!("type A{n}=(A{},A{})\n", n - 1, n - 1));
+    }
+    let f = frontend(&s);
+    assert!(
+        f.diagnostics()
+            .iter()
+            .any(|d| d.code.to_string() == "N8901"),
+        "{:?}",
+        f.diagnostics()
+    );
+    let f = frontend("type Text=string;struct S{let s:Text}");
+    assert!(f
+        .diagnostics()
+        .iter()
+        .any(|d| d.code.to_string() == "N1102"));
+}

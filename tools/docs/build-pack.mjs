@@ -117,7 +117,7 @@ for (const row of rows) {
     ([14, 16, 24, 28, 73, 74, 76, 77, 78, 81, 83, 87, 91, 136].includes(row.number)
       ? `Copy intrinsic Option postfix exists·Bool·const/default·단일 평가·Source/MIR 검증은 [P20 Accepted](../EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](../GRAMMAR_STAGE_B_EXISTS.ebnf), [수용 fixture](../exists-proposal-fixtures/README.md)를 따른다. [구현 기록](../EXISTS_IMPLEMENTATION.md)에 검증을 기록했다. Result exists·flow narrowing·Move/Drop·Array와 전체 D08/D09/D10/D16/D23/D25/D30 승인이 아니다.\n\n` : '') +
     ([14, 20, 23, 24, 25, 28, 29, 30, 33, 73, 74, 76, 77, 78, 81, 83, 136].includes(row.number)
-      ? `비제네릭 transparent type alias·type 위치·forward/import·cycle/자원·Source/MIR 검증은 [P21 Draft](../ALIAS_STAGE_B_PROPOSAL.md), [55-production EBNF](../GRAMMAR_STAGE_B_ALIAS.ebnf), [제안 fixture](../alias-proposal-fixtures/README.md)로 준비했다. 미승인·미구현이다. type은 D01에서 이미 keyword이며 전체 D06/D10/D11/D12/D16/D30·generic alias/newtype·alias constructor/variant·API leak/export 정책은 승인하지 않았다.\n\n` : '') + body.trim() + '\n';
+      ? `비제네릭 transparent type alias·type 위치·forward/import·cycle/자원·Source/MIR 검증은 [P21 Accepted](../ALIAS_STAGE_B_PROPOSAL.md), [55-production EBNF](../GRAMMAR_STAGE_B_ALIAS.ebnf), [수용 fixture](../alias-proposal-fixtures/README.md)를 따른다. [구현 기록](../ALIAS_IMPLEMENTATION.md)에 검증을 기록했다. type은 D01에서 이미 keyword이며 전체 D06/D10/D11/D12/D16/D30·generic alias/newtype·alias constructor/variant·API leak/export 정책은 승인하지 않았다.\n\n` : '') + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -145,7 +145,7 @@ fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 �
   `[P18 상수 표현식 함수 기본 인수 최소 계약](DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md), [52-production EBNF](GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf), [두 파일·부정 20사례 수용 fixture](default-arguments-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](DEFAULT_ARGUMENTS_IMPLEMENTATION.md)을 따른다. runtime default·parameter 참조·overload·named constructor는 포함하지 않는다.\n\n` +
   `[P19 loop·정수 범위 for](RANGE_LOOP_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_RANGE_LOOP.ebnf), [두 파일·부정 18/Runtime 2사례 fixture](range-loop-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](RANGE_LOOP_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[P20 Copy Option postfix exists](EXISTS_STAGE_B_PROPOSAL.md), [54-production EBNF](GRAMMAR_STAGE_B_EXISTS.ebnf), [두 파일·정상 2/부정 20/Runtime 1사례](exists-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현 기록](EXISTS_IMPLEMENTATION.md)을 따른다.\n\n` +
-  `[P21 비제네릭 Type Alias](ALIAS_STAGE_B_PROPOSAL.md), [55-production EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf), [두 파일·부정 16사례](alias-proposal-fixtures/README.md)는 Draft / 미승인 / 미구현이다. 제안 기대값은 Compiler/Native 실행 성공 기록이 아니다.\n\n` +
+  `[P21 비제네릭 Type Alias](ALIAS_STAGE_B_PROPOSAL.md), [55-production EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf), [두 파일·부정 16사례](alias-proposal-fixtures/README.md)는 Accepted / 구현 완료다. [구현·검증 기록](ALIAS_IMPLEMENTATION.md)을 따른다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -186,10 +186,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P18', status: 'Accepted', approval_date: '2026-10-07', scope: 'Stage B constant-expression function defaults declaration-module scope checked evaluation omitted argument mapping caller materialization and Source CFG validation', document: 'DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_DEFAULT_ARGUMENTS.ebnf', grammar_change: true, implementation_verified: true },
     { id: 'P19', status: 'Accepted', approval_date: '2026-10-08', grammar_change: true, document: 'RANGE_LOOP_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_RANGE_LOOP.ebnf', scope: 'Stage B statement loop ascending integer range for immutable binder single evaluation snapshots inclusive max safe termination and Source CFG validation', implementation_verified: true },
     { id: 'P20', status: 'Accepted', approval_date: '2026-10-08', document: 'EXISTS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_EXISTS.ebnf', grammar_change: true, scope: 'Stage B Copy intrinsic Option postfix exists Bool const default single evaluation and Source MIR validation', implementation_verified: true },
+    { id: 'P21', status: 'Accepted', approval_date: '2026-10-08', document: 'ALIAS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_ALIAS.ebnf', grammar_change: true, scope: 'Stage B non-generic transparent type aliases type positions forward imports iterative normalization cycles limits and Source MIR validation', implementation_verified: true },
   ],
-  draft_proposals: [
-    { id: 'P21', status: 'Draft', document: 'ALIAS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_ALIAS.ebnf', grammar_change: true, scope: 'Stage B non-generic transparent type aliases type positions forward imports iterative normalization cycles limits and Source MIR validation', implementation_verified: false },
-  ],
+  draft_proposals: [],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);

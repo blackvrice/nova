@@ -230,6 +230,7 @@ pub fn lower(
                 | HirKind::Import { .. }
                 | HirKind::Struct { .. }
                 | HirKind::Enum { .. }
+                | HirKind::TypeAlias { .. }
         ) {
             continue;
         }

@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-08 — P21 비제네릭 Type Alias 구현
+
+사용자 승인 P21의 transparent type alias·forward/import·선언 module scope·canonical TypeId·반복형 SCC·1,024개 한도를 구현했다.
+Source 토큰/shape 검증·Resolved/Checked 재계산 gate·MIR canonical 타입·15개 테스트·직접 실행 예제를 추가했다.
+[구현·검증 기록](ALIAS_IMPLEMENTATION.md)을 따른다. 기존 P01~P20·D01~D05·Canonical·원본 148개를 보존했다.
+
 ## 2026-10-08 — P21 비제네릭 Type Alias 착수안 (Draft)
 
 [최소 계약](ALIAS_STAGE_B_PROPOSAL.md)·[55-production EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf)·[두 파일/부정 16사례](alias-proposal-fixtures/README.md)를 준비했다.

@@ -50,6 +50,12 @@ pub enum HirKind {
         name: SymbolId,
         name_span: Span,
     },
+    TypeAlias {
+        keyword: Span,
+        name: SymbolId,
+        name_span: Span,
+        equals: Span,
+    },
     Field {
         name: SymbolId,
         name_span: Span,
@@ -289,6 +295,7 @@ impl Module {
                 match &mut node.kind {
                     HirKind::Function { name, .. }
                     | HirKind::Struct { name, .. }
+                    | HirKind::TypeAlias { name, .. }
                     | HirKind::Enum { name, .. }
                     | HirKind::Variant { name, .. }
                     | HirKind::Binder { name, .. }
@@ -600,6 +607,62 @@ pub fn lower(
                         .first()
                         .is_some_and(|b| matches!(b, b'1'..=b'9'))
                         && digits.bytes().all(|b| b.is_ascii_digit()))
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
+        if let NodeKind::TypeAlias {
+            keyword,
+            name,
+            equals,
+        } = node.kind
+        {
+            if node.children.len() != 1 {
+                return Err(LoweringError::MalformedAst);
+            }
+            let target = arena
+                .get(node.children[0])
+                .ok_or(LoweringError::MalformedAst)?;
+            let text = sources.file(node.span.file())?.text();
+            let boundary = |span: Span| {
+                !text
+                    .get(..span.start())
+                    .and_then(|s| s.chars().next_back())
+                    .is_some_and(unicode_ident::is_xid_continue)
+                    && !text
+                        .get(span.end()..)
+                        .and_then(|s| s.chars().next())
+                        .is_some_and(unicode_ident::is_xid_continue)
+            };
+            if !inside(node.span, keyword)
+                || !inside(node.span, name)
+                || !inside(node.span, equals)
+                || sources.slice(keyword)? != "type"
+                || !identifier(sources.slice(name)?)
+                || sources.slice(equals)? != "="
+                || !boundary(keyword)
+                || !boundary(name)
+                || keyword.start() != node.span.start()
+                || keyword.end() > name.start()
+                || name.end() > equals.start()
+                || equals.end() > target.span.start()
+                || target.span.end() != node.span.end()
+                || !type_punctuation(
+                    sources.slice(Span::new(node.span.file(), keyword.end(), name.start())?)?,
+                    &[""],
+                )
+                || !type_punctuation(
+                    sources.slice(Span::new(node.span.file(), name.end(), equals.start())?)?,
+                    &[""],
+                )
+                || !type_punctuation(
+                    sources.slice(Span::new(
+                        node.span.file(),
+                        equals.end(),
+                        target.span.start(),
+                    )?)?,
+                    &[""],
+                )
             {
                 return Err(LoweringError::MalformedAst);
             }
@@ -931,6 +994,16 @@ pub fn lower(
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
             },
+            NodeKind::TypeAlias {
+                keyword,
+                name,
+                equals,
+            } => HirKind::TypeAlias {
+                keyword,
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+                equals,
+            },
             NodeKind::Field {
                 name,
                 mutable,
@@ -1189,6 +1262,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 k,
                 NodeKind::Function { .. }
                     | NodeKind::Struct { .. }
+                    | NodeKind::TypeAlias { .. }
                     | NodeKind::Enum { .. }
                     | NodeKind::Visible { .. }
                     | NodeKind::Import { .. }
@@ -1221,6 +1295,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                     kinds[0],
                     NodeKind::Function { .. }
                         | NodeKind::Struct { .. }
+                        | NodeKind::TypeAlias { .. }
                         | NodeKind::Enum { .. }
                         | NodeKind::Binding {
                             constant: true,
@@ -1275,7 +1350,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         NodeKind::Struct { .. } => kinds
             .iter()
             .all(|k| matches!(k, NodeKind::Field { .. } | NodeKind::Error)),
-        NodeKind::Field { .. } => kinds.len() == 1 && ty(kinds[0]),
+        NodeKind::Field { .. } | NodeKind::TypeAlias { .. } => kinds.len() == 1 && ty(kinds[0]),
         NodeKind::Projection { .. } | NodeKind::TupleProjection { .. } => {
             kinds.len() == 1 && expr(kinds[0])
         }

@@ -933,3 +933,66 @@ fn p20_fixture_check_and_invalid_exists_gate_preserve_outputs() {
     }
     assert!(!dir.join("target").exists());
 }
+
+#[test]
+fn p21_alias_fixture_check_and_invalid_gate_preserve_outputs() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/alias-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let dir = directory();
+    for name in ["main.nova", "multiline.nova"] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("check")
+            .arg(fixtures.join(name))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .current_dir(&dir)
+            .env("NOVA_CLANG", "missing-clang")
+            .output()
+            .unwrap();
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stdout.is_empty() && r.stderr.is_empty());
+    }
+    let output = dir.join("keep.exe");
+    std::fs::write(&output, b"keep").unwrap();
+    for name in [
+        "unknown_target",
+        "self_cycle",
+        "nested_cycle",
+        "duplicate_alias",
+        "duplicate_struct",
+        "primitive_name",
+        "generic_alias",
+        "local_alias",
+        "generic_application",
+        "bare_family",
+        "constructor_head",
+        "variant_head",
+        "alias_value",
+        "string_payload",
+        "layout_cycle",
+        "const_type_mismatch",
+    ] {
+        for command in ["check", "build", "run"] {
+            let mut c = Command::new(env!("CARGO_BIN_EXE_nova"));
+            c.arg(command)
+                .arg(fixtures.join(format!("{name}.nova")))
+                .env("NOVA_CLANG", "missing-clang")
+                .current_dir(&dir);
+            if command == "build" {
+                c.arg("-o").arg(&output);
+            }
+            let r = c.output().unwrap();
+            assert_eq!(
+                r.status.code(),
+                Some(1),
+                "{name}: {}",
+                String::from_utf8_lossy(&r.stderr)
+            );
+            assert!(!String::from_utf8_lossy(&r.stderr).contains("N8201"));
+            assert_eq!(std::fs::read(&output).unwrap(), b"keep");
+        }
+    }
+    assert!(!dir.join("target").exists());
+}

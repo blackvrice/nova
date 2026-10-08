@@ -1,19 +1,13 @@
 {
   "proposal": "P21",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
     "main",
     "types"
   ],
-  "proposed_result": {
-    "check_exit": 0,
-    "native_exit": 0,
-    "stdout": "small=7\npair=7/2\nexists=true\nflag=on\ncast=7\ntext=한글\ntry=true\nerror=-1\n",
-    "stderr": ""
-  },
   "negative_cases": [
     {
       "name": "unknown_target",
@@ -179,12 +173,19 @@
   "positive_cases": [
     {
       "source": "multiline.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "",
         "stderr": ""
       }
     }
-  ]
+  ],
+  "approval_date": "2026-10-08",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "small=7\npair=7/2\nexists=true\nflag=on\ncast=7\ntext=한글\ntry=true\nerror=-1\n",
+    "stderr": ""
+  }
 }

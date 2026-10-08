@@ -15,6 +15,7 @@ pub enum DefinitionKind {
     Function(HirId),
     Struct(HirId),
     Enum(HirId),
+    TypeAlias(HirId),
     GlobalConst(HirId),
     Parameter(HirId),
     Local(HirId),
@@ -137,8 +138,11 @@ pub fn resolve(module: &Module) -> Resolved {
                 name_span,
                 item,
             );
-        } else if let HirKind::Struct { name, name_span } | HirKind::Enum { name, name_span } =
-            module.nodes()[item.0].kind
+        } else if let HirKind::Struct { name, name_span }
+        | HirKind::Enum { name, name_span }
+        | HirKind::TypeAlias {
+            name, name_span, ..
+        } = module.nodes()[item.0].kind
         {
             let spelling = module.symbol(name).expect("struct name");
             if primitive_name(spelling) {
@@ -153,7 +157,9 @@ pub fn resolve(module: &Module) -> Resolved {
                 &mut result,
                 root_scope,
                 spelling,
-                if matches!(module.nodes()[item.0].kind, HirKind::Enum { .. }) {
+                if matches!(module.nodes()[item.0].kind, HirKind::TypeAlias { .. }) {
+                    DefinitionKind::TypeAlias(item)
+                } else if matches!(module.nodes()[item.0].kind, HirKind::Enum { .. }) {
                     DefinitionKind::Enum(item)
                 } else {
                     DefinitionKind::Struct(item)
@@ -239,6 +245,7 @@ pub fn resolve(module: &Module) -> Resolved {
                 let id = match d.kind {
                     DefinitionKind::Struct(id)
                     | DefinitionKind::Enum(id)
+                    | DefinitionKind::TypeAlias(id)
                     | DefinitionKind::Function(id)
                     | DefinitionKind::GlobalConst(id) => id,
                     _ => unreachable!(),
@@ -607,7 +614,10 @@ fn declare(
     node: HirId,
 ) {
     let id = DefId(result.definitions.len());
-    let bindings = if matches!(kind, DefinitionKind::Struct(_) | DefinitionKind::Enum(_)) {
+    let bindings = if matches!(
+        kind,
+        DefinitionKind::Struct(_) | DefinitionKind::Enum(_) | DefinitionKind::TypeAlias(_)
+    ) {
         &mut result.scopes[scope.0].types
     } else {
         &mut result.scopes[scope.0].definitions

@@ -1,9 +1,45 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P20 Copy Option postfix exists까지다.
+현재 개발 완료 기능은 P21 비제네릭 Type Alias까지다.
 
-## 현재 기능 실행 — Copy Option exists
+## 현재 기능 실행 — 비제네릭 Type Alias
+
+```powershell
+cargo run -p nova-cli --offline -- check examples/type_aliases.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/type_aliases.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/type_aliases.nova --profile release
+```
+
+check는 출력 없이 exit 0, debug/release는 다음 8줄/LF·빈 stderr·exit 0이다.
+
+```text
+small=7
+pair=7/2
+exists=true
+flag=on
+cast=7
+text=한글
+try=true
+error=-1
+```
+
+`type Small=int8`은 같은 canonical 타입에 대한 transparent 별칭이다. 선언 module scope에서 forward/import를 해석한다.
+alias는 새 value binding을 만들지 않는다. struct/Enum 생성은 원 이름으로 쓰며 alias head 생성은 N1102다.
+[계약](docs/development-v0.1/ALIAS_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/ALIAS_IMPLEMENTATION.md)·[두 파일 예제](docs/development-v0.1/alias-proposal-fixtures/README.md)를 제공한다.
+
+```powershell
+cargo test --workspace --offline p21_
+cargo test -p nova-codegen-llvm --test emission --offline p21_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p21_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/alias-proposal-fixtures/self_cycle.nova
+```
+
+P21 기본 12개·실제 LLVM 1개·Native 2개를 검증한다. 마지막 명령은 N2103·exit 1이다.
+1,024개의 flat alias chain을 허용하고 1,025번째 이름은 N8901이다. generic alias·newtype·Array·method는 후속이다.
+
+## 기존 기능 실행 — Copy Option exists
 
 ```powershell
 cargo run -p nova-cli --offline -- check examples/exists.nova
@@ -321,8 +357,8 @@ cargo test --workspace --offline
 cargo check --workspace --all-features --offline
 ```
 
-P20 기준 기본 tests 336개가 성공하고 실제 LLVM/Native tests 64개는 ignored로 표시된다.
-이 64개(LLVM 16개·Native 48개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
+P21 기준 기본 tests 348개가 성공하고 실제 LLVM/Native tests 67개는 ignored로 표시된다.
+이 67개(LLVM 17개·Native 50개)를 실제 실행하려면 LLVM/Rust/MSVC 환경에서 다음을 별도로 실행한다.
 
 ```powershell
 cargo test -p nova-codegen-llvm --test emission --offline -- --ignored --test-threads=1

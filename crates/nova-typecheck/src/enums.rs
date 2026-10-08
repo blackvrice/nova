@@ -161,6 +161,18 @@ impl Checker<'_> {
             }
             return None;
         };
+        if matches!(
+            self.resolved.definitions[def.0].kind,
+            DefinitionKind::TypeAlias(_)
+        ) {
+            self.report(
+                1102,
+                self.module.nodes()[id.0].span,
+                "alias variant heads are unsupported",
+                None,
+            );
+            return None;
+        }
         if !matches!(
             self.resolved.definitions[def.0].kind,
             DefinitionKind::Enum(_)

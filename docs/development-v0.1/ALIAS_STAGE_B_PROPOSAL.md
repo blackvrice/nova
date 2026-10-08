@@ -1,8 +1,9 @@
 # Stage B 비제네릭 Type Alias 최소 계약 — P21
 
-작성일: 2026-10-08. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일: 2026-10-08. 상태: **Accepted / 사용자 승인 / 구현 완료**.
+사용자 “P21 승인하고 Type Alias 구현 진행” 답변을 승인 기록으로 반영했다. [구현·검증 기록](ALIAS_IMPLEMENTATION.md)을 따른다.
 P01~P20·D01~D05·Canonical·원본 148개를 보존한다.
-[전용 EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf)·[수용 fixture](alias-proposal-fixtures/README.md)는 검토 자료다.
+[전용 EBNF](GRAMMAR_STAGE_B_ALIAS.ebnf)·[수용 fixture](alias-proposal-fixtures/README.md)는 승인 계약과 수용 자료다.
 
 ## Specification Change Proposal
 
@@ -96,21 +97,21 @@ P01~P20·D01~D05·Canonical·원본 148개를 보존한다.
 - MIR에는 기존 canonical 타입/상수/명시적 numeric cast/nominal field ID가 내려간다.
   alias declaration은 runtime statement·function·local·effect를 만들지 않는다. source annotation Span은 원 철자로 남는다.
 - [두 파일 fixture](alias-proposal-fixtures/README.md)는 forward chain·import alias·value/type 동명·String/Unit·
-  Tuple·nullable·Result·Copy struct/Enum·checked cast·default·try·exists의 **제안 8줄**, 정상 1·부정 16사례를 제공한다.
-- 승인 후 tests: exact diagnostics/cascade/source, import atomicity/private/opaque factory, same canonical TypeId,
+  Tuple·nullable·Result·Copy struct/Enum·checked cast·default·try·exists의 **검증된 8줄**, 정상 1·부정 16사례를 제공한다.
+- 구현 tests: exact diagnostics/cascade/source, import atomicity/private/opaque factory, same canonical TypeId,
   모든 정수/float alias·Option/Result shadow·중첩 sum cache·unused/다중 파일 cycle, layout cycle,
   1,024/1,025·작은 host stack·prefix truncation, typed forgery·MIR proof·COFF/ELF O0/O2·Windows Native.
   original annotation 철자·call/cast/Abort Span, source order·named/default·try·String arena 수명을 검증한다.
 
 ## 승인 경계
 
-P21 비제네릭 transparent alias·type 위치·forward/import·cycle/자원·Source/MIR 검증 subset만 별도 승인 대상이다.
+P21 비제네릭 transparent alias·type 위치·forward/import·cycle/자원·Source/MIR 검증 subset만 승인했다.
 generic alias·newtype·alias constructor/variant head·API leak/export 정책·Array·method·일반 Move/Drop·
-전체 D06/D10/D11/D12/D16/D30 승인은 아니다. 승인 전 compiler source를 변경하지 않는다.
+전체 D06/D10/D11/D12/D16/D30 승인은 아니다.
 문서/fixture 검증 성공은 alias compiler/Native 실행 성공을 뜻하지 않는다.
 
 
-## 초안 준비 검증 — 2026-10-08
+## 초안 준비 검증 (승인 전 역사 기록) — 2026-10-08
 
 - 문서 build/validator PASS: 148개 원본 hash·링크·Draft ledger·55-production EBNF,
   P20 기존 53개 production 보존·두 파일/정상 1/부정 16 fixture의 UTF-8 Span·제안 8줄 metadata를 확인했다.

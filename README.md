@@ -2,8 +2,8 @@
 
 개발 전에 읽을 [전체 개발 문서 보완팩](docs/development-v0.1/README.md)을 작성했습니다.
 148개 주제별 문서와 구체 EBNF, 30건 결정 초안, API/schema, 수용 테스트 계획을 포함합니다.
-D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 지역 const, P06 전역 const, P07 고정 폭 정수·승격, P08 char, P09 float, P10 숫자 cast, P11 Module, P12 Copy struct, P13 Copy Tuple, P14 Copy Enum·match, P15 Copy Option·Result, P16 Copy try, P17 함수 이름 인수, P18 상수 표현식 기본 인수, P19 loop·정수 범위 for, P20 Copy Option exists 최소 계약은 Accepted이며,
-나머지 상세는 Draft입니다. [P17 함수 이름 인수](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)는 구현·검증 완료입니다. [P18 함수 기본 인수](docs/development-v0.1/DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md)와 [P20 Copy Option exists](docs/development-v0.1/EXISTS_STAGE_B_PROPOSAL.md)도 구현·검증 완료입니다. 직접 실행할 [예제·테스트 명령](TESTING.md)을 제공합니다.
+D01~D05 Lexer, P01 Parser, P02 이름·타입, P03 Native, P04 가변 변수·반복문, P05 지역 const, P06 전역 const, P07 고정 폭 정수·승격, P08 char, P09 float, P10 숫자 cast, P11 Module, P12 Copy struct, P13 Copy Tuple, P14 Copy Enum·match, P15 Copy Option·Result, P16 Copy try, P17 함수 이름 인수, P18 상수 표현식 기본 인수, P19 loop·정수 범위 for, P20 Copy Option exists, P21 비제네릭 Type Alias 최소 계약은 Accepted이며,
+나머지 상세는 Draft입니다. [P17 함수 이름 인수](docs/development-v0.1/NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)는 구현·검증 완료입니다. [P18 함수 기본 인수](docs/development-v0.1/DEFAULT_ARGUMENTS_STAGE_B_PROPOSAL.md)와 [P20 Copy Option exists](docs/development-v0.1/EXISTS_STAGE_B_PROPOSAL.md)도 구현·검증 완료입니다. [P21 Type Alias](docs/development-v0.1/ALIAS_STAGE_B_PROPOSAL.md)도 구현·검증 완료입니다. 직접 실행할 [예제·테스트 명령](TESTING.md)을 제공합니다.
 
 Nova 컴파일러의 Stage A와 Stage B 제어 흐름·지역/전역 const·고정 폭 정수·char·float·cast·Module·Copy struct·Copy Tuple·Copy Enum/match 구현입니다. 언어 사양은 `docs/`의 원본
 Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다.
@@ -22,12 +22,12 @@ Documentation Pack과 사용자가 제공한 Canonical Decisions를 따릅니다
 - `nova-ast`: byte Span과 source-order 자식 ID를 보존하는 Arena, AstNodeId,
   Error Node, 반복형 Visitor와 결정적 dump. 의미 TypeId/DefId는 포함하지 않습니다.
 - `nova-parser`: 승인된 Stage A 함수·let·return·if/else, typed parameter, positional call,
-  기본 표현식·문자열 보간, P04 var·대입·while·break/continue, P05 함수 내부/P06 전역 const, P08 문자/P09 실수 리터럴, P10 cast, P11 import·visibility, P12 struct·field 경로, P13 Tuple·numeric projection, P14 Enum·statement match. 구문 복구 포함.
+  기본 표현식·문자열 보간, P04 var·대입·while·break/continue, P05 함수 내부/P06 전역 const, P08 문자/P09 실수 리터럴, P10 cast, P11 import·visibility, P12 struct·field 경로, P13 Tuple·numeric projection, P14 Enum·statement match, P21 top-level type alias. 구문 복구 포함.
 - `nova-hir`: AST와 분리된 flat HIR, SymbolId/SourceOrigin, Primitive/Unit 정규화와 String/char decode, 파일별 root/ownership/ImportEdge bundle.
 - `nova-resolve`: ScopeTree/DefId/DefinitionRegistry/ResolutionMap, 함수·전역 const forward reference, 원 DefId import alias·visibility, 지역 Scope·가변성, P12 분리 type namespace·원자 import.
 - `nova-types`: TypeInterner, 8종 정수·Float32/64·Bool/Char/String/Unit, IntegerValue/FloatValue·lossless conversion와 ConstValue, nominal StructId/FieldId, structural Tuple shape·nominal Enum/Variant와 checked mixed layout.
 - `nova-typecheck`: expected type/TypeTable, Literal 범위·인수·return·Bool 조건·불변 대입·loop jump,
-  P05/P06 const checked 평가와 10,000-node budget·ConstEvaluation table, cross-file 전역 dependency/SCC 순환 진단, 기대/peer literal 문맥과 승격 metadata, char scalar 비교, Copy struct/Tuple 생성·projection·가변 경로·const, Copy Enum 생성·binder·coverage 검사.
+  P05/P06 const checked 평가와 10,000-node budget·ConstEvaluation table, cross-file 전역 dependency/SCC 순환 진단, 기대/peer literal 문맥과 승격 metadata, char scalar 비교, Copy struct/Tuple 생성·projection·가변 경로·const, Copy Enum 생성·binder·coverage 검사, P21 선언 scope의 iterative alias 정규화·순환/한도 검사.
 - `nova-mir`: 비SSA Place/Operand/Rvalue, BasicBlock CFG, source-order Call Terminator,
   명시적인 Widen·short-circuit/if/return/while·jump/const Lowering과 타입·초기화·순환 CFG 검증, aggregate 생성/읽기/갱신과 원 ID/path/layout 독립 검증, Enum 생성·tag dispatch·active payload CFG proof.
 - `nova-codegen`: immutable verified CodegenUnit, Backend trait/Target/Options/Artifact/error 경계.

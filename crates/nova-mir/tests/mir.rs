@@ -2538,3 +2538,55 @@ fn p20_exists_public_typed_forgery_try_bypass_and_flat_stack() {
         .join()
         .unwrap();
 }
+
+#[test]
+fn p21_alias_canonical_mir_has_no_runtime_alias_declaration_or_effect() {
+    let m=pass("type A=int8;type Maybe=A?;type Reply=Result<Maybe,bool>;const C:A=7;func f(x:A=C)->Reply{return Result::Success(Option::Some(x))}func main(){let a:Maybe=none;let b=a exists;match f(){Result::Success(v)=>{print(\"{v exists}\")},Result::Error(_)=>{}}}");
+    assert_eq!(m.bodies.len(), 2);
+    assert_eq!(m.callees.len(), 3);
+    assert_eq!(m.sums.len(), 2);
+    for body in &m.bodies {
+        assert!(body
+            .locals
+            .iter()
+            .all(|l| !matches!(l.ty, Type::Error | Type::Function)));
+    }
+    assert!(validate(&m).is_empty());
+}
+#[test]
+fn p21_alias_checked_and_resolution_metadata_forgeries_are_rejected() {
+    let mut db = SourceDatabase::default();
+    let f = db
+        .add("a.nova", "type A=int8;func main(){let a:A=7}".into())
+        .unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let c = check(&h, &r).unwrap();
+    assert!(!c.has_errors());
+    let def = *c.aliases.keys().next().unwrap();
+    for kind in 0..3 {
+        let mut c = check(&h, &r).unwrap();
+        let wrong = c.types.intern(Type::Bool);
+        match kind {
+            0 => {
+                c.aliases.insert(def, wrong);
+            }
+            1 => c.definition_types[def] = wrong,
+            _ => {
+                c.aliases.clear();
+            }
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+    let mut bad = resolve(&h);
+    bad.definitions[def].kind = nova_resolve::DefinitionKind::Enum(h.items().next().unwrap());
+    assert_eq!(
+        check(&h, &bad),
+        Err(nova_typecheck::CheckError::InvalidResolution)
+    );
+}

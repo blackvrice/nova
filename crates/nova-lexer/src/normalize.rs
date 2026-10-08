@@ -30,6 +30,9 @@ pub fn normalize_ends(tokens: &[Token]) -> Vec<Token> {
     let mut type_context = false;
     let mut expecting_decl_name = false;
     let mut generic_candidate = false;
+    // P21 tracks only the new alias declaration; raw tokens remain lossless.
+    let mut alias_base = None;
+    let mut alias_rhs = false;
     for (index, token) in tokens.iter().enumerate() {
         let kind = token.kind;
         if kind.is_trivia() {
@@ -70,6 +73,10 @@ pub fn normalize_ends(tokens: &[Token]) -> Vec<Token> {
                 type_context = false;
                 expecting_decl_name = false;
                 generic_candidate = false;
+                if let Some(base) = alias_base.take() {
+                    delimiters.truncate(base);
+                }
+                alias_rhs = false;
             }
             continue;
         }
@@ -86,24 +93,52 @@ pub fn normalize_ends(tokens: &[Token]) -> Vec<Token> {
             type_context = false;
             expecting_decl_name = false;
             generic_candidate = false;
+            if let Some(base) = alias_base.take() {
+                delimiters.truncate(base);
+            }
+            alias_rhs = false;
             continue;
         }
         // A generic closing `>` can finish a type annotation. The same raw
         // token used as a comparison operator must still continue the expression.
         let closes_type = kind == TokenKind::Symbol(Symbol::Greater)
             && delimiters.last() == Some(&Delimiter::TypeArguments);
+        if alias_base.is_some()
+            && matches!(
+                kind,
+                TokenKind::Keyword(
+                    Keyword::Func
+                        | Keyword::Type
+                        | Keyword::Struct
+                        | Keyword::Enum
+                        | Keyword::Use
+                        | Keyword::Const
+                        | Keyword::Public
+                        | Keyword::Internal
+                        | Keyword::Private
+                ) | TokenKind::Eof
+            )
+        {
+            delimiters.truncate(alias_base.take().expect("alias context"));
+            alias_rhs = false;
+            type_context = false;
+            generic_candidate = false;
+        }
         match kind {
+            TokenKind::Keyword(Keyword::Type) => {
+                alias_base = Some(delimiters.len());
+                alias_rhs = false;
+                header = false;
+                function_header = false;
+                expecting_decl_name = true;
+            }
             TokenKind::Keyword(Keyword::Func) => {
                 header = true;
                 function_header = true;
                 expecting_decl_name = true;
             }
             TokenKind::Keyword(
-                Keyword::Struct
-                | Keyword::Class
-                | Keyword::Enum
-                | Keyword::Interface
-                | Keyword::Type,
+                Keyword::Struct | Keyword::Class | Keyword::Enum | Keyword::Interface,
             ) => {
                 header = true;
                 expecting_decl_name = true;
@@ -148,11 +183,12 @@ pub fn normalize_ends(tokens: &[Token]) -> Vec<Token> {
             }
             TokenKind::Symbol(Symbol::Equal) => {
                 binding = false;
-                type_context = false;
+                alias_rhs = alias_base.is_some();
+                type_context = alias_rhs;
                 generic_candidate = false;
             }
             TokenKind::Comma if delimiters.last() != Some(&Delimiter::TypeArguments) => {
-                type_context = false
+                type_context = alias_rhs
             }
             TokenKind::LeftParen => {
                 delimiters.push(Delimiter::Paren);

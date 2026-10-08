@@ -820,17 +820,17 @@ const existsPrecedence = existsFixture.negative_cases.find(c => c.name === 'try_
 assert(existsPrecedence.primary_text === 'fetch()' && existsPrecedence.primary.start === 153
   && existsPrecedence.primary.end === 160, 'P20 Result exists fails before derived try error');
 
-const aliasProposal = manifest.draft_proposals?.find(p => p.id === 'P21');
-assert(aliasProposal?.status === 'Draft' && aliasProposal?.implementation_verified === false
+const aliasProposal = manifest.accepted_proposals?.find(p => p.id === 'P21');
+assert(aliasProposal?.status === 'Accepted' && aliasProposal?.implementation_verified === true
   && aliasProposal?.document === 'ALIAS_STAGE_B_PROPOSAL.md' && aliasProposal?.grammar === 'GRAMMAR_STAGE_B_ALIAS.ebnf'
-  && !manifest.accepted_proposals?.some(p => p.id === 'P21'), 'P21 invalid Draft ledger');
+  && !manifest.draft_proposals?.some(p => p.id === 'P21'), 'P21 invalid Accepted ledger');
 const aliasText = fs.readFileSync(path.join(pack,'ALIAS_STAGE_B_PROPOSAL.md'),'utf8');
-assert(aliasText.includes('Draft / 사용자 승인 대기 / 미구현') && aliasText.includes('1,024개')
+assert(aliasText.includes('Accepted / 사용자 승인 / 구현 완료') && aliasText.includes('1,024개')
   && aliasText.includes('53개 보존') && aliasText.includes('N2103') && aliasText.includes('API leak'), 'P21 missing boundaries');
 validateGrammar('GRAMMAR_STAGE_B_ALIAS.ebnf');
 const aliasGrammar = fs.readFileSync(path.join(pack,'GRAMMAR_STAGE_B_ALIAS.ebnf'),'utf8');
 const aliasProductions = productions(aliasGrammar);
-assert(aliasGrammar.includes('Draft, unapproved, unimplemented') && aliasProductions.size === 55, 'P21 invalid grammar');
+assert(aliasGrammar.includes('Accepted by user; recorded on 2026-10-08') && aliasProductions.size === 55, 'P21 invalid grammar');
 for (const [name,value] of existsProductions) {
   if (name !== 'program') assert(aliasProductions.get(name) === value, 'P21 changed approved production '+name);
 }
@@ -839,16 +839,16 @@ assert(aliasProductions.get('alias_decl') === '"type","IDENT","=",type,end', 'P2
 const aliasRoot=path.join(pack,'alias-proposal-fixtures');
 const aliasFixture=JSON.parse(fs.readFileSync(path.join(aliasRoot,'expected.json'),'utf8'));
 const aliasOutput='small=7\npair=7/2\nexists=true\nflag=on\ncast=7\ntext=한글\ntry=true\nerror=-1\n';
-assert(aliasFixture.proposal === 'P21' && aliasFixture.status === 'Draft' && aliasFixture.implementation_verified === false
-  && !aliasFixture.approval_date && !aliasFixture.validated_result && aliasFixture.entry === 'main.nova'
-  && aliasFixture.source_root === '.' && JSON.stringify(aliasFixture.reachable_modules) === '["main","types"]', 'P21 invalid unverified fixture ledger');
-assert(aliasFixture.proposed_result?.check_exit === 0 && aliasFixture.proposed_result?.native_exit === 0
-  && aliasFixture.proposed_result?.stdout === aliasOutput && aliasFixture.proposed_result?.stderr === '', 'P21 proposed output mismatch');
+assert(aliasFixture.proposal === 'P21' && aliasFixture.status === 'Accepted' && aliasFixture.implementation_verified === true
+  && aliasFixture.approval_date === '2026-10-08' && !aliasFixture.proposed_result && aliasFixture.entry === 'main.nova'
+  && aliasFixture.source_root === '.' && JSON.stringify(aliasFixture.reachable_modules) === '["main","types"]', 'P21 invalid verified fixture ledger');
+assert(aliasFixture.validated_result?.check_exit === 0 && aliasFixture.validated_result?.native_exit === 0
+  && aliasFixture.validated_result?.stdout === aliasOutput && aliasFixture.validated_result?.stderr === '', 'P21 verified output mismatch');
 assert(aliasFixture.negative_cases?.length === 16 && aliasFixture.positive_cases?.length === 1,'P21 invalid case counts');
 for (const c of aliasFixture.positive_cases ?? []) {
-  assert(c.source === 'multiline.nova' && fs.existsSync(path.join(aliasRoot,c.source)) && !c.validated_result
-    && c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
-    && c.proposed_result?.stdout === '' && c.proposed_result?.stderr === '', 'P21 invalid unverified positive');
+  assert(c.source === 'multiline.nova' && fs.existsSync(path.join(aliasRoot,c.source)) && !c.proposed_result
+    && c.validated_result?.check_exit === 0 && c.validated_result?.native_exit === 0
+    && c.validated_result?.stdout === '' && c.validated_result?.stderr === '', 'P21 invalid verified positive');
 }
 for (const c of aliasFixture.negative_cases ?? []) {
   const bytes=fs.readFileSync(path.join(aliasRoot,c.source));
@@ -862,7 +862,7 @@ assert(aliasMain.includes('use types::Small as Tiny') && aliasMain.includes('fun
   && aliasMain.includes('let shape:Shape') && aliasMain.includes('wide as Tiny') && aliasMain.includes('try sum(fail)')
   && aliasMain.includes('value exists') && aliasTypes.includes('type Small = Later') && aliasTypes.includes('type Later = int8')
   && aliasTypes.includes('value:Small=3'), 'P21 missing forward/scope/namespace/Tuple/cast/try/default data');
-checks.push('P21 Draft/미승인·미구현 ledger·P20 program 한 production 확장/alias_decl 추가·55-production EBNF/기존 53개 보존·두 파일/정상 1/부정 16 UTF-8 Span·제안 8줄 metadata (Compiler/Native 실행 아님)');
+checks.push('P21 Accepted ledger·P20 program 한 production 확장/alias_decl 추가·55-production EBNF/기존 53개 보존·두 파일/정상 1/부정 16 UTF-8 Span·검증된 8줄 metadata (문서 검사 자체는 Compiler/Native 실행 아님)');
 
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {

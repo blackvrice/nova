@@ -1806,3 +1806,67 @@ fn p20_exists_operand_abort_cross_file_utf8_span_and_effects_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p21_native_alias_fixture_opaque_scope_canonical_abi_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/alias-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for profile in ["debug", "release"] {
+        for (name, output) in [
+            (
+                "main.nova",
+                "small=7\npair=7/2\nexists=true\nflag=on\ncast=7\ntext=한글\ntry=true\nerror=-1\n",
+            ),
+            ("multiline.nova", ""),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, output.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let r=module_program("use lib::A;use lib::factory;use lib::read;type T=bool;func echo(x:A)->A{return x}func main(){print(\"opaque={read(echo(factory()))}\")}", "type T=int8;private struct Hidden{private let n:T}public type A=Hidden;public func factory()->A{return Hidden(7)}public func read(x:A)->T{return x.n}", profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"opaque=7\n");
+        assert!(r.stderr.is_empty());
+        let r=program_profile("type N=uint8;type C=char;type F=double;type U=();type T=(N,C,F,U);type O=Option<T>;const VALUE:T=(255,'🙂',-0.0,());func f(x:T=VALUE)->O{return Option::Some(x)}func main(){match f(){Option::Some(t)=>{print(\"{t.0}/{t.1}/{t.2}\")},Option::None=>{}}}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, "255/🙂/-0\n".as_bytes());
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p21_alias_checked_abort_cross_file_utf8_span_o0_o2() {
+    for profile in ["debug", "release"] {
+        let lib="// 한글 🙂\ntype Small=int8;public func fail(){print(\"before\");let 値:Small=127;let bad=値+1;print(\"after\")}";
+        let start = lib.find("値+1").unwrap();
+        let r = module_program(
+            "use lib::fail;func main(){fail();print(\"after-main\")}",
+            lib,
+            profile,
+        );
+        assert!(!r.status.success());
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(
+                format!(
+                    "Nova panic: integer overflow at file#1:{start}..{}",
+                    start + "値+1".len()
+                )
+                .as_str()
+            )
+        );
+    }
+}

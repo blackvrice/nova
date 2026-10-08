@@ -1,5 +1,6 @@
 //! P02 single-file semantic checking. Successful checking is not native execution.
 mod aggregates;
+mod aliases;
 mod arguments;
 mod defaults;
 mod ranges;
@@ -31,6 +32,8 @@ pub struct Signature {
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Checked {
+    /// P21 original alias DefId to canonical TypeId; source target remains in HIR.
+    pub aliases: std::collections::BTreeMap<usize, TypeId>,
     pub ranges: Vec<Option<RangeInfo>>,
     pub types: TypeInterner,
     pub structs: nova_types::StructRegistry,
@@ -84,6 +87,9 @@ impl Checked {
     }
     pub fn dump(&self) -> String {
         let mut output = String::new();
+        for (def, ty) in &self.aliases {
+            let _ = writeln!(output, "alias def {def} {:?}", self.types.get(*ty));
+        }
         for (index, range) in self.ranges.iter().enumerate() {
             if let Some(range) = range {
                 let _ = writeln!(
@@ -237,6 +243,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 continue;
             }
             DefinitionKind::Function(id)
+            | DefinitionKind::TypeAlias(id)
             | DefinitionKind::Enum(id)
             | DefinitionKind::Struct(id)
             | DefinitionKind::GlobalConst(id)
@@ -248,6 +255,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         };
         let name = match (definition.kind, &node.kind) {
             (DefinitionKind::Enum(_), HirKind::Enum { name, .. })
+            | (DefinitionKind::TypeAlias(_), HirKind::TypeAlias { name, .. })
             | (DefinitionKind::Local(_), HirKind::Binder { name, .. })
             | (DefinitionKind::Struct(_), HirKind::Struct { name, .. })
             | (DefinitionKind::Function(_), HirKind::Function { name, .. })
@@ -291,6 +299,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         types.intern(ty);
     }
     let result = Checked {
+        aliases: Default::default(),
         types,
         structs: Default::default(),
         enums: Default::default(),
@@ -382,6 +391,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 flags
             }),
     };
+    checker.collect_aliases();
     checker.collect_structs();
     checker.collect_signatures();
     checker.collect_parameter_indices();
@@ -609,6 +619,7 @@ impl Checker<'_> {
                 DefinitionKind::Enum(_) => {
                     self.result.definition_types[index] = self.result.types.intern(Type::Unit);
                 }
+                DefinitionKind::TypeAlias(_) => {}
                 DefinitionKind::Parameter(id) => {
                     let ty_id = self.module.nodes()[id.0].children[0];
                     // Function signatures have already visited parameter syntax.
@@ -1601,7 +1612,7 @@ impl Checker<'_> {
                 } else {
                     if self.ty(self.result.type_table[callee.0]) != Type::Error {
                         self.report(
-                            2101,
+                            if matches!(self.resolved.references[callee.0], Some(Resolution::Definition(def)) if matches!(self.resolved.definitions[def.0].kind, DefinitionKind::TypeAlias(_))) { 1102 } else { 2101 },
                             if matches!(self.module.nodes()[callee.0].kind,HirKind::Name(name) if self.type_definition(callee,name).is_some()) { node.span } else { self.module.nodes()[callee.0].span },
                             "expression is not callable",
                             None,

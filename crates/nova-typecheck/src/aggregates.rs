@@ -16,6 +16,16 @@ impl Checker<'_> {
     }
     pub(super) fn struct_type_name(&mut self, id: HirId, name: SymbolId) -> Type {
         if let Some(def) = self.type_definition(id, name) {
+            if matches!(
+                self.resolved.definitions[def.0].kind,
+                DefinitionKind::TypeAlias(_)
+            ) {
+                return self
+                    .result
+                    .aliases
+                    .get(&def.0)
+                    .map_or(Type::Error, |&ty| self.ty(ty));
+            }
             return if matches!(
                 self.resolved.definitions[def.0].kind,
                 DefinitionKind::Enum(_)

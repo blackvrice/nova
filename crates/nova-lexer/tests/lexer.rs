@@ -536,3 +536,53 @@ fn p15_type_close_assignment_preserves_raw_and_normalized_greater_equal() {
         assert_eq!(db.slice(t.span).unwrap(), ">=");
     }
 }
+
+#[test]
+fn p21_alias_rhs_end_generics_and_recovery_preserve_comparisons() {
+    let (db,l)=scan("type A = Option<\n(int8,Result<bool,int>)\n>\nfunc f(){let b=1<2\nlet c=3>=2}\ntype B=int\n{}");
+    assert!(!l.has_errors());
+    let tokens = normalize_ends(&l.tokens);
+    let texts = tokens
+        .iter()
+        .map(|t| (t.kind, db.slice(t.span).unwrap()))
+        .collect::<Vec<_>>();
+    let f = texts
+        .iter()
+        .position(|t| t.0 == TokenKind::Keyword(Keyword::Func))
+        .unwrap();
+    assert!(matches!(texts[f - 1].0, TokenKind::End(EndOrigin::NewLine)));
+    assert!(texts
+        .iter()
+        .any(|t| t.0 == TokenKind::Symbol(Symbol::GreaterEqual) && t.1 == ">="));
+    let brace = texts
+        .iter()
+        .rposition(|t| t.0 == TokenKind::LeftBrace)
+        .unwrap();
+    assert!(matches!(
+        texts[brace - 1].0,
+        TokenKind::End(EndOrigin::NewLine)
+    ));
+    assert_eq!(
+        l.tokens
+            .iter()
+            .filter(|t| t.kind != TokenKind::Eof)
+            .map(|t| db.slice(t.span).unwrap())
+            .collect::<String>(),
+        db.file(l.tokens[0].span.file()).unwrap().text()
+    );
+    for input in [
+        "type A=Option<\nfunc f(){let x=1<2\nlet y=3}",
+        "type A=Option<;func f(){let x=1<2\nlet y=3}",
+    ] {
+        let (_, l) = scan(input);
+        let tokens = normalize_ends(&l.tokens);
+        let last_let = tokens
+            .iter()
+            .rposition(|t| t.kind == TokenKind::Keyword(Keyword::Let))
+            .unwrap();
+        assert!(
+            matches!(tokens[last_let - 1].kind, TokenKind::End(_)),
+            "{input}"
+        );
+    }
+}

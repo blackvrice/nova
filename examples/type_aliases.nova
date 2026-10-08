@@ -1,0 +1,47 @@
+// P21 transparent Type Alias
+type Small = Base
+type Base = int8
+type Shape = (Small,bool)
+struct Pair { let left:Small; let right:Small }
+type PairType = Pair
+type Maybe = Small?
+type Outcome = Result<Maybe,Small>
+enum Flag { On; Off }
+type FlagType = Flag
+type Code = uint8
+type Text = string
+type Nothing = ()
+type Relay = Result<bool,Small>
+func sum(fail:bool,value:Small=3)->Outcome {
+    if fail { return Result::Error(-1) }
+    return Result::Success(Option::Some(value))
+}
+type Tiny=Small
+type Forward = Later
+type Later = Tiny
+const ANSWER:Forward=7
+func Tiny(value:Tiny)->Tiny { return value }
+func echo(value:Text)->Text { return value }
+func empty(value:Nothing=())->Nothing { return value }
+func probe(fail:bool)->Relay {
+    let value:Maybe=try sum(fail)
+    return Result::Success(value exists)
+}
+func main() {
+    let small:Tiny=ANSWER
+    print("small={small}")
+    let shape:Shape=(Tiny(small),true)
+    let pair:PairType=Pair(shape.0,2)
+    print("pair={pair.left}/{pair.right}")
+    let value:Maybe=Option::Some(pair.left)
+    print("exists={value exists}")
+    let flag:FlagType=Flag::On
+    match flag { Flag::On=>{print("flag=on")},Flag::Off=>{print("flag=off")} }
+    let wide:Code=7
+    let narrowed:Tiny=wide as Tiny
+    print("cast={narrowed}")
+    print("text={echo(value:"한글")}")
+    empty()
+    match probe(false) { Result::Success(b)=>{print("try={b}")},Result::Error(e)=>{print("unexpected={e}")} }
+    match probe(true) { Result::Success(b)=>{print("unexpected={b}")},Result::Error(e)=>{print("error={e}")} }
+}

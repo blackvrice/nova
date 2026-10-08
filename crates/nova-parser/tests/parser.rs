@@ -1327,3 +1327,82 @@ fn p20_flat_exists_chain_small_host_stack_and_nesting_budget() {
     let (_, _, p) = run(&source);
     assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N8901"));
 }
+
+#[test]
+fn p21_alias_tokens_target_visibility_recovery_and_utf8_prefixes() {
+    let source="// 한글 🙂\npublic type 이름 /* nested /* comment */ */ = Result<(int8,bool),int>?\nfunc later(){}";
+    let (db, _, p) = run(source);
+    assert!(!p.has_errors(), "{:?}", p.diagnostics);
+    let alias = p
+        .arena
+        .iter()
+        .find(|(_, n)| matches!(n.kind, NodeKind::TypeAlias { .. }))
+        .unwrap()
+        .1;
+    let NodeKind::TypeAlias {
+        keyword,
+        name,
+        equals,
+    } = alias.kind
+    else {
+        unreachable!()
+    };
+    assert_eq!(db.slice(keyword).unwrap(), "type");
+    assert_eq!(db.slice(name).unwrap(), "이름");
+    assert_eq!(db.slice(equals).unwrap(), "=");
+    assert_eq!(alias.children.len(), 1);
+    assert_eq!(
+        alias.span.end(),
+        p.arena.get(alias.children[0]).unwrap().span.end()
+    );
+    for bad in [
+        "type A<T>=T\n",
+        "type A=\n",
+        "type A int\n",
+        "type =int\n",
+        "type A=Option<\n",
+    ] {
+        let (db, _, p) = run(&format!("{bad}func later(){{}}"));
+        assert!(p.has_errors());
+        assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function{name,..} if db.slice(name).unwrap()=="later")),"{bad}");
+    }
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let (db, _, p) = run(&source[..at]);
+        for (_, node) in p.arena.iter() {
+            db.slice(node.span).unwrap();
+        }
+        for d in &p.diagnostics {
+            db.slice(d.primary.span).unwrap();
+        }
+    }
+}
+#[test]
+fn p21_alias_chain_parsing_small_stack_and_original_depth_budget() {
+    std::thread::Builder::new()
+        .stack_size(256 * 1024)
+        .spawn(|| {
+            let mut source = String::new();
+            for n in 0..1024 {
+                source.push_str(&format!("type A{n}=int\n"));
+            }
+            let (_, _, p) = run(&source);
+            assert!(!p.has_errors());
+            assert_eq!(
+                p.arena
+                    .iter()
+                    .filter(|(_, n)| matches!(n.kind, NodeKind::TypeAlias { .. }))
+                    .count(),
+                1024
+            );
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    let (_, _, p) = run(&format!(
+        "type A={}int{}\nfunc later(){{}}",
+        "Option<".repeat(129),
+        ">".repeat(129)
+    ));
+    assert!(p.has_errors());
+    assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"));
+}

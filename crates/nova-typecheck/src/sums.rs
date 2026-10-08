@@ -68,7 +68,18 @@ impl Checker<'_> {
                             )
                         )
                     {
-                        self.report(1102, name_span, "user generic types are unsupported", None);
+                        let alias = self.type_definition(id, name).is_some_and(|def| {
+                            matches!(
+                                self.resolved.definitions[def.0].kind,
+                                nova_resolve::DefinitionKind::TypeAlias(_)
+                            )
+                        });
+                        self.report(
+                            1102,
+                            if alias { node.span } else { name_span },
+                            "user generic types are unsupported",
+                            None,
+                        );
                     } else {
                         self.struct_type_name(id, name);
                     }

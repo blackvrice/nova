@@ -67,6 +67,8 @@ impl<'a> Parser<'a> {
                 items.push(self.structure());
             } else if self.kind() == TokenKind::Keyword(Keyword::Enum) {
                 items.push(self.enum_declaration());
+            } else if self.kind() == TokenKind::Keyword(Keyword::Type) {
+                items.push(self.type_alias());
             } else if self.kind() == TokenKind::Keyword(Keyword::Const) {
                 items.push(self.statement());
             } else {
@@ -142,6 +144,7 @@ impl<'a> Parser<'a> {
             TokenKind::Keyword(Keyword::Const) => self.statement(),
             TokenKind::Keyword(Keyword::Struct) => self.structure(),
             TokenKind::Keyword(Keyword::Enum) => self.enum_declaration(),
+            TokenKind::Keyword(Keyword::Type) => self.type_alias(),
             _ => {
                 self.report(
                     if self.kind() == TokenKind::Keyword(Keyword::Use) {
@@ -164,6 +167,39 @@ impl<'a> Parser<'a> {
             token.span.start(),
             vec![child],
         )
+    }
+    fn type_alias(&mut self) -> AstNodeId {
+        let diagnostics = self.diagnostics.len();
+        let keyword = self.bump().span;
+        let name = self.expect(TokenKind::Identifier).span;
+        if self.kind() == TokenKind::Symbol(Symbol::Less) {
+            self.report(1102, self.current().span, "generic aliases are unsupported");
+            self.recover_item_tail();
+            return self.node(NodeKind::Error, keyword.start(), vec![]);
+        }
+        let equals = self.expect(TokenKind::Symbol(Symbol::Equal)).span;
+        let target = self.type_node();
+        if !self.at_end() && !matches!(self.kind(), TokenKind::Eof | TokenKind::RightBrace) {
+            self.report(1101, self.current().span, "expected alias declaration end");
+            self.recover_item_tail();
+        }
+        let alias = if self.diagnostics.len() == diagnostics {
+            self.node(
+                NodeKind::TypeAlias {
+                    keyword,
+                    name,
+                    equals,
+                },
+                keyword.start(),
+                vec![target],
+            )
+        } else {
+            self.node(NodeKind::Error, keyword.start(), vec![target])
+        };
+        if self.at_end() {
+            self.bump();
+        }
+        alias
     }
     fn enum_declaration(&mut self) -> AstNodeId {
         let start = self.bump().span.start();
@@ -638,6 +674,8 @@ impl<'a> Parser<'a> {
                 | TokenKind::Keyword(
                     Keyword::Func
                         | Keyword::Struct
+                        | Keyword::Enum
+                        | Keyword::Type
                         | Keyword::Const
                         | Keyword::Use
                         | Keyword::Public

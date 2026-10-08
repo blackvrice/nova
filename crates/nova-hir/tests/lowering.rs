@@ -958,3 +958,70 @@ fn p20_exists_source_origin_trivia_shape_and_external_ast_gate() {
         assert_eq!(lower(&db, &arena, root).is_ok(), valid, "{text}");
     }
 }
+
+#[test]
+fn p21_alias_source_shape_token_boundaries_and_file_origins_gate_external_ast() {
+    for (source, keyword, name, equals, target, valid) in [
+        ("type 名=int", (0, 4), (5, 8), (8, 9), (9, 12), true),
+        (
+            "type A /* x /* y */ */ = int",
+            (0, 4),
+            (5, 6),
+            (23, 24),
+            (25, 28),
+            true,
+        ),
+        ("xtype A=int", (1, 5), (6, 7), (7, 8), (8, 11), false),
+        ("type AA=int", (0, 4), (5, 6), (7, 8), (8, 11), false),
+        ("type A+ =int", (0, 4), (5, 6), (8, 9), (9, 12), false),
+        ("type if=int", (0, 4), (5, 7), (7, 8), (8, 11), false),
+        ("type A==int", (0, 4), (5, 6), (6, 7), (8, 11), false),
+    ] {
+        let mut db = SourceDatabase::default();
+        let file = db.add("alias.nova", source.into()).unwrap();
+        let span = |r: (usize, usize)| Span::new(file, r.0, r.1).unwrap();
+        let whole = span((keyword.0, source.len()));
+        let mut ast = Arena::default();
+        let rhs = ast
+            .insert(NodeKind::NamedType, span(target), vec![])
+            .unwrap();
+        let alias = ast
+            .insert(
+                NodeKind::TypeAlias {
+                    keyword: span(keyword),
+                    name: span(name),
+                    equals: span(equals),
+                },
+                whole,
+                vec![rhs],
+            )
+            .unwrap();
+        let root = ast
+            .insert(NodeKind::Root, span((0, source.len())), vec![alias])
+            .unwrap();
+        assert_eq!(lower(&db, &ast, root).is_ok(), valid, "{source}");
+    }
+    let source = "type A=int";
+    let mut db = SourceDatabase::default();
+    let f = db.add("bad.nova", source.into()).unwrap();
+    let whole = Span::new(f, 0, source.len()).unwrap();
+    for children in [0, 2] {
+        let mut ast = Arena::default();
+        let rhs = ast
+            .insert(NodeKind::NamedType, Span::new(f, 7, 10).unwrap(), vec![])
+            .unwrap();
+        let a = ast
+            .insert(
+                NodeKind::TypeAlias {
+                    keyword: Span::new(f, 0, 4).unwrap(),
+                    name: Span::new(f, 5, 6).unwrap(),
+                    equals: Span::new(f, 6, 7).unwrap(),
+                },
+                whole,
+                vec![rhs; children],
+            )
+            .unwrap();
+        let r = ast.insert(NodeKind::Root, whole, vec![a]).unwrap();
+        assert!(lower(&db, &ast, r).is_err());
+    }
+}
