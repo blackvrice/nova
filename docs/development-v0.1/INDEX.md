@@ -48,6 +48,8 @@
 
 [P28 함수 내부 Copy const 구조 분해](CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_CONST_DESTRUCTURING.ebnf)·[수용 fixture](const-destructuring-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](CONST_DESTRUCTURING_IMPLEMENTATION.md)을 제공한다. 기존 61개 production·P01~P27 ledger·let/var/전역 const를 보존한다.
 
+[P29 전역 Copy const 구조 분해](GLOBAL_CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf)·[수용 fixture](global-const-destructuring-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](GLOBAL_CONST_DESTRUCTURING_IMPLEMENTATION.md)을 제공한다. 기존 61개 production·P01~P28 ledger를 보존한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

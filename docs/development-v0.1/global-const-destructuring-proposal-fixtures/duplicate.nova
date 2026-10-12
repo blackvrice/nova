@@ -1,0 +1,3 @@
+const(a,a)=(1,2)
+const DEP=a+1
+func main(){}

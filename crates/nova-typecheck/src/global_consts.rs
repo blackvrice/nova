@@ -2,7 +2,7 @@
 use crate::{Checker, ConstEvaluation, Context};
 use nova_diagnostics::{Diagnostic, DiagnosticCode, Label, Severity};
 use nova_hir::{HirId, HirKind};
-use nova_resolve::{DefId, DefinitionKind, Resolution};
+use nova_resolve::{DefId, Resolution};
 use nova_types::Type;
 use std::collections::BTreeSet;
 
@@ -12,32 +12,67 @@ struct Edge {
     reference: HirId,
 }
 struct Global {
-    definition: DefId,
+    definitions: Vec<DefId>,
     node: HirId,
     edges: Vec<Edge>,
     invalid: bool,
 }
 
 impl Checker<'_> {
+    fn global_state(&self, global: &Global) -> &ConstEvaluation {
+        if matches!(
+            self.module.nodes()[global.node.0].kind,
+            HirKind::DestructuringBinding { .. }
+        ) {
+            &self.result.const_destructuring_values[global.node.0]
+        } else {
+            &self.result.const_values[global.definitions[0].0]
+        }
+    }
+    fn set_global_state(&mut self, global: &Global, state: ConstEvaluation) {
+        let error = self.result.types.intern(Type::Error);
+        for def in &global.definitions {
+            self.result.const_values[def.0] = state.clone();
+            self.result.definition_types[def.0] = error;
+        }
+        if matches!(
+            self.module.nodes()[global.node.0].kind,
+            HirKind::DestructuringBinding { .. }
+        ) {
+            self.result.const_destructuring_values[global.node.0] = state;
+        }
+    }
     pub(super) fn check_globals(&mut self) {
         let mut globals = Vec::new();
         let mut indices = vec![None; self.resolved.definitions.len()];
+        let mut owners = vec![Vec::new(); self.module.nodes().len()];
+        for (&def, &owner) in &self.resolved.global_const_owners {
+            owners[owner.0].push(DefId(def));
+        }
         for node in self.module.items() {
-            let Some(definition) = self.resolved.declaration_ids[node.0] else {
-                continue;
-            };
-            if matches!(
-                self.resolved.definitions[definition.0].kind,
-                DefinitionKind::GlobalConst(_)
+            if !matches!(
+                self.module.nodes()[node.0].kind,
+                HirKind::Binding { constant: true, .. }
+                    | HirKind::DestructuringBinding { constant: true, .. }
             ) {
-                indices[definition.0] = Some(globals.len());
-                globals.push(Global {
-                    definition,
-                    node,
-                    edges: vec![],
-                    invalid: false,
-                });
+                continue;
             }
+            let definitions = std::mem::take(&mut owners[node.0]);
+            // A duplicate ordinary declaration has no definition and is already diagnosed.
+            if definitions.is_empty()
+                && matches!(self.module.nodes()[node.0].kind, HirKind::Binding { .. })
+            {
+                continue;
+            }
+            for def in &definitions {
+                indices[def.0] = Some(globals.len());
+            }
+            globals.push(Global {
+                definitions,
+                node,
+                edges: vec![],
+                invalid: false,
+            });
         }
         // Collect even skipped RHS references, preserving first source-order edges.
         let duplicates = self
@@ -80,14 +115,15 @@ impl Checker<'_> {
                 global.invalid |= node.kind == HirKind::Error;
                 pending.extend(node.children.iter().rev().copied());
             }
-            global.invalid |= self.resolved.definitions[global.definition.0]
-                .span
-                .is_some_and(|span| {
-                    duplicates.contains(&(span.file().as_u32(), span.start(), span.end()))
-                });
+            let declaration = self.module.nodes()[global.node.0].span;
+            global.invalid |= duplicates.iter().any(|&(file, start, end)| {
+                declaration.file().as_u32() == file
+                    && declaration.start() <= start
+                    && end <= declaration.end()
+            });
             if global.invalid {
                 global.edges.clear();
-                self.result.const_values[global.definition.0] = ConstEvaluation::Invalid;
+                self.set_global_state(global, ConstEvaluation::Invalid);
             }
         }
         let order = postorder(&globals);
@@ -147,7 +183,7 @@ impl Checker<'_> {
             let mut secondary = Vec::new();
             let mut names = Vec::new();
             for &id in &path {
-                let definition = &self.resolved.definitions[globals[id].definition.0];
+                let definition = &self.resolved.definitions[globals[id].definitions[0].0];
                 names.push(definition.name.as_str());
                 if let Some(span) = definition.span {
                     secondary.push(Label {
@@ -177,10 +213,13 @@ impl Checker<'_> {
             });
             for &id in members {
                 // No initializer evaluation occurred; zero is not a successful node count.
-                self.result.const_values[globals[id].definition.0] = ConstEvaluation::Failed {
-                    code: 3202,
-                    nodes: 0,
-                };
+                self.set_global_state(
+                    &globals[id],
+                    ConstEvaluation::Failed {
+                        code: 3202,
+                        nodes: 0,
+                    },
+                );
             }
         }
         let context = Context {
@@ -194,16 +233,16 @@ impl Checker<'_> {
         };
         for index in order {
             let global = &globals[index];
-            if self.result.const_values[global.definition.0] != ConstEvaluation::Pending {
+            if self.global_state(global) != &ConstEvaluation::Pending {
                 continue;
             }
             if global.edges.iter().any(|edge| {
                 !matches!(
-                    self.result.const_values[globals[edge.target].definition.0],
+                    self.global_state(&globals[edge.target]),
                     ConstEvaluation::Value { .. }
                 )
             }) {
-                self.result.const_values[global.definition.0] = ConstEvaluation::Invalid;
+                self.set_global_state(global, ConstEvaluation::Invalid);
                 continue;
             }
             self.walk(global.node, context);

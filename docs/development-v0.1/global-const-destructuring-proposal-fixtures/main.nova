@@ -1,0 +1,8 @@
+use values::n as COUNT
+use values::flag
+enum E{Only((int8,char))}
+const E::Only((STEP,CH))=E::Only((COUNT+1,'🙂'))
+const()=()
+const(_,_)=(1,true)
+func show(n:int8=STEP){print("global={n}/{flag}/{CH}")}
+func main(){const(local,_)=(STEP+1,());show();print("local={local}")}

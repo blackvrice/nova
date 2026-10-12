@@ -1,5 +1,10 @@
 # Nova 0.1 — 개발 문서 보완팩
 
+현재 구현은 **P29 전역 Copy const 구조 분해까지 완료**다.
+[P29 계약](GLOBAL_CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf)·[수용 fixture](global-const-destructuring-proposal-fixtures/README.md)·[구현 기록](GLOBAL_CONST_DESTRUCTURING_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
+component import/가시성·forward reference·공유 initializer 평가·정적 group 순환을 지원한다. Array·const 함수·일반 Move/Drop은 후속 계약이다.
+
+
 작성일: 2026-10-03 · 언어: Nova 0.1 · 상태: **D01~D05/P01~P23 Accepted / 나머지 Draft**
 
 다음 작업 [P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.

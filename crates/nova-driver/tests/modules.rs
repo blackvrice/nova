@@ -1487,6 +1487,11 @@ fn p28_fixed_const_destructuring_negative_utf8_spans_and_cascades() {
         ("const_try.nova", "N3201", 165, 168, &[] as &[&str]),
     ] {
         let loaded = load(&root.join(name), Some(&root)).unwrap();
+        // P29 explicit override: original P28 negative source/metadata remain frozen.
+        if matches!(name, "global_pattern.nova" | "visible_global_pattern.nova") {
+            unit(&loaded);
+            continue;
+        }
         let mut diagnostics = loaded.diagnostics.clone();
         if let Some(hir) = &loaded.module {
             let resolved = nova_resolve::resolve(hir);
@@ -1538,4 +1543,108 @@ fn p28_const_bundle_positive_runtime_and_historical_const_units() {
             .unwrap();
         unit(&load(&old, Some(old.parent().unwrap())).unwrap());
     }
+}
+
+#[test]
+fn p29_component_import_visibility_alias_and_default_materialization() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/global-const-destructuring-proposal-fixtures");
+    let loaded = load(&root.join("main.nova"), Some(&root)).unwrap();
+    unit(&loaded);
+    let (r, c) = analyzed(&loaded);
+    let count = r.definitions.iter().position(|d| d.name == "n").unwrap();
+    assert!(matches!(
+        r.definitions[count].kind,
+        DefinitionKind::GlobalConst(_)
+    ));
+    assert!(matches!(
+        c.const_values[count],
+        ConstEvaluation::Value { .. }
+    ));
+    for (name, code) in [
+        ("cycle.nova", "N3202"),
+        ("private_import.nova", "N2004"),
+        ("duplicate.nova", "N2002"),
+        ("discard_failure.nova", "N3201"),
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        let (_, c) = analyzed(&l);
+        assert_eq!(codes(&c), [code]);
+        let expected = match name {
+            "cycle.nova" => (14, 15),
+            "discard_failure.nova" => (12, 15),
+            "private_import.nova" => (0, 19),
+            _ => (8, 9),
+        };
+        assert_eq!(
+            (
+                c.diagnostics[0].primary.span.start(),
+                c.diagnostics[0].primary.span.end()
+            ),
+            expected
+        );
+        for d in c.diagnostics {
+            l.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                l.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+#[test]
+fn p29_cross_file_group_scc_invalidates_components_and_suppresses_dependents() {
+    let loaded = fixture(&[
+        (
+            "main.nova",
+            "use other::q;public const(a,b)=(1,q);const DEP=a+1;func main(){}",
+        ),
+        ("other.nova", "use main::b;public const(p,q)=(b,2)"),
+    ]);
+    let (r, c) = analyzed(&loaded);
+    assert_eq!(codes(&c), ["N3202"]);
+    for (i, d) in r.definitions.iter().enumerate().filter(|(_, d)| d.constant) {
+        assert!(
+            matches!(
+                c.const_values[i],
+                ConstEvaluation::Failed {
+                    code: 3202,
+                    nodes: 0
+                } | ConstEvaluation::Invalid
+            ),
+            "{}",
+            d.name
+        );
+    }
+    assert_eq!(
+        c.const_destructuring_values
+            .iter()
+            .filter(|v| matches!(
+                v,
+                ConstEvaluation::Failed {
+                    code: 3202,
+                    nodes: 0
+                }
+            ))
+            .count(),
+        2
+    );
+}
+#[test]
+fn p29_internal_components_import_and_private_same_module_reference() {
+    let loaded = fixture(&[
+        ("main.nova", "use other::n as N;func main(){let x=N}"),
+        (
+            "other.nova",
+            "private const(secret,_)=(3,());const(n,_)=(secret+1,())",
+        ),
+    ]);
+    unit(&loaded);
+    let loaded = fixture(&[
+        (
+            "main.nova",
+            "use other::n;use other::n as alias;func main(){let x=n+alias}",
+        ),
+        ("other.nova", "public const(n,_)=(4,())"),
+    ]);
+    unit(&loaded);
 }

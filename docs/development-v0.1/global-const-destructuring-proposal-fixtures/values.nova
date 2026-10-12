@@ -1,0 +1,3 @@
+public const(n,flag):(int8,bool)=(NEXT,true)
+const NEXT:int8=7
+private const(hidden,_)=(9,())

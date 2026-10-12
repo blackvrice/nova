@@ -47,6 +47,8 @@ pub enum Resolution {
 }
 #[derive(Debug, Eq, PartialEq)]
 pub struct Resolved {
+    /// P29 component definition to its whole global initializer declaration.
+    pub global_const_owners: BTreeMap<usize, HirId>,
     /// P22 canonical nominal owner and member namespace; methods never enter root value scopes.
     pub method_owners: BTreeMap<usize, DefId>,
     pub methods: BTreeMap<(usize, String), DefId>,
@@ -91,6 +93,7 @@ enum Work {
 pub fn resolve(module: &Module) -> Resolved {
     let size = module.nodes().len();
     let mut result = Resolved {
+        global_const_owners: BTreeMap::new(),
         method_owners: BTreeMap::new(),
         methods: BTreeMap::new(),
         definitions: vec![],
@@ -203,6 +206,44 @@ pub fn resolve(module: &Module) -> Resolved {
             );
             if let Some(def) = result.declaration_ids[item.0] {
                 result.definitions[def.0].constant = true;
+                result.global_const_owners.insert(def.0, item);
+            }
+        } else if matches!(
+            module.nodes()[item.0].kind,
+            HirKind::DestructuringBinding { constant: true, .. }
+        ) {
+            let mut work = vec![module.nodes()[item.0].children[0]];
+            while let Some(pattern) = work.pop() {
+                let node = &module.nodes()[pattern.0];
+                result.node_scopes[pattern.0] = Some(root_scope);
+                if let HirKind::Binder { name, name_span } = node.kind {
+                    let spelling = module.symbol(name).expect("global binder");
+                    if spelling == "print"
+                        && !result.scopes[root_scope.0]
+                            .definitions
+                            .contains_key("print")
+                    {
+                        result.diagnostics.push(diagnostic(
+                            2002,
+                            name_span,
+                            "global const print conflicts with builtin print",
+                            None,
+                        ));
+                    }
+                    declare(
+                        &mut result,
+                        root_scope,
+                        spelling,
+                        DefinitionKind::GlobalConst(pattern),
+                        name_span,
+                        pattern,
+                    );
+                    if let Some(def) = result.declaration_ids[pattern.0] {
+                        result.definitions[def.0].constant = true;
+                        result.global_const_owners.insert(def.0, item);
+                    }
+                }
+                work.extend(node.children.iter().rev().copied());
             }
         }
     }
@@ -312,8 +353,8 @@ pub fn resolve(module: &Module) -> Resolved {
                     DefinitionKind::Struct(id)
                     | DefinitionKind::Enum(id)
                     | DefinitionKind::TypeAlias(id)
-                    | DefinitionKind::Function(id)
-                    | DefinitionKind::GlobalConst(id) => id,
+                    | DefinitionKind::Function(id) => id,
+                    DefinitionKind::GlobalConst(_) => result.global_const_owners[&def.0],
                     _ => unreachable!(),
                 };
                 let s = &result.scopes[scope.0];
@@ -427,7 +468,8 @@ pub fn resolve(module: &Module) -> Resolved {
         let failure = if let Some(def) = definition {
             let declaration = &result.definitions[def.0];
             let id = match declaration.kind {
-                DefinitionKind::Function(id) | DefinitionKind::GlobalConst(id) => id,
+                DefinitionKind::Function(id) => id,
+                DefinitionKind::GlobalConst(_) => result.global_const_owners[&def.0],
                 _ => unreachable!("direct declaration"),
             };
             if target != Some(owner) && module.visibility(id) == Visibility::Private {
@@ -513,7 +555,11 @@ pub fn resolve(module: &Module) -> Resolved {
                     .get(1)
                     .map(|&value| Work::Visit(value, root_scope))
             }));
-        } else if matches!(node.kind, HirKind::Binding { constant: true, .. }) {
+        } else if matches!(
+            node.kind,
+            HirKind::Binding { constant: true, .. }
+                | HirKind::DestructuringBinding { constant: true, .. }
+        ) {
             pending = node
                 .children
                 .iter()

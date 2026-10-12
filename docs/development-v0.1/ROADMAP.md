@@ -1,5 +1,10 @@
 # 문서 동결과 Nova 구현 로드맵
 
+현재 구현은 **P29 전역 Copy const 구조 분해까지 완료**다.
+[P29 계약](GLOBAL_CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf)·[수용 fixture](global-const-destructuring-proposal-fixtures/README.md)·[구현 기록](GLOBAL_CONST_DESTRUCTURING_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
+component import/가시성·forward reference·공유 initializer 평가·정적 group 순환을 지원한다. Array·const 함수·일반 Move/Drop은 후속 계약이다.
+
+
 상태 Draft. Stage A~E 순서는 기존 Freeze를 유지한다. 문서 작성은 완료했어도 아래 승인/구현
 gate가 자동 충족되지 않는다. 미래 문서를 전부 승인해야 첫 Lexer 작업을 할 수 있다는 뜻은 아니다.
 

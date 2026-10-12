@@ -1,0 +1,87 @@
+{
+  "proposal": "P29",
+  "status": "Accepted",
+  "implementation_verified": true,
+  "approval_evidence": "다음 개발 승읺 ㅏㄹ테니 개발 진행해줘",
+  "source_sha256": {
+    "values.nova": "62b20c2a7a99f8ce7eed3350e57a14b50e297307e51cb06a1b0058ca836ff868",
+    "main.nova": "82f8e41c86c3c21ac4017f2fbdd93afe6979107ffbe5a5b2d2f6450b11471dd5",
+    "cycle.nova": "f6ea1c806f9b386cad79de9f7ef0a8c8d2d9d865098a48f18449d8467162bf06",
+    "discard_failure.nova": "e0e25e6f2f1468fb8b133e7920c6bf1184740ed3f63a4ae791a744acbdb1405f",
+    "private_import.nova": "cf400dd54851ed97ef49844989e2285e64b9eb35ef0be52ad66a44d6e4692973",
+    "duplicate.nova": "c566d34af4b5145040b1ac79221fa371cc392280a1cabb33bfa2915ae80e2f34"
+  },
+  "negative_cases": [
+    {
+      "source": "cycle.nova",
+      "expected_diagnostic": "N3202",
+      "check_exit": 1,
+      "primary": {
+        "start": 14,
+        "end": 15
+      }
+    },
+    {
+      "source": "discard_failure.nova",
+      "expected_diagnostic": "N3201",
+      "check_exit": 1,
+      "primary": {
+        "start": 12,
+        "end": 15
+      }
+    },
+    {
+      "source": "private_import.nova",
+      "expected_diagnostic": "N2004",
+      "check_exit": 1,
+      "primary": {
+        "start": 0,
+        "end": 19
+      }
+    },
+    {
+      "source": "duplicate.nova",
+      "expected_diagnostic": "N2002",
+      "check_exit": 1,
+      "primary": {
+        "start": 8,
+        "end": 9
+      }
+    }
+  ],
+  "historical_overrides": [
+    {
+      "source": "../const-destructuring-proposal-fixtures/global_pattern.nova",
+      "original_diagnostic": "N1102",
+      "source_sha256": "8c3eb9db572dbaa4adf68b198594e32be2a23144e6807ff6df4a2df301cbc6a7",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "source": "../const-destructuring-proposal-fixtures/visible_global_pattern.nova",
+      "original_diagnostic": "N1102",
+      "source_sha256": "b840da7360401f85e8ab2ff082218b3e8b057345897670e07489c9bf4eda49d8",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "approval_date": "2026-10-12",
+  "grammar": "GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf",
+  "grammar_productions": 62,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "values"
+  ],
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "global=8/true/🙂\nlocal=9\n",
+    "stderr": ""
+  }
+}

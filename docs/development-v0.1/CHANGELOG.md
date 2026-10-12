@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P29 전역 Copy const 구조 분해
+
+- 다음 단계 사용자 승인으로 제한 계약·62-production EBNF를 먼저 기록했다.
+- component owner/import/visibility·forward·정적 SCC·공유 initializer cache·MIR constant 연결 구현.
+- 새 테스트 12개, 기본 460·LLVM 25·Native 65 PASS, fmt/check/Clippy와 문서 검증 완료.
+- P01~P28 ledger·원본/기존 fixture bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-12 — 다음 단계 승인과 P28 함수 내부 Copy const 구조 분해 구현
 
 사용자 “다음 개발 승인할테니 개발 진행해줘”에 따라 제한된 계약을 먼저 기록하고 구현했다.

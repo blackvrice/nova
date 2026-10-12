@@ -1579,7 +1579,7 @@ fn p26_excluded_parameter_for_assignment_global_and_let_else_are_rejected() {
         "func f(){for (a,b) in 0 until 2{}}",
         "func f(){(a,b)=(1,2)}",
         "let (a,b)=(1,2)",
-        "const(a,b)=(1,2)",
+        "var(a,b)=(1,2)", // P29 permits global const, keeps global var excluded.
         "func f(){let(a,b)=(1,2) else {}}",
     ] {
         let (_, _, p) = run(source);
@@ -1679,19 +1679,14 @@ fn p28_const_pattern_flags_prefix_and_local_grammar() {
     }
 }
 #[test]
-fn p28_global_and_visible_global_patterns_error_recover_later_items() {
+fn p29_overrides_p28_global_rejection_preserves_later_items() {
     for text in [
         "const(a,b)=(1,2)",
         "public const(a,b)=(1,2)",
         "private const E::Only=E::Only",
     ] {
-        let (db, _, p) = run(&format!("{text}\nfunc later(){{}}"));
-        assert!(
-            p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"
-                && matches!(db.slice(d.primary.span).unwrap(), "(a,b)" | "E::Only")),
-            "{:?}",
-            p.diagnostics
-        );
+        let (_, _, p) = run(&format!("{text}\nfunc later(){{}}"));
+        assert!(p.diagnostics.is_empty(), "{:?}", p.diagnostics);
         assert!(p
             .arena
             .iter()

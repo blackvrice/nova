@@ -1,0 +1,4 @@
+const(n,flag):(int8,bool)=(NEXT,true)
+const NEXT:int8=7
+const(step,ch):(int8,char)=(n+1,'🙂')
+func main(){print("global={step}/{flag}/{ch}")}

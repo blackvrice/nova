@@ -236,3 +236,8 @@ let/match binder는 immutable이다. const/Array·일반 Move/Drop 등은 후속
 Tuple/Unit/single-variant Enum·불변 상수 binder·initializer 한 번 평가·cached component 값·실패 전파·Source/Checked/MIR 검증을 지원한다.
 [62-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_CONST_DESTRUCTURING.ebnf)·[수용 fixture](docs/development-v0.1/const-destructuring-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/CONST_DESTRUCTURING_IMPLEMENTATION.md)·[직접 예제/명령](TESTING.md)을 제공한다.
 전역 구조 분해·const 함수·Array·일반 Move/Drop은 후속 계약이다.
+
+
+현재 구현은 **P29 전역 Copy const 구조 분해까지 완료**다.
+[P29 계약](docs/development-v0.1/GLOBAL_CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf)·[수용 fixture](docs/development-v0.1/global-const-destructuring-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/GLOBAL_CONST_DESTRUCTURING_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
+component import/가시성·forward reference·공유 initializer 평가·정적 group 순환을 지원한다. Array·const 함수·일반 Move/Drop은 후속 계약이다.

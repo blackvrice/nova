@@ -3460,3 +3460,39 @@ fn p28_const_operand_source_body_forgery_and_discard_no_runtime_storage() {
     assert!(b.locals.is_empty());
     assert!(b.blocks.iter().all(|b| b.statements.is_empty()));
 }
+
+#[test]
+fn p29_global_cached_components_have_no_runtime_initializer_and_reject_cache_forgery() {
+    let source = "const(a,b)=(1+2,4);const()=();const(_,_)=(1,());func main(){print(\"{a}/{b}\")}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let c = check(&h, &r).unwrap();
+    let m = lower(&h, &r, &c, false).unwrap();
+    assert_eq!(m.bodies.len(), 1);
+    assert!(m.bodies[0]
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .all(|s| !matches!(s.kind, StatementKind::Assign(_, Rvalue::Binary(..)))));
+    let mut bad = check(&h, &r).unwrap();
+    let a = r.definitions.iter().position(|d| d.name == "a").unwrap();
+    bad.const_values[a] = ConstEvaluation::Value {
+        value: nova_types::ConstValue::Int32(9),
+        nodes: 5,
+    };
+    assert_eq!(
+        lower(&h, &r, &bad, false),
+        Err(LoweringError::InvalidAnalysis)
+    );
+    let mut bad = check(&h, &r).unwrap();
+    let id = *r.global_const_owners.get(&a).unwrap();
+    bad.const_destructuring_values[id.0] = ConstEvaluation::NotConstant;
+    assert_eq!(
+        lower(&h, &r, &bad, false),
+        Err(LoweringError::InvalidAnalysis)
+    );
+}

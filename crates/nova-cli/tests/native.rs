@@ -2262,3 +2262,34 @@ fn p28_runtime_operations_on_const_binders_keep_checked_source_abort_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p29_native_global_components_import_defaults_and_history_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/global-const-destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for profile in ["debug", "release"] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("run")
+            .arg(fixtures.join("main.nova"))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .args(["--profile", profile])
+            .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+            .output()
+            .unwrap();
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, "global=8/true/🙂\nlocal=9\n".as_bytes());
+        assert!(r.stderr.is_empty());
+        let r = program_profile(
+            include_str!("../../../examples/global_const_destructuring.nova"),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, "global=8/true/🙂\n".as_bytes());
+        assert!(r.stderr.is_empty());
+        for s in [include_str!("../../../docs/development-v0.1/const-destructuring-proposal-fixtures/global_pattern.nova"),include_str!("../../../docs/development-v0.1/const-destructuring-proposal-fixtures/visible_global_pattern.nova")] {let r=program_profile(s,profile);assert!(r.status.success(),"{}",String::from_utf8_lossy(&r.stderr));assert!(r.stdout.is_empty()&&r.stderr.is_empty());}
+    }
+}

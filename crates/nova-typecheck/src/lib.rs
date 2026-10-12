@@ -340,6 +340,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             (DefinitionKind::Enum(_), HirKind::Enum { name, .. })
             | (DefinitionKind::TypeAlias(_), HirKind::TypeAlias { name, .. })
             | (DefinitionKind::Local(_), HirKind::Binder { name, .. })
+            | (DefinitionKind::GlobalConst(_), HirKind::Binder { name, .. })
             | (DefinitionKind::Struct(_), HirKind::Struct { name, .. })
             | (DefinitionKind::Function(_), HirKind::Function { name, .. })
             | (DefinitionKind::Parameter(_), HirKind::Parameter { name, .. })

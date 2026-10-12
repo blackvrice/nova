@@ -1325,6 +1325,41 @@ for(const [index,proposal,folder,old]of [[0,'P26','destructuring-proposal-fixtur
 }
 checks.push('P28 Accepted/next-step 승인 ledger·62-production EBNF/기존 61개 보존·25개 원 source hash·두 파일/정상 2/부정 20/Runtime 1 UTF-8 Span·검증 10줄 metadata·P26/P27 const 거부 역사와 현재 local 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const globalPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P29');
+assert(globalPatternProposal?.status==='Accepted' && globalPatternProposal.implementation_verified===true
+  && globalPatternProposal.approval_date==='2026-10-12' && globalPatternProposal.approval_evidence==='다음 개발 승읺 ㅏㄹ테니 개발 진행해줘'
+  && globalPatternProposal.document==='GLOBAL_CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md'
+  && globalPatternProposal.grammar==='GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf'
+  && !manifest.draft_proposals?.some(p=>p.id==='P29'),'P29 approval ledger');
+const globalPatternText=fs.readFileSync(path.join(pack,globalPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','61개 보존','10,000','100,000','1,000,000','N3103','N3201','N3202','visibility','owner','SCC','Move/borrow/Drop','전체 D09'])assert(globalPatternText.includes(phrase),'P29 missing boundary '+phrase);
+validateGrammar(globalPatternProposal.grammar);
+const globalPatternProductions=productions(fs.readFileSync(path.join(pack,globalPatternProposal.grammar),'utf8'));
+assert(globalPatternProductions.size===62,'P29 production count');
+for(const [name,value]of constDestructuringProductions)if(name!=='global_const_decl')assert(globalPatternProductions.get(name)===value,'P29 changed approved grammar '+name);
+assert(globalPatternProductions.get('global_const_decl')===constDestructuringProductions.get('global_const_decl').replace('"const","IDENT",','"const",("IDENT"|destructuring_pattern),'),'P29 global grammar extension');
+const globalPatternRoot=path.join(pack,'global-const-destructuring-proposal-fixtures');
+const globalPatternFixture=JSON.parse(fs.readFileSync(path.join(globalPatternRoot,'expected.json'),'utf8'));
+assert(globalPatternFixture.proposal==='P29' && globalPatternFixture.status==='Accepted' && globalPatternFixture.implementation_verified===true
+  && globalPatternFixture.approval_date===globalPatternProposal.approval_date && globalPatternFixture.approval_evidence===globalPatternProposal.approval_evidence
+  && globalPatternFixture.grammar===globalPatternProposal.grammar && globalPatternFixture.grammar_productions===62
+  && globalPatternFixture.entry==='main.nova' && globalPatternFixture.source_root==='.'
+  && JSON.stringify(globalPatternFixture.reachable_modules)==='["main","values"]'
+  && globalPatternFixture.validated_result?.check_exit===0 && globalPatternFixture.validated_result?.native_exit===0
+  && globalPatternFixture.validated_result?.stdout==='global=8/true/🙂\nlocal=9\n' && globalPatternFixture.validated_result?.stderr==='','P29 validated result');
+const globalPatternSources=Object.keys(globalPatternFixture.source_sha256??{});
+assert(globalPatternSources.length===6 && fs.readdirSync(globalPatternRoot).filter(n=>n.endsWith('.nova')).length===6,'P29 source count');
+for(const name of globalPatternSources){const bytes=fs.readFileSync(path.join(globalPatternRoot,name));assert(hash(bytes)===globalPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P29 source hash/UTF8/LF '+name);}
+assert(globalPatternFixture.negative_cases?.length===4,'P29 negative count');
+for(const c of globalPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(globalPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && c.primary.start<c.primary.end && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P29 negative Span '+c.source);}
+assert(globalPatternFixture.historical_overrides?.length===2,'P29 historical override count');
+for(const c of globalPatternFixture.historical_overrides){const oldName=c.source.split('/').at(-1);assert(c.source===`../const-destructuring-proposal-fixtures/${oldName}`
+  && constDestructuringFixture.negative_cases.find(x=>x.source===oldName)?.expected_diagnostic==='N1102'
+  && c.original_diagnostic==='N1102' && c.source_sha256===constDestructuringFixture.source_sha256[oldName]
+  && hash(fs.readFileSync(path.join(globalPatternRoot,c.source)))===c.source_sha256
+  && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P29 frozen P28 historical override');}
+checks.push('P29 Accepted/next-step 승인 ledger·62-production EBNF/기존 61개 보존·6개 UTF-8/LF source hash·두 파일 출력/부정 4 byte Span·P28 global 거부 역사와 현재 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

@@ -1182,22 +1182,7 @@ impl<'a> Parser<'a> {
         self.node(NodeKind::Block, start, statements)
     }
     fn global_constant(&mut self) -> AstNodeId {
-        let id = self.statement();
-        let node = self.arena.get(id).expect("global declaration");
-        if matches!(
-            node.kind,
-            NodeKind::DestructuringBinding { constant: true, .. }
-        ) {
-            let span = node.span;
-            let children = node.children.clone();
-            self.report(
-                1102,
-                self.arena.get(children[0]).expect("pattern").span,
-                "global const destructuring is unsupported",
-            );
-            return self.node(NodeKind::Error, span.start(), children);
-        }
-        id
+        self.statement()
     }
     fn destructuring_binding(&mut self) -> AstNodeId {
         let keyword = self.bump();

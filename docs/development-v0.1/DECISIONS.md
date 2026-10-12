@@ -44,6 +44,8 @@
 
 2026-10-12 사용자 “다음 개발 승인할테니 개발 진행해줘”에 따라 다음 단계 [P28 함수 내부 Copy const 구조 분해](CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_CONST_DESTRUCTURING.ebnf)를 제한된 승인 범위로 먼저 기록하고 구현했다. Accepted / 구현·검증 완료이며 [구현 기록](CONST_DESTRUCTURING_IMPLEMENTATION.md)을 따른다. initializer 한 번 평가·cached component/whole 값·독립 예산·실패 전파·Source/MIR subset이며 기존 61개 production·P01~P27 ledger·전역 const와 const 함수/Array/Move 경계를 보존한다. 전체 D09/D10/D12/D16/D25/D30 승인이 아니다.
 
+2026-10-12 사용자 “다음 개발 승읺 ㅏㄹ테니 개발 진행해줘”의 다음 단계 승인에 따라 [P29 전역 Copy const 구조 분해](GLOBAL_CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)를 구현 전에 기록했다. Accepted / 구현·검증 완료이며 [구현 기록](GLOBAL_CONST_DESTRUCTURING_IMPLEMENTATION.md)·[62-production EBNF](GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf)를 따른다. 공유 declaration owner·component import/visibility·정적 group SCC·단일 cached initializer·Source/MIR subset이며 기존 61개 production·P01~P28 ledger·local const와 node 예산을 보존한다. 전체 D09/D10/D12/D16/D25/D30 승인이 아니다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

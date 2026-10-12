@@ -1817,6 +1817,11 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                         mutable: false,
                         ..
                     }
+                    | NodeKind::DestructuringBinding {
+                        constant: true,
+                        mutable: false,
+                        ..
+                    }
                     | NodeKind::Error
             )
         }),
@@ -1859,6 +1864,11 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                         | NodeKind::TypeAlias { .. }
                         | NodeKind::Enum { .. }
                         | NodeKind::Binding {
+                            constant: true,
+                            mutable: false,
+                            ..
+                        }
+                        | NodeKind::DestructuringBinding {
                             constant: true,
                             mutable: false,
                             ..

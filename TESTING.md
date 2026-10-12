@@ -1,7 +1,39 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P28 함수 내부 Copy const 구조 분해까지다.
+현재 개발 완료 기능은 P29 전역 Copy const 구조 분해까지다.
+
+## P29 전역 Copy const 구조 분해
+
+```powershell
+$env:CARGO_INCREMENTAL='0'
+cargo fmt --check
+cargo test --workspace --offline
+cargo run -p nova-cli --offline -- check examples/global_const_destructuring.nova
+$env:NOVA_CLANG=(Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/global_const_destructuring.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/global_const_destructuring.nova --profile release
+```
+
+check exit 0. 두 profile의 출력은 아래 1줄/LF·빈 stderr·exit 0이다.
+
+```text
+global=8/true/🙂
+```
+
+[두 파일 fixture](docs/development-v0.1/global-const-destructuring-proposal-fixtures/README.md)는 component import/default/local const를 추가 관측한다.
+[승인 계약](docs/development-v0.1/GLOBAL_CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/GLOBAL_CONST_DESTRUCTURING_IMPLEMENTATION.md)을 제공한다.
+
+```powershell
+cargo test --workspace --offline p29_
+cargo test -p nova-codegen-llvm --test emission --offline p29_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p29_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/global-const-destructuring-proposal-fixtures/cycle.nova
+node tools/docs/validate-pack.mjs
+```
+
+새 기본 10·실제 LLVM 1·Native 1개다. cycle check는 N3202·exit 1이다.
+P28 이하의 계약/명령은 당시 단계 기록이며 전역 구조 분해의 현재 의미는 P29가 우선한다.
 
 ## P28 함수 내부 Copy const 구조 분해
 

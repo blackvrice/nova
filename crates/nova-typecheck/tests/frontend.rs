@@ -4795,3 +4795,100 @@ fn p28_named_constructor_opaque_copy_projection_numeric_and_sum_cache() {
         ["N2102"]
     );
 }
+
+#[test]
+fn p29_global_component_forward_defaults_cache_and_owner_certificate() {
+    let r = pass(include_str!(
+        "../../../examples/global_const_destructuring.nova"
+    ));
+    let (hir, mut resolved, checked) = r.semantic.unwrap();
+    let n = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == "n")
+        .unwrap();
+    let step = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == "step")
+        .unwrap();
+    assert!(
+        matches!(checked.const_values[n],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==7)
+    );
+    assert!(
+        matches!(checked.const_values[step],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==8)
+    );
+    assert_ne!(
+        resolved.global_const_owners[&n],
+        resolved.global_const_owners[&step]
+    );
+    resolved
+        .global_const_owners
+        .insert(n, resolved.global_const_owners[&step]);
+    assert_eq!(check(&hir, &resolved), Err(CheckError::InvalidResolution));
+    pass("const(n,flag):(uint8,bool)=(255,true);func f(x:uint8=n){const(a,_)=(n,());let b=flag}");
+}
+#[test]
+fn p29_static_group_cycles_and_skipped_rhs_fail_all_components_once() {
+    for s in [
+        "const(a,b)=(1,b);const NEXT=a+1",
+        "const(a,b)=(NEXT,1);const NEXT=b+1",
+        "const(a,b)=(false&&b,true)",
+    ] {
+        let r = frontend(s);
+        assert_eq!(codes(&r), ["N3202"], "{s}");
+        let (_, resolved, checked) = r.semantic.unwrap();
+        for (i, d) in resolved
+            .definitions
+            .iter()
+            .enumerate()
+            .filter(|(_, d)| d.constant)
+        {
+            assert!(
+                matches!(
+                    checked.const_values[i],
+                    ConstEvaluation::Failed {
+                        code: 3202,
+                        nodes: 0
+                    } | ConstEvaluation::Invalid
+                ),
+                "{}",
+                d.name
+            );
+        }
+    }
+}
+#[test]
+fn p29_unused_unit_discard_errors_duplicates_and_refutability() {
+    pass("const()=();const(_,_)=(false&&(1/0==0),())");
+    for (s, code) in [
+        ("const(_,_)=(1/0,());func main(){}", "N3201"),
+        ("const(a,a)=(1,2);const DEP=a+1", "N2002"),
+        ("const(print,_)=(1,());const DEP=print+1", "N2002"),
+        ("const(true,n)=(true,1)", "N3103"),
+        ("const(n,_):(uint8,bool)=(300,true)", "N2102"),
+        ("func f()->int{return 1}const(n,_)=(f(),())", "N3201"),
+    ] {
+        assert_eq!(codes(&frontend(s)), [code], "{s}");
+    }
+}
+#[test]
+fn p29_shared_global_initializer_budget_10000_10001() {
+    let sum = vec!["0"; 4999].join("+");
+    for p in ["(n,())", "(_,())"] {
+        let r = pass(&format!("const{p}=(({sum}),())"));
+        assert!(r
+            .semantic
+            .unwrap()
+            .2
+            .const_destructuring_values
+            .iter()
+            .any(|c| matches!(c, ConstEvaluation::Value { nodes: 10000, .. })));
+    }
+    assert_eq!(
+        codes(&frontend(&format!(
+            "const(n,())=((({sum})),());const NEXT=n+1"
+        ))),
+        ["N3202"]
+    );
+}

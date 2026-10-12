@@ -282,6 +282,7 @@ pub fn lower(
         if matches!(
             hir.nodes()[id.0].kind,
             HirKind::Binding { constant: true, .. }
+                | HirKind::DestructuringBinding { constant: true, .. }
                 | HirKind::Import { .. }
                 | HirKind::Struct { .. }
                 | HirKind::Enum { .. }
