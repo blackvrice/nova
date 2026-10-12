@@ -106,6 +106,7 @@ pub enum HirKind {
         arguments: bool,
     },
     PatternBoolean(bool),
+    PatternCharacter(char),
     PatternTuple,
     PatternUnit,
     Wildcard,
@@ -1231,6 +1232,9 @@ pub fn lower(
             NodeKind::Arm => HirKind::Arm,
             NodeKind::MatchGuard { keyword } => HirKind::MatchGuard { keyword },
             NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
+            NodeKind::PatternCharacter => {
+                HirKind::PatternCharacter(decode_character(sources.slice(node.span)?)?)
+            }
             NodeKind::PatternTuple => HirKind::PatternTuple,
             NodeKind::PatternUnit => HirKind::PatternUnit,
             NodeKind::Wildcard => HirKind::Wildcard,
@@ -1744,6 +1748,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 | NodeKind::PatternNone
                 | NodeKind::None
                 | NodeKind::PatternBoolean(_)
+                | NodeKind::PatternCharacter
                 | NodeKind::Error
         )
     }
@@ -1888,6 +1893,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::None
         | NodeKind::PatternNone
         | NodeKind::PatternBoolean(_)
+        | NodeKind::PatternCharacter
         | NodeKind::PatternUnit
         | NodeKind::Wildcard => kinds.is_empty(),
         NodeKind::PatternVariant { arguments, .. } => {

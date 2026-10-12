@@ -1,0 +1,1 @@
+func main(){match 'A'{'A' if true=>{}}}

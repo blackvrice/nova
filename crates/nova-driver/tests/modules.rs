@@ -1680,6 +1680,11 @@ fn p30_copy_match_bundle_import_alias_private_fields_and_negative_spans() {
         ("private_field.nova", "N2004"),
     ] {
         let l = load(&root.join(name), Some(&root)).unwrap();
+        // P31 historical override: original P30 char literal rejection remains frozen.
+        if name == "char_pattern.nova" {
+            unit(&l);
+            continue;
+        }
         let mut diagnostics = l.diagnostics.clone();
         if l.module.is_some() {
             let (_, c) = analyzed(&l);
@@ -1732,4 +1737,71 @@ fn p30_private_copy_struct_whole_binder_is_allowed_without_field_access() {
     let old = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../docs/development-v0.1/enum-proposal-fixtures/invalid_scrutinee.nova");
     unit(&load(&old, None).unwrap());
+}
+
+#[test]
+fn p31_char_pattern_bundle_alias_nested_guard_and_diagnostic_sources() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/char-pattern-proposal-fixtures");
+    for name in ["main.nova", "controls.nova", "guard_skipped.nova"] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+    for (name, code) in [
+        ("incomplete.nova", "N3101"),
+        ("duplicate_escape.nova", "N3102"),
+        ("after_wildcard.nova", "N3102"),
+        ("wrong_type.nova", "N2101"),
+        ("wrong_nested_type.nova", "N2101"),
+        ("let_refutable.nova", "N3103"),
+        ("var_refutable.nova", "N3103"),
+        ("const_refutable.nova", "N3103"),
+        ("global_refutable.nova", "N3103"),
+        ("guard_only.nova", "N3101"),
+        ("non_bool_guard.nova", "N2101"),
+        ("bad_scalar.nova", "N1002"),
+        ("integer_pattern.nova", "N1102"),
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = l.diagnostics.clone();
+        if l.module.is_some() {
+            let (_, c) = analyzed(&l);
+            diagnostics.extend(c.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code),
+            "{name}: {diagnostics:?}"
+        );
+        if matches!(name, "const_refutable.nova" | "global_refutable.nova") {
+            assert!(!diagnostics
+                .iter()
+                .any(|d| matches!(d.code.to_string().as_str(), "N3201" | "N3202")));
+        }
+        let expected = match name {
+            "incomplete.nova" => (12, 17),
+            "duplicate_escape.nova" => (30, 38),
+            "after_wildcard.nova" => (28, 31),
+            "wrong_type.nova" => (20, 23),
+            "wrong_nested_type.nova" => (28, 31),
+            "let_refutable.nova" => (15, 22),
+            "var_refutable.nova" => (15, 22),
+            "const_refutable.nova" => (17, 24),
+            "global_refutable.nova" => (5, 12),
+            "guard_only.nova" => (12, 17),
+            "non_bool_guard.nova" => (29, 30),
+            "bad_scalar.nova" => (23, 31),
+            "integer_pattern.nova" => (20, 21),
+            _ => unreachable!(),
+        };
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && (d.primary.span.start(), d.primary.span.end()) == expected),
+            "{name}: {diagnostics:?}"
+        );
+        for d in diagnostics {
+            l.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                l.sources.slice(label.span).unwrap();
+            }
+        }
+    }
 }

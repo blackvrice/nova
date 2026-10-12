@@ -116,6 +116,7 @@ pub enum NodeKind {
         arguments: bool,
     },
     PatternBoolean(bool),
+    PatternCharacter,
     PatternTuple,
     PatternUnit,
     Wildcard,

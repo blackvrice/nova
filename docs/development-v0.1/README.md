@@ -1,5 +1,10 @@
 # Nova 0.1 — 개발 문서 보완팩
 
+현재 구현은 **P31 Unicode char literal 패턴까지 완료**다.
+[P31 계약](CHAR_PATTERN_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_CHAR_PATTERN.ebnf)·[수용 fixture](char-pattern-proposal-fixtures/README.md)·[구현 기록](CHAR_PATTERN_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
+root/nested char literal·escape alias·guard·bounded coverage·MIR equality를 지원한다. 정수/float/string literal·field pattern·Array·일반 Move/Drop은 후속 계약이다.
+
+
 현재 구현은 **P30 숫자·char·Copy struct statement match까지 완료**다.
 [P30 계약](COPY_VALUE_MATCH_STAGE_B_PROPOSAL.md)·[수용 fixture](copy-value-match-proposal-fixtures/README.md)·[구현 기록](COPY_VALUE_MATCH_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
 whole Copy binder/wildcard·Bool guard·snapshot·보수적 완전성/도달성을 지원한다. Array·literal/field pattern·일반 Move/Drop은 후속 계약이다.

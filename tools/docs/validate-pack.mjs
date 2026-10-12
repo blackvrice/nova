@@ -1397,6 +1397,40 @@ for(const c of copyValueMatchFixture.historical_overrides){const oldRoot=path.re
   && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P30 frozen historical override '+c.proposal);}
 checks.push('P30 Accepted/next-step 승인 ledger·P29 62-production EBNF 원 hash 재사용·16개 UTF-8/LF source hash·두 파일 출력/정상 1/부정 12 byte Span/Runtime 1·P14/P24/P25 root 거부 역사와 현재 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const charPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P31');
+assert(charPatternProposal?.status==='Accepted' && charPatternProposal.implementation_verified===true && charPatternProposal.approval_date==='2026-10-12'
+  && charPatternProposal.approval_evidence==='다음 작업 승인할태니 개발 진행해줘' && charPatternProposal.document==='CHAR_PATTERN_STAGE_B_PROPOSAL.md'
+  && charPatternProposal.grammar==='GRAMMAR_STAGE_B_CHAR_PATTERN.ebnf' && charPatternProposal.grammar_change===true && !manifest.draft_proposals?.some(p=>p.id==='P31'),'P31 approval ledger');
+const charPatternText=fs.readFileSync(path.join(pack,charPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','61개 보존','decoded','surrogate','Opaque/_','N2101','N3101','N3102','N3103','1,025','10,000','100,000','1,000,000','전체 D08','Move/borrow/Drop'])assert(charPatternText.includes(phrase),'P31 missing boundary '+phrase);
+validateGrammar(charPatternProposal.grammar);
+const charPatternGrammar=fs.readFileSync(path.join(pack,charPatternProposal.grammar),'utf8');const charPatternProductions=productions(charPatternGrammar);
+assert(charPatternProductions.size===62 && charPatternGrammar.includes('Accepted 2026-10-12; implemented and verified'),'P31 grammar status/count');
+for(const [name,value]of globalPatternProductions)if(name!=='pattern')assert(charPatternProductions.get(name)===value,'P31 changed approved production '+name);
+assert(charPatternProductions.get('pattern')===globalPatternProductions.get('pattern').replace('unit_pattern','unit_pattern|"CHAR"'),'P31 literal pattern extension');
+const charPatternRoot=path.join(pack,'char-pattern-proposal-fixtures');const charPatternFixture=JSON.parse(fs.readFileSync(path.join(charPatternRoot,'expected.json'),'utf8'));
+assert(charPatternFixture.proposal==='P31' && charPatternFixture.status==='Accepted' && charPatternFixture.implementation_verified===true
+  && charPatternFixture.approval_date===charPatternProposal.approval_date && charPatternFixture.approval_evidence===charPatternProposal.approval_evidence
+  && charPatternFixture.grammar===charPatternProposal.grammar && charPatternFixture.grammar_change===true && charPatternFixture.grammar_productions===62
+  && charPatternFixture.entry==='main.nova' && charPatternFixture.source_root==='.' && JSON.stringify(charPatternFixture.reachable_modules)==='["main","values"]'
+  && charPatternFixture.validated_result?.check_exit===0 && charPatternFixture.validated_result?.native_exit===0
+  && charPatternFixture.validated_result?.stdout==='scrutinee\nfirst\nsecond\nnested=7\nnul\nmaximum\nbefore-surrogate\nafter-surrogate\noption=true\ntry-ok\nresult=1\nerror=4\n' && charPatternFixture.validated_result?.stderr==='','P31 validated result');
+const charPatternSources=Object.keys(charPatternFixture.source_sha256??{});assert(charPatternSources.length===18 && fs.readdirSync(charPatternRoot).filter(n=>n.endsWith('.nova')).length===18,'P31 source count');
+for(const name of charPatternSources){const bytes=fs.readFileSync(path.join(charPatternRoot,name));assert(hash(bytes)===charPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P31 source hash/UTF8/LF '+name);}
+assert(charPatternFixture.negative_cases?.length===13 && charPatternFixture.positive_cases?.length===2 && charPatternFixture.runtime_cases?.length===1,'P31 fixture counts');
+for(const c of charPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(charPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && c.primary.start<c.primary.end && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P31 negative byte Span '+c.source);}
+for(const c of charPatternFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0 && c.validated_result?.stdout.endsWith('\n') && c.validated_result?.stderr==='','P31 positive '+c.source);
+const charPatternAbort=charPatternFixture.runtime_cases[0];const charPatternAbortBytes=fs.readFileSync(path.join(charPatternRoot,charPatternAbort.source));
+assert(charPatternAbort.validated_result?.check_exit===0 && charPatternAbort.validated_result?.native_exit===1 && charPatternAbort.validated_result?.stdout==='before\n'
+  && charPatternAbortBytes.subarray(charPatternAbort.primary.start,charPatternAbort.primary.end).toString('utf8')===charPatternAbort.primary_text
+  && charPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${charPatternAbort.primary.start}..${charPatternAbort.primary.end}`,'P31 runtime Source/result');
+assert(charPatternFixture.historical_overrides?.length===1,'P31 historical override count');const charPatternOld=charPatternFixture.historical_overrides[0];
+assert(charPatternOld.proposal==='P30' && charPatternOld.source==='../copy-value-match-proposal-fixtures/char_pattern.nova' && charPatternOld.original_diagnostic==='N1102'
+  && copyValueMatchFixture.negative_cases.find(c=>c.source==='char_pattern.nova')?.expected_diagnostic==='N1102'
+  && charPatternOld.source_sha256===copyValueMatchFixture.source_sha256['char_pattern.nova'] && hash(fs.readFileSync(path.join(charPatternRoot,charPatternOld.source)))===charPatternOld.source_sha256
+  && charPatternOld.check_exit===0 && charPatternOld.native_exit===0 && charPatternOld.stdout==='' && charPatternOld.stderr==='','P31 P30 frozen char rejection override');
+checks.push('P31 Accepted/next-step 승인 ledger·62-production EBNF/기존 61개 보존·18개 UTF-8/LF source hash·두 파일 출력/정상 2/부정 13 code별 byte Span/Runtime 1·P30 char 거부 역사와 현재 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

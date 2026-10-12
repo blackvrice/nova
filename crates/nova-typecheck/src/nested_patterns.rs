@@ -14,6 +14,7 @@ pub const MATRIX_CELL_LIMIT: usize = 1_000_000;
 pub enum RecursivePatternKind {
     Wildcard,
     Bool(bool),
+    Char(char),
     Unit,
     Tuple(StructId),
     Variant(VariantId),
@@ -87,6 +88,17 @@ impl Checker<'_> {
                     RecursivePatternKind::Wildcard
                 }
                 HirKind::Wildcard => RecursivePatternKind::Wildcard,
+                HirKind::PatternCharacter(value) => {
+                    if expected != Type::Char && expected != Type::Error {
+                        self.report(
+                            2101,
+                            p.span,
+                            "char pattern requires Char component",
+                            annotation,
+                        );
+                    }
+                    RecursivePatternKind::Char(value)
+                }
                 HirKind::PatternBoolean(value) => {
                     if expected != Type::Bool && expected != Type::Error {
                         self.report(
@@ -339,7 +351,7 @@ impl Checker<'_> {
                         .expect("typed pattern")
                         .kind
                     {
-                        RecursivePatternKind::Bool(_) => true,
+                        RecursivePatternKind::Bool(_) | RecursivePatternKind::Char(_) => true,
                         RecursivePatternKind::Variant(v) => {
                             self.result.enums[&v.enumeration].variants.len() > 1
                         }
@@ -518,6 +530,7 @@ impl Checker<'_> {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 enum Constructor {
     Bool(bool),
+    Char(char),
     Unit,
     Tuple(StructId),
     Variant(VariantId),
@@ -640,6 +653,34 @@ impl<'a> Engine<'a> {
     fn constructors(&self, key: &Key) -> Vec<Constructor> {
         if let Some(c) = self.patterns[key.candidate[0]].constructor {
             return vec![c];
+        }
+        // P31 partitions observed char values plus one representative of their complement.
+        // With no concrete rows, retain the existing opaque-only witness and fast path.
+        if key.types[0] == Type::Char {
+            let mut observed = key
+                .rows
+                .iter()
+                .filter_map(|r| match self.patterns[r[0]].constructor {
+                    Some(Constructor::Char(c)) => Some(c),
+                    _ => None,
+                })
+                .collect::<BTreeSet<_>>();
+            if !observed.is_empty() {
+                let mut missing = 0u32;
+                for &value in &observed {
+                    if value as u32 != missing {
+                        break;
+                    }
+                    missing += 1;
+                    if missing == 0xd800 {
+                        missing = 0xe000;
+                    }
+                }
+                if let Some(c) = char::from_u32(missing) {
+                    observed.insert(c);
+                }
+                return observed.into_iter().map(Constructor::Char).collect();
+            }
         }
         // Default matrix: an unconstrained column need not enumerate its domain.
         if key
@@ -902,6 +943,12 @@ impl<'a> Engine<'a> {
                             out.push_str(if value { "true" } else { "false" });
                             continue;
                         }
+                        Some(Constructor::Char(c)) => {
+                            out.push('\'');
+                            out.extend(c.escape_default());
+                            out.push('\'');
+                            continue;
+                        }
                         Some(Constructor::Unit) => {
                             out.push_str("()");
                             continue;
@@ -981,6 +1028,7 @@ fn analyze(
         let constructor = match p.kind {
             RecursivePatternKind::Wildcard => None,
             RecursivePatternKind::Bool(b) => Some(Constructor::Bool(b)),
+            RecursivePatternKind::Char(c) => Some(Constructor::Char(c)),
             RecursivePatternKind::Unit => Some(Constructor::Unit),
             RecursivePatternKind::Tuple(id) => Some(Constructor::Tuple(id)),
             RecursivePatternKind::Variant(v) => Some(Constructor::Variant(v)),
@@ -1168,5 +1216,62 @@ mod specialization_tests {
         assert_eq!(engine.tasks.len(), tasks);
         assert_eq!(engine.cells, MATRIX_CELL_LIMIT);
         engine.cells = cells;
+    }
+    #[test]
+    fn p31_char_partition_observed_values_and_complement_keep_matrix_sound() {
+        let structs = StructRegistry::default();
+        let enums = EnumRegistry::default();
+        let sums = SumRegistry::default();
+        let mut engine = Engine::new(&structs, &enums, &sums);
+        let a = engine.pattern(Pattern {
+            constructor: Some(Constructor::Char('A')),
+            children: vec![],
+        });
+        let b = engine.pattern(Pattern {
+            constructor: Some(Constructor::Char('B')),
+            children: vec![],
+        });
+        let mut key = Key {
+            types: vec![Type::Char],
+            rows: vec![vec![b], vec![a]],
+            candidate: vec![0],
+        };
+        assert_eq!(
+            engine.constructors(&key),
+            vec![
+                Constructor::Char('\0'),
+                Constructor::Char('A'),
+                Constructor::Char('B')
+            ]
+        );
+        let task = engine.useful(key.clone()).unwrap();
+        assert!(engine.tasks[task].answer.unwrap().useful);
+        let witness = engine.witness(task);
+        assert_eq!(engine.render(witness[0]), "'\\u{0}'");
+        key.rows.push(vec![0]);
+        let task = engine.useful(key).unwrap();
+        assert!(!engine.tasks[task].answer.unwrap().useful);
+    }
+    #[test]
+    fn p31_missing_char_representative_skips_surrogates_and_is_bounded_by_rows() {
+        let structs = StructRegistry::default();
+        let enums = EnumRegistry::default();
+        let sums = SumRegistry::default();
+        let mut engine = Engine::new(&structs, &enums, &sums);
+        let rows = (0..0xd800)
+            .map(|point| {
+                vec![engine.pattern(Pattern {
+                    constructor: Some(Constructor::Char(char::from_u32(point).unwrap())),
+                    children: vec![],
+                })]
+            })
+            .collect();
+        let constructors = engine.constructors(&Key {
+            types: vec![Type::Char],
+            rows,
+            candidate: vec![0],
+        });
+        assert_eq!(constructors.len(), 0xd801);
+        assert_eq!(constructors.last(), Some(&Constructor::Char('\u{e000}')));
     }
 }

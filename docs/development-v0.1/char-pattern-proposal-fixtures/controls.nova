@@ -1,0 +1,7 @@
+func main(){
+    match '\n'{'\u{a}'=>{print("newline")},_=>{}}
+    match '\\'{'\u{5c}'=>{print("backslash")},_=>{}}
+    match '\''{'\u{27}'=>{print("quote")},_=>{}}
+    match '"'{'\u{22}'=>{print("double-quote")},_=>{}}
+    match '가'{'\u{ac00}'=>{print("hangul")},_=>{}}
+}

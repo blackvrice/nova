@@ -1694,3 +1694,38 @@ fn p29_overrides_p28_global_rejection_preserves_later_items() {
                 && n.span.start() >= text.len()));
     }
 }
+
+#[test]
+fn p31_literal_pattern_nodes_preserve_original_spelling_and_are_not_values() {
+    let source = r"func f(ch:char){match ch{'A'=>{},'\u{41}' if false=>{},'🙂'=>{},_=>{}}}";
+    let (db, l, p) = run(source);
+    assert!(!l.has_errors() && !p.has_errors());
+    let spans = p
+        .arena
+        .iter()
+        .filter_map(|(_, n)| {
+            (n.kind == NodeKind::PatternCharacter).then_some(db.slice(n.span).unwrap())
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(spans, vec!["'A'", r"'\u{41}'", "'🙂'"]);
+    for (source, expected) in [
+        ("func f(){let('A',n)=('A',1)}", true),
+        ("func f(){var('A',n)=('A',1)}", true),
+        ("const('A',n)=('A',1)", true),
+        ("func f(){let 'A'='A'}", false),
+        ("func f(){match 1{1=>{}}}", false),
+    ] {
+        let (_, _, p) = run(source);
+        assert_eq!(!p.has_errors(), expected, "{source}");
+    }
+}
+#[test]
+fn p31_every_utf8_prefix_recovers_deterministically() {
+    let source = "func f(){match '🙂'{('A',x)=>{},'🙂' if true=>{},_=>{}}}func later(){}";
+    for end in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let (_, _, a) = run(&source[..end]);
+        let (_, _, b) = run(&source[..end]);
+        assert_eq!(a.arena.dump(), b.arena.dump());
+        assert_eq!(a.diagnostics, b.diagnostics);
+    }
+}

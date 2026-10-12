@@ -439,6 +439,10 @@ impl<'a> Parser<'a> {
     fn pattern_inner(&mut self) -> AstNodeId {
         let token = self.current();
         let start = token.span.start();
+        if token.kind == TokenKind::Character {
+            self.bump();
+            return self.node(NodeKind::PatternCharacter, start, vec![]);
+        }
         if token.kind == TokenKind::Keyword(Keyword::None) {
             self.bump();
             return self.node(NodeKind::PatternNone, start, vec![]);

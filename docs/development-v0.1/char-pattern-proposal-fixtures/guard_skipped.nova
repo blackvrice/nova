@@ -1,0 +1,1 @@
+func main(){match 'B'{'A' if 2147483647+1>0=>{print("wrong")},_=>{print("skipped")}}}

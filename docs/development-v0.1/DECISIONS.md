@@ -48,6 +48,8 @@
 
 2026-10-12 사용자 “다음 개발 승인할테니 개발 진행해줘”에 따라 [P30 숫자·char·Copy struct statement match](COPY_VALUE_MATCH_STAGE_B_PROPOSAL.md)를 구현 전에 기록했다. Accepted / 구현·검증 완료이며 [구현 기록](COPY_VALUE_MATCH_IMPLEMENTATION.md)을 따른다. whole Copy binder/wildcard·Bool guard·snapshot·opaque domain coverage·Source/MIR subset이며 P29 62-production EBNF와 P01~P29 ledger·기존 평가 순서·예산을 보존한다. 전체 D08/D10/D12/D16/D25/D30 승인이 아니다.
 
+2026-10-12 사용자 “다음 작업 승인할태니 개발 진행해줘”에 따라 [P31 Unicode char literal 패턴](CHAR_PATTERN_STAGE_B_PROPOSAL.md)를 구현 전에 기록했다. Accepted / 구현·검증 완료이며 [구현 기록](CHAR_PATTERN_IMPLEMENTATION.md)·[62-production EBNF](GRAMMAR_STAGE_B_CHAR_PATTERN.ebnf)를 따른다. decoded scalar alias·observed/complement coverage·guard·refutable binding·Source/MIR subset이며 기존 61개 production·P01~P30 ledger·opaque-only witness·평가 순서·예산을 보존한다. 전체 D08/D10/D12/D16/D25/D30 승인이 아니다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

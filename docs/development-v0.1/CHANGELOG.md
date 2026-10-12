@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P31 Unicode char literal 패턴
+
+- 다음 단계 사용자 승인으로 제한 계약·62-production EBNF를 구현 전에 기록했다.
+- decoded scalar alias·observed/complement bounded coverage·guard·N3103·MIR equality branch 구현.
+- 새 테스트 16개, 기본 483·LLVM 27·Native 69 PASS, fmt/check/Clippy·문서 검증 완료.
+- P30 char literal 거부 source/N1102 역사는 현재 성공 override와 함께 보존했다.
+- P01~P30 ledger·원본/기존 fixture/grammar bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-12 — P30 숫자·char·Copy struct statement match
 
 - 다음 단계 사용자 승인으로 제한 계약을 구현 전에 기록했다. P29 62-production 문법을 재사용한다.

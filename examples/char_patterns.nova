@@ -1,0 +1,9 @@
+func main(){
+    let ch='🙂'
+    match ch{
+        'A'=>{print("ascii")},
+        '🙂'=>{print("emoji")},
+        _=>{print("other")}
+    }
+    match ('A',true){('A',flag)=>{print("nested={flag}")},_=>{}}
+}

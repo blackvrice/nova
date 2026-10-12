@@ -52,6 +52,8 @@
 
 [P30 숫자·char·Copy struct statement match](COPY_VALUE_MATCH_STAGE_B_PROPOSAL.md)·[수용 fixture](copy-value-match-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](COPY_VALUE_MATCH_IMPLEMENTATION.md)을 제공한다. P29 62-production EBNF를 원 bytes 그대로 재사용하고 P01~P29 ledger를 보존한다.
 
+[P31 Unicode char literal 패턴](CHAR_PATTERN_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_CHAR_PATTERN.ebnf)·[수용 fixture](char-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](CHAR_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 61개 production·P01~P30 ledger를 보존한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

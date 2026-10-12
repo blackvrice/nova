@@ -1,0 +1,19 @@
+use values::Event
+use values::source
+func gate(label:string,result:bool)->bool{print(label);return result}
+func propagate(r:Result<int8,int8>)->Result<int8,int8>{match 'A'{'A' if (try r)>0=>{print("try-ok")},_=>{print("try-miss")}}return Result::Success(1)}
+func main(){
+    match source(){
+        Event::Text(('A',_))=>{print("wrong")},
+        Event::Text(('🙂',n)) if gate("first",false)=>{print("wrong={n}")},
+        Event::Text(('\u{1f642}',n)) if gate("second",true)=>{print("nested={n}")},
+        _=>{print("wrong")}
+    }
+    match '\0'{'\u{0}'=>{print("nul")},_=>{}}
+    match '\u{10ffff}'{'\u{10FFFF}'=>{print("maximum")},_=>{}}
+    match '\u{d7ff}'{'\u{D7FF}'=>{print("before-surrogate")},_=>{}}
+    match '\u{e000}'{'\u{E000}'=>{print("after-surrogate")},_=>{}}
+    match Option::Some(('A',true)){Option::Some(('\u{41}',flag))=>{print("option={flag}")},_=>{}}
+    match propagate(Result::Success(3)){Result::Success(n)=>{print("result={n}")},Result::Error(e)=>{print("error={e}")}}
+    match propagate(Result::Error(4)){Result::Success(_)=>{print("wrong")},Result::Error(e)=>{print("error={e}")}}
+}

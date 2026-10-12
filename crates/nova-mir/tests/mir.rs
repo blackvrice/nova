@@ -3583,3 +3583,100 @@ fn p30_snapshot_copy_operand_source_and_guard_cfg_forgery_rejected() {
         assert!(!validate(&bad).is_empty());
     }
 }
+
+#[test]
+fn p31_char_pattern_plan_literal_value_type_and_kind_forgery_rejected() {
+    let source = "func main(){match 'A'{'A'=>{print(\"A\")},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternCharacter(_)))
+        .unwrap();
+    lower(&h, &r, &check(&h, &r).unwrap(), false).unwrap();
+    for change in 0..3 {
+        let mut c = check(&h, &r).unwrap();
+        let plan = c.recursive_patterns[id].as_mut().unwrap();
+        match change {
+            0 => plan.kind = nova_typecheck::RecursivePatternKind::Char('B'),
+            1 => plan.ty = Type::Int32,
+            _ => plan.kind = nova_typecheck::RecursivePatternKind::Wildcard,
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p31_char_equality_constant_source_and_failure_branch_forgery_rejected() {
+    let m = pass("func main(){match Option::Some('A'){Option::Some('A')=>{print(\"A\")},_=>{}}}");
+    assert!(m.bodies[0]
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .any(|s| matches!(
+            s.kind,
+            StatementKind::Assign(
+                _,
+                Rvalue::Binary(
+                    Symbol::EqualEqual,
+                    _,
+                    Operand::Constant(Constant::Char('A'))
+                )
+            )
+        )));
+    for change in 0..2 {
+        let mut bad = m.clone();
+        if change == 0 {
+            let s = bad.bodies[0]
+                .blocks
+                .iter_mut()
+                .flat_map(|b| &mut b.statements)
+                .find(|s| {
+                    matches!(
+                        s.kind,
+                        StatementKind::Assign(
+                            _,
+                            Rvalue::Binary(
+                                Symbol::EqualEqual,
+                                _,
+                                Operand::Constant(Constant::Char(_))
+                            )
+                        )
+                    )
+                })
+                .unwrap();
+            let StatementKind::Assign(_, Rvalue::Binary(_, _, right)) = &mut s.kind else {
+                unreachable!()
+            };
+            *right = Operand::Constant(Constant::Char('B'));
+        } else {
+            let b = bad.bodies[0]
+                .blocks
+                .iter_mut()
+                .find(|b| {
+                    matches!(
+                        b.terminator.as_ref().unwrap().kind,
+                        TerminatorKind::Branch { .. }
+                    )
+                })
+                .unwrap();
+            let TerminatorKind::Branch {
+                then_block,
+                else_block,
+                ..
+            } = &mut b.terminator.as_mut().unwrap().kind
+            else {
+                unreachable!()
+            };
+            std::mem::swap(then_block, else_block);
+        }
+        assert!(!validate(&bad).is_empty());
+    }
+}

@@ -5012,3 +5012,98 @@ fn p30_existing_arm_budget_and_guard_false_remain_source_checks() {
         ["N2001"]
     );
 }
+
+#[test]
+fn p31_char_pattern_coverage_decoded_aliases_and_known_values() {
+    pass(include_str!("../../../examples/char_patterns.nova"));
+    for source in [
+        "func f(ch:char){match ch{'A'=>{},'🙂'=>{},_=>{}}}",
+        "func f(ch:char){match ch{'A' if false=>{},'A'=>{},_=>{}}}",
+        "func f(){match Option::Some(('A',true)){Option::Some(('A',flag))=>{},_=>{}}}",
+    ] {
+        pass(source);
+    }
+    assert_eq!(codes(&frontend("func f(){match 'A'{'A'=>{}}}")), ["N3101"]);
+    assert_eq!(
+        codes(&frontend(
+            r"func f(){match 'A'{'A'=>{},'\u{41}'=>{},_=>{}}}"
+        )),
+        ["N3102"]
+    );
+    let r = frontend("func f(ch:char){match ch{'\\0'=>{}}}");
+    assert_eq!(codes(&r), ["N3101"]);
+    assert!(
+        r.diagnostics()[0]
+            .notes
+            .iter()
+            .any(|n| n.contains("'\\u{1}'")),
+        "{:?}",
+        r.diagnostics()
+    );
+    let r = frontend("func f(ch:char){match ch{n if true=>{}}}");
+    assert!(r.diagnostics()[0].notes.iter().any(|n| n.contains('_')));
+}
+#[test]
+fn p31_nested_tuple_sum_guard_union_and_type_cascade() {
+    pass("enum E{Only((char,bool))}func f(e:E){match e{E::Only(('A',true))=>{},E::Only(('A',false))=>{},E::Only((ch,_))=>{}}}");
+    assert_eq!(
+        codes(&frontend(
+            "func f(ch:char){match(ch,true){('A',_)=>{},(_,false)=>{}}}"
+        )),
+        ["N3101"]
+    );
+    for source in [
+        "func f(){match 1{'A'=>{},_=>{}}}",
+        "func f(){match(true,1){('A',n)=>{},_=>{}}}",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N2101"]);
+    }
+    assert_eq!(
+        codes(&frontend("func f(){match missing{'A'=>{},_=>{}}}")),
+        ["N2001"]
+    );
+}
+#[test]
+fn p31_literal_bindings_remain_refutable_and_const_failure_is_suppressed() {
+    for keyword in ["let", "var", "const"] {
+        let r = frontend(&format!("func f(){{{keyword}('A',n)=('A',1/0)}}"));
+        assert_eq!(codes(&r), ["N3103"]);
+        let d = &r.diagnostics()[0];
+        assert_eq!(r.sources.slice(d.secondary[0].span).unwrap(), "'A'");
+    }
+    assert_eq!(
+        codes(&frontend(
+            "const('A',n)=('A',1/0);const NEXT=n+1;func main(){}"
+        )),
+        ["N3103"]
+    );
+}
+#[test]
+fn p31_guard_context_immutable_binders_try_return_and_bounds() {
+    pass("func f(r:Result<int,bool>)->Result<int,bool>{match 'A'{'A' if (try r)>0=>{},_=>{}}return Result::Success(1)}");
+    pass("func f(ch:char)->int{match ch{'A'=>{return 1},_=>{return 2}}}");
+    assert_eq!(
+        codes(&frontend(
+            "func f(ch:char)->int{match ch{'A'=>{return 1},_=>{}}}"
+        )),
+        ["N3003"]
+    );
+    assert_eq!(
+        codes(&frontend("func f(){match ('A',1){('A',n)=>{n=2},_=>{}}}")),
+        ["N3004"]
+    );
+    for count in [1024, 1025] {
+        let s = format!(
+            "func f(ch:char){{match ch{{{}_=>{{}}}}}}",
+            "'A' if false=>{},".repeat(count)
+        );
+        assert_eq!(
+            codes(&frontend(&s)),
+            if count == 1024 {
+                vec![]
+            } else {
+                vec!["N8901".to_string()]
+            }
+        );
+    }
+}
