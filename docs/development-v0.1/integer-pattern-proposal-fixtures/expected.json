@@ -1,0 +1,289 @@
+{
+  "proposal": "P32",
+  "status": "Accepted",
+  "implementation_verified": true,
+  "approval_date": "2026-10-12",
+  "approval_evidence": "다음 작업 승인할태니 개발 진행해줘",
+  "grammar": "GRAMMAR_STAGE_B_INTEGER_PATTERN.ebnf",
+  "grammar_change": true,
+  "grammar_productions": 63,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "values"
+  ],
+  "source_sha256": {
+    "values.nova": "369e944d978c2d10568b8a04028bf995b0ee45439770f887aaaca883117ce766",
+    "main.nova": "78a66aacbf227e740733761042bfcba6a09ac787531675743cafed89ac2bc019",
+    "guard_skipped.nova": "5ae7422f8666e020b02d0c0098824ffe9041ccc1ab8e9e7ac9415dec6cba0196",
+    "guard_abort.nova": "1667be71a716fb21e13fdc72863cef2a9b98137e6f8b72e48c01054e5069e9b1",
+    "incomplete.nova": "f88678a23f7fd11676b2b6a025869abf921537a193aa1937be91c3f4339f2417",
+    "duplicate_radix.nova": "05af766f62e425727249a85043fc70bb60c33f8fe4be8a78f7fca3ab68417702",
+    "duplicate_zero.nova": "052c5ea6550e5cbb9a7312e7d78ad0c3853b42951673078163a169924d18132e",
+    "after_wildcard.nova": "1294c650547f6b062ec48f97601c71a968d1cf79ab38858718caa15e2bf10b94",
+    "wrong_type.nova": "427de96ec8003e1cfbcca869dd062d3697f12617aa8b693f4b17694e63ebe8eb",
+    "too_large.nova": "cb67ae1a658332adddc3ad2d5fe80c46af177a22aebc90378b9abc393b531270",
+    "too_negative.nova": "f8cf716712897d5f978d2cc2064ebe0175ea926da2181750e46e7c830f9c981f",
+    "unsigned_negative.nova": "29d933aec0c1d62f5ef5ffadaa299b52a0846aaaa1848f1071255df34e2cf0f0",
+    "uint64_overflow.nova": "db9b3d50dfca15a738ee29b02bb08813bea62bd9a626e4be15bd3bc40848a8dc",
+    "let_refutable.nova": "d151459c28d3b3a33cb84f920c11404d4d5c42457b5e4e7eecaa57da4fdf8d9e",
+    "var_refutable.nova": "d4b8b11206f085f06d912c822bd60d6cb8bb8ed0f2b2ae3836400643471b247b",
+    "const_refutable.nova": "a0da074581cbc6d10d076ac2162cff0757c123e167f7f648a5b4fd1b0b8e8b28",
+    "global_refutable.nova": "90f9749dc655eafd2cddd67b4e528106efc381b6bb9ca980967019655c781efe",
+    "guard_only.nova": "9f87ca88f959f883cd8e61641f8ac58255d9be844f54bf88d50a045829902914",
+    "non_bool_guard.nova": "194a652960db742e47967c69d26b66d07f5e989ab468d27dc8b16cecadbdc646",
+    "plus_pattern.nova": "6f13b0567319b62ccdf8783929163dec26c75bb46e3df212f88d5e343f04839a",
+    "float_pattern.nova": "41b9d93e211135d20ed2b75ea634188e2fdf170f26182267675de86392ddc1ba",
+    "minus_without_int.nova": "4cae1da4f4f0fe7605e9d1543b36e71044b3979e2a8bd9914c35a425757e2c5c",
+    "boundaries.nova": "c102e3501c87e74ac5639e0238a8d92519f476808c44c8f358eb534fd7a3238a",
+    "full_uint8.nova": "c1dcd86232edeee6fcb98a1a1188cb730a12291946bb6d8a20d93f76a243a398"
+  },
+  "positive_cases": [
+    {
+      "source": "boundaries.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "int8=-128\nint16=-32768\nint32=-2147483648\nint64=-9223372036854775808\nuint8=255\nuint16=65535\nuint32=4294967295\nuint64=18446744073709551615\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "full_uint8.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "full=0/255\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "guard_skipped.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "skipped\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "source": "incomplete.nova",
+      "expected_diagnostic": "N3101",
+      "check_exit": 1,
+      "primary": {
+        "start": 12,
+        "end": 17
+      }
+    },
+    {
+      "source": "duplicate_radix.nova",
+      "expected_diagnostic": "N3102",
+      "check_exit": 1,
+      "primary": {
+        "start": 26,
+        "end": 29
+      }
+    },
+    {
+      "source": "duplicate_zero.nova",
+      "expected_diagnostic": "N3102",
+      "check_exit": 1,
+      "primary": {
+        "start": 34,
+        "end": 36
+      }
+    },
+    {
+      "source": "after_wildcard.nova",
+      "expected_diagnostic": "N3102",
+      "check_exit": 1,
+      "primary": {
+        "start": 26,
+        "end": 27
+      }
+    },
+    {
+      "source": "wrong_type.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 23,
+        "end": 24
+      }
+    },
+    {
+      "source": "too_large.nova",
+      "expected_diagnostic": "N2102",
+      "check_exit": 1,
+      "primary": {
+        "start": 28,
+        "end": 31
+      }
+    },
+    {
+      "source": "too_negative.nova",
+      "expected_diagnostic": "N2102",
+      "check_exit": 1,
+      "primary": {
+        "start": 28,
+        "end": 32
+      }
+    },
+    {
+      "source": "unsigned_negative.nova",
+      "expected_diagnostic": "N2102",
+      "check_exit": 1,
+      "primary": {
+        "start": 29,
+        "end": 31
+      }
+    },
+    {
+      "source": "uint64_overflow.nova",
+      "expected_diagnostic": "N2102",
+      "check_exit": 1,
+      "primary": {
+        "start": 30,
+        "end": 50
+      }
+    },
+    {
+      "source": "let_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 15,
+        "end": 20
+      }
+    },
+    {
+      "source": "var_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 15,
+        "end": 20
+      }
+    },
+    {
+      "source": "const_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 17,
+        "end": 22
+      }
+    },
+    {
+      "source": "global_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 5,
+        "end": 10
+      }
+    },
+    {
+      "source": "guard_only.nova",
+      "expected_diagnostic": "N3101",
+      "check_exit": 1,
+      "primary": {
+        "start": 12,
+        "end": 17
+      }
+    },
+    {
+      "source": "non_bool_guard.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 25,
+        "end": 26
+      }
+    },
+    {
+      "source": "plus_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 20,
+        "end": 21
+      }
+    },
+    {
+      "source": "float_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 22,
+        "end": 25
+      }
+    },
+    {
+      "source": "minus_without_int.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 21,
+        "end": 23
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "source": "guard_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 49,
+        "end": 61
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:49..61"
+      }
+    }
+  ],
+  "historical_overrides": [
+    {
+      "proposal": "P24",
+      "source": "../nested-pattern-proposal-fixtures/literal_pattern.nova",
+      "source_sha256": "2f2aacab3482c1de93ad61cd0c669f2f06099a6ef61903b9a5fc41804c7a8a26",
+      "original_diagnostic": "N1102",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "proposal": "P30",
+      "source": "../copy-value-match-proposal-fixtures/literal_pattern.nova",
+      "source_sha256": "8bcb2def10776829d798993f9e5a9206e0c4f1c7bc91f19ce5448fc533b06a78",
+      "original_diagnostic": "N1102",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "proposal": "P31",
+      "source": "../char-pattern-proposal-fixtures/integer_pattern.nova",
+      "source_sha256": "8bcb2def10776829d798993f9e5a9206e0c4f1c7bc91f19ce5448fc533b06a78",
+      "original_diagnostic": "N1102",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "scrutinee\nfirst\nsecond\nnested\nhex=255\nzero\noption=true\ntry-ok\nresult=1\nerror=4\nloop=1\n",
+    "stderr": ""
+  }
+}

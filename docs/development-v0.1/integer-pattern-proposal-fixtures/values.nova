@@ -1,0 +1,3 @@
+public enum Event{Data((int8,char));End}
+public const(number,ch):(int8,char)=(-7,'🙂')
+public func source()->Event{print("scrutinee");return Event::Data((number,ch))}

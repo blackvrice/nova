@@ -54,6 +54,8 @@
 
 [P31 Unicode char literal 패턴](CHAR_PATTERN_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_CHAR_PATTERN.ebnf)·[수용 fixture](char-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](CHAR_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 61개 production·P01~P30 ledger를 보존한다.
 
+[P32 고정 폭 정수 literal 패턴](INTEGER_PATTERN_STAGE_B_PROPOSAL.md)·[63-production EBNF](GRAMMAR_STAGE_B_INTEGER_PATTERN.ebnf)·[수용 fixture](integer-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](INTEGER_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 61개 production·P01~P31 ledger를 보존한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

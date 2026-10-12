@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P32 고정 폭 정수 literal 패턴
+
+- 다음 단계 사용자 승인으로 제한 계약·63-production EBNF를 구현 전에 기록했다.
+- component 타입/range·radix/zero alias·finite domain/observed-complement coverage·guard·N3103·MIR equality 구현.
+- 새 테스트 15개, 기본 495·LLVM 28·Native 71 PASS, fmt/check/Clippy·문서 검증 완료.
+- P24/P30/P31 INT 거부 source/N1102 역사는 현재 성공 overrides와 함께 보존했다.
+- P01~P31 ledger·원본/기존 fixture/grammar bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-12 — P31 Unicode char literal 패턴
 
 - 다음 단계 사용자 승인으로 제한 계약·62-production EBNF를 구현 전에 기록했다.

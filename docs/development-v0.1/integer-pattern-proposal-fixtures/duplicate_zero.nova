@@ -1,0 +1,1 @@
+func main(){match 0 as int8{0=>{},-0=>{},_=>{}}}

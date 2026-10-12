@@ -1,0 +1,1 @@
+func main(){match 1 as int8{-129=>{},_=>{}}}

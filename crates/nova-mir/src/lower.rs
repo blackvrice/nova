@@ -550,6 +550,28 @@ impl Builder<'_> {
                 .as_ref()
                 .ok_or(LoweringError::InvalidAnalysis)?;
             match p.kind {
+                Kind::Integer(wanted) => {
+                    let condition = self.temporary(Type::Bool, id);
+                    self.assign(
+                        condition,
+                        Rvalue::Binary(
+                            Symbol::EqualEqual,
+                            Operand::Place(value),
+                            Operand::Constant(Constant::from_integer(wanted)),
+                        ),
+                        id,
+                    )?;
+                    let success = self.block();
+                    self.end(
+                        TerminatorKind::Branch {
+                            condition: Operand::Place(condition),
+                            then_block: success,
+                            else_block: failure,
+                        },
+                        id,
+                    )?;
+                    self.current = Some(success);
+                }
                 Kind::Char(wanted) => {
                     let condition = self.temporary(Type::Bool, id);
                     self.assign(

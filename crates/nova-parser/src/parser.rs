@@ -439,6 +439,26 @@ impl<'a> Parser<'a> {
     fn pattern_inner(&mut self) -> AstNodeId {
         let token = self.current();
         let start = token.span.start();
+        if matches!(
+            token.kind,
+            TokenKind::Integer | TokenKind::Symbol(Symbol::Minus)
+        ) {
+            let minus = if token.kind == TokenKind::Symbol(Symbol::Minus) {
+                Some(self.bump().span)
+            } else {
+                None
+            };
+            if self.kind() != TokenKind::Integer {
+                self.report(
+                    1102,
+                    self.current().span,
+                    "integer pattern requires INT after minus",
+                );
+                return self.node(NodeKind::Error, start, vec![]);
+            }
+            let digits = self.bump().span;
+            return self.node(NodeKind::PatternInteger { digits, minus }, start, vec![]);
+        }
         if token.kind == TokenKind::Character {
             self.bump();
             return self.node(NodeKind::PatternCharacter, start, vec![]);

@@ -1,0 +1,5 @@
+func main(){
+    let n:int8=-7
+    match n{-7=>{print("negative")},0=>{print("zero")},_=>{print("other")}}
+    match(0xff as uint8,true){(255,flag)=>{print("nested={flag}")},_=>{}}
+}

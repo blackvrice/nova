@@ -15,6 +15,7 @@ pub enum RecursivePatternKind {
     Wildcard,
     Bool(bool),
     Char(char),
+    Integer(nova_types::IntegerValue),
     Unit,
     Tuple(StructId),
     Variant(VariantId),
@@ -88,6 +89,35 @@ impl Checker<'_> {
                     RecursivePatternKind::Wildcard
                 }
                 HirKind::Wildcard => RecursivePatternKind::Wildcard,
+                HirKind::PatternInteger {
+                    ref spelling,
+                    minus,
+                    ..
+                } => {
+                    if let Some(kind) = expected.integer() {
+                        if let Some(value) = crate::integer(spelling, minus.is_some(), kind) {
+                            RecursivePatternKind::Integer(value)
+                        } else {
+                            self.report(
+                                2102,
+                                p.span,
+                                "integer pattern is outside component range",
+                                annotation,
+                            );
+                            RecursivePatternKind::Wildcard
+                        }
+                    } else {
+                        if expected != Type::Error {
+                            self.report(
+                                2101,
+                                p.span,
+                                "integer pattern requires integer component",
+                                annotation,
+                            );
+                        }
+                        RecursivePatternKind::Wildcard
+                    }
+                }
                 HirKind::PatternCharacter(value) => {
                     if expected != Type::Char && expected != Type::Error {
                         self.report(
@@ -351,7 +381,9 @@ impl Checker<'_> {
                         .expect("typed pattern")
                         .kind
                     {
-                        RecursivePatternKind::Bool(_) | RecursivePatternKind::Char(_) => true,
+                        RecursivePatternKind::Bool(_)
+                        | RecursivePatternKind::Char(_)
+                        | RecursivePatternKind::Integer(_) => true,
                         RecursivePatternKind::Variant(v) => {
                             self.result.enums[&v.enumeration].variants.len() > 1
                         }
@@ -531,6 +563,7 @@ impl Checker<'_> {
 enum Constructor {
     Bool(bool),
     Char(char),
+    Integer(nova_types::IntKind, i128),
     Unit,
     Tuple(StructId),
     Variant(VariantId),
@@ -653,6 +686,32 @@ impl<'a> Engine<'a> {
     fn constructors(&self, key: &Key) -> Vec<Constructor> {
         if let Some(c) = self.patterns[key.candidate[0]].constructor {
             return vec![c];
+        }
+        if let Some(kind) = key.types[0].integer() {
+            let mut observed = key
+                .rows
+                .iter()
+                .filter_map(|r| match self.patterns[r[0]].constructor {
+                    Some(Constructor::Integer(k, v)) if k == kind => Some(v),
+                    _ => None,
+                })
+                .collect::<BTreeSet<_>>();
+            if !observed.is_empty() {
+                let mut missing = kind.min();
+                for &value in &observed {
+                    if value != missing {
+                        break;
+                    }
+                    missing += 1;
+                }
+                if missing <= kind.max() {
+                    observed.insert(missing);
+                }
+                return observed
+                    .into_iter()
+                    .map(|v| Constructor::Integer(kind, v))
+                    .collect();
+            }
         }
         // P31 partitions observed char values plus one representative of their complement.
         // With no concrete rows, retain the existing opaque-only witness and fast path.
@@ -943,6 +1002,10 @@ impl<'a> Engine<'a> {
                             out.push_str(if value { "true" } else { "false" });
                             continue;
                         }
+                        Some(Constructor::Integer(_, v)) => {
+                            out.push_str(&v.to_string());
+                            continue;
+                        }
                         Some(Constructor::Char(c)) => {
                             out.push('\'');
                             out.extend(c.escape_default());
@@ -1029,6 +1092,7 @@ fn analyze(
             RecursivePatternKind::Wildcard => None,
             RecursivePatternKind::Bool(b) => Some(Constructor::Bool(b)),
             RecursivePatternKind::Char(c) => Some(Constructor::Char(c)),
+            RecursivePatternKind::Integer(v) => Some(Constructor::Integer(v.kind(), v.value())),
             RecursivePatternKind::Unit => Some(Constructor::Unit),
             RecursivePatternKind::Tuple(id) => Some(Constructor::Tuple(id)),
             RecursivePatternKind::Variant(v) => Some(Constructor::Variant(v)),
@@ -1273,5 +1337,65 @@ mod specialization_tests {
         });
         assert_eq!(constructors.len(), 0xd801);
         assert_eq!(constructors.last(), Some(&Constructor::Char('\u{e000}')));
+    }
+    #[test]
+    fn p32_integer_partition_matches_independent_small_domain_oracle() {
+        let structs = StructRegistry::default();
+        let enums = EnumRegistry::default();
+        let sums = SumRegistry::default();
+        for kind in [nova_types::IntKind::I8, nova_types::IntKind::U8] {
+            for missing in [None, Some(kind.min()), Some(0), Some(kind.max())] {
+                let mut engine = Engine::new(&structs, &enums, &sums);
+                let rows = (kind.min()..=kind.max())
+                    .filter(|v| Some(*v) != missing)
+                    .map(|v| {
+                        vec![engine.pattern(Pattern {
+                            constructor: Some(Constructor::Integer(kind, v)),
+                            children: vec![],
+                        })]
+                    })
+                    .collect();
+                let task = engine
+                    .useful(Key {
+                        types: vec![kind.ty()],
+                        rows,
+                        candidate: vec![0],
+                    })
+                    .unwrap();
+                assert_eq!(engine.tasks[task].answer.unwrap().useful, missing.is_some());
+                if let Some(value) = missing {
+                    let witness = engine.witness(task);
+                    assert_eq!(engine.render(witness[0]), value.to_string());
+                }
+            }
+        }
+    }
+    #[test]
+    fn p32_integer_complement_uses_exact_64_bit_bounds_without_domain_expansion() {
+        let structs = StructRegistry::default();
+        let enums = EnumRegistry::default();
+        let sums = SumRegistry::default();
+        for kind in [nova_types::IntKind::I64, nova_types::IntKind::U64] {
+            let mut engine = Engine::new(&structs, &enums, &sums);
+            let rows = [kind.min(), kind.max()]
+                .into_iter()
+                .map(|v| {
+                    vec![engine.pattern(Pattern {
+                        constructor: Some(Constructor::Integer(kind, v)),
+                        children: vec![],
+                    })]
+                })
+                .collect();
+            let task = engine
+                .useful(Key {
+                    types: vec![kind.ty()],
+                    rows,
+                    candidate: vec![0],
+                })
+                .unwrap();
+            let witness = engine.witness(task);
+            assert_eq!(engine.render(witness[0]), (kind.min() + 1).to_string());
+            assert!(engine.tasks.len() < 10);
+        }
     }
 }

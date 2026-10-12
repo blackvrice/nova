@@ -1713,7 +1713,7 @@ fn p31_literal_pattern_nodes_preserve_original_spelling_and_are_not_values() {
         ("func f(){var('A',n)=('A',1)}", true),
         ("const('A',n)=('A',1)", true),
         ("func f(){let 'A'='A'}", false),
-        ("func f(){match 1{1=>{}}}", false),
+        ("func f(){match 1{1=>{}}}", true),
     ] {
         let (_, _, p) = run(source);
         assert_eq!(!p.has_errors(), expected, "{source}");
@@ -1728,4 +1728,51 @@ fn p31_every_utf8_prefix_recovers_deterministically() {
         assert_eq!(a.arena.dump(), b.arena.dump());
         assert_eq!(a.diagnostics, b.diagnostics);
     }
+}
+
+#[test]
+fn p32_integer_pattern_sign_digits_source_and_prefix_recovery() {
+    let source = "func f(n:int8){match n{- /* comment */ 0x80=>{},0b1=>{},_=>{}}}";
+    let (db, l, p) = run(source);
+    assert!(!l.has_errors() && !p.has_errors());
+    let literals = p
+        .arena
+        .iter()
+        .filter_map(|(_, n)| {
+            if let NodeKind::PatternInteger { digits, minus } = n.kind {
+                Some((
+                    db.slice(digits).unwrap(),
+                    minus.map(|s| db.slice(s).unwrap()),
+                ))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(literals, vec![("0x80", Some("-")), ("0b1", None)]);
+    for end in (0..=source.len()).filter(|p| source.is_char_boundary(*p)) {
+        let (_, _, a) = run(&source[..end]);
+        let (_, _, b) = run(&source[..end]);
+        assert_eq!(a.arena.dump(), b.arena.dump());
+        assert_eq!(a.diagnostics, b.diagnostics);
+    }
+    for source in [
+        "func f(){match 1{-=>{}}}",
+        "func f(){match 1{+1=>{}}}",
+        "func f(){match 1{-name=>{}}}",
+        "func f(){let 1=1}",
+    ] {
+        assert!(run(source).2.has_errors(), "{source}");
+    }
+}
+#[test]
+fn p32_negative_integer_nested_patterns_preserve_trivia_and_end() {
+    let source =
+        "func f(){match(-7,'🙂'){(-\n/* sign */7,ch) if ch=='🙂'=>{},_=>{}}}func later(){}";
+    let (_, l, p) = run(source);
+    assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+    assert!(p
+        .arena
+        .iter()
+        .any(|(_, n)| matches!(n.kind, NodeKind::PatternInteger { minus: Some(_), .. })));
 }

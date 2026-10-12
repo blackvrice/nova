@@ -1515,3 +1515,42 @@ fn p31_pattern_character_source_literal_shape_and_expression_kind_forgery() {
         );
     }
 }
+
+#[test]
+fn p32_public_integer_pattern_sign_digits_and_expression_kind_forgery() {
+    let source = "func f(n:int8){match n{- /* note */ 0x80=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    assert!(lower(&db, &p.arena, p.root).is_ok());
+    for change in 0..4 {
+        let mut arena = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let span = n.span;
+            let mut children = n
+                .children
+                .iter()
+                .map(|id| ids[id.index()])
+                .collect::<Vec<_>>();
+            if let NodeKind::PatternInteger { digits, minus } = &mut kind {
+                match change {
+                    0 => *minus = None,
+                    1 => *digits = Span::new(f, digits.start() + 2, digits.end()).unwrap(),
+                    2 => kind = NodeKind::Integer,
+                    _ => {
+                        let child = arena.insert(NodeKind::Integer, n.span, vec![]).unwrap();
+                        children.push(child);
+                    }
+                }
+            }
+            ids.push(arena.insert(kind, span, children).unwrap());
+        }
+        assert!(
+            lower(&db, &arena, ids[p.root.index()]).is_err(),
+            "change {change}"
+        );
+    }
+}

@@ -117,6 +117,10 @@ pub enum NodeKind {
     },
     PatternBoolean(bool),
     PatternCharacter,
+    PatternInteger {
+        digits: Span,
+        minus: Option<Span>,
+    },
     PatternTuple,
     PatternUnit,
     Wildcard,

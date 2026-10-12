@@ -2439,3 +2439,49 @@ fn p31_native_literal_success_guard_abort_exact_source_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p32_native_integer_patterns_width_radix_full_domain_nested_guards_and_try_o0_o2() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/integer-pattern-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="scrutinee\nfirst\nsecond\nnested\nhex=255\nzero\noption=true\ntry-ok\nresult=1\nerror=4\nloop=1\n";
+    for profile in ["debug", "release"] {
+        for(name,output)in[("main.nova",expected),("boundaries.nova","int8=-128\nint16=-32768\nint32=-2147483648\nint64=-9223372036854775808\nuint8=255\nuint16=65535\nuint32=4294967295\nuint64=18446744073709551615\n"),("full_uint8.nova","full=0/255\n"),("guard_skipped.nova","skipped\n")] {
+            let r=Command::new(env!("CARGO_BIN_EXE_nova")).arg("run").arg(root.join(name)).arg("--source-root").arg(&root).args(["--profile",profile]).current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")).output().unwrap();assert!(r.status.success(),"{name}: {}",String::from_utf8_lossy(&r.stderr));assert_eq!(r.stdout,output.as_bytes());assert!(r.stderr.is_empty());
+        }
+        let r = program_profile(
+            include_str!("../../../examples/integer_patterns.nova"),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"negative\nnested=true\n");
+        assert!(r.stderr.is_empty());
+        for source in [include_str!("../../../docs/development-v0.1/nested-pattern-proposal-fixtures/literal_pattern.nova"),include_str!("../../../docs/development-v0.1/copy-value-match-proposal-fixtures/literal_pattern.nova"),include_str!("../../../docs/development-v0.1/char-pattern-proposal-fixtures/integer_pattern.nova")] {let r=program_profile(source,profile);assert!(r.status.success());assert!(r.stdout.is_empty()&&r.stderr.is_empty());}
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p32_native_integer_literal_guard_abort_exact_operation_source_o0_o2() {
+    let source = include_str!(
+        "../../../docs/development-v0.1/integer-pattern-proposal-fixtures/guard_abort.nova"
+    );
+    let start = source.find("2147483647+n").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert_eq!(r.status.code(), Some(1));
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(
+                format!(
+                    "Nova panic: Int32 overflow at file#0:{start}..{}",
+                    start + 12
+                )
+                .as_str()
+            )
+        );
+    }
+}

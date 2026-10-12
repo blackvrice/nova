@@ -5,7 +5,7 @@ use nova_parser::parse;
 use nova_resolve::{resolve, DefinitionKind, Resolution, Resolved};
 use nova_source::SourceDatabase;
 use nova_typecheck::{check, CheckError, Checked, ConstEvaluation, CONST_NODE_LIMIT};
-use nova_types::{ConstValue, Type};
+use nova_types::{ConstValue, IntKind, Type};
 
 const INTEGER_CASES: [(&str, Type, i128, i128); 8] = [
     ("int8", Type::Int8, -128, 127),
@@ -5106,4 +5106,89 @@ fn p31_guard_context_immutable_binders_try_return_and_bounds() {
             }
         );
     }
+}
+
+#[test]
+fn p32_integer_pattern_context_range_radix_and_zero_aliases() {
+    pass(include_str!("../../../examples/integer_patterns.nova"));
+    for (kind, min, max) in IntKind::ALL.into_iter().map(|k| (k, k.min(), k.max())) {
+        let ty = match kind {
+            IntKind::I8 => "int8",
+            IntKind::I16 => "int16",
+            IntKind::I32 => "int32",
+            IntKind::I64 => "int64",
+            IntKind::U8 => "uint8",
+            IntKind::U16 => "uint16",
+            IntKind::U32 => "uint32",
+            IntKind::U64 => "uint64",
+        };
+        pass(&format!(
+            "func f(n:{ty}){{match n{{{min}=>{{}},{max}=>{{}},_=>{{}}}}}}"
+        ));
+        for value in [min - 1, max + 1] {
+            assert_eq!(
+                codes(&frontend(&format!(
+                    "func f(n:{ty}){{match n{{{value}=>{{}},_=>{{}}}}}}"
+                ))),
+                ["N2102"]
+            );
+        }
+    }
+    for (source, code) in [
+        ("func f(){match 1{1=>{},0x1=>{},_=>{}}}", "N3102"),
+        ("func f(){match 0 as int8{0=>{},-0=>{},_=>{}}}", "N3102"),
+        ("func f(){match 0 as uint8{-0=>{},_=>{}}}", "N2102"),
+        ("func f(){match true{1=>{},_=>{}}}", "N2101"),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code]);
+    }
+    pass("func f(n:int8){match n{- /* comment */ 0x80=>{},0b1 if false=>{},0o1=>{},_=>{}}}");
+    assert_eq!(
+        codes(&frontend("func f(){match missing{1=>{},_=>{}}}")),
+        ["N2001"]
+    );
+}
+#[test]
+fn p32_full_small_domains_and_one_missing_have_exact_coverage() {
+    for ty in ["int8", "uint8"] {
+        let (min, max) = if ty == "int8" { (-128, 127) } else { (0, 255) };
+        let arms = (min..=max)
+            .map(|v| format!("{v}=>{{return 1}},"))
+            .collect::<String>();
+        pass(&format!("func f(n:{ty})->int{{match n{{{arms}}}}}"));
+        let arms = (min..=max)
+            .filter(|v| *v != 0)
+            .map(|v| format!("{v}=>{{}},"))
+            .collect::<String>();
+        let r = frontend(&format!("func f(n:{ty}){{match n{{{arms}}}}}"));
+        assert_eq!(codes(&r), ["N3101"]);
+        assert!(r.diagnostics()[0].notes.iter().any(|n| n.contains("0")));
+    }
+    assert_eq!(codes(&frontend("func f(){match 1{1=>{}}}")), ["N3101"]);
+    pass("func f(n:int8){match n{1 if true=>{},1=>{},_=>{}}}");
+}
+#[test]
+fn p32_nested_union_refutable_const_and_guard_contexts() {
+    pass("func f(r:Option<(int8,char)>){match r{Option::Some((-1,'A'))=>{},Option::Some((0,ch)) if ch=='A'=>{},_=>{}}}");
+    for keyword in ["let", "var", "const"] {
+        let r = frontend(&format!("func f(){{{keyword}(1,n)=(1,1/0)}}"));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "1"
+        );
+    }
+    assert_eq!(
+        codes(&frontend("const(1,n)=(1,1/0);const NEXT=n+1;func main(){}")),
+        ["N3103"]
+    );
+    pass("func f(r:Result<int,bool>)->Result<int,bool>{match 1{1 if (try r)>0=>{},_=>{}}return Result::Success(1)}");
+    assert_eq!(
+        codes(&frontend(
+            "func f(n:int)->int{match n{1=>{return 1},_=>{}}}"
+        )),
+        ["N3003"]
+    );
 }

@@ -251,3 +251,8 @@ whole Copy binder/wildcard·Bool guard·snapshot·보수적 완전성/도달성�
 현재 구현은 **P31 Unicode char literal 패턴까지 완료**다.
 [P31 계약](docs/development-v0.1/CHAR_PATTERN_STAGE_B_PROPOSAL.md)·[62-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_CHAR_PATTERN.ebnf)·[수용 fixture](docs/development-v0.1/char-pattern-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/CHAR_PATTERN_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
 root/nested char literal·escape alias·guard·bounded coverage·MIR equality를 지원한다. 정수/float/string literal·field pattern·Array·일반 Move/Drop은 후속 계약이다.
+
+
+현재 구현은 **P32 고정 폭 정수 literal 패턴까지 완료**다.
+[P32 계약](docs/development-v0.1/INTEGER_PATTERN_STAGE_B_PROPOSAL.md)·[63-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_INTEGER_PATTERN.ebnf)·[수용 fixture](docs/development-v0.1/integer-pattern-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/INTEGER_PATTERN_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
+8종 checked literal·radix/zero alias·Int8/UInt8 전체 domain·nested/guard·MIR equality를 지원한다. float/string literal·field/range pattern·Array·일반 Move/Drop은 후속 계약이다.

@@ -107,6 +107,11 @@ pub enum HirKind {
     },
     PatternBoolean(bool),
     PatternCharacter(char),
+    PatternInteger {
+        spelling: String,
+        digits: Span,
+        minus: Option<Span>,
+    },
     PatternTuple,
     PatternUnit,
     Wildcard,
@@ -980,6 +985,31 @@ pub fn lower(
         if node.kind == NodeKind::Wildcard && sources.slice(node.span)? != "_" {
             return Err(LoweringError::MalformedAst);
         }
+        if let NodeKind::PatternInteger { digits, minus } = node.kind {
+            let text = sources.file(node.span.file())?.text();
+            let signed = if let Some(sign) = minus {
+                inside(node.span, sign)
+                    && sign.start() == node.span.start()
+                    && sign.end() <= digits.start()
+                    && sources.slice(sign)? == "-"
+                    && source_punctuation(sources.slice(Span::new(
+                        sign.file(),
+                        sign.end(),
+                        digits.start(),
+                    )?)?)
+                    .is_some_and(|p| p.is_empty())
+            } else {
+                digits.start() == node.span.start()
+            };
+            if !signed
+                || !inside(node.span, digits)
+                || digits.end() != node.span.end()
+                || !token_boundary(text, digits)
+                || !integer_pattern_spelling(sources.slice(digits)?)
+            {
+                return Err(LoweringError::MalformedAst);
+            }
+        }
         if let NodeKind::PatternBoolean(value) = node.kind {
             if sources.slice(node.span)? != if value { "true" } else { "false" } {
                 return Err(LoweringError::MalformedAst);
@@ -1232,6 +1262,11 @@ pub fn lower(
             NodeKind::Arm => HirKind::Arm,
             NodeKind::MatchGuard { keyword } => HirKind::MatchGuard { keyword },
             NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
+            NodeKind::PatternInteger { digits, minus } => HirKind::PatternInteger {
+                spelling: sources.slice(digits)?.into(),
+                digits,
+                minus,
+            },
             NodeKind::PatternCharacter => {
                 HirKind::PatternCharacter(decode_character(sources.slice(node.span)?)?)
             }
@@ -1749,6 +1784,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 | NodeKind::None
                 | NodeKind::PatternBoolean(_)
                 | NodeKind::PatternCharacter
+                | NodeKind::PatternInteger { .. }
                 | NodeKind::Error
         )
     }
@@ -1894,6 +1930,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::PatternNone
         | NodeKind::PatternBoolean(_)
         | NodeKind::PatternCharacter
+        | NodeKind::PatternInteger { .. }
         | NodeKind::PatternUnit
         | NodeKind::Wildcard => kinds.is_empty(),
         NodeKind::PatternVariant { arguments, .. } => {
@@ -2038,6 +2075,39 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
 
 fn decode_text(text: &str) -> Result<String, LoweringError> {
     decode_literal_body(text, false)
+}
+
+fn integer_pattern_spelling(spelling: &str) -> bool {
+    let (radix, digits) = if let Some(s) = spelling.strip_prefix("0x") {
+        (16, s)
+    } else if let Some(s) = spelling.strip_prefix("0b") {
+        (2, s)
+    } else if let Some(s) = spelling.strip_prefix("0o") {
+        (8, s)
+    } else {
+        (10, spelling)
+    };
+    let mut previous = false;
+    for byte in digits.bytes() {
+        if byte == b'_' {
+            if !previous {
+                return false;
+            }
+            previous = false;
+        } else {
+            let digit = match byte {
+                b'0'..=b'9' => u32::from(byte - b'0'),
+                b'a'..=b'f' => u32::from(byte - b'a' + 10),
+                b'A'..=b'F' => u32::from(byte - b'A' + 10),
+                _ => return false,
+            };
+            if digit >= radix {
+                return false;
+            }
+            previous = true;
+        }
+    }
+    previous
 }
 
 fn decode_character(spelling: &str) -> Result<char, LoweringError> {
