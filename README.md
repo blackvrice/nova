@@ -241,3 +241,8 @@ Tuple/Unit/single-variant Enum·불변 상수 binder·initializer 한 번 평가
 현재 구현은 **P29 전역 Copy const 구조 분해까지 완료**다.
 [P29 계약](docs/development-v0.1/GLOBAL_CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf)·[수용 fixture](docs/development-v0.1/global-const-destructuring-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/GLOBAL_CONST_DESTRUCTURING_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
 component import/가시성·forward reference·공유 initializer 평가·정적 group 순환을 지원한다. Array·const 함수·일반 Move/Drop은 후속 계약이다.
+
+
+현재 구현은 **P30 숫자·char·Copy struct statement match까지 완료**다.
+[P30 계약](docs/development-v0.1/COPY_VALUE_MATCH_STAGE_B_PROPOSAL.md)·[수용 fixture](docs/development-v0.1/copy-value-match-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/COPY_VALUE_MATCH_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
+whole Copy binder/wildcard·Bool guard·snapshot·보수적 완전성/도달성을 지원한다. Array·literal/field pattern·일반 Move/Drop은 후속 계약이다.

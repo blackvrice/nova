@@ -1,0 +1,1 @@
+func main(){print("before");match 1{n if 2147483647+n>0=>{},_=>{}}print("after")}

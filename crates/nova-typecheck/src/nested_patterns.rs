@@ -30,8 +30,11 @@ impl Checker<'_> {
         let node = &self.module.nodes()[id.0];
         if matches!(
             self.ty(self.result.type_table[node.children[0].0]),
-            Type::Tuple(_) | Type::Unit
-        ) {
+            Type::Tuple(_) | Type::Unit | Type::Struct(_) | Type::Char
+        ) || self
+            .ty(self.result.type_table[node.children[0].0])
+            .numeric()
+        {
             return true;
         }
         self.module.nodes()[id.0].children[1..].iter().any(|&arm| {
@@ -382,12 +385,15 @@ impl Checker<'_> {
             return;
         };
         let ty = self.ty(self.result.type_table[node.children[0].0]);
-        let mut valid = matches!(ty, Type::Bool | Type::Enum(_) | Type::Tuple(_) | Type::Unit);
+        let mut valid = matches!(
+            ty,
+            Type::Bool | Type::Enum(_) | Type::Tuple(_) | Type::Unit | Type::Struct(_) | Type::Char
+        ) || ty.numeric();
         if !valid && ty != Type::Error {
             self.report(
                 2101,
                 self.module.nodes()[node.children[0].0].span,
-                "match requires Bool, Copy sum, Copy Tuple or Unit",
+                "match requires Bool, numeric, Char, Copy struct, Copy sum, Copy Tuple or Unit",
                 None,
             );
         }

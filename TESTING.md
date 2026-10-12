@@ -1,7 +1,40 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P29 전역 Copy const 구조 분해까지다.
+현재 개발 완료 기능은 P30 숫자·char·Copy struct statement match까지다.
+
+## P30 숫자·char·Copy struct statement match
+
+```powershell
+$env:CARGO_INCREMENTAL='0'
+cargo fmt --check
+cargo test --workspace --offline
+cargo run -p nova-cli --offline -- check examples/copy_value_match.nova
+$env:NOVA_CLANG=(Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/copy_value_match.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/copy_value_match.nova --profile release
+```
+
+check exit 0. 두 profile의 출력은 아래 두 줄/LF·빈 stderr·exit 0이다.
+
+```text
+snapshot=-2/current=4
+char=🙂
+```
+
+[두 파일 fixture](docs/development-v0.1/copy-value-match-proposal-fixtures/README.md)는 guard 순서·single scrutinee·numeric/char/IEEE·import/alias/private whole Copy·try/loop를 추가 관측한다.
+[승인 계약](docs/development-v0.1/COPY_VALUE_MATCH_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/COPY_VALUE_MATCH_IMPLEMENTATION.md)을 제공한다.
+
+```powershell
+cargo test --workspace --offline p30_
+cargo test -p nova-codegen-llvm --test emission --offline p30_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p30_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/copy-value-match-proposal-fixtures/guard_only.nova
+node tools/docs/validate-pack.mjs
+```
+
+새 기본 10·실제 LLVM 1·Native 2개다. guarded-only check는 N3101·exit 1이다.
+P29 이하 계약/명령은 당시 기록이며 숫자·char·Copy struct root match의 현재 의미는 P30이 우선한다.
 
 ## P29 전역 Copy const 구조 분해
 

@@ -2365,6 +2365,15 @@ fn p14_documented_negative_fixtures_preserve_exact_code_and_byte_spans() {
             68,
         ),
     ] {
+        // P30 explicitly permits whole Copy numeric match; frozen P14 metadata is historical.
+        if source
+            == include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/invalid_scrutinee.nova"
+            )
+        {
+            pass(source);
+            continue;
+        }
         let result = frontend(source);
         assert!(
             result
@@ -4890,5 +4899,116 @@ fn p29_shared_global_initializer_budget_10000_10001() {
             "const(n,())=((({sum})),());const NEXT=n+1"
         ))),
         ["N3202"]
+    );
+}
+
+#[test]
+fn p30_all_numeric_and_char_whole_binders_have_exact_types() {
+    for ty in [
+        "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64", "float",
+        "double", "char",
+    ] {
+        let r = pass(&format!(
+            "func f(x:{ty}){{match x{{bound=>{{let copy=bound}}}}}}"
+        ));
+        let (_, resolved, checked) = r.semantic.unwrap();
+        let arg = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == "x")
+            .unwrap();
+        let bound = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == "bound")
+            .unwrap();
+        assert_eq!(
+            checked.definition_types[arg],
+            checked.definition_types[bound]
+        );
+        assert!(!resolved.definitions[bound].mutable);
+        assert!(!resolved.definitions[bound].constant);
+    }
+    pass("struct Empty{}func f(v:Empty){match v{copy=>{}}}");
+    pass(include_str!("../../../examples/copy_value_match.nova"));
+}
+#[test]
+fn p30_guard_union_is_conservative_for_all_new_domains() {
+    for ty in ["int8", "uint64", "float", "double", "char", "P"] {
+        let s = format!(
+            "struct P{{let x:int}}func f(x:{ty}){{match x{{n if true=>{{}},_ if false=>{{}}}}}}"
+        );
+        let r = frontend(&s);
+        assert_eq!(codes(&r), ["N3101"], "{ty}");
+        assert!(r.diagnostics()[0].notes.iter().any(|n| n.contains('_')));
+        assert_eq!(
+            codes(&frontend(&format!(
+                "struct P{{let x:int}}func f(x:{ty}){{match x{{n=>{{}},_=>{{}}}}}}"
+            ))),
+            ["N3102"]
+        );
+        pass(&format!(
+            "struct P{{let x:int}}func f(x:{ty}){{match x{{n if true=>{{}},_=>{{}}}}}}"
+        ));
+    }
+    assert_eq!(
+        codes(&frontend("func f(){match 1{n if true=>{}}}")),
+        ["N3101"]
+    );
+}
+#[test]
+fn p30_scope_immutable_guard_type_and_excluded_patterns() {
+    for (s, code) in [
+        ("func f(){match 1{n=>{n=2}}}", "N3004"),
+        (
+            "struct P{var x:int}func f(p:P){match p{q=>{q.x=2}}}",
+            "N3004",
+        ),
+        ("func f(){match 1{n=>{}}let x=n}", "N2001"),
+        ("func f(){match 1{n if n=>{},_=>{}}}", "N2101"),
+        ("func f(){match 1{true=>{},_=>{}}}", "N2101"),
+        ("func f(){match 1{(a,b)=>{},_=>{}}}", "N2101"),
+        ("func f(){match \"s\"{_=>{}}}", "N2101"),
+    ] {
+        assert_eq!(codes(&frontend(s)), [code], "{s}");
+    }
+    pass("func f(){let n=3;match n{n if n>0=>{let copy=n},_=>{}}let after=n}");
+    assert_eq!(
+        codes(&frontend("func f(){match missing{n if n>0=>{},_=>{}}}")),
+        ["N2001"]
+    );
+}
+#[test]
+fn p30_return_loop_try_and_read_method_use_existing_context() {
+    pass("struct P{let x:int;func ok(self)->bool{return self.x>0}}func f(p:P)->int{match p{q if q.ok()=>{return q.x},_=>{return 0}}}");
+    pass("func f(r:Result<int,bool>)->Result<int,bool>{for i in 0 until 3{match i{n if (try r)==n=>{continue},n if n>0=>{break},_=>{}}}return Result::Success(1)}");
+    assert_eq!(
+        codes(&frontend("func f(x:int)->int{match x{n=>{}}}")),
+        ["N3003"]
+    );
+    assert_eq!(codes(&frontend("func f(){match 1{n=>{break}}}")), ["N3002"]);
+}
+#[test]
+fn p30_existing_arm_budget_and_guard_false_remain_source_checks() {
+    for count in [1024, 1025] {
+        let s = format!(
+            "func f(x:int){{match x{{{}_=>{{}}}}}}",
+            "n if false=>{},".repeat(count)
+        );
+        let r = frontend(&s);
+        assert_eq!(
+            codes(&r),
+            if count == 1024 {
+                vec![]
+            } else {
+                vec!["N8901".to_string()]
+            }
+        );
+    }
+    assert_eq!(
+        codes(&frontend(
+            "func f(){match 1{n if false=>{let x=missing},_=>{}}}"
+        )),
+        ["N2001"]
     );
 }

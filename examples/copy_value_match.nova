@@ -1,0 +1,9 @@
+struct Point{var x:int8}
+func main(){
+    var point=Point(-2)
+    match point{
+        p if p.x<0=>{point.x=4;print("snapshot={p.x}/current={point.x}")},
+        _=>{print("other")}
+    }
+    match '🙂'{ch if ch=='🙂'=>{print("char={ch}")},_=>{}}
+}

@@ -1,0 +1,8 @@
+public struct Account {
+    public var amount:int8
+    public func positive(self)->bool{return self.amount>0}
+}
+public type Entry=Account
+public func source(value:Account)->Account{print("scrutinee");return value}
+private struct Secret{private let n:int8}
+public func secret()->Secret{return Secret(7)}

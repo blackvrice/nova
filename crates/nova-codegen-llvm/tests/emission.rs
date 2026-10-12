@@ -1532,3 +1532,52 @@ fn p29_real_llvm_nested_patterns_coff_elf_o0_o2() {
         }
     }
 }
+
+fn p30_pattern_unit() -> CodegenUnit {
+    unit("struct P{var n:int8}func main(){var x=P(3);match x{p if p.n>0=>{x.n=9;print(\"{p.n}/{x.n}\")},_=>{}}match 3 as uint64{n=>{print(\"{n}\")}}}")
+}
+#[test]
+fn p30_recursive_patterns_ir_deterministic_private_tagged_abi() {
+    let unit = p30_pattern_unit();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&unit, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&unit, target, true).unwrap());
+        assert!(!ir.text.contains("switch i32"));
+        assert!(ir.text.contains("i8"));
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 via NOVA_CLANG"]
+fn p30_real_llvm_nested_patterns_coff_elf_o0_o2() {
+    let unit = p30_pattern_unit();
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG")),
+    };
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-p30-tests")
+        .join(test_run_directory());
+    std::fs::create_dir_all(&root).unwrap();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
+            let object_path = root.join(format!("{}-{optimization:?}.obj", target.triple()));
+            backend
+                .codegen_unit(
+                    &unit,
+                    &target,
+                    &CodegenOptions {
+                        object_path: object_path.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(object_path).unwrap();
+            assert!(bytes.len() > 100);
+            if target == TargetSpec::WindowsX64Msvc {
+                assert_eq!(&bytes[..2], b"\x64\x86")
+            } else {
+                assert_eq!(&bytes[..4], b"\x7fELF")
+            }
+        }
+    }
+}

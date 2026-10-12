@@ -1360,6 +1360,43 @@ for(const c of globalPatternFixture.historical_overrides){const oldName=c.source
   && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P29 frozen P28 historical override');}
 checks.push('P29 Accepted/next-step 승인 ledger·62-production EBNF/기존 61개 보존·6개 UTF-8/LF source hash·두 파일 출력/부정 4 byte Span·P28 global 거부 역사와 현재 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const copyValueMatchProposal=manifest.accepted_proposals.find(p=>p.id==='P30');
+assert(copyValueMatchProposal?.status==='Accepted' && copyValueMatchProposal.implementation_verified===true
+  && copyValueMatchProposal.approval_date==='2026-10-12' && copyValueMatchProposal.approval_evidence==='다음 개발 승인할테니 개발 진행해줘'
+  && copyValueMatchProposal.document==='COPY_VALUE_MATCH_STAGE_B_PROPOSAL.md'
+  && copyValueMatchProposal.grammar===globalPatternProposal.grammar && copyValueMatchProposal.grammar_change===false
+  && !manifest.draft_proposals?.some(p=>p.id==='P30'),'P30 approval ledger/reused grammar');
+const copyValueMatchText=fs.readFileSync(path.join(pack,copyValueMatchProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','whole','snapshot','opaque','N3101','N3102','N3004','String','1,025','10,000','100,000','1,000,000','바이트 그대로 재사용','grammar_change=false','전체 D08'])assert(copyValueMatchText.includes(phrase),'P30 missing boundary '+phrase);
+const copyValueMatchRoot=path.join(pack,'copy-value-match-proposal-fixtures');
+const copyValueMatchFixture=JSON.parse(fs.readFileSync(path.join(copyValueMatchRoot,'expected.json'),'utf8'));
+assert(copyValueMatchFixture.proposal==='P30' && copyValueMatchFixture.status==='Accepted' && copyValueMatchFixture.implementation_verified===true
+  && copyValueMatchFixture.approval_date===copyValueMatchProposal.approval_date && copyValueMatchFixture.approval_evidence===copyValueMatchProposal.approval_evidence
+  && copyValueMatchFixture.grammar===copyValueMatchProposal.grammar && copyValueMatchFixture.grammar_change===false && copyValueMatchFixture.grammar_productions===62
+  && globalPatternProductions.size===62 && copyValueMatchFixture.grammar_sha256===hash(fs.readFileSync(path.join(pack,copyValueMatchProposal.grammar)))
+  && copyValueMatchFixture.entry==='main.nova' && copyValueMatchFixture.source_root==='.'
+  && JSON.stringify(copyValueMatchFixture.reachable_modules)==='["main","values"]'
+  && copyValueMatchFixture.validated_result?.check_exit===0 && copyValueMatchFixture.validated_result?.native_exit===0
+  && copyValueMatchFixture.validated_result?.stdout==='scrutinee\nfirst\nsecond\nsnapshot=7/current=9\nchar=🙂\nnan\nnegative-zero\nmax=1\nprivate-copy\nsuccess=3\nresult=1\nerror=4\nloop=1\n' && copyValueMatchFixture.validated_result?.stderr==='','P30 validated result');
+const copyValueMatchSources=Object.keys(copyValueMatchFixture.source_sha256??{});
+assert(copyValueMatchSources.length===16 && fs.readdirSync(copyValueMatchRoot).filter(n=>n.endsWith('.nova')).length===16,'P30 source count');
+for(const name of copyValueMatchSources){const bytes=fs.readFileSync(path.join(copyValueMatchRoot,name));assert(hash(bytes)===copyValueMatchFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P30 source hash/UTF8/LF '+name);}
+assert(copyValueMatchFixture.negative_cases?.length===12 && copyValueMatchFixture.positive_cases?.length===1 && copyValueMatchFixture.runtime_cases?.length===1,'P30 case counts');
+for(const c of copyValueMatchFixture.negative_cases){const bytes=fs.readFileSync(path.join(copyValueMatchRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && c.primary.start<c.primary.end && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P30 negative byte Span '+c.source);}
+const copyValueMatchScalars=copyValueMatchFixture.positive_cases[0];
+assert(copyValueMatchScalars.source==='scalar_boundaries.nova' && copyValueMatchScalars.validated_result?.check_exit===0 && copyValueMatchScalars.validated_result?.native_exit===0 && copyValueMatchScalars.validated_result?.stdout==='int8=-128\nint16=-32768\nint32=-2147483648\nint64=-9223372036854775808\nuint8=255\nuint16=65535\nuint32=4294967295\nuint64=18446744073709551615\nfloat32=nan\nchar-control=ok\n' && copyValueMatchScalars.validated_result?.stderr==='','P30 scalar results');
+const copyValueMatchAbort=copyValueMatchFixture.runtime_cases[0];
+assert(copyValueMatchAbort.source==='guard_abort.nova' && copyValueMatchAbort.validated_result?.check_exit===0 && copyValueMatchAbort.validated_result?.native_exit===1
+  && copyValueMatchAbort.validated_result?.stdout==='before\n' && copyValueMatchAbort.primary.start===41 && copyValueMatchAbort.primary.end===53
+  && copyValueMatchAbort.validated_result?.stderr_first_line==='Nova panic: Int32 overflow at file#0:41..53','P30 runtime results');
+assert(copyValueMatchFixture.historical_overrides?.length===3,'P30 historical override count');
+for(const c of copyValueMatchFixture.historical_overrides){const oldRoot=path.resolve(copyValueMatchRoot,path.dirname(c.source));const oldName=path.basename(c.source);const old=JSON.parse(fs.readFileSync(path.join(oldRoot,'expected.json'),'utf8'));
+  assert(['P14','P24','P25'].includes(c.proposal) && old.proposal===c.proposal && old.negative_cases.find(x=>x.source===oldName)?.expected_diagnostic==='N2101'
+  && c.original_diagnostic==='N2101' && (!old.source_sha256 || c.source_sha256===old.source_sha256[oldName])
+  && hash(fs.readFileSync(path.join(copyValueMatchRoot,c.source)))===c.source_sha256
+  && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P30 frozen historical override '+c.proposal);}
+checks.push('P30 Accepted/next-step 승인 ledger·P29 62-production EBNF 원 hash 재사용·16개 UTF-8/LF source hash·두 파일 출력/정상 1/부정 12 byte Span/Runtime 1·P14/P24/P25 root 거부 역사와 현재 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

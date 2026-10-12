@@ -1,0 +1,20 @@
+func copy0(x:int8)->int8{match x{n=>{return n}}}
+func copy1(x:int16)->int16{match x{n=>{return n}}}
+func copy2(x:int32)->int32{match x{n=>{return n}}}
+func copy3(x:int64)->int64{match x{n=>{return n}}}
+func copy4(x:uint8)->uint8{match x{n=>{return n}}}
+func copy5(x:uint16)->uint16{match x{n=>{return n}}}
+func copy6(x:uint32)->uint32{match x{n=>{return n}}}
+func copy7(x:uint64)->uint64{match x{n=>{return n}}}
+func main(){
+let v0=copy0(-128);print("int8={v0}")
+let v1=copy1(-32768);print("int16={v1}")
+let v2=copy2(-2147483648);print("int32={v2}")
+let v3=copy3(-9223372036854775808);print("int64={v3}")
+let v4=copy4(255);print("uint8={v4}")
+let v5=copy5(65535);print("uint16={v5}")
+let v6=copy6(4294967295);print("uint32={v6}")
+let v7=copy7(18446744073709551615);print("uint64={v7}")
+match 0.0/0.0{n if n==n=>{print("wrong")},_=>{print("float32=nan")}}
+match '\0'{ch if ch=='\0'=>{print("char-control=ok")},_=>{print("wrong")}}
+}

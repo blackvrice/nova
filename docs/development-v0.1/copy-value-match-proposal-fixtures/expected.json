@@ -1,0 +1,210 @@
+{
+  "proposal": "P30",
+  "status": "Accepted",
+  "implementation_verified": true,
+  "approval_date": "2026-10-12",
+  "approval_evidence": "다음 개발 승인할테니 개발 진행해줘",
+  "grammar": "GRAMMAR_STAGE_B_GLOBAL_CONST_DESTRUCTURING.ebnf",
+  "grammar_change": false,
+  "grammar_productions": 62,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "values"
+  ],
+  "source_sha256": {
+    "values.nova": "699c5d9a15482b31c4c46b5dfebb6cb10f38a836a594229b5757f5398e47b29b",
+    "main.nova": "6fa62d573059f2eb0197538da5068d97fa23179089b647268cbb1db2d209f868",
+    "guard_abort.nova": "7fb2488934fea4e9bc0cba6d1970520a3ae751423512ff0b48137cdba2feb775",
+    "guard_only.nova": "29a0bb56127eb9527cfe75e8c33aec69b79d6beb1f55037fb8b4d9700d969caf",
+    "after_binder.nova": "ca289a9fa752b4e767cfbf6e862f3e8f8f93a4821ce04b5afe47a81cad7bc968",
+    "binder_mutation.nova": "7de78fb67eddb5b71df7e2925b39768e1db639afe8fbeee118ccdefeb434b853",
+    "binder_escape.nova": "9c32882a1822150bc000057971c068d23ca91bb9a8ee25a5a90f2347cc52ea45",
+    "wrong_bool_pattern.nova": "b595f8244fa950386199e9edf36dabd5d2f3584d2bf340d67828fc6deef4fd4c",
+    "wrong_tuple_pattern.nova": "77e0c22fa1a8008e6397891aa32435c43b00bb3d0df8ab69b0737192fad012e7",
+    "literal_pattern.nova": "8bcb2def10776829d798993f9e5a9206e0c4f1c7bc91f19ce5448fc533b06a78",
+    "char_pattern.nova": "23718ec73791755ea834b4228b3407f6b579a6b37724428c79072faa1e4c73ae",
+    "string_scrutinee.nova": "f867d65fef8aa01496e7137e74383a0a3cd0459e979dbbd4a961cc9e86e30c62",
+    "non_bool_guard.nova": "25d9566af3669b661b8b47be8152e2076005bc76689ac29de8c9529a68f3f386",
+    "missing_return.nova": "f90de809746e4d35fc4603f5846b603c9e80582d283577d1828702397632095c",
+    "private_field.nova": "9a52a69b658e92100d16bdc5b5e92ed49bd54d99cbc3cf7ea55a97ba656dca8d",
+    "scalar_boundaries.nova": "b02e8b9fa567f99ae26582cc35cc9310fbb5e95ad9bcb5aa898f5a1a35dad71d"
+  },
+  "negative_cases": [
+    {
+      "source": "guard_only.nova",
+      "expected_diagnostic": "N3101",
+      "check_exit": 1,
+      "primary": {
+        "start": 12,
+        "end": 17
+      }
+    },
+    {
+      "source": "after_binder.nova",
+      "expected_diagnostic": "N3102",
+      "check_exit": 1,
+      "primary": {
+        "start": 26,
+        "end": 27
+      }
+    },
+    {
+      "source": "binder_mutation.nova",
+      "expected_diagnostic": "N3004",
+      "check_exit": 1,
+      "primary": {
+        "start": 24,
+        "end": 25
+      }
+    },
+    {
+      "source": "binder_escape.nova",
+      "expected_diagnostic": "N2001",
+      "check_exit": 1,
+      "primary": {
+        "start": 32,
+        "end": 33
+      }
+    },
+    {
+      "source": "wrong_bool_pattern.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 20,
+        "end": 24
+      }
+    },
+    {
+      "source": "wrong_tuple_pattern.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 20,
+        "end": 25
+      }
+    },
+    {
+      "source": "literal_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 20,
+        "end": 21
+      }
+    },
+    {
+      "source": "char_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 25,
+        "end": 31
+      }
+    },
+    {
+      "source": "string_scrutinee.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 18,
+        "end": 24
+      }
+    },
+    {
+      "source": "non_bool_guard.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 25,
+        "end": 26
+      }
+    },
+    {
+      "source": "missing_return.nova",
+      "expected_diagnostic": "N3003",
+      "check_exit": 1,
+      "primary": {
+        "start": 18,
+        "end": 34
+      }
+    },
+    {
+      "source": "private_field.nova",
+      "expected_diagnostic": "N2004",
+      "check_exit": 1,
+      "primary": {
+        "start": 53,
+        "end": 54
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "source": "guard_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 41,
+        "end": 53
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:41..53"
+      }
+    }
+  ],
+  "historical_overrides": [
+    {
+      "proposal": "P14",
+      "source": "../enum-proposal-fixtures/invalid_scrutinee.nova",
+      "source_sha256": "962ac77ca3d50f7e32babd026bfa87cffae8e2239b030f7aa014f2f45bcb0c33",
+      "original_diagnostic": "N2101",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "proposal": "P24",
+      "source": "../nested-pattern-proposal-fixtures/root_scalar.nova",
+      "source_sha256": "31530c7dbc2f3535ad03ea39e66d42aaa233d0a6a9d714fec5fcf767ab6992da",
+      "original_diagnostic": "N2101",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "proposal": "P25",
+      "source": "../guard-proposal-fixtures/root_scalar.nova",
+      "source_sha256": "cb33a7a21c50df28392ea017ba7cb71303ccaa14b30e092a76fc2fcdde556b3c",
+      "original_diagnostic": "N2101",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "positive_cases": [
+    {
+      "source": "scalar_boundaries.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "int8=-128\nint16=-32768\nint32=-2147483648\nint64=-9223372036854775808\nuint8=255\nuint16=65535\nuint32=4294967295\nuint64=18446744073709551615\nfloat32=nan\nchar-control=ok\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "grammar_sha256": "1062100870cf7e77f98cecb27b865adbeb3b65370f6819a35eb8626e734a0d29",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "scrutinee\nfirst\nsecond\nsnapshot=7/current=9\nchar=🙂\nnan\nnegative-zero\nmax=1\nprivate-copy\nsuccess=3\nresult=1\nerror=4\nloop=1\n",
+    "stderr": ""
+  }
+}

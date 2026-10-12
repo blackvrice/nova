@@ -1,0 +1,2 @@
+use values::secret
+func main(){match secret(){p if p.n==7=>{},_=>{}}}

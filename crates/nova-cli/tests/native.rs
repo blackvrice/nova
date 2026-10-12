@@ -2293,3 +2293,79 @@ fn p29_native_global_components_import_defaults_and_history_o0_o2() {
         for s in [include_str!("../../../docs/development-v0.1/const-destructuring-proposal-fixtures/global_pattern.nova"),include_str!("../../../docs/development-v0.1/const-destructuring-proposal-fixtures/visible_global_pattern.nova")] {let r=program_profile(s,profile);assert!(r.status.success(),"{}",String::from_utf8_lossy(&r.stderr));assert!(r.stdout.is_empty()&&r.stderr.is_empty());}
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p30_native_copy_match_import_snapshot_guard_ieee_char_try_and_loops_o0_o2() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/copy-value-match-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="scrutinee\nfirst\nsecond\nsnapshot=7/current=9\nchar=🙂\nnan\nnegative-zero\nmax=1\nprivate-copy\nsuccess=3\nresult=1\nerror=4\nloop=1\n";
+    for profile in ["debug", "release"] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("run")
+            .arg(root.join("main.nova"))
+            .arg("--source-root")
+            .arg(&root)
+            .args(["--profile", profile])
+            .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+            .output()
+            .unwrap();
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, expected.as_bytes());
+        assert!(r.stderr.is_empty());
+        let r = program_profile(include_str!("../../../docs/development-v0.1/copy-value-match-proposal-fixtures/scalar_boundaries.nova"), profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout,b"int8=-128\nint16=-32768\nint32=-2147483648\nint64=-9223372036854775808\nuint8=255\nuint16=65535\nuint32=4294967295\nuint64=18446744073709551615\nfloat32=nan\nchar-control=ok\n");
+        assert!(r.stderr.is_empty());
+        let r = program_profile(
+            include_str!("../../../examples/copy_value_match.nova"),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, "snapshot=-2/current=4\nchar=🙂\n".as_bytes());
+        assert!(r.stderr.is_empty());
+        let r = program_profile(
+            include_str!(
+                "../../../docs/development-v0.1/enum-proposal-fixtures/invalid_scrutinee.nova"
+            ),
+            profile,
+        );
+        assert!(r.status.success());
+        assert!(r.stdout.is_empty() && r.stderr.is_empty());
+        for source in [
+            include_str!(
+                "../../../docs/development-v0.1/nested-pattern-proposal-fixtures/root_scalar.nova"
+            ),
+            include_str!("../../../docs/development-v0.1/guard-proposal-fixtures/root_scalar.nova"),
+        ] {
+            let r = program_profile(source, profile);
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert!(r.stdout.is_empty() && r.stderr.is_empty());
+        }
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p30_native_guard_checked_abort_preserves_exact_operation_span_o0_o2() {
+    let source = include_str!(
+        "../../../docs/development-v0.1/copy-value-match-proposal-fixtures/guard_abort.nova"
+    );
+    let start = source.find("2147483647+n").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert_eq!(r.status.code(), Some(1));
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(
+                format!(
+                    "Nova panic: Int32 overflow at file#0:{start}..{}",
+                    start + 12
+                )
+                .as_str()
+            )
+        );
+    }
+}

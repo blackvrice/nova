@@ -1,0 +1,25 @@
+use values::Account
+use values::Entry
+use values::source
+use values::secret
+func gate(label:string,answer:bool)->bool{print(label);return answer}
+func maximum(x:uint64)->int8{match x{n if n==18446744073709551615=>{return 1},_=>{return 0}}}
+func propagate(r:Result<int8,int8>)->Result<int8,int8>{match 3 as int8{n if (try r)==n=>{print("success={n}")},_=>{print("miss")}}return Result::Success(1)}
+func main(){
+    var item:Entry=Account(7)
+    match source(item){
+        p if gate("first",false)=>{print("wrong")},
+        p if gate("second",p.positive())=>{item.amount=9;print("snapshot={p.amount}/current={item.amount}")},
+        _=>{print("wrong")}
+    }
+    match '🙂'{ch if ch=='🙂'=>{print("char={ch}")},_=>{}}
+    let nan:double=0.0/0.0
+    match nan{n if n==n=>{print("wrong")},_=>{print("nan")}}
+    match -0.0 as double{f if 1.0/f<0.0=>{print("negative-zero")},_=>{print("wrong")}}
+    let limit=maximum(18446744073709551615)
+    print("max={limit}")
+    match secret(){whole=>{print("private-copy")}}
+    match propagate(Result::Success(3)){Result::Success(n)=>{print("result={n}")},Result::Error(e)=>{print("error={e}")}}
+    match propagate(Result::Error(4)){Result::Success(_)=>{print("wrong")},Result::Error(e)=>{print("error={e}")}}
+    for i in 0 until 3{match i{n if n==0=>{continue},n if n==2=>{break},n=>{print("loop={n}")}}}
+}

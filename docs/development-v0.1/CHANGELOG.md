@@ -1,5 +1,14 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P30 숫자·char·Copy struct statement match
+
+- 다음 단계 사용자 승인으로 제한 계약을 구현 전에 기록했다. P29 62-production 문법을 재사용한다.
+- whole Copy binder/wildcard·Bool guard·opaque coverage·snapshot·기존 Source/MIR proof 연결.
+- 새 테스트 13개, 기본 470·LLVM 26·Native 67 PASS, fmt/check/Clippy·문서 검증 완료.
+- P14/P24/P25 root scalar 거부 역사를 현재 성공 override와 함께 보존했다.
+- P01~P29 ledger·원본/기존 fixture bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-12 — P29 전역 Copy const 구조 분해
 
 - 다음 단계 사용자 승인으로 제한 계약·62-production EBNF를 먼저 기록했다.

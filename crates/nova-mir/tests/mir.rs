@@ -3496,3 +3496,90 @@ fn p29_global_cached_components_have_no_runtime_initializer_and_reject_cache_for
         Err(LoweringError::InvalidAnalysis)
     );
 }
+
+#[test]
+fn p30_checked_copy_match_domains_guard_and_binder_plan_forgery_rejected() {
+    let source =
+        "struct P{var n:int8}func main(){match P(3){p if p.n>0=>{print(\"{p.n}\")},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let binder = r
+        .definitions
+        .iter()
+        .find_map(|d| match d.kind {
+            nova_resolve::DefinitionKind::Local(id) if d.name == "p" => Some(id),
+            _ => None,
+        })
+        .unwrap();
+    lower(&h, &r, &check(&h, &r).unwrap(), false).unwrap();
+    for change in 0..3 {
+        let mut c = check(&h, &r).unwrap();
+        match change {
+            0 => c.recursive_patterns[binder.0].as_mut().unwrap().ty = Type::Int32,
+            1 => c.nested_matches.clear(),
+            _ => {
+                let guard = c.guards.iter_mut().find(|g| g.is_some()).unwrap();
+                *guard = None;
+            }
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p30_snapshot_copy_operand_source_and_guard_cfg_forgery_rejected() {
+    let original=pass("func value()->uint64{return 3}func main(){match value(){n if n>0=>{print(\"{n}\")},_=>{}}}");
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "main")
+        .unwrap();
+    assert_eq!(
+        original.bodies[body]
+            .blocks
+            .iter()
+            .filter(|b| matches!(
+                b.terminator.as_ref().unwrap().kind,
+                TerminatorKind::Call { .. }
+            ))
+            .count(),
+        2
+    );
+    for change in 0..2 {
+        let mut bad = original.clone();
+        let b = bad.bodies[body]
+            .blocks
+            .iter_mut()
+            .find(|b| {
+                matches!(
+                    b.terminator.as_ref().unwrap().kind,
+                    TerminatorKind::Branch { .. }
+                )
+            })
+            .unwrap();
+        if change == 0 {
+            let TerminatorKind::Branch {
+                then_block,
+                else_block,
+                ..
+            } = &mut b.terminator.as_mut().unwrap().kind
+            else {
+                unreachable!()
+            };
+            std::mem::swap(then_block, else_block);
+        } else {
+            let TerminatorKind::Branch { condition, .. } = &mut b.terminator.as_mut().unwrap().kind
+            else {
+                unreachable!()
+            };
+            *condition = Operand::Constant(Constant::Bool(false));
+        }
+        assert!(!validate(&bad).is_empty());
+    }
+}

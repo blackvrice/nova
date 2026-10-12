@@ -1009,6 +1009,11 @@ fn p24_fixed_diagnostics_utf8_primary_and_cascade_suppression() {
         ),
     ] {
         let loaded = load(&root.join(name), Some(&root)).unwrap();
+        // P30 historical override; original source and metadata remain unchanged.
+        if name == "root_scalar.nova" {
+            unit(&loaded);
+            continue;
+        }
         let mut diagnostics = loaded.diagnostics.clone();
         if let Some(hir) = &loaded.module {
             let resolved = nova_resolve::resolve(hir);
@@ -1115,6 +1120,11 @@ fn p25_fixed_guard_negative_utf8_spans_and_cascade_boundaries() {
         ),
     ] {
         let loaded = load(&root.join(name), Some(&root)).unwrap();
+        // P30 historical override; original source and metadata remain unchanged.
+        if name == "root_scalar.nova" {
+            unit(&loaded);
+            continue;
+        }
         let mut diagnostics = loaded.diagnostics.clone();
         if let Some(hir) = &loaded.module {
             let resolved = nova_resolve::resolve(hir);
@@ -1647,4 +1657,79 @@ fn p29_internal_components_import_and_private_same_module_reference() {
         ("other.nova", "public const(n,_)=(4,())"),
     ]);
     unit(&loaded);
+}
+
+#[test]
+fn p30_copy_match_bundle_import_alias_private_fields_and_negative_spans() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/copy-value-match-proposal-fixtures");
+    let loaded = load(&root.join("main.nova"), Some(&root)).unwrap();
+    unit(&loaded);
+    for (name, code) in [
+        ("guard_only.nova", "N3101"),
+        ("after_binder.nova", "N3102"),
+        ("binder_mutation.nova", "N3004"),
+        ("binder_escape.nova", "N2001"),
+        ("wrong_bool_pattern.nova", "N2101"),
+        ("wrong_tuple_pattern.nova", "N2101"),
+        ("literal_pattern.nova", "N1102"),
+        ("char_pattern.nova", "N1102"),
+        ("string_scrutinee.nova", "N2101"),
+        ("non_bool_guard.nova", "N2101"),
+        ("missing_return.nova", "N3003"),
+        ("private_field.nova", "N2004"),
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = l.diagnostics.clone();
+        if l.module.is_some() {
+            let (_, c) = analyzed(&l);
+            diagnostics.extend(c.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code),
+            "{name}: {diagnostics:?}"
+        );
+        let expected = match name {
+            "guard_only.nova" => (12, 17),
+            "after_binder.nova" => (26, 27),
+            "binder_mutation.nova" => (24, 25),
+            "binder_escape.nova" => (32, 33),
+            "wrong_bool_pattern.nova" => (20, 24),
+            "wrong_tuple_pattern.nova" => (20, 25),
+            "literal_pattern.nova" => (20, 21),
+            "char_pattern.nova" => (25, 31),
+            "string_scrutinee.nova" => (18, 24),
+            "non_bool_guard.nova" => (25, 26),
+            "missing_return.nova" => (18, 34),
+            "private_field.nova" => (53, 54),
+            _ => unreachable!(),
+        };
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && (d.primary.span.start(), d.primary.span.end()) == expected),
+            "{name}: {diagnostics:?}"
+        );
+        for d in diagnostics {
+            l.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                l.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+#[test]
+fn p30_private_copy_struct_whole_binder_is_allowed_without_field_access() {
+    unit(&fixture(&[
+        (
+            "main.nova",
+            "use other::make;func main(){match make(){copy=>{}}}",
+        ),
+        (
+            "other.nova",
+            "private struct S{private let x:int8}public func make()->S{return S(7)}",
+        ),
+    ]));
+    let old = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/enum-proposal-fixtures/invalid_scrutinee.nova");
+    unit(&load(&old, None).unwrap());
 }
