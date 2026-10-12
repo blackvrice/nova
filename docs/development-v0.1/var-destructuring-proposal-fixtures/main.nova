@@ -1,0 +1,42 @@
+// P27 approved contract: fixed acceptance source.
+use types::Packet as P
+use types::Marker
+use types::Pair
+use types::make
+use types::pair
+use types::unit
+use types::fetch
+func worker(fail:bool)->Result<int8,int8>{
+    var (n,flag):Pair=try fetch(fail)
+    n=n+1
+    flag=false
+    print("after={flag}")
+    return Result::Success(n)
+}
+func main(){
+    var P::Data((point,(number,flag)),ch,())=make()
+    point.x=9
+    number=number+1
+    flag=!flag
+    ch='🙂'
+    print("mutable={point.value()}/{number}/{flag}/{ch}")
+    var original=(3,false)
+    var (copy,enabled)=original
+    original.0=9
+    copy=5
+    enabled=true
+    print("copy={copy}/{enabled}/original={original.0}")
+    var (_,_)=pair()
+    var ()=unit()
+    var Marker::Only=Marker::Only
+    let outer=2
+    if true{var (outer,_)=(outer+1,false);outer=7;print("shadow={outer}")}
+    var _=9
+    _=10
+    print("legacy={_}")
+    var sum=0
+    for i in 0 until 2{var (n,flag)=(i,true);n=n+1;flag=false;sum=sum+n}
+    print("loop={sum}")
+    match worker(false){Result::Success(n)=>{print("ok={n}")},Result::Error(e)=>{print("wrong={e}")}}
+    match worker(true){Result::Success(n)=>{print("wrong={n}")},Result::Error(e)=>{print("error={e}")}}
+}

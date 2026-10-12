@@ -1184,11 +1184,14 @@ impl<'a> Parser<'a> {
     fn destructuring_binding(&mut self) -> AstNodeId {
         let keyword = self.bump();
         let before = self.diagnostics.len();
-        if keyword.kind != TokenKind::Keyword(Keyword::Let) {
+        if !matches!(
+            keyword.kind,
+            TokenKind::Keyword(Keyword::Let | Keyword::Var)
+        ) {
             self.report(
                 1102,
                 self.current().span,
-                "compound binding supports let only",
+                "compound binding supports let or var only",
             );
         }
         let pattern = self.pattern();
@@ -1224,6 +1227,7 @@ impl<'a> Parser<'a> {
         let id = self.node(
             if self.diagnostics.len() == before {
                 NodeKind::DestructuringBinding {
+                    mutable: keyword.kind == TokenKind::Keyword(Keyword::Var),
                     keyword: keyword.span,
                     colon,
                     equals,

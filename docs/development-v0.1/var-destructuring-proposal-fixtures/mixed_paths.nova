@@ -1,0 +1,3 @@
+// P27 approved contract: fixed acceptance source.
+struct Inner{var pair:(int8,bool)}struct Outer{var inner:Inner}
+func main(){let original=Outer(Inner((7,true)));var (p,())=(original,());p.inner.pair.0=9;p.inner.pair.1=false;print("paths={p.inner.pair.0}/{p.inner.pair.1}/original={original.inner.pair.0}")}

@@ -42,6 +42,7 @@ pub struct MatchGuard {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DestructuringBinding {
+    pub mutable: bool,
     pub pattern: HirId,
     pub annotation: Option<HirId>,
     pub initializer: HirId,
@@ -281,6 +282,23 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     {
         return Err(CheckError::InvalidResolution);
     }
+    // P27 Binder nodes obtain mutability from their compound declaration owner.
+    let mut mutable_pattern_binders = vec![false; size];
+    for node in module.nodes() {
+        if matches!(
+            node.kind,
+            HirKind::DestructuringBinding { mutable: true, .. }
+        ) {
+            let mut pending = vec![node.children[0]];
+            while let Some(id) = pending.pop() {
+                let pattern = &module.nodes()[id.0];
+                if matches!(pattern.kind, HirKind::Binder { .. }) {
+                    mutable_pattern_binders[id.0] = true;
+                }
+                pending.extend(pattern.children.iter().rev().copied());
+            }
+        }
+    }
     for (index, definition) in resolved.definitions.iter().enumerate() {
         let id = match definition.kind {
             DefinitionKind::BuiltinPrint => {
@@ -322,7 +340,9 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         };
         if module.symbol(*name) != Some(definition.name.as_str())
             || resolved.declaration_ids[id.0] != Some(DefId(index))
-            || definition.mutable != matches!(node.kind, HirKind::Binding { mutable: true, .. })
+            || definition.mutable
+                != (matches!(node.kind, HirKind::Binding { mutable: true, .. })
+                    || mutable_pattern_binders[id.0])
             || definition.constant != matches!(node.kind, HirKind::Binding { constant: true, .. })
         {
             return Err(CheckError::InvalidResolution);

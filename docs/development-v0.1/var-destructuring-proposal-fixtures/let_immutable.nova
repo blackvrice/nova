@@ -1,0 +1,2 @@
+// P27 approved contract: fixed acceptance source.
+func main(){let(n,_)= (1,2);n=3}

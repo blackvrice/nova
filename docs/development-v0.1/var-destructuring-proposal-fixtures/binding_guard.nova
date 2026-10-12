@@ -1,0 +1,2 @@
+// P27 approved contract: fixed acceptance source.
+func main(){var(a,b) if true=(1,2)}

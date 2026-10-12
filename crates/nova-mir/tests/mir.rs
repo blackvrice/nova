@@ -3231,3 +3231,120 @@ fn p26_discard_has_no_local_and_unit_call_is_preserved() {
         2
     );
 }
+
+#[test]
+fn p27_resolved_and_checked_mutability_owner_forgery_rejected() {
+    let source = "func main(){var(n,flag):(int8,bool)=(7,true);n=n+1;flag=false}";
+    let mut db = SourceDatabase::default();
+    let file = db.add("api", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let def = r.definitions.iter().position(|d| d.name == "n").unwrap();
+    let mut bad = resolve(&h);
+    bad.definitions[def].mutable = false;
+    assert_eq!(
+        check(&h, &bad).unwrap_err(),
+        nova_typecheck::CheckError::InvalidResolution
+    );
+    let mut c = check(&h, &r).unwrap();
+    let id = c
+        .destructuring_bindings
+        .iter()
+        .position(Option::is_some)
+        .unwrap();
+    c.destructuring_bindings[id].as_mut().unwrap().mutable = false;
+    assert_eq!(
+        lower(&h, &r, &c, false),
+        Err(LoweringError::InvalidAnalysis)
+    );
+}
+#[test]
+fn p27_mir_binder_mutation_same_type_target_and_snapshot_forgery_rejected() {
+    let original=pass("func main(){var original=(1,2);var(a,b)=original;a=3;b=4;original.0=9;print(\"{a}/{b}/{original.0}\")}");
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "main")
+        .unwrap();
+    for change in 0..4 {
+        let mut bad = original.clone();
+        let locals = bad.bodies[body]
+            .locals
+            .iter()
+            .enumerate()
+            .filter(|(_, l)| l.definition.is_some())
+            .map(|(i, _)| LocalId(i))
+            .collect::<Vec<_>>();
+        match change {
+            0 => {
+                let s = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .flat_map(|b| &mut b.statements)
+                    .find(|s| {
+                        matches!(
+                            s.kind,
+                            StatementKind::Assign(
+                                _,
+                                Rvalue::Use(Operand::Constant(Constant::Int32(3)))
+                            )
+                        )
+                    })
+                    .unwrap();
+                let StatementKind::Assign(place, _) = &mut s.kind;
+                *place = Place(*locals.last().unwrap());
+            }
+            1 => {
+                let s = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .flat_map(|b| &mut b.statements)
+                    .find(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Project(..))))
+                    .unwrap();
+                if let StatementKind::Assign(_, Rvalue::Project(_, field)) = &mut s.kind {
+                    field.index = 1 - field.index;
+                }
+            }
+            2 => {
+                let b = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .find(|b| !b.statements.is_empty())
+                    .unwrap();
+                b.statements.remove(0);
+            }
+            _ => {
+                bad.bodies.remove(body);
+            }
+        }
+        assert!(!validate(&bad).is_empty(), "forgery {change}");
+    }
+}
+#[test]
+fn p27_var_discards_keep_calls_and_create_no_scalar_locals() {
+    let m=pass("func make()->(int8,bool){print(\"init\");return(7,true)}func unit(){print(\"unit\")}func main(){var(_,_)=make();var()=unit()}");
+    let b = m
+        .bodies
+        .iter()
+        .find(|b| m.callees[b.callee.0].name == "main")
+        .unwrap();
+    assert_eq!(
+        b.locals
+            .iter()
+            .filter(|l| matches!(l.ty, Type::Int8 | Type::Bool))
+            .count(),
+        0
+    );
+    assert_eq!(
+        b.blocks
+            .iter()
+            .filter(|b| matches!(
+                b.terminator.as_ref().map(|t| &t.kind),
+                Some(TerminatorKind::Call { .. })
+            ))
+            .count(),
+        2
+    );
+}

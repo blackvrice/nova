@@ -1191,6 +1191,72 @@ const destructuringVectors=JSON.parse(fs.readFileSync(path.join(destructuringRoo
 assert(destructuringVectors.proposal==='P26' && destructuringVectors.finite_domain_reference_only===true && destructuringVectors.cases?.length===6,'P26 invalid independent reference ledger');
 checks.push('P26 Accepted/승인·구현 ledger·62-production EBNF/기존 60개 보존·N3103 등록·source 28개 hash·두 파일/정상 3/부정 22/Runtime 1 UTF-8 Span·검증된 17줄 metadata·finite irrefutability vector 6개 (문서 validator 자체는 Compiler/Native 실행 아님)');
 
+const varDestructuringProposal=manifest.accepted_proposals?.find(p=>p.id==='P27');
+assert(varDestructuringProposal?.status==='Accepted' && varDestructuringProposal.implementation_verified===true
+  && varDestructuringProposal.approval_date==='2026-10-12'
+  && varDestructuringProposal.approval_evidence==='다음 개발 진행해줘 / 또한 다음개발 작업 승인할께'
+  && varDestructuringProposal.document==='VAR_DESTRUCTURING_STAGE_B_PROPOSAL.md'
+  && varDestructuringProposal.grammar==='GRAMMAR_STAGE_B_VAR_DESTRUCTURING.ebnf' && varDestructuringProposal.grammar_change===true
+  && !manifest.draft_proposals?.some(p=>p.id==='P27'),'P27 invalid approval ledger');
+const varDestructuringText=fs.readFileSync(path.join(pack,varDestructuringProposal.document),'utf8');
+for(const requirement of ['Accepted / 구현·검증 완료','또한 다음개발 작업 승인할께','61개 보존','10,000','100,000','1,000,000','initializer','mutable','N3103','var_pattern.nova','Move/borrow/Drop','전체 D08']) {
+  assert(varDestructuringText.includes(requirement),'P27 missing boundary '+requirement);
+}
+validateGrammar('GRAMMAR_STAGE_B_VAR_DESTRUCTURING.ebnf');
+const varDestructuringGrammar=fs.readFileSync(path.join(pack,'GRAMMAR_STAGE_B_VAR_DESTRUCTURING.ebnf'),'utf8');
+const varDestructuringProductions=productions(varDestructuringGrammar);
+assert(varDestructuringGrammar.includes('Accepted 2026-10-12; implemented and verified') && varDestructuringProductions.size===62,'P27 invalid grammar');
+for(const [name,value]of destructuringProductions)if(name!=='binding')assert(varDestructuringProductions.get(name)===value,'P27 changed approved production '+name);
+assert(varDestructuringProductions.get('binding')===destructuringProductions.get('binding').replace('|"let",destructuring_pattern','|("let"|"var"),destructuring_pattern'),'P27 invalid binding extension');
+const varDestructuringRoot=path.join(pack,'var-destructuring-proposal-fixtures');
+const varDestructuringFixture=JSON.parse(fs.readFileSync(path.join(varDestructuringRoot,'expected.json'),'utf8'));
+const varDestructuringOutput='initializer\nmutable=9/8/false/🙂\ncopy=5/true/original=9\ndiscard-effect\nunit-call\nshadow=7\nlegacy=10\nloop=3\nfetch\nafter=false\nok=5\nfetch\nerror=5\n';
+assert(varDestructuringFixture.proposal==='P27' && varDestructuringFixture.status==='Accepted' && varDestructuringFixture.implementation_verified===true
+  && varDestructuringFixture.approval_date===varDestructuringProposal.approval_date && varDestructuringFixture.approval_evidence===varDestructuringProposal.approval_evidence
+  && varDestructuringFixture.entry==='main.nova' && varDestructuringFixture.source_root==='.'
+  && varDestructuringFixture.grammar===varDestructuringProposal.grammar && varDestructuringFixture.grammar_productions===62
+  && JSON.stringify(varDestructuringFixture.reachable_modules)==='["main","types"]'
+  && !varDestructuringFixture.expected_result && varDestructuringFixture.validated_result?.check_exit===0
+  && varDestructuringFixture.validated_result?.native_exit===0 && varDestructuringFixture.validated_result?.stdout===varDestructuringOutput
+  && varDestructuringFixture.validated_result?.stderr==='','P27 invalid validated entry/output');
+assert(varDestructuringFixture.positive_cases?.length===2 && varDestructuringFixture.negative_cases?.length===18
+  && varDestructuringFixture.runtime_cases?.length===2,'P27 fixture counts');
+const varDestructuringSources=new Set(['main.nova','types.nova']);
+const varDestructuringCases=[...varDestructuringFixture.positive_cases,...varDestructuringFixture.negative_cases,...varDestructuringFixture.runtime_cases];
+assert(new Set(varDestructuringCases.map(c=>c.name)).size===22,'P27 duplicate fixture names');
+for(const c of varDestructuringCases){
+  assert(path.basename(c.source)===c.source && c.source.endsWith('.nova') && !c.expected_result,'P27 invalid source/metadata '+c.name);
+  varDestructuringSources.add(c.source);
+  if(c.expected_diagnostic)assert(knownCodes.has(c.expected_diagnostic) && !c.validated_result,'P27 invalid diagnostic '+c.name);
+  if(c.primary){
+    const bytes=fs.readFileSync(path.join(varDestructuringRoot,c.source));const boundaries=new Set([0]);let at=0;
+    for(const ch of bytes.toString('utf8')){at+=Buffer.byteLength(ch);boundaries.add(at);}
+    assert(c.primary.start>=0 && c.primary.start<c.primary.end && c.primary.end<=bytes.length
+      && boundaries.has(c.primary.start) && boundaries.has(c.primary.end)
+      && bytes.subarray(c.primary.start,c.primary.end).toString('utf8')===c.primary_text,'P27 invalid UTF-8 primary '+c.name);
+  }
+  if(c.forbidden_diagnostics)assert(c.forbidden_diagnostics.every(code=>knownCodes.has(code)&&code!==c.expected_diagnostic),'P27 invalid cascade '+c.name);
+}
+for(const name of varDestructuringSources){const bytes=fs.readFileSync(path.join(varDestructuringRoot,name));const text=bytes.toString('utf8');
+  assert(Buffer.from(text).equals(bytes) && text.endsWith('\n') && !text.includes('\r')
+    && varDestructuringFixture.source_sha256?.[name]===hash(bytes),'P27 source bytes/hash changed '+name);
+}
+assert(varDestructuringSources.size===24 && Object.keys(varDestructuringFixture.source_sha256??{}).length===24,'P27 source count');
+for(const c of varDestructuringFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0
+  && c.validated_result?.stdout.endsWith('\n') && c.validated_result?.stderr==='','P27 invalid positive '+c.name);
+for(const c of varDestructuringFixture.runtime_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===1
+  && c.validated_result?.stdout==='before\n'
+  && c.validated_result?.stderr_first_line===`Nova panic: integer overflow at file#0:${c.primary.start}..${c.primary.end}`,'P27 invalid Abort '+c.name);
+const varHistorical=varDestructuringFixture.historical_overrides?.[0];
+assert(varDestructuringFixture.historical_overrides?.length===1 && varHistorical.proposal==='P26'
+  && varHistorical.source==='../destructuring-proposal-fixtures/var_pattern.nova' && varHistorical.original_diagnostic==='N1102'
+  && destructuringFixture.negative_cases.find(c=>c.name==='var_pattern')?.expected_diagnostic==='N1102'
+  && varHistorical.source_sha256===destructuringFixture.source_sha256?.['var_pattern.nova']
+  && hash(fs.readFileSync(path.join(varDestructuringRoot,varHistorical.source)))===varHistorical.source_sha256
+  && varHistorical.validated_result?.check_exit===0 && varHistorical.validated_result?.native_exit===0
+  && varHistorical.validated_result?.stdout==='' && varHistorical.validated_result?.stderr==='','P27 invalid historical var override');
+checks.push('P27 Accepted/next-work 승인 ledger·62-production EBNF/기존 61개 보존·24개 원 source hash·두 파일/정상 2/부정 18/Runtime 2 UTF-8 Span·검증 13줄 metadata·P26 var 거부 역사와 현재 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

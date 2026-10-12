@@ -1,0 +1,328 @@
+{
+  "proposal": "P27",
+  "status": "Accepted",
+  "approval_date": "2026-10-12",
+  "approval_evidence": "다음 개발 진행해줘 / 또한 다음개발 작업 승인할께",
+  "implementation_verified": true,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "types"
+  ],
+  "grammar": "GRAMMAR_STAGE_B_VAR_DESTRUCTURING.ebnf",
+  "grammar_productions": 62,
+  "positive_cases": [
+    {
+      "name": "scalars",
+      "source": "scalars.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "scalars=2.5/3.5/🙂\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "mixed_paths",
+      "source": "mixed_paths.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "paths=9/false/original=7\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "let_immutable",
+      "source": "let_immutable.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "n",
+      "primary": {
+        "start": 79,
+        "end": 80
+      }
+    },
+    {
+      "name": "duplicate_binder",
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "値",
+      "primary": {
+        "start": 71,
+        "end": 74
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "same_scope",
+      "source": "same_scope.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "n",
+      "primary": {
+        "start": 75,
+        "end": 76
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "initializer_self",
+      "source": "initializer_self.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "n",
+      "primary": {
+        "start": 73,
+        "end": 74
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "binder_escape",
+      "source": "binder_escape.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "n",
+      "primary": {
+        "start": 94,
+        "end": 95
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "refutable_bool",
+      "source": "refutable_bool.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "(n,true)",
+      "primary": {
+        "start": 66,
+        "end": 74
+      }
+    },
+    {
+      "name": "refutable_enum",
+      "source": "refutable_enum.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "E::A(n)",
+      "primary": {
+        "start": 84,
+        "end": 91
+      }
+    },
+    {
+      "name": "refutable_option",
+      "source": "refutable_option.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "Option::Some(n)",
+      "primary": {
+        "start": 67,
+        "end": 82
+      }
+    },
+    {
+      "name": "refutable_result",
+      "source": "refutable_result.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "Result::Success(n)",
+      "primary": {
+        "start": 67,
+        "end": 85
+      }
+    },
+    {
+      "name": "tuple_arity",
+      "source": "tuple_arity.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "(a,b)",
+      "primary": {
+        "start": 66,
+        "end": 71
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "tuple_type",
+      "source": "tuple_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "(a,b)",
+      "primary": {
+        "start": 66,
+        "end": 71
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "annotation_range",
+      "source": "annotation_range.nova",
+      "expected_diagnostic": "N2102",
+      "primary_text": "300",
+      "primary": {
+        "start": 88,
+        "end": 91
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "const_pattern",
+      "source": "const_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "(",
+      "primary": {
+        "start": 68,
+        "end": 69
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "immutable_field",
+      "source": "immutable_field.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "x",
+      "primary": {
+        "start": 104,
+        "end": 105
+      }
+    },
+    {
+      "name": "immutable_path",
+      "source": "immutable_path.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "pair",
+      "primary": {
+        "start": 121,
+        "end": 125
+      }
+    },
+    {
+      "name": "private_field",
+      "source": "private_field.nova",
+      "expected_diagnostic": "N2004",
+      "primary_text": "value",
+      "primary": {
+        "start": 107,
+        "end": 112
+      }
+    },
+    {
+      "name": "binding_guard",
+      "source": "binding_guard.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "if",
+      "primary": {
+        "start": 72,
+        "end": 74
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "unknown_initializer",
+      "source": "unknown_initializer.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "missing",
+      "primary": {
+        "start": 75,
+        "end": 82
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    }
+  ],
+  "runtime_cases": [
+    {
+      "name": "initializer_abort",
+      "source": "initializer_abort.nova",
+      "primary_text": "x+1",
+      "primary": {
+        "start": 106,
+        "end": 109
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: integer overflow at file#0:106..109"
+      }
+    },
+    {
+      "name": "binder_abort",
+      "source": "binder_abort.nova",
+      "primary_text": "n+1",
+      "primary": {
+        "start": 116,
+        "end": 119
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: integer overflow at file#0:116..119"
+      }
+    }
+  ],
+  "source_sha256": {
+    "annotation_range.nova": "43dfa39c1a4ed7d3eacca4797863080d6027808dc58d44fff6d45f8b4e5873e2",
+    "binder_abort.nova": "6acbf73719d1c9039367852bc60dcad32313e348cf989782868bd0a8618d4e49",
+    "binder_escape.nova": "71d86e3ca44b00f5ff3f617de11f0d7c9a5b48982a4514d5bef6c606c5d461e3",
+    "binding_guard.nova": "24f30d3bc9f42dcd5d3fc82a7a9585f491e8b07a6badba031edfa0f1d58412cb",
+    "const_pattern.nova": "51cb5adf815f99fb94ef639af317bf8ceb4fcc4b4af99c5448f0db107a487327",
+    "duplicate_binder.nova": "666a10131ca97c08ff0f375532ff905f69f79b6468f0aa891c2d0a6661f7394b",
+    "immutable_field.nova": "8c93072535068379a11c5b7e9b4118bc19790817cd662411a515beb4d1203053",
+    "immutable_path.nova": "061f2e2055cd95ad05b311e226031d5e7d9f0009a81c62e66d5b7bb84270e709",
+    "initializer_abort.nova": "261b0521533f774fdcc560bd5bf0197a07453302f3421c341a25353acb9dae4c",
+    "initializer_self.nova": "5c4efbbb8906b93661619686aa84b10afa46e2bfb93a38fa3f9db35a8c3418ad",
+    "let_immutable.nova": "68d213b08a8101fdcba999d84ecccb09131eaddea00846d403260bb416e24683",
+    "main.nova": "1bbd355424ce1541e1336831fc8ea628d4decf5f6a40e28eda2aa79df78b545a",
+    "mixed_paths.nova": "01b7cb5d15b35c81e7688dd39651a767e060b6d2232bc9e2e15509a1f311db07",
+    "private_field.nova": "674f895ca09be81140cf2d9f101debaeed66e63ec13ca376e8e5cc14dff0c40e",
+    "refutable_bool.nova": "b07f22f936f39fa9618c03fe2799a63b2c20f698d0fc6a6abb41f7cc33de7664",
+    "refutable_enum.nova": "c8e4535ad69d085a3f4e70736e8e5349a35f24d539bc55cfba508a7053a65df0",
+    "refutable_option.nova": "6c3f7ff3d017dcd3378f04e530bfc2f1d8383d9ab630c930a2abd4a10c2202c5",
+    "refutable_result.nova": "ee79c046f5051268428988d9211509950e187fd01db8a8430ead48e5e94764cd",
+    "same_scope.nova": "471c153e1ae8316989923ed16835d12f3f26bfc0bd54c7fd30fd9a85b18af2d2",
+    "scalars.nova": "89dcb5fa4e95ce5ac05aa8782ef32ea94148d3fe55ed8ef53eb8e5f9aef33076",
+    "tuple_arity.nova": "c4a94e5bfc2a65a9e4b37e374c9728a097c2da01e8a4cbb5db2647321ae253a2",
+    "tuple_type.nova": "fed01507ed13b9fcc343d60977dc2769547f3f3a98587ae97dc15e6538dc5066",
+    "types.nova": "c04cdeb612965d843447a40247bd9c979423e1246c8e960e69b993ffa7c54f86",
+    "unknown_initializer.nova": "51737c3101b6dbd1adf0c16a60c23d9ba156cb692bf9f6f1eb944d96bee281b2"
+  },
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "initializer\nmutable=9/8/false/🙂\ncopy=5/true/original=9\ndiscard-effect\nunit-call\nshadow=7\nlegacy=10\nloop=3\nfetch\nafter=false\nok=5\nfetch\nerror=5\n",
+    "stderr": ""
+  },
+  "historical_overrides": [
+    {
+      "proposal": "P26",
+      "source": "../destructuring-proposal-fixtures/var_pattern.nova",
+      "original_diagnostic": "N1102",
+      "source_sha256": "d6b6c59635791adef794c0a5578cbd36233e0d29c3cb7ebc7449861c05177077",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "reason": "P27 permits local var Copy destructuring; original P26 source and metadata preserved."
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+// P27 approved contract: fixed acceptance source.
+public struct Point {var x:int8;let y:int8;func value(self)->int8{return self.x}}
+public struct Hidden {private var value:int8}
+public func hidden()->Hidden{return Hidden(6)}
+public enum Packet {Data((Point,(int8,bool)),char,())}
+public enum Marker {Only}
+public type Pair=(int8,bool)
+public func make()->Packet{print("initializer");return Packet::Data((Point(7,8),(7,true)),'한',())}
+public func pair()->Pair{print("discard-effect");return (1,true)}
+public func unit(){print("unit-call")}
+public func fetch(fail:bool)->Result<Pair,int8>{print("fetch");if fail{return Result::Error(5)}return Result::Success((4,true))}

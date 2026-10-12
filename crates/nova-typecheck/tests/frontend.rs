@@ -4523,3 +4523,118 @@ fn p26_matrix_resource_error_uses_let_keyword_and_suppresses_refutability() {
         .iter()
         .any(|n| n.contains("1000000")));
 }
+
+#[test]
+fn p27_mutable_binder_identity_shadow_and_legacy_underscore() {
+    let (_,resolved,checked)=pass("func f(){let n=7;if true{var(n,flag):(int8,bool)=(n as int8,true);n=n+1;flag=false}var((a,b),())=((1,true),());a=3;b=false;var _=9;_=10}").semantic.unwrap();
+    pass("enum E{A(int8);B}func f(){var(e,flag):(E,bool)=(E::A(1),true);e=E::B;flag=false;var(unit,_):((),int)=((),1);unit=()}");
+    let names = resolved
+        .definitions
+        .iter()
+        .filter(|d| d.mutable)
+        .map(|d| d.name.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(names, ["n", "flag", "a", "b", "_"]);
+    assert!(checked
+        .destructuring_bindings
+        .iter()
+        .flatten()
+        .all(|p| p.mutable));
+    assert_eq!(codes(&frontend("func f(){let(n,_)=(1,2);n=3}")), ["N3004"]);
+    assert_eq!(
+        codes(&frontend("func f(){match true{flag=>{flag=false}}}")),
+        ["N3004"]
+    );
+    pass("struct P{var x:int8}func f(){let old=P(1);var(p,())=(old,());p.x=2}");
+}
+#[test]
+fn p27_type_domain_irrefutability_independent_of_mutability_and_initializer() {
+    for (pattern, code) in [
+        ("(_,flag)", None),
+        ("(true,flag)", Some("N3103")),
+        ("(flag,false)", Some("N3103")),
+    ] {
+        for value in ["v", "(true,false)"] {
+            let result = frontend(&format!("func f(v:(bool,bool)){{var {pattern}={value}}}"));
+            assert_eq!(
+                codes(&result),
+                code.into_iter().map(str::to_string).collect::<Vec<_>>()
+            );
+        }
+    }
+    pass("enum E{Only((int8,bool))}func f(v:E){var E::Only((n,flag))=v;n=n+1;flag=!flag}");
+    assert_eq!(
+        codes(&frontend(
+            "func f(){var Option::Some(n):Option<int8>=Option::Some(7)}"
+        )),
+        ["N3103"]
+    );
+}
+#[test]
+fn p27_var_error_cascade_scope_and_immutable_struct_paths() {
+    for (s, code) in [
+        ("func f(){var(n,n)=(1,2)}", "N2002"),
+        ("func f(){let n=1;var(n,_)=(2,3)}", "N2002"),
+        ("func f(){var(n,_)=(n,2)}", "N2001"),
+        ("func f(){var(true,n)=missing}", "N2001"),
+        ("func f(){var(n,_):(int8,int8)=(300,1)}", "N2102"),
+        (
+            "struct P{let pair:(int8,bool)}func f(){var(p,())=(P((1,true)),());p.pair.0=2}",
+            "N3004",
+        ),
+        ("func f(){var(true,n,n)=(true,1,2)}", "N2002"),
+    ] {
+        assert_eq!(codes(&frontend(s)), [code], "{s}");
+    }
+}
+#[test]
+fn p27_var_pattern_and_matrix_budget_source_provenance() {
+    fn tree(leaves: usize) -> (String, String) {
+        if leaves == 1 {
+            return ("()".into(), "_".into());
+        }
+        let (a, p) = tree(leaves / 2);
+        let (b, q) = tree(leaves - leaves / 2);
+        (format!("({a},{b})"), format!("({p},{q})"))
+    }
+    let (ty, p) = tree(5000);
+    let source = format!("func f(v:({ty},)){{var({p},)=v}}");
+    let good = pass(&source);
+    assert_eq!(
+        good.semantic
+            .unwrap()
+            .2
+            .recursive_patterns
+            .iter()
+            .flatten()
+            .count(),
+        10000
+    );
+    let bad = frontend(&format!("func f(v:(({ty},),)){{var(({p},),)=v}}"));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        "_"
+    );
+    let mut types = vec![];
+    let mut patterns = vec![];
+    for i in 0..10 {
+        let n = if i == 9 { 989 } else { 1000 };
+        types.push(format!("({})", vec!["()"; n].join(",")));
+        patterns.push(format!("({})", vec!["_"; n].join(",")));
+    }
+    let bad = frontend(&format!(
+        "func f(v:({})){{var({})=v}}",
+        types.join(","),
+        patterns.join(",")
+    ));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        "var"
+    );
+}

@@ -132,8 +132,9 @@ pub enum HirKind {
         mutable: bool,
         constant: bool,
     },
-    /// P26 pattern, optional type, then initializer; always immutable local Copy.
+    /// P26/P27 pattern, optional type, then initializer; local Copy let or var.
     DestructuringBinding {
+        mutable: bool,
         keyword: Span,
         colon: Option<Span>,
         equals: Span,
@@ -1315,10 +1316,12 @@ pub fn lower(
                 constant,
             },
             NodeKind::DestructuringBinding {
+                mutable,
                 keyword,
                 colon,
                 equals,
             } => HirKind::DestructuringBinding {
+                mutable,
                 keyword,
                 colon,
                 equals,
@@ -1526,6 +1529,7 @@ fn valid_pattern_source(
         ))
     };
     if let NodeKind::DestructuringBinding {
+        mutable,
         keyword,
         colon,
         equals,
@@ -1552,7 +1556,7 @@ fn valid_pattern_source(
         let init = children.last().expect("binding initializer");
         if node.span.start() != keyword.start()
             || node.span.end() != init.span.end()
-            || sources.slice(keyword)? != "let"
+            || sources.slice(keyword)? != if mutable { "var" } else { "let" }
             || sources.slice(equals)? != "="
             || !token_boundary(sources.file(keyword.file())?.text(), keyword)
             || !gap(keyword.end(), children[0].span.start(), &[""])?

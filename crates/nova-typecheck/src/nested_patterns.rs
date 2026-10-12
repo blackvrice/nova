@@ -272,6 +272,7 @@ impl Checker<'_> {
     pub(super) fn prepare_destructuring(&mut self, id: HirId) {
         let node = &self.module.nodes()[id.0];
         let HirKind::DestructuringBinding {
+            mutable,
             keyword,
             colon,
             equals,
@@ -283,6 +284,7 @@ impl Checker<'_> {
         let annotation = colon.map(|_| node.children[1]);
         let initializer = *node.children.last().expect("binding initializer");
         self.result.destructuring_bindings[id.0] = Some(crate::DestructuringBinding {
+            mutable,
             pattern,
             annotation,
             initializer,
@@ -344,7 +346,11 @@ impl Checker<'_> {
             self.report(
                 3103,
                 self.module.nodes()[pattern.0].span,
-                "refutable let binding pattern",
+                if mutable {
+                    "refutable var binding pattern"
+                } else {
+                    "refutable let binding pattern"
+                },
                 None,
             );
             let diagnostic = self.result.diagnostics.last_mut().expect("binding error");

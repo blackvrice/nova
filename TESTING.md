@@ -1,7 +1,40 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P26 Copy let 구조 분해까지다.
+현재 개발 완료 기능은 P27 가변 Copy var 구조 분해까지다.
+
+## P27 가변 Copy var 구조 분해
+
+```powershell
+cargo fmt --check
+cargo test --workspace --offline
+cargo run -p nova-cli --offline -- check examples/var_destructuring.nova
+$env:NOVA_CLANG=(Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/var_destructuring.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/var_destructuring.nova --profile release
+```
+
+check exit 0, debug/release는 다음 3줄/LF·빈 stderr·exit 0이다. 각 var binder를 변경할 수 있으며 원 Tuple과는 독립이다.
+
+```text
+initializer
+8/false
+copy=5/original=9
+```
+
+[두 파일 수용 예제](docs/development-v0.1/var-destructuring-proposal-fixtures/README.md)의 13줄은 nested paths·Unit/discard·scope·loop·try를 추가 검증한다.
+[계약](docs/development-v0.1/VAR_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/VAR_DESTRUCTURING_IMPLEMENTATION.md)을 제공한다.
+
+```powershell
+cargo test --workspace --offline p27_
+cargo test -p nova-codegen-llvm --test emission --offline p27_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p27_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/var-destructuring-proposal-fixtures/refutable_bool.nova
+node tools/docs/validate-pack.mjs
+```
+
+새 기본 13·실제 LLVM 1·Native 2개다. 부정 예제 check는 N3103·exit 1이다.
+let/match binder·let field는 계속 immutable이며 private field 접근 규칙을 유지한다. const 구조 분해·Array·일반 Move/Drop은 후속 계약이다.
 
 ## P26 irrefutable Copy let 구조 분해
 

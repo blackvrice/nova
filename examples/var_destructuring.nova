@@ -1,0 +1,17 @@
+// P27 mutable Copy local destructuring.
+enum Packet { Data((int8, bool)) }
+func make() -> Packet {
+    print("initializer")
+    return Packet::Data((7, true))
+}
+func main() {
+    var Packet::Data((number, flag)) = make()
+    number = number + 1
+    flag = !flag
+    print("{number}/{flag}")
+    var original = (3, false)
+    var (copy, _) = original
+    copy = 5
+    original.0 = 9
+    print("copy={copy}/original={original.0}")
+}

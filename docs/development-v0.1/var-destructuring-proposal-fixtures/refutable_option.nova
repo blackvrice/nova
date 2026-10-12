@@ -1,0 +1,2 @@
+// P27 approved contract: fixed acceptance source.
+func main(){var Option::Some(n):Option<int8>=Option::Some(7)}

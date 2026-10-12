@@ -2153,3 +2153,57 @@ fn p26_initializer_abort_exact_source_span_and_skipped_binders_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p27_native_mutable_destructuring_paths_snapshot_scope_try_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/var-destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="initializer\nmutable=9/8/false/🙂\ncopy=5/true/original=9\ndiscard-effect\nunit-call\nshadow=7\nlegacy=10\nloop=3\nfetch\nafter=false\nok=5\nfetch\nerror=5\n";
+    for profile in ["debug", "release"] {
+        for (name, out) in [
+            ("main.nova", expected),
+            ("scalars.nova", "scalars=2.5/3.5/🙂\n"),
+            ("mixed_paths.nova", "paths=9/false/original=7\n"),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, out.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let r = program_profile("enum E{A(int8);B}func main(){var(e,flag):(E,bool)=(E::A(1),true);e=E::B;flag=false;var(unit,_):((),int)=((),1);unit=();match e{E::A(n)=>{print(\"wrong={n}\")},E::B=>{print(\"enum={flag}/unit\")}}}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"enum=false/unit\n");
+        assert!(r.stderr.is_empty());
+        let r = program_profile(
+            include_str!("../../../examples/var_destructuring.nova"),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"initializer\n8/false\ncopy=5/original=9\n");
+        assert!(r.stderr.is_empty());
+        let r = program_profile(
+            include_str!(
+                "../../../docs/development-v0.1/destructuring-proposal-fixtures/var_pattern.nova"
+            ),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stdout.is_empty() && r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p27_initializer_and_mutation_abort_exact_span_o0_o2() {
+    for(source,needle)in[(include_str!("../../../docs/development-v0.1/var-destructuring-proposal-fixtures/initializer_abort.nova"),"x+1"),(include_str!("../../../docs/development-v0.1/var-destructuring-proposal-fixtures/binder_abort.nova"),"n+1")]{let at=source.find(needle).unwrap();for profile in["debug","release"]{let r=program_profile(source,profile);assert_eq!(r.status.code(),Some(1));assert_eq!(r.stdout,b"before\n");assert_eq!(String::from_utf8(r.stderr).unwrap().lines().next(),Some(format!("Nova panic: integer overflow at file#0:{at}..{}",at+3).as_str()));}}
+}

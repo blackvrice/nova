@@ -1232,6 +1232,11 @@ fn p26_fixed_destructuring_negative_utf8_spans_and_cascades() {
         ("alias_head.nova", "N1102", 104, 112, &["N3103"] as &[&str]),
     ] {
         let loaded = load(&root.join(name), Some(&root)).unwrap();
+        // P27 extends formerly unsupported var; original P26 bytes/metadata remain historical.
+        if name == "var_pattern.nova" {
+            unit(&loaded);
+            continue;
+        }
         let mut diagnostics = loaded.diagnostics.clone();
         if let Some(hir) = &loaded.module {
             let resolved = nova_resolve::resolve(hir);
@@ -1274,4 +1279,104 @@ fn p26_positive_bundle_and_abort_codegen_units() {
     ] {
         unit(&load(&root.join(name), Some(&root)).unwrap());
     }
+}
+
+#[test]
+fn p27_fixed_var_destructuring_negative_utf8_spans_and_cascades() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/var-destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for (name, code, start, end, forbidden) in [
+        ("let_immutable.nova", "N3004", 79, 80, &[] as &[&str]),
+        (
+            "duplicate_binder.nova",
+            "N2002",
+            71,
+            74,
+            &["N3103"] as &[&str],
+        ),
+        ("same_scope.nova", "N2002", 75, 76, &["N3103"] as &[&str]),
+        (
+            "initializer_self.nova",
+            "N2001",
+            73,
+            74,
+            &["N3103"] as &[&str],
+        ),
+        ("binder_escape.nova", "N2001", 94, 95, &["N3103"] as &[&str]),
+        ("refutable_bool.nova", "N3103", 66, 74, &[] as &[&str]),
+        ("refutable_enum.nova", "N3103", 84, 91, &[] as &[&str]),
+        ("refutable_option.nova", "N3103", 67, 82, &[] as &[&str]),
+        ("refutable_result.nova", "N3103", 67, 85, &[] as &[&str]),
+        ("tuple_arity.nova", "N2201", 66, 71, &["N3103"] as &[&str]),
+        ("tuple_type.nova", "N2101", 66, 71, &["N3103"] as &[&str]),
+        (
+            "annotation_range.nova",
+            "N2102",
+            88,
+            91,
+            &["N3103"] as &[&str],
+        ),
+        ("const_pattern.nova", "N1102", 68, 69, &["N3103"] as &[&str]),
+        ("immutable_field.nova", "N3004", 104, 105, &[] as &[&str]),
+        ("immutable_path.nova", "N3004", 121, 125, &[] as &[&str]),
+        ("private_field.nova", "N2004", 107, 112, &[] as &[&str]),
+        ("binding_guard.nova", "N1102", 72, 74, &["N3103"] as &[&str]),
+        (
+            "unknown_initializer.nova",
+            "N2001",
+            75,
+            82,
+            &["N3103"] as &[&str],
+        ),
+    ] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = loaded.diagnostics.clone();
+        if let Some(hir) = &loaded.module {
+            let resolved = nova_resolve::resolve(hir);
+            let checked = nova_typecheck::check(hir, &resolved).unwrap();
+            diagnostics.extend(resolved.diagnostics);
+            diagnostics.extend(checked.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && d.primary.span.start() == start
+                && d.primary.span.end() == end),
+            "{name}: {diagnostics:?}"
+        );
+        assert!(
+            forbidden
+                .iter()
+                .all(|code| diagnostics.iter().all(|d| d.code.to_string() != *code)),
+            "{name}: {diagnostics:?}"
+        );
+        for d in diagnostics {
+            loaded.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                loaded.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+#[test]
+fn p27_var_bundle_positive_runtime_units_and_historical_var_acceptance() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/var-destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "scalars.nova",
+        "mixed_paths.nova",
+        "initializer_abort.nova",
+        "binder_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+    let old = root
+        .join("../destructuring-proposal-fixtures/var_pattern.nova")
+        .canonicalize()
+        .unwrap();
+    unit(&load(&old, Some(old.parent().unwrap())).unwrap());
 }

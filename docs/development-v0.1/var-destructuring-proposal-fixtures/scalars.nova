@@ -1,0 +1,2 @@
+// P27 approved contract: fixed acceptance source.
+func main(){var (a,b,ch):(float32,double,char)=(1.5,2.5,'한');a=a+1.0;b=b+1.0;ch='🙂';print("scalars={a}/{b}/{ch}")}

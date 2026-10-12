@@ -526,10 +526,8 @@ pub fn resolve(module: &Module) -> Resolved {
         while let Some(work) = pending.pop() {
             let (id, scope, body) = match work {
                 Work::Declare(id, scope) => {
-                    if matches!(
-                        module.nodes()[id.0].kind,
-                        HirKind::DestructuringBinding { .. }
-                    ) {
+                    if let HirKind::DestructuringBinding { mutable, .. } = module.nodes()[id.0].kind
+                    {
                         let mut work = vec![module.nodes()[id.0].children[0]];
                         while let Some(pattern) = work.pop() {
                             let node = &module.nodes()[pattern.0];
@@ -543,6 +541,9 @@ pub fn resolve(module: &Module) -> Resolved {
                                     name_span,
                                     pattern,
                                 );
+                                if let Some(def) = result.declaration_ids[pattern.0] {
+                                    result.definitions[def.0].mutable = mutable;
+                                }
                             }
                             work.extend(node.children.iter().rev().copied());
                         }

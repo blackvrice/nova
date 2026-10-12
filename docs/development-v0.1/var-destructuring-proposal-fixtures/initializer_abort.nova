@@ -1,0 +1,2 @@
+// P27 approved contract: fixed acceptance source.
+func fail(x:int8)->(int8,bool){print("before");return (x+1,true)}func main(){var(n,flag)=fail(127);n=1;print("after={flag}")}

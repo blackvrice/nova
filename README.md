@@ -224,3 +224,9 @@ Array·일반 Move/Drop·guard truth/refinement 증명은 후속 계약이다.
 Tuple/Unit/single-variant Enum·불변 Copy binder·initializer 단일 평가/snapshot·선언 시점·N3103·Source/MIR 검증을 지원한다.
 [62-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 fixture](docs/development-v0.1/destructuring-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/DESTRUCTURING_IMPLEMENTATION.md)·[직접 예제/명령](TESTING.md)을 제공한다.
 var/const/parameter/for/assignment 구조 분해·Array·일반 Move/Drop은 후속 계약이다.
+
+
+[P27 가변 Copy var 구조 분해](docs/development-v0.1/VAR_DESTRUCTURING_STAGE_B_PROPOSAL.md)는 **Accepted / 구현·검증 완료**다.
+Tuple/Unit/single-variant Enum의 mutable Copy binder·직접/기존 경로 대입·initializer 단일 평가/snapshot·Source/Resolved/Checked/MIR 검증을 지원한다.
+[62-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_VAR_DESTRUCTURING.ebnf)·[수용 fixture](docs/development-v0.1/var-destructuring-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/VAR_DESTRUCTURING_IMPLEMENTATION.md)·[직접 예제/명령](TESTING.md)을 제공한다.
+let/match binder는 immutable이다. const/Array·일반 Move/Drop 등은 후속 계약이다.

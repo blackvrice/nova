@@ -40,6 +40,8 @@
 
 2026-10-12 사용자 “P26 승인하고 Copy let 구조 분해 구현 진행” 답변으로 [P26 계약](DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)을 승인했다. Accepted / 구현·검증 완료이며 [구현 기록](DESTRUCTURING_IMPLEMENTATION.md)을 따른다. N3103을 등록하고 기존 60개 production·P01~P25·일반 IDENT binding을 보존한다. var/const/global/parameter/for/assignment destructuring·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.
 
+2026-10-12 사용자 “다음 개발 진행해줘”와 “또한 다음개발 작업 승인할께”에 따라 다음 작업 [P27 가변 Copy var 구조 분해](VAR_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_VAR_DESTRUCTURING.ebnf)를 승인 범위로 기록했다. Accepted / 구현·검증 완료이며 [구현 기록](VAR_DESTRUCTURING_IMPLEMENTATION.md)을 따른다. 기존 61개 production·P01~P26 ledger·let/match immutable binder와 const/Array/Move/borrow/Drop 경계를 보존한다. 전체 D08/D10/D12/D16/D25/D30 승인이 아니다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

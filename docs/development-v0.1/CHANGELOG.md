@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-12 — 다음 작업 승인과 P27 가변 Copy var 구조 분해 구현
+
+사용자 다음 개발 진행·승인에 따라 제한된 P27 계약을 먼저 기록하고 구현했다.
+mutable binder·let/var Source identity·원 HIR 기반 mutability owner 검증을 추가하고 기존 Copy snapshot/대입/irrefutability/자원 계약을 유지했다.
+기본 433·LLVM 23·Native 62, 총 518 PASS / 0 FAIL. 새 기본 13·LLVM 1·Native 2다.
+기존 P26 var 거부 source/metadata는 역사로 보존하고 P27 성공 override를 명시했다. P01~P26·Canonical·원본 148개를 보존했다.
+[구현 기록](VAR_DESTRUCTURING_IMPLEMENTATION.md)·[직접 명령](../../TESTING.md)을 제공한다.
+
 ## 2026-10-12 — P26 승인과 irrefutable Copy let 구조 분해 구현
 
 사용자 “P26 승인하고 Copy let 구조 분해 구현 진행” 답변으로 P26를 승인했다.

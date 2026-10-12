@@ -1538,6 +1538,7 @@ fn p26_destructuring_grammar_punctuation_end_recovery_and_depth() {
                 keyword,
                 colon,
                 equals,
+                ..
             } = n.kind
             {
                 assert_eq!(db.slice(keyword).unwrap(), "let");
@@ -1549,7 +1550,6 @@ fn p26_destructuring_grammar_punctuation_end_recovery_and_depth() {
         }
     }
     for source in [
-        "func f(){var(a,b)=(1,2)}",
         "func f(){const(a,b)=(1,2)}",
         "func f(){let(x)=1}",
         "func f(){let(a,b) if true=(1,2)}",
@@ -1593,4 +1593,51 @@ fn p26_excluded_parameter_for_assignment_global_and_let_else_are_rejected() {
             p.diagnostics
         );
     }
+}
+
+#[test]
+fn p27_var_ast_flags_annotation_end_prefix_and_const_recovery() {
+    let source="func f(){var(値,flag):(int8,bool)=(7,true);var E::Only=E::Only;var ()=();let(n,_)=(1,2);var _=9}func later(){}";
+    let (db, _, p) = run(source);
+    assert!(!p.has_errors(), "{:?}", p.diagnostics);
+    let flags = p
+        .arena
+        .iter()
+        .filter_map(|(_, n)| {
+            if let NodeKind::DestructuringBinding {
+                mutable, keyword, ..
+            } = n.kind
+            {
+                Some((mutable, db.slice(keyword).unwrap()))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        flags,
+        [(true, "var"), (true, "var"), (true, "var"), (false, "let")]
+    );
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let (db, _, p) = run(&source[..at]);
+        for (_, n) in p.arena.iter() {
+            db.slice(n.span).unwrap();
+        }
+    }
+    for s in [
+        "func f(){const(a,b)=(1,2)}",
+        "func f(){var(a,b) if true=(1,2)}",
+        "func f(){var(x)=1}",
+    ] {
+        let (_, _, p) = run(&format!("{s}func later(){{}}"));
+        assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"));
+        assert!(
+            p.arena
+                .iter()
+                .any(|(_, n)| matches!(n.kind, NodeKind::Function { .. })
+                    && n.span.start() >= s.len())
+        );
+    }
+    let (_, _, p) = run("func f(){var(\n a,b,\n):(int8,bool)=\n (1,true)}");
+    assert!(!p.has_errors());
 }

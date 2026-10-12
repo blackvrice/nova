@@ -44,6 +44,8 @@
 
 [P26 Copy let 구조 분해](DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 fixture](destructuring-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](DESTRUCTURING_IMPLEMENTATION.md)을 제공한다. 기존 60개 production·P01~P25·일반 IDENT binding을 보존한다.
 
+[P27 가변 Copy var 구조 분해](VAR_DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_VAR_DESTRUCTURING.ebnf)·[수용 fixture](var-destructuring-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](VAR_DESTRUCTURING_IMPLEMENTATION.md)을 제공한다. 기존 61개 production·P01~P26 ledger·let/match immutable binder를 보존한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

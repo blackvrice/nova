@@ -1,0 +1,2 @@
+// P27 approved contract: fixed acceptance source.
+enum E{A(int8);B}func main(){var E::A(n)=E::A(7)}

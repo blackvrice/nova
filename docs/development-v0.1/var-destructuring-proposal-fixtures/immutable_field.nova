@@ -1,0 +1,2 @@
+// P27 approved contract: fixed acceptance source.
+struct P{let x:int8}func main(){var(p,_)=(P(1),());p.x=2}
