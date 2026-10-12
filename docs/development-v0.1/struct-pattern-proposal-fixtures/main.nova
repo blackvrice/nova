@@ -1,0 +1,25 @@
+use values::Pair as P
+use values::Envelope
+use values::Empty
+use values::source
+use values::default_value
+func gate(label:string,result:bool)->bool{print(label);return result}
+func propagate(r:Result<int8,int8>)->Result<int8,int8>{match P(-7,true){P(-7,true) if (try r)>0=>{print("try-ok")},_=>{}}return Result::Success(1)}
+func complete(p:P)->int8{match p{P(n,false)=>{return n},P(n,true)=>{return n+1}}}
+func main(){
+    match source(){Envelope(P(-7,true),'🙂') if gate("first",false)=>{},Envelope(P(n,true),ch) if gate("second",true)=>{print("nested={n}/{ch}")},_=>{print("wrong")}}
+    let Envelope(P(n,flag),ch)=Envelope(P(3,true),'가')
+    print("let={n}/{flag}/{ch}")
+    var P(a,b)=P(4,false)
+    a=a+1;b=true
+    print("var={a}/{b}")
+    const P(c,ok)=P(9,true)
+    print("const={c}/{ok}/{default_value()}")
+    let Empty()=Empty()
+    match Empty(){Empty()=>{print("empty")}}
+    let full=complete(P(2,true));print("complete={full}")
+    match Option::Some(P(5,true)){Option::Some(P(v,true))=>{print("option={v}")},_=>{}}
+    match propagate(Result::Success(3)){Result::Success(v)=>{print("result={v}")},Result::Error(_)=>{}}
+    match propagate(Result::Error(4)){Result::Success(_)=>{},Result::Error(e)=>{print("error={e}")}}
+    for i in 0 until 3{match P(i as int8,true){P(0,_)=>{continue},P(2,_)=>{break},P(v,_)=>{print("loop={v}")}}}
+}

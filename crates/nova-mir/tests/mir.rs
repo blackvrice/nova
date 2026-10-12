@@ -3774,3 +3774,117 @@ fn p32_integer_comparison_constant_and_failure_branch_forgery_rejected() {
         assert!(!validate(&bad).is_empty());
     }
 }
+
+#[test]
+fn p33_struct_checked_nominal_kind_type_children_and_constant_cache_forgery() {
+    let source="struct S{let n:int8;let b:bool}const S(N,B)=S(7,true);func main(){let S(n,b)=S(N,B);match S(n,b){S(7,true)=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternStruct { .. }))
+        .unwrap();
+    lower(&h, &r, &check(&h, &r).unwrap(), false).unwrap();
+    for change in 0..4 {
+        let mut c = check(&h, &r).unwrap();
+        let pattern = c.recursive_patterns[id].as_mut().unwrap();
+        let nova_typecheck::RecursivePatternKind::Struct(sid) = pattern.kind else {
+            panic!()
+        };
+        match change {
+            0 => pattern.kind = nova_typecheck::RecursivePatternKind::Tuple(sid),
+            1 => pattern.ty = Type::Tuple(sid),
+            2 => pattern.children.reverse(),
+            _ => {
+                let n = r.definitions.iter().position(|d| d.name == "N").unwrap();
+                let ConstEvaluation::Value { value, .. } = &mut c.const_values[n] else {
+                    panic!()
+                };
+                *value = nova_types::ConstValue::Integer(
+                    nova_types::IntegerValue::new(nova_types::IntKind::I8, 8).unwrap(),
+                );
+            }
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p33_struct_mir_projection_index_source_and_guard_branch_forgery() {
+    let m=pass("struct S{let a:bool;let b:bool}func main(){match Option::Some(S(true,false)){Option::Some(S(a,b)) if a=>{print(\"ok\")},_=>{}}}");
+    for change in 0..3 {
+        let mut bad = m.clone();
+        let body = &mut bad.bodies[0];
+        if change < 2 {
+            let s = body
+                .blocks
+                .iter_mut()
+                .flat_map(|b| &mut b.statements)
+                .find(|s| {
+                    matches!(
+                        s.kind,
+                        StatementKind::Assign(
+                            _,
+                            Rvalue::Project(_, nova_types::FieldId { index: 0, .. })
+                        )
+                    )
+                })
+                .unwrap();
+            if change == 0 {
+                let StatementKind::Assign(_, Rvalue::Project(_, field)) = &mut s.kind else {
+                    panic!()
+                };
+                field.index = 1;
+            } else {
+                s.source = body.source;
+            }
+        } else {
+            let b = body
+                .blocks
+                .iter_mut()
+                .find(|b| {
+                    matches!(
+                        b.terminator.as_ref().unwrap().kind,
+                        TerminatorKind::Branch { .. }
+                    )
+                })
+                .unwrap();
+            let TerminatorKind::Branch {
+                then_block,
+                else_block,
+                ..
+            } = &mut b.terminator.as_mut().unwrap().kind
+            else {
+                panic!()
+            };
+            std::mem::swap(then_block, else_block);
+        }
+        assert!(!validate(&bad).is_empty(), "change {change}");
+    }
+}
+#[test]
+fn p33_struct_const_materialization_and_single_runtime_snapshot() {
+    let m=pass("struct S{let n:int;let b:bool}func make()->S{return S(1,true)}const S(N,B)=S(7,true);func main(){const S(n,b)=S(N,B);let S(x,y)=make();match make(){S(v,_)=>{}}}");
+    let body = body_named(&m, "main");
+    let statements = body
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .collect::<Vec<_>>();
+    assert_eq!(body.blocks.iter().filter(|b|matches!(&b.terminator.as_ref().unwrap().kind,TerminatorKind::Call { callee, .. } if m.callees[callee.0].name=="make")).count(),2);
+    assert_eq!(
+        statements
+            .iter()
+            .filter(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Aggregate(_, _))))
+            .count(),
+        0
+    );
+    assert!(validate(&m).is_empty());
+}

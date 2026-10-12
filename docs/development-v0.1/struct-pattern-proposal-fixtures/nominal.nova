@@ -1,0 +1,3 @@
+struct Pair{let n:int8;let flag:bool}
+struct Other{let n:int8;let flag:bool}
+func main(){match Pair(1,true){Other(_,_)=>{},_=>{}}}

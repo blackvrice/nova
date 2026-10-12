@@ -5192,3 +5192,179 @@ fn p32_nested_union_refutable_const_and_guard_contexts() {
         ["N3003"]
     );
 }
+
+#[test]
+fn p33_struct_patterns_nominal_heads_arity_field_types_and_error_cascades() {
+    pass(include_str!("../../../examples/struct_patterns.nova"));
+    pass("struct S{private let n:int8;func value(self)->int8{return self.n}}type Alias=S;func f(){let S(n):Alias=S(2)}");
+    for (text, code) in [
+        (
+            "struct S{let n:int}struct T{let n:int}func f(){match S(1){T(_)=>{},_=>{}}}",
+            "N2101",
+        ),
+        (
+            "struct S{let n:int}func f(){match S(1){S()=>{},_=>{}}}",
+            "N2201",
+        ),
+        (
+            "struct S{let n:int}type A=S;func f(){match S(1){A(_)=>{}}}",
+            "N1102",
+        ),
+        (
+            "struct S{let n:int}func f(){match S(1){S(true)=>{},_=>{}}}",
+            "N2101",
+        ),
+        (
+            "struct S{let n:int}func f(){match missing{S(1)=>{},_=>{}}}",
+            "N2001",
+        ),
+        ("struct S{let n:int}func f(){let S(n)=S(n)}", "N2001"),
+    ] {
+        assert_eq!(codes(&frontend(text)), [code], "{text}");
+    }
+    // Type and value namespaces differ, but a bare pattern name remains a binder.
+    pass("struct S{let n:int}func f(){let p=S(1);let S=9;let S(n)=p;match p{S=>{let v=S.n}}}");
+}
+#[test]
+fn p33_struct_bool_product_coverage_matches_independent_four_value_oracle() {
+    let values = [(false, false), (false, true), (true, false), (true, true)];
+    for mask in 0..16 {
+        let arms = values
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| mask & (1 << i) != 0)
+            .map(|(_, (a, b))| format!("Pair({a},{b})=>{{}},"))
+            .collect::<String>();
+        let r = frontend(&format!(
+            "struct Pair{{let a:bool;let b:bool}}func f(p:Pair){{match p{{{arms}}}}}"
+        ));
+        assert_eq!(
+            codes(&r),
+            if mask == 15 {
+                vec![]
+            } else {
+                vec!["N3101".to_string()]
+            },
+            "mask {mask}"
+        );
+        if mask != 0 && mask != 15 {
+            assert!(r.diagnostics()[0].notes.iter().any(|n| n.contains("Pair(")));
+        }
+    }
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let b:bool}func f(s:S){match s{S(true)=>{},S(false)=>{},S(_)=>{}}}"
+        )),
+        ["N3102"]
+    );
+    pass("struct S{let b:bool}func f(s:S){match s{S(_) if true=>{},S(true)=>{},S(false)=>{}}}");
+    pass("struct Empty{}func f(e:Empty)->int{match e{Empty()=>{return 1}}}");
+}
+#[test]
+fn p33_struct_nested_irrefutability_const_projection_and_failure_suppression() {
+    let s="struct Inner{let n:int8;let ok:bool}struct Outer{let i:Inner;let pair:(char,())}enum One{Wrap(Outer)}const One::Wrap(Outer(Inner(N,FLAG),(CH,())))=One::Wrap(Outer(Inner(NEXT,true),('🙂',())));const NEXT:int8=7;func f(){const Outer(Inner(n,b),(ch,()))=Outer(Inner(N,FLAG),(CH,()));var Outer(Inner(v,_),(_,_))=Outer(Inner(n,b),(ch,()));v=8}";
+    let r = pass(s);
+    let (_, resolved, checked) = r.semantic.unwrap();
+    for name in ["N", "n"] {
+        let at = resolved
+            .definitions
+            .iter()
+            .position(|d| d.name == name)
+            .unwrap();
+        assert!(
+            matches!(&checked.const_values[at],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==7 && v.kind()==IntKind::I8)
+        );
+    }
+    for kw in ["let", "var", "const"] {
+        let r = frontend(&format!(
+            "struct S{{let n:int;let b:bool}}func f(){{{kw} S(n,true)=S(1/0,true)}}"
+        ));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "true"
+        );
+    }
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int;let b:bool}const S(n,true)=S(1/0,true);const NEXT=n+1;func f(){}"
+        )),
+        ["N3103"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}const S(n)=S(1/0);const NEXT=n+1;func f(){}"
+        )),
+        ["N3201"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}const S(n)=S(NEXT);const NEXT=n+1;func f(){}"
+        )),
+        ["N3202"]
+    );
+}
+#[test]
+fn p33_struct_pattern_node_budget_counts_heads_and_children_exactly() {
+    fn source(extra: usize) -> String {
+        let mut declarations = String::new();
+        let mut variants = vec![];
+        let mut arms = vec![];
+        for i in 0..10 {
+            let n = if i == 9 { 980 + extra } else { 1000 };
+            declarations.push_str(&format!(
+                "struct S{i}{{{}}}",
+                (0..n).map(|j| format!("let f{j}:();")).collect::<String>()
+            ));
+            variants.push(format!("V{i}(S{i})"));
+            arms.push(format!("E::V{i}(S{i}({}))=>{{}}", vec!["_"; n].join(",")));
+        }
+        format!(
+            "{declarations}enum E{{{}}}func f(e:E){{match e{{{}}}}}",
+            variants.join(";"),
+            arms.join(",")
+        )
+    }
+    let good = pass(&source(0));
+    assert_eq!(
+        good.semantic
+            .unwrap()
+            .2
+            .recursive_patterns
+            .iter()
+            .flatten()
+            .count(),
+        10000
+    );
+    let bad = frontend(&source(1));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        "_"
+    );
+}
+#[test]
+fn p33_struct_guard_try_return_and_binder_mutability() {
+    pass("struct S{let n:int}func f(s:S,r:Result<int,bool>)->Result<int,bool>{match s{S(n) if (try r)>n=>{},_=>{}}return Result::Success(1)}");
+    pass("struct S{let b:bool}func f(s:S)->int{match s{S(true)=>{return 1},S(false)=>{return 2}}}");
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let b:bool}func f(s:S)->int{match s{S(true)=>{return 1},S(false)=>{}}}"
+        )),
+        ["N3003"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}func f(s:S){match s{S(n)=>{n=2}}}"
+        )),
+        ["N3004"]
+    );
+    assert_eq!(
+        codes(&frontend("struct S{let n:int}func f(s:S){const S(n)=s}")),
+        ["N3201"]
+    );
+}

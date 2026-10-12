@@ -65,6 +65,10 @@ impl Checker<'_> {
                 if !typed.children.is_empty() {
                     let fields = match (typed.kind, value) {
                         (
+                            crate::RecursivePatternKind::Struct(expected),
+                            ConstValue::Struct(actual, fields),
+                        ) if expected == *actual => fields,
+                        (
                             crate::RecursivePatternKind::Tuple(expected),
                             ConstValue::Tuple(actual, fields),
                         ) if expected == *actual => fields,

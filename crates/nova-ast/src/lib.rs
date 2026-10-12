@@ -115,6 +115,9 @@ pub enum NodeKind {
         name: Span,
         arguments: bool,
     },
+    PatternStruct {
+        name: Span,
+    },
     PatternBoolean(bool),
     PatternCharacter,
     PatternInteger {

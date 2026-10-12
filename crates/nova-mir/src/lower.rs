@@ -251,7 +251,7 @@ pub fn lower(
                 Kind::Variant(v) => {
                     result.binder_provenance.insert(child.0, (v, at));
                 }
-                Kind::Tuple(structure) => {
+                Kind::Struct(structure) | Kind::Tuple(structure) => {
                     result.projection_provenance.insert(
                         child.0,
                         nova_types::FieldId {
@@ -650,7 +650,7 @@ impl Builder<'_> {
                     continue;
                 }
                 let projection = match p.kind {
-                    Kind::Tuple(structure) => Rvalue::Project(
+                    Kind::Struct(structure) | Kind::Tuple(structure) => Rvalue::Project(
                         Operand::Place(value),
                         nova_types::FieldId { structure, index },
                     ),

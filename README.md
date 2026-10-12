@@ -256,3 +256,8 @@ root/nested char literal·escape alias·guard·bounded coverage·MIR equality를
 현재 구현은 **P32 고정 폭 정수 literal 패턴까지 완료**다.
 [P32 계약](docs/development-v0.1/INTEGER_PATTERN_STAGE_B_PROPOSAL.md)·[63-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_INTEGER_PATTERN.ebnf)·[수용 fixture](docs/development-v0.1/integer-pattern-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/INTEGER_PATTERN_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
 8종 checked literal·radix/zero alias·Int8/UInt8 전체 domain·nested/guard·MIR equality를 지원한다. float/string literal·field/range pattern·Array·일반 Move/Drop은 후속 계약이다.
+
+
+현재 구현은 **P33 Copy struct 위치 패턴까지 완료**다.
+[P33 계약](docs/development-v0.1/STRUCT_PATTERN_STAGE_B_PROPOSAL.md)·[64-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_STRUCT_PATTERN.ebnf)·[수용 fixture](docs/development-v0.1/struct-pattern-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/STRUCT_PATTERN_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
+nominal/import struct pattern·private field 검사·let/var/const 분해·bounded coverage·Source/MIR projection을 지원한다. 이름 field/rest 패턴·Array·일반 Move/Drop은 후속 계약이다.

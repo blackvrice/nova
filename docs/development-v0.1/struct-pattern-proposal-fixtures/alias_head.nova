@@ -1,0 +1,3 @@
+struct Pair{let n:int8;let flag:bool}
+type Alias=Pair
+func main(){match Pair(1,true){Alias(_,_)=>{}}}

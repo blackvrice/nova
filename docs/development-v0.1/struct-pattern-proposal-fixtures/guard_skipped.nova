@@ -1,0 +1,2 @@
+struct Pair{let n:int8;let flag:bool}
+func main(){match Pair(2,true){Pair(1,_) if 2147483647+1>0=>{},_=>{print("skipped")}}}

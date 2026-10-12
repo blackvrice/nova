@@ -1554,3 +1554,41 @@ fn p32_public_integer_pattern_sign_digits_and_expression_kind_forgery() {
         );
     }
 }
+
+#[test]
+fn p33_struct_pattern_head_span_children_order_and_expression_shape_forgery() {
+    let source="struct P{let n:int;let b:bool}func f(){match P(1,true){P /*🙂*/ (n,true,)=>{},_=>{}}let Empty()=Empty()}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    assert!(lower(&db, &p.arena, p.root).is_ok());
+    for change in 0..5 {
+        let mut arena = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let mut children = n
+                .children
+                .iter()
+                .map(|id| ids[id.index()])
+                .collect::<Vec<_>>();
+            if let NodeKind::PatternStruct { name } = &mut kind {
+                if !children.is_empty() {
+                    match change {
+                        0 => *name = Span::new(f, name.start() + 1, name.end()).unwrap(),
+                        1 => kind = NodeKind::Call,
+                        2 => children.reverse(),
+                        3 => children.clear(),
+                        _ => kind = NodeKind::Binder { name: *name },
+                    }
+                }
+            }
+            ids.push(arena.insert(kind, n.span, children).unwrap());
+        }
+        assert!(
+            lower(&db, &arena, ids[p.root.index()]).is_err(),
+            "change {change}"
+        );
+    }
+}

@@ -1,0 +1,2 @@
+struct Secret{private let n:int}
+func main(){let Secret(n)=Secret(8);print("private={n}")}

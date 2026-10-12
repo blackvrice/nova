@@ -1,0 +1,277 @@
+{
+  "proposal": "P33",
+  "status": "Accepted",
+  "implementation_verified": true,
+  "approval_date": "2026-10-12",
+  "approval_evidence": "다음 작업 승인할태니 개발 진행해줘",
+  "grammar": "GRAMMAR_STAGE_B_STRUCT_PATTERN.ebnf",
+  "grammar_change": true,
+  "grammar_productions": 64,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "values"
+  ],
+  "source_sha256": {
+    "values.nova": "81cf3062b0add8ab3be9c52565affeb88146bc6c985a150b5bca8270333e894c",
+    "main.nova": "e79a5c6a249442ec40817ab69bf488c1defa237e76f103d742587569e9f81c54",
+    "private.nova": "470be4373e7a9090d2e11c058c15e41ebb405b161c09faa0ecccee21f1ba8047",
+    "import_fail.nova": "9a56e8d0cdacb56c0bbd9b1ee1dcbd1e4af0c4997a5fb56bebad3c6d13533a43",
+    "incomplete.nova": "2ca485c03643c258271b8b05920e554ea0a7358d4899a1dbeaf6173da5193bab",
+    "duplicate.nova": "af7f5675a2ff229113f50519432e9911f826e84acf038186a33cc494a24d3893",
+    "nominal.nova": "13e2bc559e9527cbdced0a572d57d21a7baad2ea67f4e268b656c24b71f2ca4b",
+    "arity.nova": "e3543ffdcac4558d445af242bceb30d7661e19e8d900d2239881247fd6e6863a",
+    "too_many.nova": "4ebd6a74f80312d0d335ef47f865ae7d887a67cfe3dce3a46666a36a57c575e7",
+    "alias_head.nova": "bb5c16fae2b440c26de3b1d4b56a2d294e06648505354bb842d96c681e9d05da",
+    "enum_head.nova": "35e3648c71e0a177f46b0f1e1e02977d6cf20758f36bc4c9e55590ef7681c7a7",
+    "unknown.nova": "8d1f714b1d19b9c1a19321155b8eeb8d786bd1148f6fd59543859aa9d1652a6c",
+    "duplicate_binder.nova": "c70dfcffc1eae4da10b6fb56361f6a2d4cd1ced67cfd233264aa27a65a25a533",
+    "immutable.nova": "a04e0553c81c9b8b389ea61b0fa463cb2fb25ae4564f24ea4a00cf3a4b80942e",
+    "component_type.nova": "71ecee3a8a44975b3308463d829103448657cca8d3d54fe9a82b04381ba27681",
+    "let_refutable.nova": "97ef1e7879c0417f6d9ccacc951e5bc7a10b669d29c82789ff55099acaa97f47",
+    "var_refutable.nova": "ddeb8d2fd9bfd7e719b459fc88b42d43c2a93f6d0631137c9de37a19ea20a9e2",
+    "const_refutable.nova": "e624837e27877675e91f72ebb6de43248687684a2a55d8c4e9cd90ea0e6f2ad7",
+    "global_refutable.nova": "971d263f6b2a37aa3f15016dc67e163862cbe17dd8160922b04cbafe0c64a545",
+    "guard_only.nova": "b8d097da17ff224bbde3be38deb23dccd0dd32cf00ebe2adcc29510e955052ea",
+    "const_failure.nova": "e0f1be8721086c449e123d090b3fe92be5007936e541bd0ed29d26d57a53f127",
+    "const_cycle.nova": "44045d8e28f29552379c2453621e487cd8b02d1acb25b587d58cfcf18ed8a1b3",
+    "private_local.nova": "021503dc654546ec21ede64a0a5370680a03558e60b3a50227a81b64563a099f",
+    "alias_annotation.nova": "6c8456bc9162011186a25ee5fcc1b4013f3ade27f8735a5a567436370caf9599",
+    "guard_skipped.nova": "e874d3795e0f38e743d7a16845439d76fa99f3cb30cd56e40ea671ec10cb6b88",
+    "guard_abort.nova": "bff7512c27651827659e0fb4f1094d8b070481fcf35b5ee4d04109add3561615"
+  },
+  "positive_cases": [
+    {
+      "source": "private_local.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "private=8\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "alias_annotation.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "alias=3/true\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "guard_skipped.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "skipped\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "source": "private.nova",
+      "expected_diagnostic": "N2004",
+      "check_exit": 1,
+      "primary": {
+        "start": 65,
+        "end": 71
+      }
+    },
+    {
+      "source": "import_fail.nova",
+      "expected_diagnostic": "N2001",
+      "check_exit": 1,
+      "primary": {
+        "start": 0,
+        "end": 20
+      }
+    },
+    {
+      "source": "incomplete.nova",
+      "expected_diagnostic": "N3101",
+      "check_exit": 1,
+      "primary": {
+        "start": 50,
+        "end": 55
+      }
+    },
+    {
+      "source": "duplicate.nova",
+      "expected_diagnostic": "N3102",
+      "check_exit": 1,
+      "primary": {
+        "start": 83,
+        "end": 95
+      }
+    },
+    {
+      "source": "nominal.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 108,
+        "end": 113
+      }
+    },
+    {
+      "source": "arity.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 69,
+        "end": 76
+      }
+    },
+    {
+      "source": "too_many.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 54,
+        "end": 65
+      }
+    },
+    {
+      "source": "alias_head.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 85,
+        "end": 90
+      }
+    },
+    {
+      "source": "enum_head.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 86,
+        "end": 92
+      }
+    },
+    {
+      "source": "unknown.nova",
+      "expected_diagnostic": "N2001",
+      "check_exit": 1,
+      "primary": {
+        "start": 69,
+        "end": 81
+      }
+    },
+    {
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "check_exit": 1,
+      "primary": {
+        "start": 61,
+        "end": 62
+      }
+    },
+    {
+      "source": "immutable.nova",
+      "expected_diagnostic": "N3004",
+      "check_exit": 1,
+      "primary": {
+        "start": 80,
+        "end": 81
+      }
+    },
+    {
+      "source": "component_type.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 74,
+        "end": 78
+      }
+    },
+    {
+      "source": "let_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 54,
+        "end": 66
+      }
+    },
+    {
+      "source": "var_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 54,
+        "end": 66
+      }
+    },
+    {
+      "source": "const_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 56,
+        "end": 68
+      }
+    },
+    {
+      "source": "global_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 44,
+        "end": 56
+      }
+    },
+    {
+      "source": "guard_only.nova",
+      "expected_diagnostic": "N3101",
+      "check_exit": 1,
+      "primary": {
+        "start": 50,
+        "end": 55
+      }
+    },
+    {
+      "source": "const_failure.nova",
+      "expected_diagnostic": "N3201",
+      "check_exit": 1,
+      "primary": {
+        "start": 62,
+        "end": 65
+      }
+    },
+    {
+      "source": "const_cycle.nova",
+      "expected_diagnostic": "N3202",
+      "check_exit": 1,
+      "primary": {
+        "start": 84,
+        "end": 85
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "source": "guard_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 106,
+        "end": 118
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:106..118"
+      }
+    }
+  ],
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "scrutinee\nfirst\nsecond\nnested=-7/🙂\nlet=3/true/가\nvar=5/true\nconst=9/true/-7\nempty\ncomplete=3\noption=5\ntry-ok\nresult=1\nerror=4\nloop=1\n",
+    "stderr": ""
+  }
+}

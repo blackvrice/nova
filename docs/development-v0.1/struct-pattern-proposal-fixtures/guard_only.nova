@@ -1,0 +1,2 @@
+struct Pair{let n:int8;let flag:bool}
+func main(){match Pair(1,true){Pair(_,_) if true=>{}}}

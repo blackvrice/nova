@@ -105,6 +105,10 @@ pub enum HirKind {
         name_span: Span,
         arguments: bool,
     },
+    PatternStruct {
+        name: SymbolId,
+        name_span: Span,
+    },
     PatternBoolean(bool),
     PatternCharacter(char),
     PatternInteger {
@@ -369,6 +373,7 @@ impl Module {
                 match &mut node.kind {
                     HirKind::Function { name, .. }
                     | HirKind::Struct { name, .. }
+                    | HirKind::PatternStruct { name, .. }
                     | HirKind::TypeAlias { name, .. }
                     | HirKind::Enum { name, .. }
                     | HirKind::Variant { name, .. }
@@ -896,6 +901,7 @@ pub fn lower(
         | NodeKind::Enum { name }
         | NodeKind::Variant { name }
         | NodeKind::Binder { name }
+        | NodeKind::PatternStruct { name }
         | NodeKind::Projection { name }
         | NodeKind::GenericType { name } = node.kind
         {
@@ -918,6 +924,7 @@ pub fn lower(
         if matches!(
             node.kind,
             NodeKind::PatternTuple
+                | NodeKind::PatternStruct { .. }
                 | NodeKind::PatternVariant { .. }
                 | NodeKind::PatternUnit
                 | NodeKind::Binder { .. }
@@ -1261,6 +1268,10 @@ pub fn lower(
             NodeKind::Match { keyword } => HirKind::Match { keyword },
             NodeKind::Arm => HirKind::Arm,
             NodeKind::MatchGuard { keyword } => HirKind::MatchGuard { keyword },
+            NodeKind::PatternStruct { name } => HirKind::PatternStruct {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+            },
             NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
             NodeKind::PatternInteger { digits, minus } => HirKind::PatternInteger {
                 spelling: sources.slice(digits)?.into(),
@@ -1728,7 +1739,17 @@ fn valid_pattern_source(
                 &["=>"],
             )?);
     }
-    let start = if let NodeKind::PatternVariant {
+    let start = if let NodeKind::PatternStruct { name } = node.kind {
+        if name.start() != node.span.start()
+            || !token_boundary(sources.file(name.file())?.text(), name)
+        {
+            return Ok(false);
+        }
+        if children.is_empty() {
+            return gap(name.end(), node.span.end(), &["()"]);
+        }
+        name.end()
+    } else if let NodeKind::PatternVariant {
         owner,
         name,
         arguments,
@@ -1776,6 +1797,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         matches!(
             kind,
             NodeKind::PatternVariant { .. }
+                | NodeKind::PatternStruct { .. }
                 | NodeKind::PatternTuple
                 | NodeKind::PatternUnit
                 | NodeKind::Binder { .. }
@@ -1933,6 +1955,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::PatternInteger { .. }
         | NodeKind::PatternUnit
         | NodeKind::Wildcard => kinds.is_empty(),
+        NodeKind::PatternStruct { .. } => kinds.iter().all(|k| pattern(*k)),
         NodeKind::PatternVariant { arguments, .. } => {
             (arguments || kinds.is_empty()) && kinds.iter().all(|k| pattern(*k))
         }
@@ -1955,6 +1978,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 && matches!(
                     kinds[0],
                     NodeKind::PatternTuple
+                        | NodeKind::PatternStruct { .. }
                         | NodeKind::PatternUnit
                         | NodeKind::PatternVariant { .. }
                 )

@@ -17,6 +17,7 @@ pub enum RecursivePatternKind {
     Char(char),
     Integer(nova_types::IntegerValue),
     Unit,
+    Struct(StructId),
     Tuple(StructId),
     Variant(VariantId),
 }
@@ -150,6 +151,67 @@ impl Checker<'_> {
                         );
                     }
                     RecursivePatternKind::Unit
+                }
+                HirKind::PatternStruct { name, name_span } => {
+                    let mut structure = None;
+                    if expected != Type::Error {
+                        if let Some(def) = self.type_definition(pattern, name) {
+                            match self.resolved.definitions[def.0].kind {
+                                nova_resolve::DefinitionKind::Struct(_) => {
+                                    let sid = StructId(def.0);
+                                    if expected != Type::Struct(sid) {
+                                        self.report(
+                                            2101,
+                                            name_span,
+                                            "pattern struct differs from component",
+                                            annotation,
+                                        );
+                                    } else if self.constructor_visible(def, name_span) {
+                                        structure = Some(sid);
+                                        fields = self.result.structs[&sid]
+                                            .fields
+                                            .iter()
+                                            .map(|f| f.ty)
+                                            .collect();
+                                        field_annotations = self
+                                            .result
+                                            .field_sources
+                                            .get(&sid)
+                                            .cloned()
+                                            .unwrap_or_default();
+                                        if fields.len() != p.children.len() {
+                                            self.report(
+                                                2201,
+                                                p.span,
+                                                "struct pattern arity does not match",
+                                                annotation,
+                                            );
+                                        }
+                                    }
+                                }
+                                nova_resolve::DefinitionKind::TypeAlias(_) => self.report(
+                                    1102,
+                                    name_span,
+                                    "alias struct pattern heads are unsupported",
+                                    None,
+                                ),
+                                _ => self.report(
+                                    2101,
+                                    name_span,
+                                    "struct pattern head requires a struct",
+                                    annotation,
+                                ),
+                            }
+                        } else {
+                            self.struct_type_name(pattern, name);
+                        }
+                    }
+                    if let Some(sid) = structure {
+                        RecursivePatternKind::Struct(sid)
+                    } else {
+                        valid = false;
+                        RecursivePatternKind::Wildcard
+                    }
                 }
                 HirKind::PatternTuple => {
                     if let Type::Tuple(tuple) = expected {
@@ -565,6 +627,7 @@ enum Constructor {
     Char(char),
     Integer(nova_types::IntKind, i128),
     Unit,
+    Struct(StructId),
     Tuple(StructId),
     Variant(VariantId),
     Opaque,
@@ -674,7 +737,9 @@ impl<'a> Engine<'a> {
     }
     fn fields(&self, constructor: Constructor) -> Vec<Type> {
         match constructor {
-            Constructor::Tuple(id) => self.structs[&id].fields.iter().map(|f| f.ty).collect(),
+            Constructor::Struct(id) | Constructor::Tuple(id) => {
+                self.structs[&id].fields.iter().map(|f| f.ty).collect()
+            }
             Constructor::Variant(id) => self.enums[&id.enumeration].variants[id.index]
                 .fields
                 .iter()
@@ -753,6 +818,7 @@ impl<'a> Engine<'a> {
             Type::Bool => vec![Constructor::Bool(false), Constructor::Bool(true)],
             Type::Unit => vec![Constructor::Unit],
             Type::Tuple(id) => vec![Constructor::Tuple(id)],
+            Type::Struct(id) => vec![Constructor::Struct(id)],
             Type::Enum(id) => {
                 let mut indexes = (0..self.enums[&id].variants.len()).collect::<Vec<_>>();
                 if self
@@ -1016,6 +1082,7 @@ impl<'a> Engine<'a> {
                             out.push_str("()");
                             continue;
                         }
+                        Some(Constructor::Struct(id)) => self.structs[&id].name.clone(),
                         Some(Constructor::Tuple(_)) => String::new(),
                         Some(Constructor::Variant(v)) => format!(
                             "{}::{}",
@@ -1031,6 +1098,9 @@ impl<'a> Engine<'a> {
                     };
                     out.push_str(&head);
                     if p.children.is_empty() {
+                        if matches!(p.constructor, Some(Constructor::Struct(_))) {
+                            out.push_str("()");
+                        }
                         continue;
                     }
                     out.push('(');
@@ -1094,6 +1164,7 @@ fn analyze(
             RecursivePatternKind::Char(c) => Some(Constructor::Char(c)),
             RecursivePatternKind::Integer(v) => Some(Constructor::Integer(v.kind(), v.value())),
             RecursivePatternKind::Unit => Some(Constructor::Unit),
+            RecursivePatternKind::Struct(id) => Some(Constructor::Struct(id)),
             RecursivePatternKind::Tuple(id) => Some(Constructor::Tuple(id)),
             RecursivePatternKind::Variant(v) => Some(Constructor::Variant(v)),
         };

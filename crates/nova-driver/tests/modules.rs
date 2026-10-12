@@ -1902,3 +1902,97 @@ fn p32_integer_pattern_fixed_bundle_boundaries_full_domain_and_errors() {
         }
     }
 }
+
+#[test]
+fn p33_struct_pattern_fixed_bundle_source_origins_and_code_specific_spans() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/struct-pattern-proposal-fixtures");
+    for name in [
+        "main.nova",
+        "private_local.nova",
+        "alias_annotation.nova",
+        "guard_skipped.nova",
+        "guard_abort.nova",
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        unit(&l);
+    }
+    for (name, code, expected) in [
+        ("private.nova", "N2004", (65, 71)),
+        ("import_fail.nova", "N2001", (0, 20)),
+        ("incomplete.nova", "N3101", (50, 55)),
+        ("duplicate.nova", "N3102", (83, 95)),
+        ("nominal.nova", "N2101", (108, 113)),
+        ("arity.nova", "N2201", (69, 76)),
+        ("too_many.nova", "N2201", (54, 65)),
+        ("alias_head.nova", "N1102", (85, 90)),
+        ("enum_head.nova", "N2101", (86, 92)),
+        ("unknown.nova", "N2001", (69, 81)),
+        ("duplicate_binder.nova", "N2002", (61, 62)),
+        ("immutable.nova", "N3004", (80, 81)),
+        ("component_type.nova", "N2101", (74, 78)),
+        ("let_refutable.nova", "N3103", (54, 66)),
+        ("var_refutable.nova", "N3103", (54, 66)),
+        ("const_refutable.nova", "N3103", (56, 68)),
+        ("global_refutable.nova", "N3103", (44, 56)),
+        ("guard_only.nova", "N3101", (50, 55)),
+        ("const_failure.nova", "N3201", (62, 65)),
+        ("const_cycle.nova", "N3202", (84, 85)),
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = l.diagnostics.clone();
+        if l.module.is_some() {
+            let (_, c) = analyzed(&l);
+            diagnostics.extend(c.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && (d.primary.span.start(), d.primary.span.end()) == expected),
+            "{name}: {diagnostics:?}"
+        );
+        if matches!(name, "const_refutable.nova" | "global_refutable.nova") {
+            assert!(!diagnostics
+                .iter()
+                .any(|d| matches!(d.code.to_string().as_str(), "N3201" | "N3202")));
+        }
+        for d in diagnostics {
+            l.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                l.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+
+#[test]
+fn p33_struct_patterns_import_identity_private_fields_and_exported_const_binders() {
+    let l = fixture(&[
+        (
+            "main.nova",
+            "use values::S as Imported;use values::N;func main(){let Imported(n)=Imported(N)}",
+        ),
+        (
+            "values.nova",
+            "public struct S{public let n:int}public const S(N)=S(8)",
+        ),
+    ]);
+    let m = unit(&l);
+    assert!(nova_mir::validate(m.mir()).is_empty());
+    let l = fixture(&[
+        (
+            "main.nova",
+            "use values::S;use values::make;func main(){match make(){S(_)=>{}}}",
+        ),
+        (
+            "values.nova",
+            "public struct S{private let n:int}public func make()->S{return S(1)}",
+        ),
+    ]);
+    let (_, c) = analyzed(&l);
+    assert_eq!(codes(&c), ["N2004"]);
+    assert_eq!(l.sources.slice(c.diagnostics[0].primary.span).unwrap(), "S");
+    assert_eq!(
+        l.sources.slice(c.diagnostics[0].secondary[0].span).unwrap(),
+        "private let n:int"
+    );
+}

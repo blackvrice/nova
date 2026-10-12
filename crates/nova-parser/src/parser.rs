@@ -523,6 +523,34 @@ impl<'a> Parser<'a> {
             if self.text.get(token.span.start()..token.span.end()) == Some("_") {
                 return self.node(NodeKind::Wildcard, start, vec![]);
             }
+            if self.kind() == TokenKind::LeftParen {
+                self.open(TokenKind::LeftParen);
+                let mut children = vec![];
+                while !matches!(
+                    self.kind(),
+                    TokenKind::RightParen
+                        | TokenKind::RightBrace
+                        | TokenKind::Eof
+                        | TokenKind::Symbol(Symbol::FatArrow)
+                ) {
+                    let before = self.cursor;
+                    children.push(self.pattern());
+                    if !self.eat(TokenKind::Comma) || before == self.cursor {
+                        break;
+                    }
+                }
+                let closed = self.kind() == TokenKind::RightParen;
+                self.close(TokenKind::RightParen);
+                return self.node(
+                    if closed {
+                        NodeKind::PatternStruct { name: token.span }
+                    } else {
+                        NodeKind::Error
+                    },
+                    start,
+                    children,
+                );
+            }
             if self.kind() != TokenKind::Symbol(Symbol::ColonColon) {
                 return self.node(NodeKind::Binder { name: token.span }, start, vec![]);
             }
@@ -1292,10 +1320,12 @@ impl<'a> Parser<'a> {
                 .tokens
                 .get(self.cursor + 1)
                 .is_some_and(|t| t.kind == TokenKind::Identifier)
-                && self
-                    .tokens
-                    .get(self.cursor + 2)
-                    .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::ColonColon)))
+                && self.tokens.get(self.cursor + 2).is_some_and(|t| {
+                    matches!(
+                        t.kind,
+                        TokenKind::Symbol(Symbol::ColonColon) | TokenKind::LeftParen
+                    )
+                }))
         {
             return self.destructuring_binding();
         }

@@ -1776,3 +1776,43 @@ fn p32_negative_integer_nested_patterns_preserve_trivia_and_end() {
         .iter()
         .any(|(_, n)| matches!(n.kind, NodeKind::PatternInteger { minus: Some(_), .. })));
 }
+
+#[test]
+fn p33_struct_patterns_head_trivia_empty_children_and_binding_contexts() {
+    let source="struct Empty{}func f(){let Empty /* note */ ()=Empty();var P(x,y)=P(1,true);const P(a,b)=P(1,true);match P(1,true){P(1,true,)=>{},Empty()=>{},_=>{}}}";
+    let (db, l, p) = run(source);
+    assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+    let heads = p
+        .arena
+        .iter()
+        .filter_map(|(_, n)| {
+            if let NodeKind::PatternStruct { name } = n.kind {
+                Some((db.slice(name).unwrap(), n.children.len()))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        heads,
+        vec![("Empty", 0), ("P", 2), ("P", 2), ("P", 2), ("Empty", 0)]
+    );
+    assert!(!run("const P(n)=P(1)").2.has_errors());
+    for text in [
+        "func f(){match P(1){P(n:_)=>{}}}",
+        "func f(){match P(1){P(..)=>{}}}",
+        "func f(){let P(n)=}",
+    ] {
+        assert!(run(text).2.has_errors(), "{text}");
+    }
+}
+#[test]
+fn p33_struct_pattern_every_utf8_prefix_recovers_deterministically() {
+    let source = "func f(){match p{Outer /* 🙂 */ (Inner('가',n),(),)=>{},_=>{}}}func later(){}";
+    for end in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let (_, _, a) = run(&source[..end]);
+        let (_, _, b) = run(&source[..end]);
+        assert_eq!(a.arena.dump(), b.arena.dump());
+        assert_eq!(a.diagnostics, b.diagnostics);
+    }
+}

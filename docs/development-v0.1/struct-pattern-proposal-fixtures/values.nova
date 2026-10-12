@@ -1,0 +1,8 @@
+public struct Pair{public let n:int8;public let flag:bool;public func number(self)->int8{return self.n}}
+public struct Envelope{public let pair:Pair;public let ch:char}
+public struct Empty{}
+public struct Hidden{private let n:int8}
+public func hidden()->Hidden{return Hidden(1)}
+public const Pair(NUMBER,FLAG)=Pair(-7,true)
+public func source()->Envelope{print("scrutinee");return Envelope(Pair(NUMBER,FLAG),'🙂')}
+public func default_value(n:int8=NUMBER)->int8{return n}

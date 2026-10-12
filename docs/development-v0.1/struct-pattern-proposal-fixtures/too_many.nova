@@ -1,0 +1,2 @@
+struct Pair{let n:int8;let flag:bool}
+func main(){let Pair(a,b,c)=Pair(1,true)}

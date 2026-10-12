@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P33 Copy struct 위치 패턴
+
+- 다음 단계 사용자 승인으로 제한 계약·64-production EBNF를 구현 전에 기록했다.
+- nominal/import head·필드 순서/가시성·let/var/const 분해·bounded coverage·MIR projection 구현.
+- 새 테스트 17개, 기본 509·LLVM 29·Native 73 PASS, fmt/check/Clippy·문서 검증 완료.
+- P01~P32 ledger·원본/기존 fixture/grammar bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-12 — P32 고정 폭 정수 literal 패턴
 
 - 다음 단계 사용자 승인으로 제한 계약·63-production EBNF를 구현 전에 기록했다.

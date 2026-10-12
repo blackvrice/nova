@@ -1,0 +1,4 @@
+struct Pair{let n:int8;let flag:bool}
+const Pair(n,flag)=Pair(NEXT,true)
+const NEXT=n+1
+func main(){}

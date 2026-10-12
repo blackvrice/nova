@@ -1464,6 +1464,35 @@ for(const c of integerPatternFixture.historical_overrides){const oldRoot=path.re
  && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P32 frozen INT rejection override '+c.proposal);}
 checks.push('P32 Accepted/next-step 승인 ledger·63-production EBNF/기존 61개 보존·24개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 18 code별 byte Span/Runtime 1·P24/P30/P31 INT 거부 역사와 현재 성공 overrides (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const structPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P33');
+assert(structPatternProposal?.status==='Accepted' && structPatternProposal.implementation_verified===true && structPatternProposal.approval_date==='2026-10-12'
+  && structPatternProposal.approval_evidence==='다음 작업 승인할태니 개발 진행해줘' && structPatternProposal.document==='STRUCT_PATTERN_STAGE_B_PROPOSAL.md'
+  && structPatternProposal.grammar==='GRAMMAR_STAGE_B_STRUCT_PATTERN.ebnf' && structPatternProposal.grammar_change===true && !manifest.draft_proposals?.some(p=>p.id==='P33'),'P33 approval ledger');
+const structPatternText=fs.readFileSync(path.join(pack,structPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','64개 production','61개 보존','Empty()','N2004','N2101','N2201','N1102','N3101','N3102','N3103','1,025','10,000','100,000','1,000,000','전체 D06','Move/borrow/Drop'])assert(structPatternText.includes(phrase),'P33 missing boundary '+phrase);
+validateGrammar(structPatternProposal.grammar);const structPatternGrammar=fs.readFileSync(path.join(pack,structPatternProposal.grammar),'utf8');const structPatternProductions=productions(structPatternGrammar);
+assert(structPatternProductions.size===64 && structPatternGrammar.includes('Accepted 2026-10-12; implemented and verified'),'P33 grammar status/count');
+for(const [name,value]of integerPatternProductions)if(!['pattern','destructuring_pattern'].includes(name))assert(structPatternProductions.get(name)===value,'P33 changed approved production '+name);
+for(const name of ['pattern','destructuring_pattern'])assert(structPatternProductions.get(name)===integerPatternProductions.get(name)+'|struct_pattern','P33 struct pattern extension '+name);
+assert(structPatternProductions.get('struct_pattern')==='"IDENT","(",[pattern_arguments],")"','P33 positional head production');
+const structPatternRoot=path.join(pack,'struct-pattern-proposal-fixtures');const structPatternFixture=JSON.parse(fs.readFileSync(path.join(structPatternRoot,'expected.json'),'utf8'));
+assert(structPatternFixture.proposal==='P33' && structPatternFixture.status==='Accepted' && structPatternFixture.implementation_verified===true
+  && structPatternFixture.approval_date===structPatternProposal.approval_date && structPatternFixture.approval_evidence===structPatternProposal.approval_evidence
+  && structPatternFixture.grammar===structPatternProposal.grammar && structPatternFixture.grammar_change===true && structPatternFixture.grammar_productions===64
+  && structPatternFixture.entry==='main.nova' && structPatternFixture.source_root==='.' && JSON.stringify(structPatternFixture.reachable_modules)==='["main","values"]'
+  && structPatternFixture.validated_result?.check_exit===0 && structPatternFixture.validated_result?.native_exit===0
+  && structPatternFixture.validated_result?.stdout==='scrutinee\nfirst\nsecond\nnested=-7/🙂\nlet=3/true/가\nvar=5/true\nconst=9/true/-7\nempty\ncomplete=3\noption=5\ntry-ok\nresult=1\nerror=4\nloop=1\n' && structPatternFixture.validated_result?.stderr==='','P33 validated result');
+const structPatternSources=Object.keys(structPatternFixture.source_sha256??{});assert(structPatternSources.length===26 && fs.readdirSync(structPatternRoot).filter(n=>n.endsWith('.nova')).length===26,'P33 source count');
+for(const name of structPatternSources){const bytes=fs.readFileSync(path.join(structPatternRoot,name));assert(hash(bytes)===structPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P33 source hash/UTF8/LF '+name);}
+assert(structPatternFixture.negative_cases?.length===20 && structPatternFixture.positive_cases?.length===3 && structPatternFixture.runtime_cases?.length===1,'P33 fixture counts');
+for(const c of structPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(structPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && c.primary.start<c.primary.end && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P33 negative byte Span '+c.source);}
+for(const c of structPatternFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0 && c.validated_result?.stdout.endsWith('\n') && c.validated_result?.stderr==='','P33 positive '+c.source);
+const structPatternAbort=structPatternFixture.runtime_cases[0];const structPatternAbortBytes=fs.readFileSync(path.join(structPatternRoot,structPatternAbort.source));
+assert(structPatternAbort.validated_result?.check_exit===0 && structPatternAbort.validated_result?.native_exit===1 && structPatternAbort.validated_result?.stdout==='before\n'
+  && structPatternAbortBytes.subarray(structPatternAbort.primary.start,structPatternAbort.primary.end).toString('utf8')===structPatternAbort.primary_text
+  && structPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${structPatternAbort.primary.start}..${structPatternAbort.primary.end}`,'P33 runtime Source/result');
+checks.push('P33 Accepted/next-step 승인 ledger·64-production EBNF/기존 61개 보존·26개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 20 code별 byte Span/Runtime 1 (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));
