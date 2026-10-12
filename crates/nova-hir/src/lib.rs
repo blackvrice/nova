@@ -132,6 +132,12 @@ pub enum HirKind {
         mutable: bool,
         constant: bool,
     },
+    /// P26 pattern, optional type, then initializer; always immutable local Copy.
+    DestructuringBinding {
+        keyword: Span,
+        colon: Option<Span>,
+        equals: Span,
+    },
     Assignment,
     Return,
     If,
@@ -909,6 +915,7 @@ pub fn lower(
                 | NodeKind::Binder { .. }
                 | NodeKind::Arm
                 | NodeKind::MatchGuard { .. }
+                | NodeKind::DestructuringBinding { .. }
                 | NodeKind::Match { .. }
         ) && !valid_pattern_source(sources, arena, node)?
         {
@@ -1307,6 +1314,15 @@ pub fn lower(
                 mutable,
                 constant,
             },
+            NodeKind::DestructuringBinding {
+                keyword,
+                colon,
+                equals,
+            } => HirKind::DestructuringBinding {
+                keyword,
+                colon,
+                equals,
+            },
             NodeKind::Assignment => HirKind::Assignment,
             NodeKind::Return => HirKind::Return,
             NodeKind::If => HirKind::If,
@@ -1509,6 +1525,55 @@ fn valid_pattern_source(
             allowed,
         ))
     };
+    if let NodeKind::DestructuringBinding {
+        keyword,
+        colon,
+        equals,
+    } = node.kind
+    {
+        if !valid_shape(arena, node) {
+            return Ok(false);
+        }
+        let children = node
+            .children
+            .iter()
+            .map(|id| arena.get(*id).expect("shape"))
+            .collect::<Vec<_>>();
+        if children.iter().any(|n| !inside(node.span, n.span))
+            || children
+                .windows(2)
+                .any(|p| p[0].span.end() > p[1].span.start())
+            || !inside(node.span, keyword)
+            || !inside(node.span, equals)
+            || colon.is_some_and(|c| !inside(node.span, c))
+        {
+            return Ok(false);
+        }
+        let init = children.last().expect("binding initializer");
+        if node.span.start() != keyword.start()
+            || node.span.end() != init.span.end()
+            || sources.slice(keyword)? != "let"
+            || sources.slice(equals)? != "="
+            || !token_boundary(sources.file(keyword.file())?.text(), keyword)
+            || !gap(keyword.end(), children[0].span.start(), &[""])?
+            || !gap(equals.end(), init.span.start(), &[""])?
+        {
+            return Ok(false);
+        }
+        if let Some(colon) = colon {
+            if sources.slice(colon)? != ":"
+                || !gap(children[0].span.end(), colon.start(), &[""])?
+                || !gap(colon.end(), children[1].span.start(), &[""])?
+            {
+                return Ok(false);
+            }
+        }
+        return gap(
+            children[children.len() - 2].span.end(),
+            equals.start(),
+            &[""],
+        );
+    }
     if let NodeKind::Binder { name } = node.kind {
         return Ok(name == node.span
             && token_boundary(sources.file(name.file())?.text(), name)
@@ -1817,6 +1882,17 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 && matches!(kinds.last(), Some(NodeKind::Block | NodeKind::Error))
         }
         NodeKind::MatchGuard { .. } => kinds.len() == 1 && expr(kinds[0]),
+        NodeKind::DestructuringBinding { colon, .. } => {
+            kinds.len() == 2 + usize::from(colon.is_some())
+                && matches!(
+                    kinds[0],
+                    NodeKind::PatternTuple
+                        | NodeKind::PatternUnit
+                        | NodeKind::PatternVariant { .. }
+                )
+                && (colon.is_none() || ty(kinds[1]))
+                && expr(*kinds.last().expect("binding initializer"))
+        }
         NodeKind::Struct { .. } => kinds.iter().all(|k| {
             matches!(
                 k,
@@ -1888,6 +1964,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
             matches!(
                 k,
                 NodeKind::Binding { .. }
+                    | NodeKind::DestructuringBinding { .. }
                     | NodeKind::Assignment
                     | NodeKind::While
                     | NodeKind::For { .. }

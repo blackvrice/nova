@@ -127,7 +127,7 @@ for (const row of rows) {
     ([14,43,46,47,48,74,76,78,81,83,87,91,94,95,136].includes(row.number)
       ? `Copy match Bool guard·pattern-success 단일 평가·false continuation·unguarded 합집합 coverage·try/Source/MIR 계약은 [P25 Accepted](../GUARD_STAGE_B_PROPOSAL.md)·[61-production EBNF](../GRAMMAR_STAGE_B_GUARD.ebnf)·[수용 fixture](../guard-proposal-fixtures/README.md)와 [구현 기록](../GUARD_IMPLEMENTATION.md)을 따른다. 구현·검증 완료이며 P01~P24와 guard 없는 경로를 보존한다. guard truth/refinement 증명·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.\n\n` : '') +
     ([14,29,35,37,38,44,46,47,48,73,74,75,76,77,78,81,83,87,91,94,95,136].includes(row.number)
-      ? `Irrefutable Copy local let 구조 분해·Tuple/Unit/single-variant Enum·initializer 단일 평가/snapshot·선언 시점·Source/MIR 계약은 [P26 Draft](../DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production 제안 EBNF](../GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 계획](../destructuring-proposal-fixtures/README.md)에 제안했다. 미승인·미구현이며 N3103은 미등록 제안 code다. P01~P25·일반 IDENT binding을 보존하고 var/const/global/parameter/for/assignment destructuring·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.\n\n` : '') + body.trim() + '\n';
+      ? `Irrefutable Copy local let 구조 분해·Tuple/Unit/single-variant Enum·initializer 단일 평가/snapshot·선언 시점·Source/MIR 계약은 [P26 Accepted](../DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](../GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 fixture](../destructuring-proposal-fixtures/README.md)와 [구현 기록](../DESTRUCTURING_IMPLEMENTATION.md)을 따른다. 구현·검증 완료이며 N3103을 등록했다. P01~P25·일반 IDENT binding을 보존하고 var/const/global/parameter/for/assignment destructuring·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.\n\n` : '') + body.trim() + '\n';
   fs.writeFileSync(path.join(out, 'specs', `${id}.md`), content, 'utf8');
   const original = fs.readFileSync(path.join(root, 'docs', row.original));
   const originalText = original.toString('utf8');
@@ -160,7 +160,7 @@ fs.writeFileSync(path.join(out, 'INDEX.md'), `# Nova 0.1 개발 문서 전체 �
   `[P23 Copy struct 생성자 이름 인수](STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture: 두 파일/정상 2/부정 24/Runtime 1](struct-named-arguments-proposal-fixtures/README.md)은 Accepted / 구현 완료다. [구현 기록](STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)을 제공하며 승인 P22 58-production EBNF를 그대로 재사용한다.\n\n` +
   `[P24 중첩 Copy 패턴·Tuple match](NESTED_PATTERN_STAGE_B_PROPOSAL.md)·[60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 fixture](nested-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](NESTED_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 56개 production과 P01~P23 승인 범위를 보존한다.\n\n` +
   `[P25 Copy match guard](GUARD_STAGE_B_PROPOSAL.md)·[61-production EBNF](GRAMMAR_STAGE_B_GUARD.ebnf)·[수용 fixture](guard-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](GUARD_IMPLEMENTATION.md)을 제공한다. 기존 59개 production과 P01~P24 승인 범위를 보존한다.\n\n` +
-  `[P26 Copy let 구조 분해](DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production 제안 EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 계획](destructuring-proposal-fixtures/README.md)은 Draft / 미승인·미구현이다. 기존 60개 production·P01~P25·일반 IDENT binding을 보존한다.\n\n` +
+  `[P26 Copy let 구조 분해](DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 fixture](destructuring-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](DESTRUCTURING_IMPLEMENTATION.md)을 제공한다. 기존 60개 production·P01~P25·일반 IDENT binding을 보존한다.\n\n` +
   `[시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)\n\n` +
   `| ID | 분야 | 작성 문서 | Stage | 상태 |\n|---|---|---|---|---|\n${index.join('\n')}\n`, 'utf8');
 fs.writeFileSync(path.join(out, 'SPEC_AUDIT.md'), `# 원본 사양 감사와 보완 경계\n\n` +
@@ -206,8 +206,9 @@ fs.writeFileSync(path.join(out, 'MANIFEST.json'), JSON.stringify({
     { id: 'P23', status: 'Accepted', approval_date: '2026-10-08', document: 'STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_METHOD.ebnf', grammar_change: false, scope: 'Stage B Copy struct generated constructor named field mapping source order snapshots const defaults and Source MIR validation', implementation_verified: true },
     { id: 'P24', status: 'Accepted', approval_date: '2026-10-08', document: 'NESTED_PATTERN_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf', grammar_change: true, scope: 'Stage B recursive Copy sum tuple Unit patterns immutable binders bounded matrix coverage and Source MIR validation', implementation_verified: true },
     { id: 'P25', status: 'Accepted', approval_date: '2026-10-12', document: 'GUARD_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_GUARD.ebnf', grammar_change: true, scope: 'Stage B Copy statement match Bool guards single evaluation false continuation unguarded union coverage try and Source MIR validation', implementation_verified: true },
+    { id: 'P26', status: 'Accepted', approval_date: '2026-10-12', document: 'DESTRUCTURING_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_DESTRUCTURING.ebnf', grammar_change: true, scope: 'Stage B irrefutable Copy local let tuple Unit single variant Enum destructuring initializer first scope snapshot and Source MIR validation', diagnostic_codes: ['N3103'], implementation_verified: true },
   ],
-  draft_proposals: [{ id: 'P26', status: 'Draft', document: 'DESTRUCTURING_STAGE_B_PROPOSAL.md', grammar: 'GRAMMAR_STAGE_B_DESTRUCTURING.ebnf', grammar_change: true, scope: 'Stage B irrefutable Copy local let tuple Unit single variant Enum destructuring initializer first scope snapshot and Source MIR validation', proposed_diagnostic_codes: ['N3103'], implementation_verified: false }],
+  draft_proposals: [],
   authored_date: '2026-10-03', topics: manifest,
 }, null, 2) + '\n', 'utf8');
 console.log(`Generated ${manifest.length} authored topic documents, INDEX, audit and manifest.`);

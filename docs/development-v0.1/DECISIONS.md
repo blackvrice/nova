@@ -38,7 +38,7 @@
 
 2026-10-12 사용자 “P25 승인하고 Copy match guard 구현 진행” 답변으로 [P25 계약](GUARD_STAGE_B_PROPOSAL.md)·[61-production EBNF](GRAMMAR_STAGE_B_GUARD.ebnf)을 승인했다. Accepted / 구현·검증 완료이며 [구현 기록](GUARD_IMPLEMENTATION.md)을 따른다. 기존 59개 production·P01~P24·guard 없는 match 경계를 보존하며 Array·Move/loan/Drop·guard truth/refinement 증명·전체 D08/D10/D12/D16/D25/D30은 제외한다.
 
-2026-10-12 다음 Stage B 작업으로 [P26 irrefutable Copy let 구조 분해](DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production 제안 EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 계획](destructuring-proposal-fixtures/README.md)을 준비했다. Draft / 미승인·미구현이며 P01~P25 승인으로 해석하지 않는다. 새 N3103은 미등록 제안 code다. 일반 IDENT binding·Array/Move/loan/Drop 선행 조건과 전체 D08/D10/D12/D16/D25/D30의 승인 경계를 보존한다.
+2026-10-12 사용자 “P26 승인하고 Copy let 구조 분해 구현 진행” 답변으로 [P26 계약](DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)을 승인했다. Accepted / 구현·검증 완료이며 [구현 기록](DESTRUCTURING_IMPLEMENTATION.md)을 따른다. N3103을 등록하고 기존 60개 production·P01~P25·일반 IDENT binding을 보존한다. var/const/global/parameter/for/assignment destructuring·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.
 
 ## 공통 승인 계약
 

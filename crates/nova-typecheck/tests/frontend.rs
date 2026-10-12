@@ -4353,3 +4353,173 @@ fn p25_guard_flow_and_coverage_notes_exclude_guarded_predecessors() {
         .iter()
         .all(|s| !r.sources.slice(s.span).unwrap().contains("if")));
 }
+
+#[test]
+fn p26_initializer_scope_shadow_legacy_underscore_and_annotations() {
+    let r=pass("func f(){let n=7;if true{let (n,flag):(int8,bool)=(n as int8,true);print(\"{n}/{flag}\")}let _=9;print(\"{_}\");let (u,c):(uint8,char)=(255,'🙂');print(\"{u}/{c}\")}");
+    let (_, resolved, checked) = r.semantic.unwrap();
+    let n = resolved
+        .definitions
+        .iter()
+        .enumerate()
+        .filter(|(_, d)| d.name == "n")
+        .map(|(i, _)| checked.types.get(checked.definition_types[i]))
+        .collect::<Vec<_>>();
+    assert_eq!(n, [Some(Type::Int32), Some(Type::Int8)]);
+    for (source, expected) in [
+        ("func f(){let (n,_)= (n,0)}", "N2001"),
+        ("func f(){let n=1;let(n,_)= (2,0)}", "N2002"),
+        ("func f(){let(n,n)= (1,2)}", "N2002"),
+        ("func f(){let(n,_)= (1,2);n=3}", "N3004"),
+        ("func f(){if true{let(n,_)= (1,2)}print(\"{n}\")}", "N2001"),
+    ] {
+        assert_eq!(codes(&frontend(source)), [expected]);
+    }
+}
+#[test]
+fn p26_irrefutability_finite_full_type_domain_reference() {
+    // Independent enumeration of the four Bool-pair values, including known initializers.
+    let patterns = ["_", "false", "true"];
+    for a in 0..3 {
+        for b in 0..3 {
+            let covered = (0..4)
+                .filter(|v| {
+                    (a == 0 || (a == 2) == (v & 2 != 0)) && (b == 0 || (b == 2) == (v & 1 != 0))
+                })
+                .count();
+            for value in ["(true,true)", "(false,false)", "v"] {
+                let source = format!(
+                    "func f(v:(bool,bool)){{let ({},{})={value}}}",
+                    patterns[a], patterns[b]
+                );
+                let result = frontend(&source);
+                assert_eq!(
+                    codes(&result),
+                    if covered == 4 {
+                        vec![]
+                    } else {
+                        vec!["N3103".to_string()]
+                    },
+                    "{source}"
+                );
+                if covered != 4 {
+                    let d = &result.diagnostics()[0];
+                    assert_eq!(
+                        result.sources.slice(d.primary.span).unwrap(),
+                        format!("({},{})", patterns[a], patterns[b])
+                    );
+                    assert_eq!(d.secondary.len(), 1);
+                    assert!(!d.notes.is_empty());
+                }
+            }
+        }
+    }
+    pass("enum E{One((bool,()))}func f(v:E){let E::One((flag,()))=v;print(\"{flag}\")}");
+    for s in [
+        "enum E{A;B}func f(){let E::A=E::A}",
+        "func f(){let Option::Some(n):Option<int8>=Option::Some(1)}",
+        "func f(){let Result::Success(n):Result<int8,bool>=Result::Success(1)}",
+    ] {
+        assert_eq!(codes(&frontend(s)), ["N3103"]);
+    }
+}
+#[test]
+fn p26_error_type_suppresses_dependent_pattern_and_irrefutability() {
+    for source in [
+        "func f(){let (true,n)=missing;print(\"{n}\")}",
+        "func f(){let (true,n):(bool,int8)=(true,300)}",
+    ] {
+        let r = frontend(source);
+        assert!(!r.passed());
+        assert!(!codes(&r)
+            .iter()
+            .any(|c| matches!(c.as_str(), "N3103" | "N3101" | "N3102")));
+    }
+    assert_eq!(
+        codes(&frontend("func f(){let (true,x,x)=(true,1,2)}")),
+        ["N2002"]
+    );
+}
+#[test]
+fn p26_pattern_node_limit_exact_boundary_and_first_excess_span() {
+    fn source(extra: usize) -> String {
+        fn tree(leaves: usize) -> (String, String) {
+            if leaves == 1 {
+                return ("()".into(), "_".into());
+            }
+            let (a, p) = tree(leaves / 2);
+            let (b, q) = tree(leaves - leaves / 2);
+            (format!("({a},{b})"), format!("({p},{q})"))
+        }
+        let (mut ty, mut pattern) = tree(5000);
+        for _ in 0..=extra {
+            ty = format!("({ty},)");
+            pattern = format!("({pattern},)");
+        }
+        format!("func f(v:{ty}){{let {pattern}=v}}")
+    }
+    let good = pass(&source(0));
+    assert_eq!(
+        good.semantic
+            .unwrap()
+            .2
+            .recursive_patterns
+            .iter()
+            .flatten()
+            .count(),
+        10000
+    );
+    let bad = frontend(&source(1));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        "_"
+    );
+}
+#[test]
+fn p26_single_enum_nested_tuple_opaque_copy_and_annotation_identity() {
+    pass("struct P{private let n:int8;func value(self)->int8{return self.n}}enum E{One((P,bool),())}type Alias=E;func f(v:Alias){let E::One((p,flag),())=v;print(\"{p.value()}/{flag}\")}");
+    assert_eq!(
+        codes(&frontend(
+            "type Pair=(int8,bool);func f(){let(a,b):Pair=(128,true)}"
+        )),
+        ["N2102"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "enum E{A(bool)}enum F{A(bool)}func f(v:F){let E::A(x)=v}"
+        )),
+        ["N2101"]
+    );
+}
+
+#[test]
+fn p26_matrix_resource_error_uses_let_keyword_and_suppresses_refutability() {
+    let mut types = vec![];
+    let mut patterns = vec![];
+    for i in 0..10 {
+        let n = if i == 9 { 989 } else { 1000 };
+        types.push(format!("({})", vec!["()"; n].join(",")));
+        patterns.push(format!("({})", vec!["_"; n].join(",")));
+    }
+    let source = format!(
+        "func f(v:({})){{let ({})=v}}",
+        types.join(","),
+        patterns.join(",")
+    );
+    let result = frontend(&source);
+    assert_eq!(codes(&result), ["N8901"]);
+    assert_eq!(
+        result
+            .sources
+            .slice(result.diagnostics()[0].primary.span)
+            .unwrap(),
+        "let"
+    );
+    assert!(result.diagnostics()[0]
+        .notes
+        .iter()
+        .any(|n| n.contains("1000000")));
+}

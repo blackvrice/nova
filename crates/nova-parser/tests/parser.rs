@@ -1523,3 +1523,74 @@ fn p25_guard_ast_end_recovery_and_expression_shapes() {
         assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function{name,..} if n.span.start()>=source.len()&&name.start()>source.len())));
     }
 }
+
+#[test]
+fn p26_destructuring_grammar_punctuation_end_recovery_and_depth() {
+    for source in [
+        "func f(){let(a,b):(int8,bool)=(1,true);let ()=();let E::One((x,),())=v;let _=1}",
+        "func f(){let(\n a,\n b,\n)=\n(1,2)}",
+        "func f(){let E::One(x):Option<int8>=v}",
+    ] {
+        let (db, l, p) = run(source);
+        assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+        for (_, n) in p.arena.iter() {
+            if let NodeKind::DestructuringBinding {
+                keyword,
+                colon,
+                equals,
+            } = n.kind
+            {
+                assert_eq!(db.slice(keyword).unwrap(), "let");
+                assert_eq!(db.slice(equals).unwrap(), "=");
+                if let Some(c) = colon {
+                    assert_eq!(db.slice(c).unwrap(), ":");
+                }
+            }
+        }
+    }
+    for source in [
+        "func f(){var(a,b)=(1,2)}",
+        "func f(){const(a,b)=(1,2)}",
+        "func f(){let(x)=1}",
+        "func f(){let(a,b) if true=(1,2)}",
+    ] {
+        let (_, _, p) = run(&format!("{source}func later(){{}}"));
+        assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"));
+        assert!(p
+            .arena
+            .iter()
+            .any(|(_, n)| matches!(n.kind, NodeKind::Function { .. })
+                && n.span.start() >= source.len()));
+    }
+    for depth in [127, 128, 129] {
+        let text = format!(
+            "func f(){{let {}x{}=v}}",
+            "E::A(".repeat(depth),
+            ")".repeat(depth)
+        );
+        let (_, _, p) = run(&text);
+        assert_eq!(
+            p.diagnostics.iter().any(|d| d.code.to_string() == "N8901"),
+            depth == 129
+        );
+    }
+}
+
+#[test]
+fn p26_excluded_parameter_for_assignment_global_and_let_else_are_rejected() {
+    for source in [
+        "func f((a,b):(int,int)){}",
+        "func f(){for (a,b) in 0 until 2{}}",
+        "func f(){(a,b)=(1,2)}",
+        "let (a,b)=(1,2)",
+        "const(a,b)=(1,2)",
+        "func f(){let(a,b)=(1,2) else {}}",
+    ] {
+        let (_, _, p) = run(source);
+        assert!(
+            p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"),
+            "{source}: {:?}",
+            p.diagnostics
+        );
+    }
+}

@@ -1266,3 +1266,58 @@ fn p25_guard_prefix_source_keyword_order_and_condition_forgery() {
         );
     }
 }
+
+#[test]
+fn p26_utf8_prefix_and_public_ast_keyword_colon_equals_order_forgery() {
+    let source = "func f(){let (値,flag):(int8,bool)=(7,true);print(\"🙂{値}\") }func later(){}";
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let mut db = SourceDatabase::default();
+        let file = db.add("prefix", source[..at].into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        let first = lower(&db, &p.arena, p.root);
+        assert_eq!(first, lower(&db, &p.arena, p.root));
+        if !l.has_errors() && !p.has_errors() {
+            assert!(first.is_ok(), "{}: {first:?}", &source[..at]);
+        }
+    }
+    let mut db = SourceDatabase::default();
+    let file = db.add("api", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    for change in 0..6 {
+        let mut ast = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let mut span = n.span;
+            let mut children = n
+                .children
+                .iter()
+                .map(|c| ids[c.index()])
+                .collect::<Vec<_>>();
+            if let NodeKind::DestructuringBinding {
+                keyword,
+                colon,
+                equals,
+            } = &mut kind
+            {
+                match change {
+                    0 => *keyword = Span::new(file, keyword.start() + 1, keyword.end()).unwrap(),
+                    1 => *equals = *keyword,
+                    2 => *colon = Some(*equals),
+                    3 => children.swap(0, 1),
+                    4 => span = Span::new(file, span.start() + 1, span.end()).unwrap(),
+                    _ => {
+                        children.pop();
+                    }
+                }
+            }
+            ids.push(ast.insert(kind, span, children).unwrap());
+        }
+        assert!(
+            lower(&db, &ast, ids[p.root.index()]).is_err(),
+            "forgery {change}"
+        );
+    }
+}

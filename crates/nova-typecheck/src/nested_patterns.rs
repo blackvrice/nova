@@ -55,6 +55,314 @@ impl Checker<'_> {
         })
     }
 
+    fn type_recursive_pattern(
+        &mut self,
+        root: HirId,
+        ty: Type,
+        annotation: Option<nova_source::Span>,
+        count: &mut usize,
+        limit_message: &str,
+    ) -> bool {
+        let mut valid = true;
+        let before = self.result.diagnostics.len();
+        let mut names = BTreeSet::new();
+        let mut work = vec![(root, ty, annotation)];
+        while let Some((pattern, expected, annotation)) = work.pop() {
+            *count += 1;
+            if *count == PATTERN_NODE_LIMIT + 1 {
+                self.enum_limit(self.module.nodes()[pattern.0].span, limit_message);
+                valid = false;
+            }
+            let p = &self.module.nodes()[pattern.0];
+            let mut fields = vec![];
+            let mut field_annotations = vec![];
+            let kind = match p.kind {
+                HirKind::Binder { name, .. } => {
+                    if !names.insert(name.0) || self.resolved.declaration_ids[pattern.0].is_none() {
+                        valid = false;
+                    }
+                    RecursivePatternKind::Wildcard
+                }
+                HirKind::Wildcard => RecursivePatternKind::Wildcard,
+                HirKind::PatternBoolean(value) => {
+                    if expected != Type::Bool && expected != Type::Error {
+                        self.report(
+                            2101,
+                            p.span,
+                            "Bool pattern requires Bool component",
+                            annotation,
+                        );
+                    }
+                    RecursivePatternKind::Bool(value)
+                }
+                HirKind::PatternUnit => {
+                    if expected != Type::Unit && expected != Type::Error {
+                        self.report(
+                            2101,
+                            p.span,
+                            "Unit pattern requires Unit component",
+                            annotation,
+                        );
+                    }
+                    RecursivePatternKind::Unit
+                }
+                HirKind::PatternTuple => {
+                    if let Type::Tuple(tuple) = expected {
+                        fields = self.result.structs[&tuple]
+                            .fields
+                            .iter()
+                            .map(|f| f.ty)
+                            .collect();
+                        field_annotations = self
+                            .result
+                            .field_sources
+                            .get(&tuple)
+                            .cloned()
+                            .unwrap_or_default();
+                        if fields.len() != p.children.len() {
+                            self.report(
+                                2201,
+                                p.span,
+                                "tuple pattern arity does not match",
+                                annotation,
+                            );
+                        }
+                        RecursivePatternKind::Tuple(tuple)
+                    } else {
+                        if expected != Type::Error {
+                            self.report(
+                                2101,
+                                p.span,
+                                "tuple pattern requires Tuple component",
+                                annotation,
+                            );
+                        }
+                        RecursivePatternKind::Wildcard
+                    }
+                }
+                HirKind::PatternVariant { .. } | HirKind::PatternNone => {
+                    let (arguments, path_span) = match p.kind {
+                        HirKind::PatternVariant {
+                            arguments,
+                            owner_span,
+                            name_span,
+                            ..
+                        } => (
+                            arguments,
+                            nova_source::Span::new(
+                                owner_span.file(),
+                                owner_span.start(),
+                                name_span.end(),
+                            )
+                            .expect("pattern path"),
+                        ),
+                        _ => (false, p.span),
+                    };
+                    let variant = if expected == Type::Error {
+                        None
+                    } else if self.sum_head(pattern).is_some() {
+                        let tid = self.result.types.intern(expected);
+                        let v = self.prepare_sum(pattern, Some(tid));
+                        if v.is_none() {
+                            let (_, name) = self.sum_head(pattern).expect("sum head");
+                            if matches!(name, "Some" | "None" | "Success" | "Error") {
+                                self.report(
+                                    2101,
+                                    path_span,
+                                    "pattern sum family differs from component",
+                                    annotation,
+                                );
+                            } else {
+                                self.sum_error(pattern, pattern, Some(tid));
+                            }
+                        }
+                        v
+                    } else {
+                        let alias = if let HirKind::PatternVariant { owner, .. } = p.kind {
+                            self.type_definition(pattern, owner).is_some_and(|def| {
+                                matches!(
+                                    self.resolved.definitions[def.0].kind,
+                                    nova_resolve::DefinitionKind::TypeAlias(_)
+                                )
+                            })
+                        } else {
+                            false
+                        };
+                        if alias {
+                            self.report(
+                                1102,
+                                path_span,
+                                "alias variant heads are unsupported",
+                                None,
+                            );
+                            None
+                        } else {
+                            self.resolve_variant(pattern)
+                        }
+                    };
+                    if let Some(v) = variant {
+                        if expected != Type::Enum(v.enumeration) {
+                            self.report(
+                                2101,
+                                path_span,
+                                "pattern Enum differs from component",
+                                annotation,
+                            );
+                        } else {
+                            let shape = &self.result.enums[&v.enumeration];
+                            fields = shape.variants[v.index]
+                                .fields
+                                .iter()
+                                .map(|f| f.ty)
+                                .collect();
+                            let offset = shape.variants[..v.index]
+                                .iter()
+                                .map(|v| v.fields.len())
+                                .sum::<usize>();
+                            field_annotations = self
+                                .result
+                                .field_sources
+                                .get(&StructId(v.enumeration.0))
+                                .map(|s| {
+                                    s.iter().skip(offset).take(fields.len()).copied().collect()
+                                })
+                                .unwrap_or_default();
+                            if fields.len() != p.children.len() || arguments == fields.is_empty() {
+                                self.report(
+                                    2201,
+                                    p.span,
+                                    "variant pattern arity does not match",
+                                    annotation,
+                                );
+                            }
+                        }
+                        RecursivePatternKind::Variant(v)
+                    } else {
+                        valid = false;
+                        RecursivePatternKind::Wildcard
+                    }
+                }
+                _ => {
+                    valid = false;
+                    RecursivePatternKind::Wildcard
+                }
+            };
+            if let Some(def) = self.resolved.declaration_ids[pattern.0] {
+                self.result.definition_types[def.0] = self.result.types.intern(expected);
+            }
+            self.set(pattern, expected);
+            self.result.recursive_patterns[pattern.0] = Some(RecursivePattern {
+                ty: expected,
+                kind,
+                children: p.children.clone(),
+            });
+            for (at, &child) in p.children.iter().enumerate().rev() {
+                work.push((
+                    child,
+                    fields.get(at).copied().unwrap_or(Type::Error),
+                    field_annotations
+                        .get(at)
+                        .map(|s| self.module.nodes()[s.0].span),
+                ));
+            }
+        }
+        valid && self.result.diagnostics.len() == before && ty != Type::Error
+    }
+
+    pub(super) fn prepare_destructuring(&mut self, id: HirId) {
+        let node = &self.module.nodes()[id.0];
+        let HirKind::DestructuringBinding {
+            keyword,
+            colon,
+            equals,
+        } = node.kind
+        else {
+            return;
+        };
+        let pattern = node.children[0];
+        let annotation = colon.map(|_| node.children[1]);
+        let initializer = *node.children.last().expect("binding initializer");
+        self.result.destructuring_bindings[id.0] = Some(crate::DestructuringBinding {
+            pattern,
+            annotation,
+            initializer,
+            keyword,
+            colon,
+            equals,
+        });
+        let ty = self
+            .ty(self.result.coercions[initializer.0]
+                .unwrap_or(self.result.type_table[initializer.0]));
+        let mut count = 0;
+        if !self.type_recursive_pattern(
+            pattern,
+            ty,
+            annotation.map(|a| self.module.nodes()[a.0].span),
+            &mut count,
+            "binding source pattern node limit: 10000",
+        ) {
+            return;
+        }
+        let mut all = vec![];
+        let mut work = vec![pattern];
+        while let Some(p) = work.pop() {
+            all.push(p);
+            work.extend(self.module.nodes()[p.0].children.iter().rev().copied());
+        }
+        let report = match analyze(
+            (&self.result.structs, &self.result.enums, &self.result.sums),
+            &self.result.recursive_patterns,
+            &all,
+            &[pattern],
+            &[false],
+            ty,
+        ) {
+            Ok(report) => report,
+            Err(limit) => {
+                self.enum_limit(keyword, limit.message());
+                return;
+            }
+        };
+        if !report.missing.is_empty() {
+            let component = all
+                .iter()
+                .find(|p| {
+                    match self.result.recursive_patterns[p.0]
+                        .as_ref()
+                        .expect("typed pattern")
+                        .kind
+                    {
+                        RecursivePatternKind::Bool(_) => true,
+                        RecursivePatternKind::Variant(v) => {
+                            self.result.enums[&v.enumeration].variants.len() > 1
+                        }
+                        _ => false,
+                    }
+                })
+                .copied()
+                .unwrap_or(pattern);
+            self.report(
+                3103,
+                self.module.nodes()[pattern.0].span,
+                "refutable let binding pattern",
+                None,
+            );
+            let diagnostic = self.result.diagnostics.last_mut().expect("binding error");
+            diagnostic.secondary.push(nova_diagnostics::Label {
+                span: self.module.nodes()[component.0].span,
+                message: "refutable component".into(),
+            });
+            for witness in report.missing {
+                diagnostic.notes.push(format!("missing: {witness}"));
+            }
+            if report.more_missing {
+                diagnostic
+                    .notes
+                    .push("additional missing patterns omitted".into());
+            }
+        }
+    }
+
     pub(super) fn prepare_nested_match(&mut self, id: HirId) {
         self.result.nested_matches.insert(id.0);
         let node = &self.module.nodes()[id.0];
@@ -83,212 +391,13 @@ impl Checker<'_> {
                 self.enum_limit(self.module.nodes()[root.0].span, "match arm limit: 1025");
                 valid = false;
             }
-            let mut names = BTreeSet::new();
-            let mut work = vec![(root, ty, None)];
-            while let Some((pattern, expected, annotation)) = work.pop() {
-                count += 1;
-                if count == PATTERN_NODE_LIMIT + 1 {
-                    self.enum_limit(
-                        self.module.nodes()[pattern.0].span,
-                        "match source pattern node limit: 10000",
-                    );
-                    valid = false;
-                }
-                let p = &self.module.nodes()[pattern.0];
-                let mut fields = vec![];
-                let mut field_annotations = vec![];
-                let kind = match p.kind {
-                    HirKind::Binder { name, .. } => {
-                        if !names.insert(name.0) {
-                            valid = false;
-                        }
-                        RecursivePatternKind::Wildcard
-                    }
-                    HirKind::Wildcard => RecursivePatternKind::Wildcard,
-                    HirKind::PatternBoolean(value) => {
-                        if expected != Type::Bool && expected != Type::Error {
-                            self.report(
-                                2101,
-                                p.span,
-                                "Bool pattern requires Bool component",
-                                annotation,
-                            );
-                        }
-                        RecursivePatternKind::Bool(value)
-                    }
-                    HirKind::PatternUnit => {
-                        if expected != Type::Unit && expected != Type::Error {
-                            self.report(
-                                2101,
-                                p.span,
-                                "Unit pattern requires Unit component",
-                                annotation,
-                            );
-                        }
-                        RecursivePatternKind::Unit
-                    }
-                    HirKind::PatternTuple => {
-                        if let Type::Tuple(tuple) = expected {
-                            fields = self.result.structs[&tuple]
-                                .fields
-                                .iter()
-                                .map(|f| f.ty)
-                                .collect();
-                            field_annotations = self
-                                .result
-                                .field_sources
-                                .get(&tuple)
-                                .cloned()
-                                .unwrap_or_default();
-                            if fields.len() != p.children.len() {
-                                self.report(
-                                    2201,
-                                    p.span,
-                                    "tuple pattern arity does not match",
-                                    annotation,
-                                );
-                            }
-                            RecursivePatternKind::Tuple(tuple)
-                        } else {
-                            if expected != Type::Error {
-                                self.report(
-                                    2101,
-                                    p.span,
-                                    "tuple pattern requires Tuple component",
-                                    annotation,
-                                );
-                            }
-                            RecursivePatternKind::Wildcard
-                        }
-                    }
-                    HirKind::PatternVariant { .. } | HirKind::PatternNone => {
-                        let (arguments, path_span) = match p.kind {
-                            HirKind::PatternVariant {
-                                arguments,
-                                owner_span,
-                                name_span,
-                                ..
-                            } => (
-                                arguments,
-                                nova_source::Span::new(
-                                    owner_span.file(),
-                                    owner_span.start(),
-                                    name_span.end(),
-                                )
-                                .expect("pattern path"),
-                            ),
-                            _ => (false, p.span),
-                        };
-                        let variant = if expected == Type::Error {
-                            None
-                        } else if self.sum_head(pattern).is_some() {
-                            let tid = self.result.types.intern(expected);
-                            let v = self.prepare_sum(pattern, Some(tid));
-                            if v.is_none() {
-                                let (_, name) = self.sum_head(pattern).expect("sum head");
-                                if matches!(name, "Some" | "None" | "Success" | "Error") {
-                                    self.report(
-                                        2101,
-                                        path_span,
-                                        "pattern sum family differs from component",
-                                        annotation,
-                                    );
-                                } else {
-                                    self.sum_error(pattern, pattern, Some(tid));
-                                }
-                            }
-                            v
-                        } else {
-                            let alias = if let HirKind::PatternVariant { owner, .. } = p.kind {
-                                self.type_definition(pattern, owner).is_some_and(|def| {
-                                    matches!(
-                                        self.resolved.definitions[def.0].kind,
-                                        nova_resolve::DefinitionKind::TypeAlias(_)
-                                    )
-                                })
-                            } else {
-                                false
-                            };
-                            if alias {
-                                self.report(
-                                    1102,
-                                    path_span,
-                                    "alias variant heads are unsupported",
-                                    None,
-                                );
-                                None
-                            } else {
-                                self.resolve_variant(pattern)
-                            }
-                        };
-                        if let Some(v) = variant {
-                            if expected != Type::Enum(v.enumeration) {
-                                self.report(
-                                    2101,
-                                    path_span,
-                                    "pattern Enum differs from component",
-                                    annotation,
-                                );
-                            } else {
-                                let shape = &self.result.enums[&v.enumeration];
-                                fields = shape.variants[v.index]
-                                    .fields
-                                    .iter()
-                                    .map(|f| f.ty)
-                                    .collect();
-                                let offset = shape.variants[..v.index]
-                                    .iter()
-                                    .map(|v| v.fields.len())
-                                    .sum::<usize>();
-                                field_annotations = self
-                                    .result
-                                    .field_sources
-                                    .get(&StructId(v.enumeration.0))
-                                    .map(|s| {
-                                        s.iter().skip(offset).take(fields.len()).copied().collect()
-                                    })
-                                    .unwrap_or_default();
-                                if fields.len() != p.children.len()
-                                    || arguments == fields.is_empty()
-                                {
-                                    self.report(
-                                        2201,
-                                        p.span,
-                                        "variant pattern arity does not match",
-                                        annotation,
-                                    );
-                                }
-                            }
-                            RecursivePatternKind::Variant(v)
-                        } else {
-                            valid = false;
-                            RecursivePatternKind::Wildcard
-                        }
-                    }
-                    _ => {
-                        valid = false;
-                        RecursivePatternKind::Wildcard
-                    }
-                };
-                if let Some(def) = self.resolved.declaration_ids[pattern.0] {
-                    self.result.definition_types[def.0] = self.result.types.intern(expected);
-                }
-                self.set(pattern, expected);
-                self.result.recursive_patterns[pattern.0] = Some(RecursivePattern {
-                    ty: expected,
-                    kind,
-                    children: p.children.clone(),
-                });
-                for (at, &child) in p.children.iter().enumerate().rev() {
-                    work.push((
-                        child,
-                        fields.get(at).copied().unwrap_or(Type::Error),
-                        field_annotations
-                            .get(at)
-                            .map(|s| self.module.nodes()[s.0].span),
-                    ));
-                }
-            }
+            valid &= self.type_recursive_pattern(
+                root,
+                ty,
+                None,
+                &mut count,
+                "match source pattern node limit: 10000",
+            );
             self.set(arm, Type::Unit);
         }
         valid &= self.result.diagnostics.len() == before && ty != Type::Error;

@@ -1,0 +1,15 @@
+// P26 immutable Copy local destructuring.
+enum Packet { Data((int8, bool), char) }
+func make() -> Packet {
+    print("initializer")
+    return Packet::Data((7, true), '🙂')
+}
+func main() {
+    let Packet::Data((number, flag), letter) = make()
+    print("{number}/{flag}/{letter}")
+    var pair = (3, false)
+    let (copy, _) = pair
+    pair.0 = 9
+    print("copy={copy}/original={pair.0}")
+    let () = ()
+}

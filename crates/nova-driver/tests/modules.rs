@@ -1158,3 +1158,120 @@ fn p25_guard_bundle_positive_and_runtime_units() {
         unit(&load(&root.join(name), Some(&root)).unwrap());
     }
 }
+
+#[test]
+fn p26_fixed_destructuring_negative_utf8_spans_and_cascades() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for (name, code, start, end, forbidden) in [
+        ("tuple_arity.nova", "N2201", 76, 81, &["N3103"] as &[&str]),
+        ("tuple_type.nova", "N2101", 76, 81, &["N3103"] as &[&str]),
+        ("unit_type.nova", "N2101", 76, 78, &["N3103"] as &[&str]),
+        (
+            "duplicate_binder.nova",
+            "N2002",
+            81,
+            84,
+            &["N3103"] as &[&str],
+        ),
+        ("same_scope.nova", "N2002", 85, 86, &["N3103"] as &[&str]),
+        ("refutable_bool.nova", "N3103", 76, 84, &[] as &[&str]),
+        ("refutable_enum.nova", "N3103", 93, 100, &[] as &[&str]),
+        ("refutable_option.nova", "N3103", 76, 91, &[] as &[&str]),
+        ("refutable_result.nova", "N3103", 76, 94, &[] as &[&str]),
+        ("refutable_nested.nova", "N3103", 101, 118, &[] as &[&str]),
+        (
+            "unknown_variant.nova",
+            "N2001",
+            88,
+            95,
+            &["N3103"] as &[&str],
+        ),
+        (
+            "variant_mismatch.nova",
+            "N2101",
+            94,
+            98,
+            &["N3103"] as &[&str],
+        ),
+        (
+            "payload_arity.nova",
+            "N2201",
+            91,
+            100,
+            &["N3103"] as &[&str],
+        ),
+        (
+            "nullary_parentheses.nova",
+            "N2201",
+            85,
+            91,
+            &["N3103"] as &[&str],
+        ),
+        ("immutable_binder.nova", "N3004", 94, 95, &[] as &[&str]),
+        ("binder_escape.nova", "N2001", 111, 112, &[] as &[&str]),
+        (
+            "initializer_self.nova",
+            "N2001",
+            86,
+            87,
+            &["N3103"] as &[&str],
+        ),
+        ("var_pattern.nova", "N1102", 76, 77, &[] as &[&str]),
+        ("const_pattern.nova", "N1102", 78, 79, &[] as &[&str]),
+        ("guard_pattern.nova", "N1102", 85, 87, &[] as &[&str]),
+        (
+            "annotation_range.nova",
+            "N2102",
+            98,
+            101,
+            &["N3103"] as &[&str],
+        ),
+        ("alias_head.nova", "N1102", 104, 112, &["N3103"] as &[&str]),
+    ] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = loaded.diagnostics.clone();
+        if let Some(hir) = &loaded.module {
+            let resolved = nova_resolve::resolve(hir);
+            let checked = nova_typecheck::check(hir, &resolved).unwrap();
+            diagnostics.extend(resolved.diagnostics);
+            diagnostics.extend(checked.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && d.primary.span.start() == start
+                && d.primary.span.end() == end),
+            "{name}: {diagnostics:?}"
+        );
+        assert!(
+            forbidden
+                .iter()
+                .all(|code| diagnostics.iter().all(|d| d.code.to_string() != *code)),
+            "{name}: {diagnostics:?}"
+        );
+        for d in diagnostics {
+            loaded.sources.slice(d.primary.span).unwrap();
+            for s in d.secondary {
+                loaded.sources.slice(s.span).unwrap();
+            }
+        }
+    }
+}
+#[test]
+fn p26_positive_bundle_and_abort_codegen_units() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "discard_effect.nova",
+        "opaque_copy.nova",
+        "annotation_context.nova",
+        "initializer_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+}

@@ -526,6 +526,28 @@ pub fn resolve(module: &Module) -> Resolved {
         while let Some(work) = pending.pop() {
             let (id, scope, body) = match work {
                 Work::Declare(id, scope) => {
+                    if matches!(
+                        module.nodes()[id.0].kind,
+                        HirKind::DestructuringBinding { .. }
+                    ) {
+                        let mut work = vec![module.nodes()[id.0].children[0]];
+                        while let Some(pattern) = work.pop() {
+                            let node = &module.nodes()[pattern.0];
+                            result.node_scopes[pattern.0] = Some(scope);
+                            if let HirKind::Binder { name, name_span } = node.kind {
+                                declare(
+                                    &mut result,
+                                    scope,
+                                    module.symbol(name).expect("binder symbol"),
+                                    DefinitionKind::Local(pattern),
+                                    name_span,
+                                    pattern,
+                                );
+                            }
+                            work.extend(node.children.iter().rev().copied());
+                        }
+                        continue;
+                    }
                     if let HirKind::Binding {
                         name, name_span, ..
                     } = module.nodes()[id.0].kind
@@ -651,7 +673,7 @@ pub fn resolve(module: &Module) -> Resolved {
                         Resolution::Error
                     });
                 }
-                HirKind::Binding { .. } => {
+                HirKind::Binding { .. } | HirKind::DestructuringBinding { .. } => {
                     pending.push(Work::Declare(id, scope));
                     // Initializer is resolved before declaration, including shadowing initializers.
                     if let Some(&value) = node.children.last() {

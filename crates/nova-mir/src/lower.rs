@@ -444,6 +444,7 @@ enum Work {
     Try(HirId),
     Exists(HirId),
     Binding(HirId),
+    Destructuring(HirId),
     Assignment(HirId),
     Return(HirId),
     While {
@@ -525,6 +526,7 @@ impl Builder<'_> {
         root: HirId,
         snapshot: Place,
         failure: BlockId,
+        discard_wildcards: bool,
     ) -> Result<BTreeMap<usize, Place>, LoweringError> {
         enum Step {
             Test(HirId, Place),
@@ -599,6 +601,9 @@ impl Builder<'_> {
                 _ => {}
             }
             for (index, &child) in p.children.iter().enumerate().rev() {
+                if discard_wildcards && self.hir.nodes()[child.0].kind == HirKind::Wildcard {
+                    continue;
+                }
                 let projection = match p.kind {
                     Kind::Tuple(structure) => Rvalue::Project(
                         Operand::Place(value),
@@ -702,6 +707,12 @@ impl Builder<'_> {
                         HirKind::Block => {
                             work.extend(node.children.iter().rev().copied().map(Work::Statement))
                         }
+                        HirKind::DestructuringBinding { .. } => {
+                            work.push(Work::Destructuring(id));
+                            work.push(Work::Expression(
+                                *node.children.last().ok_or(LoweringError::InvalidAnalysis)?,
+                            ));
+                        }
                         HirKind::Binding { constant, .. } => {
                             work.push(Work::Binding(id));
                             if !constant {
@@ -772,7 +783,8 @@ impl Builder<'_> {
                         for &arm in &node.children[1..] {
                             let pattern = self.hir.nodes()[arm.0].children[0];
                             let failure = self.block();
-                            let components = self.pattern_test(pattern, snapshot, failure)?;
+                            let components =
+                                self.pattern_test(pattern, snapshot, failure, false)?;
                             let block = self.current.ok_or(LoweringError::InvalidAnalysis)?;
                             entries.push(Work::ArmEntry {
                                 failure: Some(failure),
@@ -901,6 +913,44 @@ impl Builder<'_> {
                     self.current = Some(join);
                     if !self.match_falls.remove(&join.0) {
                         self.end(TerminatorKind::Unreachable, id)?;
+                    }
+                }
+                Work::Destructuring(id) => {
+                    let plan = self.checked.destructuring_bindings[id.0]
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    self.has_nested_match = true;
+                    let ty = self
+                        .checked
+                        .types
+                        .get(
+                            self.checked.coercions[plan.initializer.0]
+                                .unwrap_or(self.checked.type_table[plan.initializer.0]),
+                        )
+                        .ok_or(LoweringError::InvalidAnalysis)?;
+                    let snapshot = self.temporary(ty, plan.initializer);
+                    self.assign(
+                        snapshot,
+                        Rvalue::Use(self.value(plan.initializer)?),
+                        plan.initializer,
+                    )?;
+                    let failure = self.block();
+                    let components = self.pattern_test(plan.pattern, snapshot, failure, true)?;
+                    let success = self.current;
+                    self.current = Some(failure);
+                    self.end(TerminatorKind::Unreachable, id)?;
+                    self.nested_sinks.push(failure);
+                    self.current = success;
+                    for (pattern, component) in components {
+                        if let Some(def) = self.resolved.declaration_ids[pattern] {
+                            let binder = HirId(pattern);
+                            let local = self.local(binder, Some(def))?;
+                            self.declarations.insert(def.0, local);
+                            self.assign(
+                                Place(local),
+                                Rvalue::Use(Operand::Place(component)),
+                                binder,
+                            )?;
+                        }
                     }
                 }
                 Work::Convert(id) => {

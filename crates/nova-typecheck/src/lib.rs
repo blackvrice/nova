@@ -40,6 +40,15 @@ pub struct MatchGuard {
     pub body: HirId,
     pub keyword: Span,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DestructuringBinding {
+    pub pattern: HirId,
+    pub annotation: Option<HirId>,
+    pub initializer: HirId,
+    pub keyword: Span,
+    pub colon: Option<Span>,
+    pub equals: Span,
+}
 #[derive(Debug, Eq, PartialEq)]
 pub struct Checked {
     /// P22 direct method projection identity; no bound function values.
@@ -57,6 +66,7 @@ pub struct Checked {
     pub recursive_patterns: Vec<Option<RecursivePattern>>,
     /// P25 exact arm/condition/body source mapping.
     pub guards: Vec<Option<MatchGuard>>,
+    pub destructuring_bindings: Vec<Option<DestructuringBinding>>,
     pub nested_matches: std::collections::BTreeSet<usize>,
     pub exhaustive_matches: std::collections::BTreeSet<usize>,
     pub tuple_ids: std::collections::BTreeSet<nova_types::StructId>,
@@ -116,6 +126,11 @@ impl Checked {
                     range.binder.0,
                     self.types.get(range.ty)
                 );
+            }
+        }
+        for (id, plan) in self.destructuring_bindings.iter().enumerate() {
+            if let Some(plan) = plan {
+                let _ = writeln!(output, "destructuring {id} {plan:?}");
             }
         }
         for (arm, guard) in self.guards.iter().enumerate() {
@@ -343,6 +358,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         patterns: vec![None; size],
         recursive_patterns: vec![None; size],
         guards: vec![None; size],
+        destructuring_bindings: vec![None; size],
         nested_matches: Default::default(),
         exhaustive_matches: Default::default(),
         tuple_ids: Default::default(),
@@ -1022,6 +1038,19 @@ impl Checker<'_> {
                         },
                     ));
                 }
+                HirKind::DestructuringBinding { colon, .. } => {
+                    let expected = colon.map(|_| self.type_syntax(node.children[1]));
+                    pending.push(Work::Enter(
+                        *node.children.last().expect("initializer"),
+                        Context {
+                            expected,
+                            expected_span: colon
+                                .map(|_| self.module.nodes()[node.children[1].0].span),
+                            direct_callee: false,
+                            ..context
+                        },
+                    ));
+                }
                 HirKind::Binding {
                     has_type, constant, ..
                 } => {
@@ -1348,6 +1377,10 @@ impl Checker<'_> {
     fn finish(&mut self, id: HirId, context: Context) {
         let node = &self.module.nodes()[id.0];
         match &node.kind {
+            HirKind::DestructuringBinding { .. } => {
+                self.prepare_destructuring(id);
+                self.set(id, Type::Unit);
+            }
             HirKind::MatchGuard { .. } => {
                 self.set(id, self.ty(self.result.type_table[node.children[0].0]));
             }

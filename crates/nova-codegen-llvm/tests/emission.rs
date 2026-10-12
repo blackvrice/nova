@@ -54,7 +54,7 @@ fn p11_real_llvm_bundle_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p11-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -198,7 +198,7 @@ fn p09_real_llvm_verifies_float_coff_elf_o0_o2() {
     let corpus = unit(&float_corpus());
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-float-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for (target, ext) in [
         (TargetSpec::WindowsX64Msvc, "obj"),
@@ -264,7 +264,7 @@ fn p08_real_llvm_verifies_char_for_coff_elf_o0_o2() {
     let corpus = unit(&char_corpus());
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-char-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for (target, extension) in [
         (TargetSpec::WindowsX64Msvc, "obj"),
@@ -341,7 +341,7 @@ fn p07_real_llvm_verifies_all_integer_widths_for_coff_elf_o0_o2() {
     let unit = unit(&integer_corpus());
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-integer-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for (target, extension) in [
         (TargetSpec::WindowsX64Msvc, "obj"),
@@ -541,7 +541,7 @@ fn real_llvm_verifies_both_x64_objects_and_preserves_existing_output() {
     let backend = LlvmBackend { clang };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-object-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     let unit=unit("const VALUE=BASE*2+1;func u(x:()){} func b(x:bool)->bool{return !x} func main(){u(());print(\"한글 {b(false)} {-7%3} {VALUE}\")} const BASE=3");
     for (target, name) in [
@@ -633,7 +633,7 @@ fn p10_real_llvm_verifies_all_cast_pairs_coff_elf_o0_o2() {
     let corpus = unit(&cast_corpus());
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-cast-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for (target, ext) in [
         (TargetSpec::WindowsX64Msvc, "obj"),
@@ -676,7 +676,7 @@ fn p12_real_llvm_struct_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p12-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -712,7 +712,7 @@ fn p13_real_llvm_tuple_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p13-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -748,7 +748,7 @@ fn p14_real_llvm_enum_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p14-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -784,7 +784,7 @@ fn p15_real_llvm_option_result_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p15-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -838,7 +838,7 @@ fn p16_real_llvm_try_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p16-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -891,7 +891,7 @@ fn p17_real_llvm_named_calls_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p17-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -944,7 +944,7 @@ fn p18_real_llvm_default_calls_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p18-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -997,7 +997,7 @@ fn p19_real_llvm_range_loop_cfg_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p19-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -1046,7 +1046,7 @@ fn p20_real_llvm_exists_cfg_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p20-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -1095,7 +1095,7 @@ fn p21_real_llvm_alias_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p21-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -1145,7 +1145,7 @@ fn p22_real_llvm_methods_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p22-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -1196,7 +1196,7 @@ fn p23_real_llvm_constructors_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p23-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -1245,7 +1245,7 @@ fn p24_real_llvm_nested_patterns_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p24-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -1294,7 +1294,7 @@ fn p25_real_llvm_nested_patterns_coff_elf_o0_o2() {
     };
     let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../target/llvm-p25-tests")
-        .join(std::process::id().to_string());
+        .join(test_run_directory());
     std::fs::create_dir_all(&root).unwrap();
     for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
         for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
@@ -1319,4 +1319,69 @@ fn p25_real_llvm_nested_patterns_coff_elf_o0_o2() {
             }
         }
     }
+}
+
+fn p26_pattern_unit() -> CodegenUnit {
+    unit("enum E{One((int8,bool))}func main(){let E::One((n,flag))=E::One((7,true));print(\"{n}/{flag}\")}")
+}
+#[test]
+fn p26_recursive_patterns_ir_deterministic_private_tagged_abi() {
+    let unit = p26_pattern_unit();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        let ir = emit_ir(&unit, target, true).unwrap();
+        assert_eq!(ir, emit_ir(&unit, target, true).unwrap());
+        assert!(ir.text.contains("switch i32"));
+        assert!(ir.text.contains("i8"));
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 via NOVA_CLANG"]
+fn p26_real_llvm_nested_patterns_coff_elf_o0_o2() {
+    let unit = p26_pattern_unit();
+    let backend = LlvmBackend {
+        clang: ClangTool::new(std::env::var_os("NOVA_CLANG").expect("NOVA_CLANG")),
+    };
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../target/llvm-p26-tests")
+        .join(test_run_directory());
+    std::fs::create_dir_all(&root).unwrap();
+    for target in [TargetSpec::WindowsX64Msvc, TargetSpec::LinuxX64Gnu] {
+        for optimization in [OptimizationLevel::None, OptimizationLevel::Default] {
+            let object_path = root.join(format!("{}-{optimization:?}.obj", target.triple()));
+            backend
+                .codegen_unit(
+                    &unit,
+                    &target,
+                    &CodegenOptions {
+                        object_path: object_path.clone(),
+                        optimization,
+                        executable: true,
+                    },
+                )
+                .unwrap();
+            let bytes = std::fs::read(object_path).unwrap();
+            assert!(bytes.len() > 100);
+            if target == TargetSpec::WindowsX64Msvc {
+                assert_eq!(&bytes[..2], b"\x64\x86")
+            } else {
+                assert_eq!(&bytes[..4], b"\x7fELF")
+            }
+        }
+    }
+}
+
+// A Windows PID can be reused while preserved object artifacts still exist.
+fn test_run_directory() -> &'static str {
+    static RUN: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    RUN.get_or_init(|| {
+        format!(
+            "{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock")
+                .as_nanos()
+        )
+    })
+    .as_str()
 }

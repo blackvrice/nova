@@ -1,9 +1,42 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P25 Copy match guard까지다.
-P26 구조 분해는 Draft / 미구현이다. [제안 수용 계획](docs/development-v0.1/destructuring-proposal-fixtures/README.md)을 제공한다.
-`node tools/docs/validate-pack.mjs`·`node tools/tests/destructuring-oracle.mjs`는 문서 기대값만 검사하며 P26 Native 성공 기록이 아니다.
+현재 개발 완료 기능은 P26 Copy let 구조 분해까지다.
+
+## P26 irrefutable Copy let 구조 분해
+
+```powershell
+cargo fmt --check
+cargo test --workspace --offline
+cargo run -p nova-cli --offline -- check examples/let_destructuring.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/let_destructuring.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/let_destructuring.nova --profile release
+```
+
+check exit 0, debug/release는 다음 3줄/LF·빈 stderr·exit 0이다. initializer는 한 번 호출되며 Copy binder는 원 Tuple 변경의 영향을 받지 않는다.
+
+```text
+initializer
+7/true/🙂
+copy=3/original=9
+```
+
+[두 파일 수용 예제](docs/development-v0.1/destructuring-proposal-fixtures/README.md)는 17줄로 shadow·기존 `_`·private struct·loop·try를 추가 검증한다.
+[계약](docs/development-v0.1/DESTRUCTURING_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/DESTRUCTURING_IMPLEMENTATION.md)을 제공한다.
+
+```powershell
+cargo test --workspace --offline p26_
+cargo test -p nova-codegen-llvm --test emission --offline p26_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p26_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/destructuring-proposal-fixtures/refutable_bool.nova
+node tools/docs/validate-pack.mjs
+node tools/tests/destructuring-oracle.mjs
+```
+
+새 기본 16개·실제 LLVM 1개·Native 2개다. 부정 예제는 N3103·exit 1이다.
+initializer가 알려진 값이어도 타입 전체 domain을 덮어야 한다. Bool literal·Option/Result constructor·다중 variant Enum은 refutable이다.
+var/const/parameter/for/assignment 구조 분해·Array·일반 Move/Drop은 후속 계약이다.
 
 ## P25 Copy match guard
 

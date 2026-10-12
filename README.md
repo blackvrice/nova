@@ -220,7 +220,7 @@ Bool guard·pattern-success 단일 평가·false continuation·unguarded 합집�
 Array·일반 Move/Drop·guard truth/refinement 증명은 후속 계약이다.
 
 
-[P26 irrefutable Copy let 구조 분해](docs/development-v0.1/DESTRUCTURING_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.
-Tuple/Unit/single-variant Enum·불변 Copy binder·initializer 단일 평가/snapshot·선언 시점·새 N3103/Source/MIR를 제안한다.
-[62-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[두 파일/정상 3/부정 22/Runtime 1 수용 계획](docs/development-v0.1/destructuring-proposal-fixtures/README.md)을 제공한다.
-var/const/parameter/for/assignment 구조 분해·Array·일반 Move/Drop은 이번 범위 밖이다.
+[P26 irrefutable Copy let 구조 분해](docs/development-v0.1/DESTRUCTURING_STAGE_B_PROPOSAL.md)는 **Accepted / 구현·검증 완료**다.
+Tuple/Unit/single-variant Enum·불변 Copy binder·initializer 단일 평가/snapshot·선언 시점·N3103·Source/MIR 검증을 지원한다.
+[62-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 fixture](docs/development-v0.1/destructuring-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/DESTRUCTURING_IMPLEMENTATION.md)·[직접 예제/명령](TESTING.md)을 제공한다.
+var/const/parameter/for/assignment 구조 분해·Array·일반 Move/Drop은 후속 계약이다.

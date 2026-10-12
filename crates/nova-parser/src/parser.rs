@@ -1181,6 +1181,67 @@ impl<'a> Parser<'a> {
         self.depth -= 1;
         self.node(NodeKind::Block, start, statements)
     }
+    fn destructuring_binding(&mut self) -> AstNodeId {
+        let keyword = self.bump();
+        let before = self.diagnostics.len();
+        if keyword.kind != TokenKind::Keyword(Keyword::Let) {
+            self.report(
+                1102,
+                self.current().span,
+                "compound binding supports let only",
+            );
+        }
+        let pattern = self.pattern();
+        let mut children = vec![pattern];
+        let colon = if self.kind() == TokenKind::Colon {
+            Some(self.bump().span)
+        } else {
+            None
+        };
+        if colon.is_some() {
+            children.push(self.type_node());
+        }
+        if matches!(self.kind(), TokenKind::Keyword(Keyword::If | Keyword::Else)) {
+            self.report(1102, self.current().span, "binding guards are unsupported");
+            while !matches!(
+                self.kind(),
+                TokenKind::Symbol(Symbol::Equal) | TokenKind::RightBrace | TokenKind::Eof
+            ) && !self.at_end()
+            {
+                self.bump();
+            }
+        }
+        let equals = self.expect(TokenKind::Symbol(Symbol::Equal)).span;
+        children.push(self.expression(0));
+        if matches!(self.kind(), TokenKind::Keyword(Keyword::If | Keyword::Else)) {
+            self.report(
+                1102,
+                self.current().span,
+                "binding guards and let-else are unsupported",
+            );
+            self.recover_statement();
+        }
+        let id = self.node(
+            if self.diagnostics.len() == before {
+                NodeKind::DestructuringBinding {
+                    keyword: keyword.span,
+                    colon,
+                    equals,
+                }
+            } else {
+                NodeKind::Error
+            },
+            keyword.span.start(),
+            children,
+        );
+        if self.at_end() {
+            self.bump();
+        } else if !matches!(self.kind(), TokenKind::RightBrace | TokenKind::Eof) {
+            self.report(1101, self.current().span, "expected destructuring END");
+            self.recover_statement();
+        }
+        id
+    }
     fn statement(&mut self) -> AstNodeId {
         let start = self.current().span.start();
         if self.kind() == TokenKind::Keyword(Keyword::If) {
@@ -1197,6 +1258,24 @@ impl<'a> Parser<'a> {
         }
         if self.kind() == TokenKind::Keyword(Keyword::Match) {
             return self.match_statement();
+        }
+        if matches!(
+            self.kind(),
+            TokenKind::Keyword(Keyword::Let | Keyword::Var | Keyword::Const)
+        ) && (self
+            .tokens
+            .get(self.cursor + 1)
+            .is_some_and(|t| t.kind == TokenKind::LeftParen)
+            || self
+                .tokens
+                .get(self.cursor + 1)
+                .is_some_and(|t| t.kind == TokenKind::Identifier)
+                && self
+                    .tokens
+                    .get(self.cursor + 2)
+                    .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::ColonColon)))
+        {
+            return self.destructuring_binding();
         }
         let id = match self.kind() {
             TokenKind::Keyword(Keyword::Let | Keyword::Var | Keyword::Const) => {
@@ -1330,6 +1409,13 @@ impl<'a> Parser<'a> {
             let body = self.block();
             self.node(NodeKind::Loop { keyword }, keyword.start(), vec![body])
         } else {
+            if self.kind() == TokenKind::LeftParen {
+                self.report(
+                    1102,
+                    self.current().span,
+                    "range binder destructuring is unsupported",
+                );
+            }
             let name = self.expect(TokenKind::Identifier).span;
             if name.start() == name.end() {
                 self.recover_statement();

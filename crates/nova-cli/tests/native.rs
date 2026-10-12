@@ -2101,3 +2101,55 @@ fn p25_guard_abort_exact_utf8_span_and_skipped_fallback_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p26_native_destructuring_single_evaluation_snapshot_scope_try_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="initializer\nnested=7/true/한\npair\npair=3/false\ncopy=5/true/6\noriginal=9\nsingle=true\nunit-call\nshadow=3\nlegacy=9\npoint=7/9\nloop=2\nfetch\nafter=true\nok=4\nfetch\nerror=5\n";
+    for profile in ["debug", "release"] {
+        for (name, out) in [
+            ("main.nova", expected),
+            ("discard_effect.nova", "discard-effect\n"),
+            ("opaque_copy.nova", "opaque=6\n"),
+            ("annotation_context.nova", "annotation=255/🙂\n"),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, out.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let r=program_profile("enum E{Only}func main(){let E::Only=E::Only;let ((a,b),())=((1.5,2.5),());print(\"{a}/{b}\")}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"1.5/2.5\n");
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p26_initializer_abort_exact_source_span_and_skipped_binders_o0_o2() {
+    let source = include_str!(
+        "../../../docs/development-v0.1/destructuring-proposal-fixtures/initializer_abort.nova"
+    );
+    let at = source.find("x+1").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert_eq!(r.status.code(), Some(1));
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(format!("Nova panic: integer overflow at file#0:{at}..{}", at + 3).as_str())
+        );
+    }
+}

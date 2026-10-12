@@ -3104,3 +3104,130 @@ fn p25_guard_cfg_effect_false_branch_snapshot_and_inactive_payload_forgery() {
         assert!(!validate(&bad).is_empty(), "forgery {change}");
     }
 }
+
+#[test]
+fn p26_checked_binding_plan_pattern_initializer_annotation_deletion_rejected() {
+    let source = "func main(){let(a,b):(int8,bool)=(7,true);print(\"{a}/{b}\")}";
+    for change in 0..6 {
+        let mut db = SourceDatabase::default();
+        let file = db.add("api", source.into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+        let r = resolve(&h);
+        let mut c = check(&h, &r).unwrap();
+        let id = c
+            .destructuring_bindings
+            .iter()
+            .position(Option::is_some)
+            .unwrap();
+        let plan = c.destructuring_bindings[id].unwrap();
+        match change {
+            0 => c.destructuring_bindings[id] = None,
+            1 => c.destructuring_bindings[id].as_mut().unwrap().initializer = plan.pattern,
+            2 => c.destructuring_bindings[id].as_mut().unwrap().annotation = None,
+            3 => c.destructuring_bindings[id].as_mut().unwrap().equals = plan.keyword,
+            4 => c.recursive_patterns[plan.pattern.0]
+                .as_mut()
+                .unwrap()
+                .children
+                .reverse(),
+            _ => c.destructuring_bindings[id].as_mut().unwrap().pattern = plan.initializer,
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p26_mir_snapshot_same_type_paths_tag_proof_and_body_forgery_rejected() {
+    let original=pass("enum E{One((int8,int8))}func make()->E{print(\"init\");return E::One((1,2))}func main(){let E::One((a,b))=make();print(\"{a}/{b}\")}");
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "main")
+        .unwrap();
+    for change in 0..6 {
+        let mut bad = original.clone();
+        match change {
+            0 => {
+                let s = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .flat_map(|b| &mut b.statements)
+                    .find(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Project(..))))
+                    .unwrap();
+                if let StatementKind::Assign(_, Rvalue::Project(_, field)) = &mut s.kind {
+                    field.index = 1 - field.index;
+                }
+            }
+            1 => {
+                let entry = bad.bodies[body].entry;
+                bad.bodies[body].blocks[entry.0]
+                    .terminator
+                    .as_mut()
+                    .unwrap()
+                    .kind = TerminatorKind::Unreachable;
+            }
+            2 => {
+                let payload = bad.bodies[body]
+                    .blocks
+                    .iter()
+                    .position(|b| {
+                        b.statements.iter().any(|s| {
+                            matches!(s.kind, StatementKind::Assign(_, Rvalue::EnumPayload(..)))
+                        })
+                    })
+                    .unwrap();
+                bad.bodies[body].entry = BlockId(payload);
+            }
+            3 => {
+                let b = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .find(|b| !b.statements.is_empty())
+                    .unwrap();
+                b.statements.remove(0);
+            }
+            4 => {
+                bad.bodies.remove(body);
+            }
+            _ => {
+                let b = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .find(|b| !b.statements.is_empty())
+                    .unwrap();
+                b.statements.push(b.statements[0].clone());
+            }
+        }
+        assert!(!validate(&bad).is_empty(), "forgery {change}");
+    }
+}
+#[test]
+fn p26_discard_has_no_local_and_unit_call_is_preserved() {
+    let m=pass("func make()->(int8,bool){print(\"init\");return (7,true)}func unit(){print(\"unit\")}func main(){let(_,_)=make();let ()=unit()}");
+    let b = m
+        .bodies
+        .iter()
+        .find(|b| m.callees[b.callee.0].name == "main")
+        .unwrap();
+    assert_eq!(
+        b.locals
+            .iter()
+            .filter(|l| matches!(l.ty, Type::Int8 | Type::Bool))
+            .count(),
+        0
+    );
+    assert_eq!(
+        b.blocks
+            .iter()
+            .filter(|b| matches!(
+                b.terminator.as_ref().map(|t| &t.kind),
+                Some(TerminatorKind::Call { .. })
+            ))
+            .count(),
+        2
+    );
+}

@@ -140,6 +140,12 @@ pub enum NodeKind {
         mutable: bool,
         constant: bool,
     },
+    /// P26 pattern, optional type, then initializer; always immutable local Copy.
+    DestructuringBinding {
+        keyword: Span,
+        colon: Option<Span>,
+        equals: Span,
+    },
     /// Target Name, then value. Assignment is a statement, never an expression.
     Assignment,
     /// Zero or one value child.

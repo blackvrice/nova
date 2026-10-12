@@ -85,6 +85,7 @@ export const codes = [
 ['N3004','control','assignment to non-mutable binding','target identifier','declaration if available','B'],
 ['N3101','match','incomplete match','match','missing constructor note','B'],
 ['N3102','match','unreachable arm','arm','covering arm','B'],
+['N3103','binding','refutable binding pattern','whole binding pattern','first refutable component and missing witnesses','B'],
 ['N3201','const','const evaluation failure','failing operation','const declaration','B'],
 ['N3202','const','const cycle/budget','reference','dependency chain','B'],
 ['N4101','ownership','use after move','use','move origin','C'],

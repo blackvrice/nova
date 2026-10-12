@@ -1,11 +1,11 @@
-# P26 irrefutable Copy let 구조 분해 수용 fixture — Draft
+# P26 irrefutable Copy let 구조 분해 수용 fixture — Accepted
 
-**사용자 승인 대기 / 미구현**. [최소 계약](../DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production 제안 EBNF](../GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)을 따른다.
+2026-10-12 사용자 승인. **Accepted / 구현·검증 완료**. [최소 계약](../DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production EBNF](../GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)을 따른다.
 두 파일 main/types·추가 정상 3·부정 22·Runtime 1, source 28개는 UTF-8/LF다.
-expected.json의 proposed_result는 향후 수용 기준이며 implementation_verified=false다. N3103은 P26에만 제안한 미등록 code다.
-현재 Compiler/Native 성공 기록이 아니다.
+expected.json의 validated_result는 실제 Compiler/Native 검증 결과이며 implementation_verified=true다. N3103은 승인 후 등록했다.
+28개 Nova source 원 UTF-8/LF bytes와 Draft 주석은 역사로 보존하고 source_sha256으로 검사한다. [구현 기록](../DESTRUCTURING_IMPLEMENTATION.md)을 따른다.
 
-## 제안된 main 출력
+## 검증된 main 출력
 
 ```text
 initializer
@@ -41,12 +41,12 @@ cargo fmt --check
 cargo test --workspace --offline
 ```
 
-독립 oracle는 작은 finite type domain의 irrefutability를 검사한다. 문서 validator는 source/UTF-8 Span/grammar/Draft ledger 검사다.
+독립 oracle는 작은 finite type domain의 irrefutability를 검사한다. 문서 validator는 source/UTF-8 Span/grammar/Accepted ledger 검사다.
 둘 다 P26 Compiler/Native 성공을 증명하지 않는다.
 
-## 승인 후 구현에 사용할 수용 명령
+## 직접 실행하는 수용 명령
 
-아래 명령은 **아직 성공하지 않는 향후 수용 명령**이다. 구현 후 debug/release의 위 17줄·빈 stderr·exit 0을 검증한다.
+아래 명령은 check exit 0·debug/release의 위 17줄/LF·빈 stderr·exit 0을 확인한다.
 
 ```powershell
 cargo run -p nova-cli --offline -- check docs/development-v0.1/destructuring-proposal-fixtures/main.nova --source-root docs/development-v0.1/destructuring-proposal-fixtures
@@ -55,4 +55,7 @@ cargo run -p nova-cli --offline -- run docs/development-v0.1/destructuring-propo
 cargo run -p nova-cli --offline -- run docs/development-v0.1/destructuring-proposal-fixtures/main.nova --source-root docs/development-v0.1/destructuring-proposal-fixtures --profile release
 ```
 
-현재 구현된 P25 실행은 [TESTING.md](../../../TESTING.md)의 examples/match_guards.nova 명령을 사용한다.
+P26 [독립 예제](../../../examples/let_destructuring.nova)·[직접 명령](../../../TESTING.md)을 제공한다.
+집중 회귀는 `cargo test --workspace --offline p26_`다. NOVA_CLANG 설정 후 실제 LLVM/Native는
+`cargo test -p nova-codegen-llvm --test emission --offline p26_ -- --ignored --test-threads=1`과
+`cargo test -p nova-cli --test native --offline p26_ -- --ignored --test-threads=1`이다.

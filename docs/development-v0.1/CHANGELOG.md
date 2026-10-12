@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P26 승인과 irrefutable Copy let 구조 분해 구현
+
+사용자 “P26 승인하고 Copy let 구조 분해 구현 진행” 답변으로 P26를 승인했다.
+Tuple/Unit/single-variant Enum·initializer 우선 스코프·불변 Copy binder·annotation·bounded irrefutability/N3103·단일 평가/snapshot·Source/Checked/MIR를 구현했다.
+기본 420·LLVM 22·Native 60, 총 502 PASS / 0 FAIL. 새 기본 16·LLVM 1·Native 2다.
+원 source 28개·기존 60개 production·P01~P25·Canonical·원본 148개를 보존했다. [구현 기록](DESTRUCTURING_IMPLEMENTATION.md)·[직접 명령](../../TESTING.md)을 제공한다.
+
 ## 2026-10-12 — P26 irrefutable Copy let 구조 분해 착수안 (Draft)
 
 [최소 계약](DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production 제안 EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 계획](destructuring-proposal-fixtures/README.md)을 준비했다.

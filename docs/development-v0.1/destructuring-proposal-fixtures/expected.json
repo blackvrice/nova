@@ -1,7 +1,7 @@
 {
   "proposal": "P26",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
@@ -10,14 +10,11 @@
   ],
   "grammar": "GRAMMAR_STAGE_B_DESTRUCTURING.ebnf",
   "grammar_productions": 62,
-  "proposed_diagnostic_codes": [
-    "N3103"
-  ],
   "positive_cases": [
     {
       "name": "discard_effect",
       "source": "discard_effect.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "discard-effect\n",
@@ -27,7 +24,7 @@
     {
       "name": "opaque_copy",
       "source": "opaque_copy.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "opaque=6\n",
@@ -37,7 +34,7 @@
     {
       "name": "annotation_context",
       "source": "annotation_context.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "annotation=255/🙂\n",
@@ -312,7 +309,7 @@
         "start": 117,
         "end": 120
       },
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 1,
         "stdout": "before\n",
@@ -320,10 +317,44 @@
       }
     }
   ],
-  "proposed_result": {
+  "approval_date": "2026-10-12",
+  "diagnostic_codes": [
+    "N3103"
+  ],
+  "validated_result": {
     "check_exit": 0,
     "native_exit": 0,
     "stdout": "initializer\nnested=7/true/한\npair\npair=3/false\ncopy=5/true/6\noriginal=9\nsingle=true\nunit-call\nshadow=3\nlegacy=9\npoint=7/9\nloop=2\nfetch\nafter=true\nok=4\nfetch\nerror=5\n",
     "stderr": ""
+  },
+  "source_sha256": {
+    "alias_head.nova": "6599e1731a9e800fd319b23a68b76f7c2a8db81157bc61a7db39dad250247096",
+    "annotation_context.nova": "2d8a13e50a7aade21ae0c41bec2e69a4b6f49ece9074450254bacca99fd90e55",
+    "annotation_range.nova": "0a3cfb67ae83972e6d763a0a96481d5d3c644dcbdcae222c323846b4776bc00c",
+    "binder_escape.nova": "2f1b9ff2b49efc0f956f448bc66251d32d4b1d3041ddc0a835d7f4772c6aeeb8",
+    "const_pattern.nova": "cd68908d85e311b69745af539f6b327366c9435b00fc3561990207efc112d09a",
+    "discard_effect.nova": "46a3ca24b21a61098375f41cef753b0d884261e32cd81ef385bc68e16e1f2f68",
+    "duplicate_binder.nova": "badf996fb9d81a16b36fcdc0e2cd92fe062c2c3fae4a8e3bfe7c2ff78f5b4c19",
+    "guard_pattern.nova": "259069ed7725fe8ddef671d92d79d32fcb8c5d8e822740b365ce0c26a8612220",
+    "immutable_binder.nova": "deb43ad0597baeaa17d4592348ff1d5cc80c2c00cb6318b0bc905a0dd699e749",
+    "initializer_abort.nova": "5eecb47111eabc77cdab8434ee45f7268fca72a12aca66184bc7e09ce0dc868a",
+    "initializer_self.nova": "9ce503aa02bab3429d918e585fbd7f99d18d00cc53543d3ed2da7e9b079a53d1",
+    "main.nova": "64375592c0351b04dee5cb37739df1a2eb8365179c189528176007fb383dd51e",
+    "nullary_parentheses.nova": "9e7c4a1de782214597732ca6bf8f1bdac10a5e4230b9e3bc966d94cd56a0c124",
+    "opaque_copy.nova": "ee717c50db10c328ae12620f19f74fdb44a044bfd5bd44d7e6a804720c66ab0c",
+    "payload_arity.nova": "e71a3094b32a30a0fd2792c3fc520863e680e2b845dda39bda5aa33c364085e3",
+    "refutable_bool.nova": "83e521a76a0ca00ac56ca9a248dbebfcb7d22748f0194de983933fdaeaedce2c",
+    "refutable_enum.nova": "63090413c436241a020505ea8b1dc0c6cb9287f0ee7c6a2997b9ed8079ce8387",
+    "refutable_nested.nova": "a4b6b90935f2ad7c1b6c8f6108df1f71c5734ff9f296dea96ac73b5c13674bde",
+    "refutable_option.nova": "90fe31b830b39e4ed17ada56312c2cb6a7520d92b6db87b877aa204fac8d5b87",
+    "refutable_result.nova": "f35314975218a0e21c0de9a8f531cbbf969af47dfdf560c541ac72231602cdbe",
+    "same_scope.nova": "cdc4228e86b05d1514bfcb04303e6866303356dd4e1a962e3df1d612ffa96182",
+    "tuple_arity.nova": "f0c0e3356803c047a7b39f27a719253ef7b91e2bc4f28d4f47e6eddd5397f2ac",
+    "tuple_type.nova": "fcbd77d687f0e2e9d7e7b9865dbf337b1465ef83879036c78038e6afe492dc69",
+    "types.nova": "a7367a432a524aece36c156fb2f3e340b446191dc002450d63b3457204bed766",
+    "unit_type.nova": "b762c93edad7af62eac6137704c614914d244d2508683b4c3792bb4be98ec9fe",
+    "unknown_variant.nova": "20975d51d5303f8a6bf391ee33345c718f25185b3ed3055ffb1db87c1613cebb",
+    "var_pattern.nova": "d6b6c59635791adef794c0a5578cbd36233e0d29c3cb7ebc7449861c05177077",
+    "variant_mismatch.nova": "b377825c0e7240fe8d1d8fe13201b7d91bc0379d0d36d403453ed37aa0812d88"
   }
 }
