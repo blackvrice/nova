@@ -1,0 +1,2 @@
+// P28 approved contract: fixed acceptance source.
+struct P{var x:int8;func value(self)->int8{return self.x}}func main(){const(p,())=(P(x:7),());const(n,_)=(p.x,());var q=p;q.x=9;print("opaque={n}/{p.value()}/{q.x}")}

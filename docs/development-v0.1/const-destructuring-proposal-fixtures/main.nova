@@ -1,0 +1,33 @@
+// P28 approved contract: fixed acceptance source.
+use types::BASE
+use types::Packet as P
+use types::Marker
+use types::Pair
+use types::Point
+func main(){
+    const P::Data((number,flag),ch,())=BASE
+    print("cached={number}/{flag}/{ch}")
+    const (next,enabled):Pair=(number+1,!flag)
+    const total:int8=next+number
+    print("derived={total}/{enabled}")
+    const (p,())=(Point(x:7,y:8),())
+    const (projected,_)=(p.x,())
+    var q=p
+    q.x=9
+    print("point={projected}/{p.value()}/{q.value()}")
+    const (wide,float_value):(uint8,float32)=(255,1.5)
+    print("scalars={wide}/{float_value}")
+    const (option,result):(Option<int8>,Result<int8,bool>)=(Option::Some(3),Result::Success(4))
+    const (present,_)=(option exists,())
+    match result{Result::Success(n)=>{print("sum={n}/{present}")},Result::Error(e)=>{print("wrong={e}")}}
+    const ()=()
+    const Marker::Only=Marker::Only
+    const (_,_)= (5,())
+    const (one,):(int8,)=(6,)
+    print("single={one}")
+    const outer=2
+    if true{const(outer,_)=(outer+1,());const next=outer+1;print("shadow={next}")}
+    const _=9
+    print("legacy={_}")
+    for i in 1 through 2{const(n,flag)=(2,true);print("loop={i}/{n}/{flag}")}
+}

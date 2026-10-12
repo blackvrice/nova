@@ -1249,3 +1249,44 @@ fn p27_var_destructuring_checks_and_invalid_guards_gate_before_native_tools() {
         assert!(error.contains("N3103") && !error.contains("missing-clang"));
     }
 }
+
+#[test]
+fn p28_const_destructuring_checks_and_invalid_guards_gate_before_native_tools() {
+    let dir = directory();
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/const-destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "short_circuit.nova",
+        "opaque_const.nova",
+        "runtime_abort.nova",
+    ] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("check")
+            .arg(fixtures.join(name))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stdout.is_empty() && r.stderr.is_empty());
+    }
+    for command in ["check", "build", "run"] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg(command)
+            .arg(fixtures.join("refutable_bool.nova"))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert_eq!(r.status.code(), Some(1));
+        let error = String::from_utf8(r.stderr).unwrap();
+        assert!(error.contains("N3103") && !error.contains("missing-clang"));
+    }
+}

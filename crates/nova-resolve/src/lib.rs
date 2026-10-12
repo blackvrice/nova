@@ -526,7 +526,9 @@ pub fn resolve(module: &Module) -> Resolved {
         while let Some(work) = pending.pop() {
             let (id, scope, body) = match work {
                 Work::Declare(id, scope) => {
-                    if let HirKind::DestructuringBinding { mutable, .. } = module.nodes()[id.0].kind
+                    if let HirKind::DestructuringBinding {
+                        mutable, constant, ..
+                    } = module.nodes()[id.0].kind
                     {
                         let mut work = vec![module.nodes()[id.0].children[0]];
                         while let Some(pattern) = work.pop() {
@@ -543,6 +545,7 @@ pub fn resolve(module: &Module) -> Resolved {
                                 );
                                 if let Some(def) = result.declaration_ids[pattern.0] {
                                     result.definitions[def.0].mutable = mutable;
+                                    result.definitions[def.0].constant = constant;
                                 }
                             }
                             work.extend(node.children.iter().rev().copied());

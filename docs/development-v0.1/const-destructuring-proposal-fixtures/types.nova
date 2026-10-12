@@ -1,0 +1,6 @@
+// P28 approved contract: fixed acceptance source.
+public struct Point {var x:int8;let y:int8;func value(self)->int8{return self.x}}
+public enum Packet {Data((int8,bool),char,())}
+public enum Marker {Only}
+public type Pair=(int8,bool)
+public const BASE=Packet::Data((7,true),'🙂',())

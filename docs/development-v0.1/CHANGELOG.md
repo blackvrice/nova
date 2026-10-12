@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-12 — 다음 단계 승인과 P28 함수 내부 Copy const 구조 분해 구현
+
+사용자 “다음 개발 승인할테니 개발 진행해줘”에 따라 제한된 계약을 먼저 기록하고 구현했다.
+constant owner·initializer 한 번 평가·whole/component cached 값·실패 전파·독립 예산·direct MIR Constant binding·Source/Checked/private body 검증을 추가했다.
+기본 450·LLVM 24·Native 64, 총 538 PASS / 0 FAIL. 새 기본 17·LLVM 1·Native 2다.
+P26/P27 local const 거부 source/metadata는 역사로 보존하고 현재 성공 override를 명시했다. 전역 const는 기존 규칙을 유지한다.
+[구현 기록](CONST_DESTRUCTURING_IMPLEMENTATION.md)·[직접 명령](../../TESTING.md)을 제공한다.
+
 ## 2026-10-12 — 다음 작업 승인과 P27 가변 Copy var 구조 분해 구현
 
 사용자 다음 개발 진행·승인에 따라 제한된 P27 계약을 먼저 기록하고 구현했다.

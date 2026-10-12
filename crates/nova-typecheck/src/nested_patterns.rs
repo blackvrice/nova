@@ -269,21 +269,23 @@ impl Checker<'_> {
         valid && self.result.diagnostics.len() == before && ty != Type::Error
     }
 
-    pub(super) fn prepare_destructuring(&mut self, id: HirId) {
+    pub(super) fn prepare_destructuring(&mut self, id: HirId) -> bool {
         let node = &self.module.nodes()[id.0];
         let HirKind::DestructuringBinding {
+            constant,
             mutable,
             keyword,
             colon,
             equals,
         } = node.kind
         else {
-            return;
+            return false;
         };
         let pattern = node.children[0];
         let annotation = colon.map(|_| node.children[1]);
         let initializer = *node.children.last().expect("binding initializer");
         self.result.destructuring_bindings[id.0] = Some(crate::DestructuringBinding {
+            constant,
             mutable,
             pattern,
             annotation,
@@ -303,7 +305,7 @@ impl Checker<'_> {
             &mut count,
             "binding source pattern node limit: 10000",
         ) {
-            return;
+            return false;
         }
         let mut all = vec![];
         let mut work = vec![pattern];
@@ -322,7 +324,7 @@ impl Checker<'_> {
             Ok(report) => report,
             Err(limit) => {
                 self.enum_limit(keyword, limit.message());
-                return;
+                return false;
             }
         };
         if !report.missing.is_empty() {
@@ -346,7 +348,9 @@ impl Checker<'_> {
             self.report(
                 3103,
                 self.module.nodes()[pattern.0].span,
-                if mutable {
+                if constant {
+                    "refutable const binding pattern"
+                } else if mutable {
                     "refutable var binding pattern"
                 } else {
                     "refutable let binding pattern"
@@ -366,7 +370,9 @@ impl Checker<'_> {
                     .notes
                     .push("additional missing patterns omitted".into());
             }
+            return false;
         }
+        true
     }
 
     pub(super) fn prepare_nested_match(&mut self, id: HirId) {

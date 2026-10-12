@@ -1,0 +1,2 @@
+// P28 approved contract: fixed acceptance source.
+func main(){const(a,b)=(false&&(1/0==0),true||(1/0==0));print("short={a}/{b}")}

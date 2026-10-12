@@ -4638,3 +4638,160 @@ fn p27_var_pattern_and_matrix_budget_source_provenance() {
         "var"
     );
 }
+
+#[test]
+fn p28_const_binder_cache_owner_dependency_shadow_and_single_evaluation_nodes() {
+    let r=pass("const G:int8=7;func f(){const(a,b):(int8,bool)=(G+1,true);const C:int8=a+G;if true{const(a,_)=(a+1,());const D=a+1}const _=9;const E=_+1}");
+    let (_, resolved, checked) = r.semantic.unwrap();
+    let values = checked
+        .const_destructuring_values
+        .iter()
+        .filter_map(|v| {
+            if let ConstEvaluation::Value { nodes, .. } = v {
+                Some(*nodes)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(values, [5, 5]);
+    for d in resolved
+        .definitions
+        .iter()
+        .filter(|d| matches!(d.name.as_str(), "a" | "b"))
+    {
+        assert!(d.constant && !d.mutable);
+    }
+    let d = resolved
+        .definitions
+        .iter()
+        .position(|d| d.name == "C")
+        .unwrap();
+    assert!(
+        matches!(checked.const_values[d],ConstEvaluation::Value{value:ConstValue::Integer(v),..}if v.value()==15)
+    );
+}
+#[test]
+fn p28_const_failure_propagates_all_binders_and_checks_dead_discard_unit() {
+    for source in [
+        "func f(){const x:int8=127;const(n,flag)=(x+1,true);const A=n+1;const B=flag&&true}",
+        "func f(){return;const(_,_)= (1/0,())}",
+        "func f(){while false{const ()=unit()}}func unit(){}",
+    ] {
+        let r = frontend(source);
+        assert_eq!(codes(&r), ["N3201"], "{source}");
+        if let Some((_, _, c)) = r.semantic {
+            assert!(c.has_errors());
+            assert!(!c
+                .const_destructuring_values
+                .iter()
+                .any(|v| matches!(v, ConstEvaluation::Pending)));
+        }
+    }
+    let r = frontend("func f(){const(true,n)=missing;const NEXT=n+1}");
+    assert_eq!(codes(&r), ["N2001"]);
+}
+#[test]
+fn p28_const_admissibility_includes_skipped_rhs_and_try_method_call() {
+    pass("func f(){const(a,b)=(false&&(1/0==0),true||(1/0==0));const C=a||b}");
+    for s in["func pred()->bool{return true}func f(){const(a,_)=(false&&pred(),())}","func f(v:int){const(n,_)=(v,())}","struct P{let n:int;func value(self)->int{return self.n}}func f(){const p=P(1);const(n,_)=(p.value(),())}","func fetch()->Result<(int8,bool),int8>{return Result::Success((1,true))}func f()->Result<int8,int8>{const(n,flag)=try fetch();return Result::Success(1)}"]{assert_eq!(codes(&frontend(s)),["N3201"],"{s}");}
+}
+#[test]
+fn p28_known_const_initializer_never_refines_irrefutability() {
+    for (pattern, expected) in [
+        ("(_,flag)", None),
+        ("(true,flag)", Some("N3103")),
+        ("(flag,false)", Some("N3103")),
+    ] {
+        for value in ["(true,false)", "G"] {
+            let r = frontend(&format!(
+                "const G=(true,false);func f(){{const{pattern}={value}}}"
+            ));
+            assert_eq!(
+                codes(&r),
+                expected.into_iter().map(str::to_string).collect::<Vec<_>>()
+            );
+        }
+    }
+    assert_eq!(
+        codes(&frontend(
+            "func f(){const Option::Some(n):Option<int8>=Option::Some(7)}"
+        )),
+        ["N3103"]
+    );
+}
+#[test]
+fn p28_initializer_10000_10001_budget_is_shared_across_binders_and_discard() {
+    let sum = vec!["0"; 4999].join("+");
+    for pattern in ["(n,())", "(_,())"] {
+        let r = pass(&format!("func f(){{const{pattern}=(({sum}),())}}"));
+        assert!(r
+            .semantic
+            .unwrap()
+            .2
+            .const_destructuring_values
+            .iter()
+            .any(|v| matches!(v, ConstEvaluation::Value { nodes: 10000, .. })));
+    }
+    let r = frontend(&format!(
+        "func f(){{const(n,())=((({sum})),());const NEXT=n+1}}"
+    ));
+    assert_eq!(codes(&r), ["N3202"]);
+    let d = &r.diagnostics()[0];
+    assert_eq!(r.sources.slice(d.primary.span).unwrap(), "()");
+    assert_eq!(d.secondary.len(), 1);
+    assert!(d.notes.iter().any(|n| n.contains("10000")));
+}
+#[test]
+fn p28_pattern_budget_is_independent_of_cached_initializer_and_matrix_budget() {
+    fn tree(leaves: usize) -> (String, String, String) {
+        if leaves == 1 {
+            return ("()".into(), "_".into(), "()".into());
+        }
+        let (a, p, x) = tree(leaves / 2);
+        let (b, q, y) = tree(leaves - leaves / 2);
+        (
+            format!("({a},{b})"),
+            format!("({p},{q})"),
+            format!("({x},{y})"),
+        )
+    }
+    let (ty, p, value) = tree(5000);
+    let good = pass(&format!(
+        "const ROOT=({value},);func f(){{const({p},)=ROOT}}"
+    ));
+    let c = good.semantic.unwrap().2;
+    assert_eq!(c.recursive_patterns.iter().flatten().count(), 10000);
+    assert!(c
+        .const_destructuring_values
+        .iter()
+        .any(|v| matches!(v, ConstEvaluation::Value { nodes: 1, .. })));
+    let bad = frontend(&format!("func f(v:(({ty},),)){{const(({p},),)=v}}"));
+    assert_eq!(codes(&bad), ["N8901"]);
+    let mut types = vec![];
+    let mut patterns = vec![];
+    for i in 0..10 {
+        let n = if i == 9 { 989 } else { 1000 };
+        types.push(format!("({})", vec!["()"; n].join(",")));
+        patterns.push(format!("({})", vec!["_"; n].join(",")));
+    }
+    let r = frontend(&format!(
+        "func f(v:({})){{const({})=v}}",
+        types.join(","),
+        patterns.join(",")
+    ));
+    assert_eq!(codes(&r), ["N8901"]);
+    assert_eq!(
+        r.sources.slice(r.diagnostics()[0].primary.span).unwrap(),
+        "const"
+    );
+}
+#[test]
+fn p28_named_constructor_opaque_copy_projection_numeric_and_sum_cache() {
+    let r=pass("struct P{let n:int8;let flag:bool}enum E{Only((P,char))}func f(){const E::Only((p,ch))=E::Only((P(flag:true,n:7),'🙂'));const(n,_)=(p.n,());const(one,):(uint8,)=(255,);const(opt,res):(Option<int8>,Result<int8,bool>)=(none,Result::Success(4));const(present,_)=(opt exists,())}");
+    assert!(!r.semantic.unwrap().2.has_errors());
+    assert_eq!(
+        codes(&frontend("func f(){const(n,_):(uint8,bool)=(300,true)}")),
+        ["N2102"]
+    );
+}

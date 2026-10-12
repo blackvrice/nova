@@ -1,0 +1,2 @@
+// P28 approved contract: fixed acceptance source.
+func f(v:int){const(n,_)=(v,2)}func main(){}

@@ -1257,6 +1257,74 @@ assert(varDestructuringFixture.historical_overrides?.length===1 && varHistorical
   && varHistorical.validated_result?.stdout==='' && varHistorical.validated_result?.stderr==='','P27 invalid historical var override');
 checks.push('P27 Accepted/next-work 승인 ledger·62-production EBNF/기존 61개 보존·24개 원 source hash·두 파일/정상 2/부정 18/Runtime 2 UTF-8 Span·검증 13줄 metadata·P26 var 거부 역사와 현재 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const constDestructuringProposal=manifest.accepted_proposals?.find(p=>p.id==='P28');
+assert(constDestructuringProposal?.status==='Accepted' && constDestructuringProposal.implementation_verified===true
+  && constDestructuringProposal.approval_date==='2026-10-12'
+  && constDestructuringProposal.approval_evidence==='다음 개발 승인할테니 개발 진행해줘'
+  && constDestructuringProposal.document==='CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md'
+  && constDestructuringProposal.grammar==='GRAMMAR_STAGE_B_CONST_DESTRUCTURING.ebnf' && constDestructuringProposal.grammar_change===true
+  && !manifest.draft_proposals?.some(p=>p.id==='P28'),'P28 invalid approval ledger');
+const constDestructuringText=fs.readFileSync(path.join(pack,constDestructuringProposal.document),'utf8');
+for(const requirement of ['Accepted / 구현·검증 완료','다음 개발 승인할테니 개발 진행해줘','61개 보존','10,000','100,000','1,000,000','initializer','cached','N3103','N3201','N3202','const_pattern.nova','Move/borrow/Drop','전체 D09']) {
+  assert(constDestructuringText.includes(requirement),'P28 missing boundary '+requirement);
+}
+validateGrammar('GRAMMAR_STAGE_B_CONST_DESTRUCTURING.ebnf');
+const constDestructuringGrammar=fs.readFileSync(path.join(pack,'GRAMMAR_STAGE_B_CONST_DESTRUCTURING.ebnf'),'utf8');
+const constDestructuringProductions=productions(constDestructuringGrammar);
+assert(constDestructuringGrammar.includes('Accepted 2026-10-12; implemented and verified') && constDestructuringProductions.size===62,'P28 invalid grammar');
+for(const [name,value]of varDestructuringProductions)if(name!=='binding')assert(constDestructuringProductions.get(name)===value,'P28 changed approved production '+name);
+assert(constDestructuringProductions.get('binding')===varDestructuringProductions.get('binding').replace('("let"|"var"),destructuring_pattern','("let"|"var"|"const"),destructuring_pattern'),'P28 invalid binding extension');
+const constDestructuringRoot=path.join(pack,'const-destructuring-proposal-fixtures');
+const constDestructuringFixture=JSON.parse(fs.readFileSync(path.join(constDestructuringRoot,'expected.json'),'utf8'));
+const constDestructuringOutput='cached=7/true/🙂\nderived=15/false\npoint=7/7/9\nscalars=255/1.5\nsum=4/true\nsingle=6\nshadow=4\nlegacy=9\nloop=1/2/true\nloop=2/2/true\n';
+assert(constDestructuringFixture.proposal==='P28' && constDestructuringFixture.status==='Accepted' && constDestructuringFixture.implementation_verified===true
+  && constDestructuringFixture.approval_date===constDestructuringProposal.approval_date && constDestructuringFixture.approval_evidence===constDestructuringProposal.approval_evidence
+  && constDestructuringFixture.entry==='main.nova' && constDestructuringFixture.source_root==='.'
+  && constDestructuringFixture.grammar===constDestructuringProposal.grammar && constDestructuringFixture.grammar_productions===62
+  && JSON.stringify(constDestructuringFixture.reachable_modules)==='["main","types"]'
+  && !constDestructuringFixture.expected_result && constDestructuringFixture.validated_result?.check_exit===0
+  && constDestructuringFixture.validated_result?.native_exit===0 && constDestructuringFixture.validated_result?.stdout===constDestructuringOutput
+  && constDestructuringFixture.validated_result?.stderr==='','P28 invalid validated entry/output');
+assert(constDestructuringFixture.positive_cases?.length===2 && constDestructuringFixture.negative_cases?.length===20
+  && constDestructuringFixture.runtime_cases?.length===1,'P28 fixture counts');
+const constDestructuringSources=new Set(['main.nova','types.nova']);
+const constDestructuringCases=[...constDestructuringFixture.positive_cases,...constDestructuringFixture.negative_cases,...constDestructuringFixture.runtime_cases];
+assert(new Set(constDestructuringCases.map(c=>c.name)).size===23,'P28 duplicate fixture names');
+for(const c of constDestructuringCases){
+  assert(path.basename(c.source)===c.source && c.source.endsWith('.nova') && !c.expected_result,'P28 invalid source/metadata '+c.name);
+  constDestructuringSources.add(c.source);
+  if(c.expected_diagnostic)assert(knownCodes.has(c.expected_diagnostic) && !c.validated_result,'P28 invalid diagnostic '+c.name);
+  if(c.primary){
+    const bytes=fs.readFileSync(path.join(constDestructuringRoot,c.source));const boundaries=new Set([0]);let at=0;
+    for(const ch of bytes.toString('utf8')){at+=Buffer.byteLength(ch);boundaries.add(at);}
+    assert(c.primary.start>=0 && c.primary.start<c.primary.end && c.primary.end<=bytes.length
+      && boundaries.has(c.primary.start) && boundaries.has(c.primary.end)
+      && bytes.subarray(c.primary.start,c.primary.end).toString('utf8')===c.primary_text,'P28 invalid UTF-8 primary '+c.name);
+  }
+  if(c.forbidden_diagnostics)assert(c.forbidden_diagnostics.every(code=>knownCodes.has(code)&&code!==c.expected_diagnostic),'P28 invalid cascade '+c.name);
+}
+for(const name of constDestructuringSources){const bytes=fs.readFileSync(path.join(constDestructuringRoot,name));const text=bytes.toString('utf8');
+  assert(Buffer.from(text).equals(bytes) && text.endsWith('\n') && !text.includes('\r')
+    && constDestructuringFixture.source_sha256?.[name]===hash(bytes),'P28 source bytes/hash changed '+name);
+}
+assert(constDestructuringSources.size===25 && Object.keys(constDestructuringFixture.source_sha256??{}).length===25,'P28 source count');
+for(const c of constDestructuringFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0
+  && c.validated_result?.stdout.endsWith('\n') && c.validated_result?.stderr==='','P28 invalid positive '+c.name);
+for(const c of constDestructuringFixture.runtime_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===1
+  && c.validated_result?.stdout==='before\n'
+  && c.validated_result?.stderr_first_line===`Nova panic: integer overflow at file#0:${c.primary.start}..${c.primary.end}`,'P28 invalid Abort '+c.name);
+assert(constDestructuringFixture.historical_overrides?.length===2,'P28 historical override count');
+for(const [index,proposal,folder,old]of [[0,'P26','destructuring-proposal-fixtures',destructuringFixture],[1,'P27','var-destructuring-proposal-fixtures',varDestructuringFixture]]){
+  const previous=constDestructuringFixture.historical_overrides[index];
+  assert(previous.proposal===proposal && previous.source===`../${folder}/const_pattern.nova` && previous.original_diagnostic==='N1102'
+    && old.negative_cases.find(c=>c.name==='const_pattern')?.expected_diagnostic==='N1102'
+    && previous.source_sha256===old.source_sha256?.['const_pattern.nova']
+    && hash(fs.readFileSync(path.join(constDestructuringRoot,previous.source)))===previous.source_sha256
+    && previous.validated_result?.check_exit===0 && previous.validated_result?.native_exit===0
+    && previous.validated_result?.stdout==='' && previous.validated_result?.stderr==='','P28 invalid historical const override '+proposal);
+}
+checks.push('P28 Accepted/next-step 승인 ledger·62-production EBNF/기존 61개 보존·25개 원 source hash·두 파일/정상 2/부정 20/Runtime 1 UTF-8 Span·검증 10줄 metadata·P26/P27 const 거부 역사와 현재 local 성공 override (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

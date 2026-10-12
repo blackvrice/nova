@@ -1,0 +1,374 @@
+{
+  "proposal": "P28",
+  "status": "Accepted",
+  "approval_date": "2026-10-12",
+  "approval_evidence": "다음 개발 승인할테니 개발 진행해줘",
+  "implementation_verified": true,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "types"
+  ],
+  "grammar": "GRAMMAR_STAGE_B_CONST_DESTRUCTURING.ebnf",
+  "grammar_productions": 62,
+  "positive_cases": [
+    {
+      "name": "short_circuit",
+      "source": "short_circuit.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "short=false/true\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "opaque_const",
+      "source": "opaque_const.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "opaque=7/7/9\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "immutable_binder",
+      "source": "immutable_binder.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "n",
+      "primary": {
+        "start": 80,
+        "end": 81
+      }
+    },
+    {
+      "name": "duplicate_binder",
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "値",
+      "primary": {
+        "start": 73,
+        "end": 76
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "same_scope",
+      "source": "same_scope.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "n",
+      "primary": {
+        "start": 77,
+        "end": 78
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "initializer_self",
+      "source": "initializer_self.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "n",
+      "primary": {
+        "start": 75,
+        "end": 76
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "binder_escape",
+      "source": "binder_escape.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "n",
+      "primary": {
+        "start": 96,
+        "end": 97
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "tuple_arity",
+      "source": "tuple_arity.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "(a,b)",
+      "primary": {
+        "start": 68,
+        "end": 73
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "annotation_range",
+      "source": "annotation_range.nova",
+      "expected_diagnostic": "N2102",
+      "primary_text": "300",
+      "primary": {
+        "start": 90,
+        "end": 93
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "refutable_bool",
+      "source": "refutable_bool.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "(n,true)",
+      "primary": {
+        "start": 68,
+        "end": 76
+      },
+      "forbidden_diagnostics": [
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "refutable_enum",
+      "source": "refutable_enum.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "E::A(n)",
+      "primary": {
+        "start": 86,
+        "end": 93
+      },
+      "forbidden_diagnostics": [
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "refutable_option",
+      "source": "refutable_option.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "Option::Some(n)",
+      "primary": {
+        "start": 69,
+        "end": 84
+      },
+      "forbidden_diagnostics": [
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "user_call",
+      "source": "user_call.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "unit()",
+      "primary": {
+        "start": 85,
+        "end": 91
+      }
+    },
+    {
+      "name": "parameter_ref",
+      "source": "parameter_ref.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "v",
+      "primary": {
+        "start": 77,
+        "end": 78
+      }
+    },
+    {
+      "name": "let_ref",
+      "source": "let_ref.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "v",
+      "primary": {
+        "start": 83,
+        "end": 84
+      }
+    },
+    {
+      "name": "unknown_initializer",
+      "source": "unknown_initializer.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "missing",
+      "primary": {
+        "start": 77,
+        "end": 84
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "overflow_const",
+      "source": "overflow_const.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "x+1",
+      "primary": {
+        "start": 92,
+        "end": 95
+      }
+    },
+    {
+      "name": "discard_div0",
+      "source": "discard_div0.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "1/0",
+      "primary": {
+        "start": 76,
+        "end": 79
+      }
+    },
+    {
+      "name": "unreachable_const",
+      "source": "unreachable_const.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "1/0",
+      "primary": {
+        "start": 83,
+        "end": 86
+      }
+    },
+    {
+      "name": "global_pattern",
+      "source": "global_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "(n,flag)",
+      "primary": {
+        "start": 56,
+        "end": 64
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "visible_global_pattern",
+      "source": "visible_global_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "(n,flag)",
+      "primary": {
+        "start": 63,
+        "end": 71
+      },
+      "forbidden_diagnostics": [
+        "N3103",
+        "N3201",
+        "N3202"
+      ]
+    },
+    {
+      "name": "const_try",
+      "source": "const_try.nova",
+      "expected_diagnostic": "N3201",
+      "primary_text": "try",
+      "primary": {
+        "start": 165,
+        "end": 168
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "name": "runtime_abort",
+      "source": "runtime_abort.nova",
+      "primary_text": "n+1",
+      "primary": {
+        "start": 126,
+        "end": 129
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: integer overflow at file#0:126..129"
+      }
+    }
+  ],
+  "source_sha256": {
+    "annotation_range.nova": "ae32e2f9f892d75709ecf4832e3f7dd96d390fa79e118826fa50e1d3025561ef",
+    "binder_escape.nova": "9b49d2f450b0a0bec597780779b6252dd1409c802b5b9ea577f12026bf22a3ae",
+    "const_try.nova": "3c64454e079028643972b5f57e925cd643f42c3394250ad056669ee6ed4133a9",
+    "discard_div0.nova": "60ffaa42ac326945779b3a3acdab359c44ea7a2333cb8fe5dcdfbc9b690d31dd",
+    "duplicate_binder.nova": "03ba569a59e75b9819ac97667e281f0d0adad13f75e6278be20d0da33aa640ff",
+    "global_pattern.nova": "8c3eb9db572dbaa4adf68b198594e32be2a23144e6807ff6df4a2df301cbc6a7",
+    "immutable_binder.nova": "b0807d975c2ceb482478cfc1defb80e70997e356052c1532ac4983e967f093db",
+    "initializer_self.nova": "6566d1048b4ed445643b4582c3110b9da506a254da90a437e394b51013d54aaf",
+    "let_ref.nova": "50b4b56805cd604d696ed0be68accaab5f8facccadcf37655bc5f5ff4cc81302",
+    "main.nova": "86769b71d3fb785d0b16a71416692ce09d1ad40cb69a3a10f047a0f4c7c59d4a",
+    "opaque_const.nova": "df316b2362f0a323b235b9331212bbc2ac54704bdac9d4dbba18df644504af72",
+    "overflow_const.nova": "e4c10a7579e6f92c35777493f642a19c1e36f0c0ad4c2a75c97dfae1ee42c44a",
+    "parameter_ref.nova": "69e8abb11dae06c58ab4340a22ed51bb43510fdf550cc87e47c0a29f3f2a6ad1",
+    "refutable_bool.nova": "87cd7431554affb20cf924bd48b8cc6ab9f7c6de6f80cde1af05eaeee9831956",
+    "refutable_enum.nova": "56b9791c698f2e691c670ac2e1c265b1cc74314c9c460dd93b9ee216e9bc9eb0",
+    "refutable_option.nova": "a7ce37ac7752a0aab49ce5fe5d5360f7430d0925e6f172a2213ce47d9c28bff2",
+    "runtime_abort.nova": "38eb96e0c8d0eb5c9e4273f33f27373a913d6fdff6916baafeda14eb4962a344",
+    "same_scope.nova": "e5638d3d3e2c1a79b58741e6d1f582c6596fa91aa06ad15eeb19a9fac67bcf7c",
+    "short_circuit.nova": "fe2d36677c61d1d8ace3b5093a5ab0116891a2b31ee4797d2a721158c73d33fc",
+    "tuple_arity.nova": "3a81e3c2104ba42cdc6b8a186f0a568e5d08ccdb941a6adcc1404d27d3e20165",
+    "types.nova": "47a5041ec59954fd3672e7d89ae19558a8049dbdb2046e515e0738e6c840d38c",
+    "unknown_initializer.nova": "4c51f66c704146220b3b3ea17e5a28ddf880bae2b0ebf8e7525f3d7e6d7a561e",
+    "unreachable_const.nova": "faf50b22360197f3fff8a2ece4efc22ecaebb38976cdd94e4977fddaf0bab2ef",
+    "user_call.nova": "a7e77390ce9df3cdf359045678f49c0bfa4b74cac00dd6908af13bf502b84477",
+    "visible_global_pattern.nova": "b840da7360401f85e8ab2ff082218b3e8b057345897670e07489c9bf4eda49d8"
+  },
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "cached=7/true/🙂\nderived=15/false\npoint=7/7/9\nscalars=255/1.5\nsum=4/true\nsingle=6\nshadow=4\nlegacy=9\nloop=1/2/true\nloop=2/2/true\n",
+    "stderr": ""
+  },
+  "historical_overrides": [
+    {
+      "proposal": "P26",
+      "source": "../destructuring-proposal-fixtures/const_pattern.nova",
+      "original_diagnostic": "N1102",
+      "source_sha256": "cd68908d85e311b69745af539f6b327366c9435b00fc3561990207efc112d09a",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "reason": "P28 permits local compound Copy const; original source and metadata preserved."
+    },
+    {
+      "proposal": "P27",
+      "source": "../var-destructuring-proposal-fixtures/const_pattern.nova",
+      "original_diagnostic": "N1102",
+      "source_sha256": "51cb5adf815f99fb94ef639af317bf8ceb4fcc4b4af99c5448f0db107a487327",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "",
+        "stderr": ""
+      },
+      "reason": "P28 permits local compound Copy const; original source and metadata preserved."
+    }
+  ]
+}

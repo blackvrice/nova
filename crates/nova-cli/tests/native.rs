@@ -2207,3 +2207,58 @@ fn p27_native_mutable_destructuring_paths_snapshot_scope_try_o0_o2() {
 fn p27_initializer_and_mutation_abort_exact_span_o0_o2() {
     for(source,needle)in[(include_str!("../../../docs/development-v0.1/var-destructuring-proposal-fixtures/initializer_abort.nova"),"x+1"),(include_str!("../../../docs/development-v0.1/var-destructuring-proposal-fixtures/binder_abort.nova"),"n+1")]{let at=source.find(needle).unwrap();for profile in["debug","release"]{let r=program_profile(source,profile);assert_eq!(r.status.code(),Some(1));assert_eq!(r.stdout,b"before\n");assert_eq!(String::from_utf8(r.stderr).unwrap().lines().next(),Some(format!("Nova panic: integer overflow at file#0:{at}..{}",at+3).as_str()));}}
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p28_native_const_destructuring_cached_values_scope_projection_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/const-destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="cached=7/true/🙂\nderived=15/false\npoint=7/7/9\nscalars=255/1.5\nsum=4/true\nsingle=6\nshadow=4\nlegacy=9\nloop=1/2/true\nloop=2/2/true\n";
+    for profile in ["debug", "release"] {
+        for (name, out) in [
+            ("main.nova", expected),
+            ("short_circuit.nova", "short=false/true\n"),
+            ("opaque_const.nova", "opaque=7/7/9\n"),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, out.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let r = program_profile(
+            include_str!("../../../examples/const_destructuring.nova"),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, "8/false/🙂\nconst=7/copy=9\n".as_bytes());
+        assert!(r.stderr.is_empty());
+        for s in[include_str!("../../../docs/development-v0.1/destructuring-proposal-fixtures/const_pattern.nova"),include_str!("../../../docs/development-v0.1/var-destructuring-proposal-fixtures/const_pattern.nova")]{let r=program_profile(s,profile);assert!(r.status.success(),"{}",String::from_utf8_lossy(&r.stderr));assert!(r.stdout.is_empty()&&r.stderr.is_empty());}
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p28_runtime_operations_on_const_binders_keep_checked_source_abort_o0_o2() {
+    let source = include_str!(
+        "../../../docs/development-v0.1/const-destructuring-proposal-fixtures/runtime_abort.nova"
+    );
+    let at = source.find("n+1").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert_eq!(r.status.code(), Some(1));
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(format!("Nova panic: integer overflow at file#0:{at}..{}", at + 3).as_str())
+        );
+    }
+}

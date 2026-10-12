@@ -140,8 +140,9 @@ pub enum NodeKind {
         mutable: bool,
         constant: bool,
     },
-    /// P26/P27 pattern, optional type, then initializer; local Copy let or var.
+    /// P26-P28 pattern, optional type, then initializer; local Copy let/var/const.
     DestructuringBinding {
+        constant: bool,
         mutable: bool,
         keyword: Span,
         colon: Option<Span>,

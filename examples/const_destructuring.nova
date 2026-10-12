@@ -1,0 +1,10 @@
+// P28 one compile-time initializer evaluation, immutable cached Copy binders.
+enum Packet { Data((int8, bool), char) }
+func main() {
+    const Packet::Data((number, flag), letter) = Packet::Data((7, true), '🙂')
+    const (next, enabled) = (number + 1, !flag)
+    print("{next}/{enabled}/{letter}")
+    var (copy, _) = (number, ())
+    copy = 9
+    print("const={number}/copy={copy}")
+}

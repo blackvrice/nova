@@ -1232,8 +1232,8 @@ fn p26_fixed_destructuring_negative_utf8_spans_and_cascades() {
         ("alias_head.nova", "N1102", 104, 112, &["N3103"] as &[&str]),
     ] {
         let loaded = load(&root.join(name), Some(&root)).unwrap();
-        // P27 extends formerly unsupported var; original P26 bytes/metadata remain historical.
-        if name == "var_pattern.nova" {
+        // P27/P28 extend var/const; original P26 bytes/metadata remain historical.
+        if matches!(name, "var_pattern.nova" | "const_pattern.nova") {
             unit(&loaded);
             continue;
         }
@@ -1332,6 +1332,11 @@ fn p27_fixed_var_destructuring_negative_utf8_spans_and_cascades() {
         ),
     ] {
         let loaded = load(&root.join(name), Some(&root)).unwrap();
+        // P28 permits local compound const; preserve P27 historical fixture.
+        if name == "const_pattern.nova" {
+            unit(&loaded);
+            continue;
+        }
         let mut diagnostics = loaded.diagnostics.clone();
         if let Some(hir) = &loaded.module {
             let resolved = nova_resolve::resolve(hir);
@@ -1379,4 +1384,158 @@ fn p27_var_bundle_positive_runtime_units_and_historical_var_acceptance() {
         .canonicalize()
         .unwrap();
     unit(&load(&old, Some(old.parent().unwrap())).unwrap());
+}
+
+#[test]
+fn p28_fixed_const_destructuring_negative_utf8_spans_and_cascades() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/const-destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for (name, code, start, end, forbidden) in [
+        ("immutable_binder.nova", "N3004", 80, 81, &[] as &[&str]),
+        (
+            "duplicate_binder.nova",
+            "N2002",
+            73,
+            76,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        (
+            "same_scope.nova",
+            "N2002",
+            77,
+            78,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        (
+            "initializer_self.nova",
+            "N2001",
+            75,
+            76,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        (
+            "binder_escape.nova",
+            "N2001",
+            96,
+            97,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        (
+            "tuple_arity.nova",
+            "N2201",
+            68,
+            73,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        (
+            "annotation_range.nova",
+            "N2102",
+            90,
+            93,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        (
+            "refutable_bool.nova",
+            "N3103",
+            68,
+            76,
+            &["N3201", "N3202"] as &[&str],
+        ),
+        (
+            "refutable_enum.nova",
+            "N3103",
+            86,
+            93,
+            &["N3201", "N3202"] as &[&str],
+        ),
+        (
+            "refutable_option.nova",
+            "N3103",
+            69,
+            84,
+            &["N3201", "N3202"] as &[&str],
+        ),
+        ("user_call.nova", "N3201", 85, 91, &[] as &[&str]),
+        ("parameter_ref.nova", "N3201", 77, 78, &[] as &[&str]),
+        ("let_ref.nova", "N3201", 83, 84, &[] as &[&str]),
+        (
+            "unknown_initializer.nova",
+            "N2001",
+            77,
+            84,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        ("overflow_const.nova", "N3201", 92, 95, &[] as &[&str]),
+        ("discard_div0.nova", "N3201", 76, 79, &[] as &[&str]),
+        ("unreachable_const.nova", "N3201", 83, 86, &[] as &[&str]),
+        (
+            "global_pattern.nova",
+            "N1102",
+            56,
+            64,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        (
+            "visible_global_pattern.nova",
+            "N1102",
+            63,
+            71,
+            &["N3103", "N3201", "N3202"] as &[&str],
+        ),
+        ("const_try.nova", "N3201", 165, 168, &[] as &[&str]),
+    ] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = loaded.diagnostics.clone();
+        if let Some(hir) = &loaded.module {
+            let resolved = nova_resolve::resolve(hir);
+            let checked = nova_typecheck::check(hir, &resolved).unwrap();
+            diagnostics.extend(resolved.diagnostics);
+            diagnostics.extend(checked.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && d.primary.span.start() == start
+                && d.primary.span.end() == end),
+            "{name}: {diagnostics:?}"
+        );
+        assert!(
+            forbidden
+                .iter()
+                .all(|code| diagnostics.iter().all(|d| d.code.to_string() != *code)),
+            "{name}: {diagnostics:?}"
+        );
+        for d in diagnostics {
+            loaded.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                loaded.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+#[test]
+fn p28_const_bundle_positive_runtime_and_historical_const_units() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/const-destructuring-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "short_circuit.nova",
+        "opaque_const.nova",
+        "runtime_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+    for dir in [
+        "destructuring-proposal-fixtures",
+        "var-destructuring-proposal-fixtures",
+    ] {
+        let old = root
+            .join(format!("../{dir}/const_pattern.nova"))
+            .canonicalize()
+            .unwrap();
+        unit(&load(&old, Some(old.parent().unwrap())).unwrap());
+    }
 }

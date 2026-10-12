@@ -1,0 +1,2 @@
+// P28 approved contract: fixed acceptance source.
+func fetch()->Result<(int8,bool),int8>{return Result::Success((1,true))}func f()->Result<int8,int8>{const(n,flag)=try fetch();return Result::Success(1)}func main(){}

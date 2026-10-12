@@ -707,11 +707,13 @@ impl Builder<'_> {
                         HirKind::Block => {
                             work.extend(node.children.iter().rev().copied().map(Work::Statement))
                         }
-                        HirKind::DestructuringBinding { .. } => {
+                        HirKind::DestructuringBinding { constant, .. } => {
                             work.push(Work::Destructuring(id));
-                            work.push(Work::Expression(
-                                *node.children.last().ok_or(LoweringError::InvalidAnalysis)?,
-                            ));
+                            if !constant {
+                                work.push(Work::Expression(
+                                    *node.children.last().ok_or(LoweringError::InvalidAnalysis)?,
+                                ));
+                            }
                         }
                         HirKind::Binding { constant, .. } => {
                             work.push(Work::Binding(id));
@@ -919,6 +921,35 @@ impl Builder<'_> {
                     let plan = self.checked.destructuring_bindings[id.0]
                         .ok_or(LoweringError::InvalidAnalysis)?;
                     self.has_nested_match = true;
+                    if plan.constant {
+                        if !matches!(
+                            self.checked.const_destructuring_values[id.0],
+                            ConstEvaluation::Value { .. }
+                        ) {
+                            return Err(LoweringError::InvalidAnalysis);
+                        }
+                        let mut patterns = vec![plan.pattern];
+                        while let Some(pattern) = patterns.pop() {
+                            if let Some(def) = self.resolved.declaration_ids[pattern.0] {
+                                let ConstEvaluation::Value { value, .. } =
+                                    &self.checked.const_values[def.0]
+                                else {
+                                    return Err(LoweringError::InvalidAnalysis);
+                                };
+                                let value = Constant::from_const(value);
+                                let local = self.local(pattern, Some(def))?;
+                                self.declarations.insert(def.0, local);
+                                self.assign(
+                                    Place(local),
+                                    Rvalue::Use(Operand::Constant(value)),
+                                    pattern,
+                                )?;
+                            }
+                            patterns
+                                .extend(self.hir.nodes()[pattern.0].children.iter().rev().copied());
+                        }
+                        continue;
+                    }
                     let ty = self
                         .checked
                         .types

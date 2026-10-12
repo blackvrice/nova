@@ -1549,11 +1549,7 @@ fn p26_destructuring_grammar_punctuation_end_recovery_and_depth() {
             }
         }
     }
-    for source in [
-        "func f(){const(a,b)=(1,2)}",
-        "func f(){let(x)=1}",
-        "func f(){let(a,b) if true=(1,2)}",
-    ] {
+    for source in ["func f(){let(x)=1}", "func f(){let(a,b) if true=(1,2)}"] {
         let (_, _, p) = run(&format!("{source}func later(){{}}"));
         assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"));
         assert!(p
@@ -1624,11 +1620,7 @@ fn p27_var_ast_flags_annotation_end_prefix_and_const_recovery() {
             db.slice(n.span).unwrap();
         }
     }
-    for s in [
-        "func f(){const(a,b)=(1,2)}",
-        "func f(){var(a,b) if true=(1,2)}",
-        "func f(){var(x)=1}",
-    ] {
+    for s in ["func f(){var(a,b) if true=(1,2)}", "func f(){var(x)=1}"] {
         let (_, _, p) = run(&format!("{s}func later(){{}}"));
         assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"));
         assert!(
@@ -1640,4 +1632,70 @@ fn p27_var_ast_flags_annotation_end_prefix_and_const_recovery() {
     }
     let (_, _, p) = run("func f(){var(\n a,b,\n):(int8,bool)=\n (1,true)}");
     assert!(!p.has_errors());
+}
+
+#[test]
+fn p28_const_pattern_flags_prefix_and_local_grammar() {
+    let source="func f(){const(値,flag):(int8,bool)=(7,true);const E::Only=E::Only;const ()=();var(n,_)=(1,2);const _=9}func later(){}";
+    let (db, _, p) = run(source);
+    assert!(!p.has_errors(), "{:?}", p.diagnostics);
+    let flags = p
+        .arena
+        .iter()
+        .filter_map(|(_, n)| {
+            if let NodeKind::DestructuringBinding {
+                constant,
+                mutable,
+                keyword,
+                ..
+            } = n.kind
+            {
+                Some((constant, mutable, db.slice(keyword).unwrap()))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        flags,
+        [
+            (true, false, "const"),
+            (true, false, "const"),
+            (true, false, "const"),
+            (false, true, "var")
+        ]
+    );
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let (db, _, p) = run(&source[..at]);
+        for (_, n) in p.arena.iter() {
+            db.slice(n.span).unwrap();
+        }
+    }
+    let (_, _, p) = run("func f(){const(\n a,b,\n):(int8,bool)=\n(1,true)}");
+    assert!(!p.has_errors());
+    for s in ["func f(){const(a,b) if true=(1,2)}", "func f(){const(x)=1}"] {
+        let (_, _, p) = run(s);
+        assert!(p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"));
+    }
+}
+#[test]
+fn p28_global_and_visible_global_patterns_error_recover_later_items() {
+    for text in [
+        "const(a,b)=(1,2)",
+        "public const(a,b)=(1,2)",
+        "private const E::Only=E::Only",
+    ] {
+        let (db, _, p) = run(&format!("{text}\nfunc later(){{}}"));
+        assert!(
+            p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"
+                && matches!(db.slice(d.primary.span).unwrap(), "(a,b)" | "E::Only")),
+            "{:?}",
+            p.diagnostics
+        );
+        assert!(p
+            .arena
+            .iter()
+            .any(|(_, n)| matches!(n.kind, NodeKind::Function { .. })
+                && n.span.start() >= text.len()));
+    }
 }

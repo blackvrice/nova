@@ -1,0 +1,2 @@
+// P28 approved contract: fixed acceptance source.
+func main(){if true{const(n,_)=(1,2)}print("{n}")}

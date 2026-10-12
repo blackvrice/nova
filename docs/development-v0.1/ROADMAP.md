@@ -184,3 +184,9 @@ var/const/parameter/for/assignment 구조 분해·Array·일반 Move/Drop은 후
 Tuple/Unit/single-variant Enum의 mutable Copy binder·직접/기존 경로 대입·initializer 단일 평가/snapshot·Source/Resolved/Checked/MIR 검증을 지원한다.
 [62-production EBNF](GRAMMAR_STAGE_B_VAR_DESTRUCTURING.ebnf)·[수용 fixture](var-destructuring-proposal-fixtures/README.md)·[구현 기록](VAR_DESTRUCTURING_IMPLEMENTATION.md)·[직접 예제/명령](../../TESTING.md)을 제공한다.
 let/match binder는 immutable이다. const/Array·일반 Move/Drop 등은 후속 계약이다.
+
+
+[P28 함수 내부 Copy const 구조 분해](CONST_DESTRUCTURING_STAGE_B_PROPOSAL.md)는 **Accepted / 구현·검증 완료**다.
+Tuple/Unit/single-variant Enum·불변 상수 binder·initializer 한 번 평가·cached component 값·실패 전파·Source/Checked/MIR 검증을 지원한다.
+[62-production EBNF](GRAMMAR_STAGE_B_CONST_DESTRUCTURING.ebnf)·[수용 fixture](const-destructuring-proposal-fixtures/README.md)·[구현 기록](CONST_DESTRUCTURING_IMPLEMENTATION.md)·[직접 예제/명령](../../TESTING.md)을 제공한다.
+전역 구조 분해·const 함수·Array·일반 Move/Drop은 후속 계약이다.

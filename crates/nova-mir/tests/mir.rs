@@ -5,7 +5,7 @@ use nova_parser::parse;
 use nova_resolve::resolve;
 use nova_source::SourceDatabase;
 use nova_syntax::Symbol;
-use nova_typecheck::check;
+use nova_typecheck::{check, ConstEvaluation};
 use nova_types::Type;
 
 fn compile(source: &str) -> Result<Module, LoweringError> {
@@ -3347,4 +3347,116 @@ fn p27_var_discards_keep_calls_and_create_no_scalar_locals() {
             .count(),
         2
     );
+}
+
+#[test]
+fn p28_const_lowering_has_no_initializer_arithmetic_aggregate_projection_or_tag_branch() {
+    let m=pass("enum E{Only((int8,bool))}func main(){const E::Only((n,flag))=E::Only((7+1,true));const(next,_)=(n+1,());print(\"{next}/{flag}\")}");
+    let b = m
+        .bodies
+        .iter()
+        .find(|b| m.callees[b.callee.0].name == "main")
+        .unwrap();
+    assert!(b
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .all(|s| matches!(
+            s.kind,
+            StatementKind::Assign(_, Rvalue::Use(Operand::Constant(_)))
+                | StatementKind::Assign(_, Rvalue::Interpolate(_))
+        )));
+    assert!(!b.blocks.iter().any(|b| matches!(
+        b.terminator.as_ref().map(|t| &t.kind),
+        Some(TerminatorKind::Match { .. })
+    )));
+}
+#[test]
+fn p28_const_owner_whole_value_binder_nodes_and_checked_cache_forgery_rejected() {
+    let source = "func main(){const(n,flag):(int8,bool)=(7,true);print(\"{n}/{flag}\")}";
+    let mut db = SourceDatabase::default();
+    let file = db.add("api", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let def = r.definitions.iter().position(|d| d.name == "n").unwrap();
+    let mut bad = resolve(&h);
+    bad.definitions[def].constant = false;
+    assert_eq!(
+        check(&h, &bad).unwrap_err(),
+        nova_typecheck::CheckError::InvalidResolution
+    );
+    for change in 0..5 {
+        let mut c = check(&h, &r).unwrap();
+        let id = c
+            .destructuring_bindings
+            .iter()
+            .position(Option::is_some)
+            .unwrap();
+        match change {
+            0 => c.destructuring_bindings[id].as_mut().unwrap().constant = false,
+            1 => c.const_destructuring_values[id] = ConstEvaluation::NotConstant,
+            2 => {
+                if let ConstEvaluation::Value { nodes, .. } = &mut c.const_values[def] {
+                    *nodes += 1;
+                }
+            }
+            3 => {
+                c.const_values[def] = ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Int32(9),
+                    nodes: 3,
+                }
+            }
+            _ => {
+                c.const_destructuring_values[id] = ConstEvaluation::Value {
+                    value: nova_types::ConstValue::Unit,
+                    nodes: 3,
+                }
+            }
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p28_const_operand_source_body_forgery_and_discard_no_runtime_storage() {
+    let original = pass("func main(){const(a,b)=(1,2);print(\"{a}/{b}\")}");
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "main")
+        .unwrap();
+    for change in 0..3 {
+        let mut bad = original.clone();
+        match change {
+            0 => {
+                let b = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .find(|b| !b.statements.is_empty())
+                    .unwrap();
+                let StatementKind::Assign(_, value) = &mut b.statements[0].kind;
+                *value = Rvalue::Use(Operand::Constant(Constant::Int32(9)));
+            }
+            1 => {
+                let b = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .find(|b| b.statements.len() > 1)
+                    .unwrap();
+                b.statements.swap(0, 1);
+            }
+            _ => {
+                bad.bodies.remove(body);
+            }
+        }
+        assert!(!validate(&bad).is_empty(), "forgery {change}");
+    }
+    let m = pass("func main(){const(_,_)= (1,());const ()=()}");
+    let b = &m.bodies[0];
+    assert!(b.locals.is_empty());
+    assert!(b.blocks.iter().all(|b| b.statements.is_empty()));
 }

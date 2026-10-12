@@ -1369,3 +1369,57 @@ fn p27_public_ast_mutability_keyword_source_and_child_forgery() {
         }
     }
 }
+
+#[test]
+fn p28_public_const_flags_source_order_and_prefix_forgery() {
+    let source = "func f(){const(値,flag):(int8,bool)=(7,true)}func later(){}";
+    for at in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let mut db = SourceDatabase::default();
+        let file = db.add("prefix", source[..at].into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        let first = lower(&db, &p.arena, p.root);
+        assert_eq!(first, lower(&db, &p.arena, p.root));
+        if !l.has_errors() && !p.has_errors() {
+            assert!(first.is_ok(), "{}: {first:?}", &source[..at]);
+        }
+    }
+    let mut db = SourceDatabase::default();
+    let file = db.add("api", source.into()).unwrap();
+    let l = lex(&db, file).unwrap();
+    let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+    for change in 0..5 {
+        let mut ast = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let mut children = n
+                .children
+                .iter()
+                .map(|c| ids[c.index()])
+                .collect::<Vec<_>>();
+            if let NodeKind::DestructuringBinding {
+                constant,
+                mutable,
+                keyword,
+                ..
+            } = &mut kind
+            {
+                match change {
+                    0 => *constant = false,
+                    1 => *mutable = true,
+                    2 => *keyword = Span::new(file, keyword.start() + 1, keyword.end()).unwrap(),
+                    3 => children.swap(0, 1),
+                    _ => {
+                        children.pop();
+                    }
+                }
+            }
+            ids.push(ast.insert(kind, n.span, children).unwrap());
+        }
+        assert!(
+            lower(&db, &ast, ids[p.root.index()]).is_err(),
+            "forgery {change}"
+        );
+    }
+}

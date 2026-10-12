@@ -72,7 +72,7 @@ impl<'a> Parser<'a> {
             } else if self.kind() == TokenKind::Keyword(Keyword::Type) {
                 items.push(self.type_alias());
             } else if self.kind() == TokenKind::Keyword(Keyword::Const) {
-                items.push(self.statement());
+                items.push(self.global_constant());
             } else {
                 if self.kind() != TokenKind::Error {
                     self.report(
@@ -143,7 +143,7 @@ impl<'a> Parser<'a> {
         };
         let child = match self.kind() {
             TokenKind::Keyword(Keyword::Func) => self.function(),
-            TokenKind::Keyword(Keyword::Const) => self.statement(),
+            TokenKind::Keyword(Keyword::Const) => self.global_constant(),
             TokenKind::Keyword(Keyword::Struct) => self.structure(),
             TokenKind::Keyword(Keyword::Enum) => self.enum_declaration(),
             TokenKind::Keyword(Keyword::Type) => self.type_alias(),
@@ -1181,19 +1181,27 @@ impl<'a> Parser<'a> {
         self.depth -= 1;
         self.node(NodeKind::Block, start, statements)
     }
+    fn global_constant(&mut self) -> AstNodeId {
+        let id = self.statement();
+        let node = self.arena.get(id).expect("global declaration");
+        if matches!(
+            node.kind,
+            NodeKind::DestructuringBinding { constant: true, .. }
+        ) {
+            let span = node.span;
+            let children = node.children.clone();
+            self.report(
+                1102,
+                self.arena.get(children[0]).expect("pattern").span,
+                "global const destructuring is unsupported",
+            );
+            return self.node(NodeKind::Error, span.start(), children);
+        }
+        id
+    }
     fn destructuring_binding(&mut self) -> AstNodeId {
         let keyword = self.bump();
         let before = self.diagnostics.len();
-        if !matches!(
-            keyword.kind,
-            TokenKind::Keyword(Keyword::Let | Keyword::Var)
-        ) {
-            self.report(
-                1102,
-                self.current().span,
-                "compound binding supports let or var only",
-            );
-        }
         let pattern = self.pattern();
         let mut children = vec![pattern];
         let colon = if self.kind() == TokenKind::Colon {
@@ -1227,6 +1235,7 @@ impl<'a> Parser<'a> {
         let id = self.node(
             if self.diagnostics.len() == before {
                 NodeKind::DestructuringBinding {
+                    constant: keyword.kind == TokenKind::Keyword(Keyword::Const),
                     mutable: keyword.kind == TokenKind::Keyword(Keyword::Var),
                     keyword: keyword.span,
                     colon,

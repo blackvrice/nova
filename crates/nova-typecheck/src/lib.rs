@@ -2,6 +2,7 @@
 mod aggregates;
 mod aliases;
 mod arguments;
+mod const_patterns;
 mod defaults;
 mod ranges;
 pub use defaults::{DefaultArgument, ParameterDefault};
@@ -42,6 +43,7 @@ pub struct MatchGuard {
 }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct DestructuringBinding {
+    pub constant: bool,
     pub mutable: bool,
     pub pattern: HirId,
     pub annotation: Option<HirId>,
@@ -93,6 +95,8 @@ pub struct Checked {
     pub always_returns: Vec<bool>,
     /// P05/P06 evaluation state, indexed by resolved DefId.
     pub const_values: Vec<ConstEvaluation>,
+    /// P28 one whole initializer evaluation per compound const, including discards.
+    pub const_destructuring_values: Vec<ConstEvaluation>,
     pub diagnostics: Vec<Diagnostic>,
     upstream_errors: bool,
 }
@@ -100,14 +104,18 @@ impl Checked {
     pub fn has_errors(&self) -> bool {
         self.upstream_errors
             || !self.diagnostics.is_empty()
-            || self.const_values.iter().any(|v| {
-                matches!(
-                    v,
-                    ConstEvaluation::Pending
-                        | ConstEvaluation::Invalid
-                        | ConstEvaluation::Failed { .. }
-                )
-            })
+            || self
+                .const_values
+                .iter()
+                .chain(&self.const_destructuring_values)
+                .any(|v| {
+                    matches!(
+                        v,
+                        ConstEvaluation::Pending
+                            | ConstEvaluation::Invalid
+                            | ConstEvaluation::Failed { .. }
+                    )
+                })
             || self
                 .type_table
                 .iter()
@@ -153,6 +161,11 @@ impl Checked {
                 self.calls[index],
                 self.always_returns[index]
             );
+        }
+        for (index, value) in self.const_destructuring_values.iter().enumerate() {
+            if *value != ConstEvaluation::NotConstant {
+                let _ = writeln!(output, "const destructuring {index} {value:?}");
+            }
         }
         for (index, value) in self.const_values.iter().enumerate() {
             if *value != ConstEvaluation::NotConstant {
@@ -284,16 +297,21 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
     }
     // P27 Binder nodes obtain mutability from their compound declaration owner.
     let mut mutable_pattern_binders = vec![false; size];
+    let mut constant_pattern_binders = vec![false; size];
     for node in module.nodes() {
-        if matches!(
-            node.kind,
-            HirKind::DestructuringBinding { mutable: true, .. }
-        ) {
+        if let HirKind::DestructuringBinding {
+            mutable, constant, ..
+        } = node.kind
+        {
+            if !mutable && !constant {
+                continue;
+            }
             let mut pending = vec![node.children[0]];
             while let Some(id) = pending.pop() {
                 let pattern = &module.nodes()[id.0];
                 if matches!(pattern.kind, HirKind::Binder { .. }) {
-                    mutable_pattern_binders[id.0] = true;
+                    mutable_pattern_binders[id.0] = mutable;
+                    constant_pattern_binders[id.0] = constant;
                 }
                 pending.extend(pattern.children.iter().rev().copied());
             }
@@ -343,7 +361,9 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
             || definition.mutable
                 != (matches!(node.kind, HirKind::Binding { mutable: true, .. })
                     || mutable_pattern_binders[id.0])
-            || definition.constant != matches!(node.kind, HirKind::Binding { constant: true, .. })
+            || definition.constant
+                != (matches!(node.kind, HirKind::Binding { constant: true, .. })
+                    || constant_pattern_binders[id.0])
         {
             return Err(CheckError::InvalidResolution);
         }
@@ -398,6 +418,17 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         float_literals: vec![None; size],
         coercions: vec![None; size],
         always_returns: vec![false; size],
+        const_destructuring_values: module
+            .nodes()
+            .iter()
+            .map(|n| {
+                if matches!(n.kind, HirKind::DestructuringBinding { constant: true, .. }) {
+                    ConstEvaluation::Pending
+                } else {
+                    ConstEvaluation::NotConstant
+                }
+            })
+            .collect(),
         const_values: resolved
             .definitions
             .iter()
@@ -1058,7 +1089,9 @@ impl Checker<'_> {
                         },
                     ));
                 }
-                HirKind::DestructuringBinding { colon, .. } => {
+                HirKind::DestructuringBinding {
+                    colon, constant, ..
+                } => {
                     let expected = colon.map(|_| self.type_syntax(node.children[1]));
                     pending.push(Work::Enter(
                         *node.children.last().expect("initializer"),
@@ -1067,6 +1100,11 @@ impl Checker<'_> {
                             expected_span: colon
                                 .map(|_| self.module.nodes()[node.children[1].0].span),
                             direct_callee: false,
+                            const_declaration: if constant {
+                                Some(id)
+                            } else {
+                                context.const_declaration
+                            },
                             ..context
                         },
                     ));
@@ -1397,8 +1435,11 @@ impl Checker<'_> {
     fn finish(&mut self, id: HirId, context: Context) {
         let node = &self.module.nodes()[id.0];
         match &node.kind {
-            HirKind::DestructuringBinding { .. } => {
-                self.prepare_destructuring(id);
+            HirKind::DestructuringBinding { constant, .. } => {
+                let valid = self.prepare_destructuring(id);
+                if *constant {
+                    self.evaluate_const_destructuring(id, valid);
+                }
                 self.set(id, Type::Unit);
             }
             HirKind::MatchGuard { .. } => {

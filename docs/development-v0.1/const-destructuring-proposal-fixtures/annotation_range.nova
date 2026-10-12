@@ -1,0 +1,2 @@
+// P28 approved contract: fixed acceptance source.
+func main(){const(n,flag):(int8,bool)=(300,true)}
