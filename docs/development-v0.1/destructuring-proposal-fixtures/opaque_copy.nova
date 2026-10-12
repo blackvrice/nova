@@ -1,0 +1,2 @@
+// P26 Draft: proposed source; not approved or implemented.
+struct P{private let value:int8;func get(self)->int8{return self.value}}func factory()->P{return P(6)}func main(){let (p,())=(factory(),());print("opaque={p.get()}")}

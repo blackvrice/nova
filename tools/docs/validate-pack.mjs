@@ -1125,6 +1125,71 @@ const guardVectors=JSON.parse(fs.readFileSync(path.join(guardRoot,'coverage-vect
 assert(guardVectors.proposal === 'P25' && guardVectors.finite_domain_reference_only === true && guardVectors.cases?.length === 6, 'P25 invalid finite reference ledger');
 checks.push('P25 Accepted/승인·구현 ledger·61-production EBNF/기존 59개 보존·원 source 22개 hash·두 파일/정상 3/부정 16/Runtime 1 UTF-8 Span·검증된 16줄 metadata·finite coverage/trace vector 6개 (문서 validator 자체는 Compiler/Native 실행 아님)');
 
+
+const destructuringProposal=manifest.draft_proposals?.find(p=>p.id==='P26');
+assert(destructuringProposal?.status==='Draft' && destructuringProposal?.implementation_verified===false
+  && destructuringProposal?.document==='DESTRUCTURING_STAGE_B_PROPOSAL.md'
+  && destructuringProposal?.grammar==='GRAMMAR_STAGE_B_DESTRUCTURING.ebnf'
+  && destructuringProposal?.grammar_change===true && !destructuringProposal?.approval_date
+  && !manifest.accepted_proposals?.some(p=>p.id==='P26')
+  && JSON.stringify(destructuringProposal?.proposed_diagnostic_codes)==='["N3103"]', 'P26 incorrectly approved/verified');
+assert(!knownCodes.has('N3103'), 'P26 must not register proposed diagnostic before approval');
+const destructuringText=fs.readFileSync(path.join(pack,'DESTRUCTURING_STAGE_B_PROPOSAL.md'),'utf8');
+for (const requirement of ['Draft / 사용자 승인 대기 / 미구현','기존 60개 보존','10,000개','100,000개','1,000,000개',
+  'initializer','pattern으로 initializer 타입을 추론하지 않는다','let _ = expression','타입의 전체 domain','N3103','active-tag','var/const','Array','Move/borrow/Drop']) {
+  assert(destructuringText.includes(requirement),'P26 missing boundary '+requirement);
+}
+validateGrammar('GRAMMAR_STAGE_B_DESTRUCTURING.ebnf');
+const destructuringGrammar=fs.readFileSync(path.join(pack,'GRAMMAR_STAGE_B_DESTRUCTURING.ebnf'),'utf8');
+const destructuringProductions=productions(destructuringGrammar);
+assert(destructuringGrammar.includes('Draft, not approved or implemented') && destructuringProductions.size===62,'P26 invalid Draft grammar');
+for (const [name,value] of guardProductions) if (name!=='binding') assert(destructuringProductions.get(name)===value,'P26 changed approved production '+name);
+assert(destructuringProductions.get('binding')===guardProductions.get('binding')+'|"let",destructuring_pattern,[":",type],"=",expression'
+  && destructuringProductions.get('destructuring_pattern')==='tuple_pattern|unit_pattern|variant_path,["(",pattern_arguments,")"]','P26 invalid binding extension');
+const destructuringRoot=path.join(pack,'destructuring-proposal-fixtures');
+const destructuringFixture=JSON.parse(fs.readFileSync(path.join(destructuringRoot,'expected.json'),'utf8'));
+const destructuringOutput='initializer\nnested=7/true/한\npair\npair=3/false\ncopy=5/true/6\noriginal=9\nsingle=true\nunit-call\nshadow=3\nlegacy=9\npoint=7/9\nloop=2\nfetch\nafter=true\nok=4\nfetch\nerror=5\n';
+assert(destructuringFixture.proposal==='P26' && destructuringFixture.status==='Draft' && destructuringFixture.implementation_verified===false
+  && !destructuringFixture.approval_date && !destructuringFixture.validated_result && destructuringFixture.entry==='main.nova'
+  && destructuringFixture.source_root==='.' && destructuringFixture.grammar==='GRAMMAR_STAGE_B_DESTRUCTURING.ebnf'
+  && destructuringFixture.grammar_productions===62 && JSON.stringify(destructuringFixture.reachable_modules)==='["main","types"]'
+  && JSON.stringify(destructuringFixture.proposed_diagnostic_codes)==='["N3103"]'
+  && destructuringFixture.proposed_result?.check_exit===0 && destructuringFixture.proposed_result?.native_exit===0
+  && destructuringFixture.proposed_result?.stdout===destructuringOutput && destructuringFixture.proposed_result?.stderr==='', 'P26 invalid draft entry/proposed output');
+assert(destructuringFixture.positive_cases?.length===3 && destructuringFixture.negative_cases?.length===22
+  && destructuringFixture.runtime_cases?.length===1,'P26 invalid fixture counts');
+const destructuringDraftCodes=new Set([...knownCodes,'N3103']);
+const destructuringCases=[...destructuringFixture.positive_cases,...destructuringFixture.negative_cases,...destructuringFixture.runtime_cases];
+assert(new Set(destructuringCases.map(c=>c.name)).size===destructuringCases.length,'P26 duplicate case names');
+const destructuringSources=new Set(['main.nova','types.nova']);
+for (const c of destructuringCases) {
+  assert(path.basename(c.source)===c.source && c.source.endsWith('.nova') && !c.validated_result,'P26 invalid source/verification '+c.name);
+  destructuringSources.add(c.source);
+  if (c.expected_diagnostic) assert(destructuringDraftCodes.has(c.expected_diagnostic) && !c.proposed_result,'P26 invalid proposed diagnostic '+c.name);
+  if (c.primary) {
+    const bytes=fs.readFileSync(path.join(destructuringRoot,c.source));const boundaries=new Set([0]);let at=0;
+    for (const ch of bytes.toString('utf8')) {at+=Buffer.byteLength(ch);boundaries.add(at);}
+    assert(c.primary.start>=0 && c.primary.start<c.primary.end && c.primary.end<=bytes.length
+      && boundaries.has(c.primary.start) && boundaries.has(c.primary.end)
+      && bytes.subarray(c.primary.start,c.primary.end).toString('utf8')===c.primary_text,'P26 invalid UTF-8 primary '+c.name);
+  }
+  if (c.forbidden_diagnostics) assert(c.forbidden_diagnostics.every(code=>destructuringDraftCodes.has(code)&&code!==c.expected_diagnostic),'P26 invalid cascade exclusion '+c.name);
+}
+for (const name of destructuringSources) {
+  const bytes=fs.readFileSync(path.join(destructuringRoot,name));const text=bytes.toString('utf8');
+  assert(Buffer.from(text).equals(bytes) && text.endsWith('\n') && !text.includes('\r') && text.includes('P26 Draft'),'P26 invalid UTF-8/LF/Draft source '+name);
+}
+assert(destructuringSources.size===28,'P26 source count');
+for (const c of destructuringFixture.positive_cases) assert(c.proposed_result?.check_exit===0 && c.proposed_result?.native_exit===0
+  && c.proposed_result?.stdout.endsWith('\n') && c.proposed_result?.stderr==='','P26 invalid proposed positive '+c.name);
+const destructuringAbort=destructuringFixture.runtime_cases[0];
+assert(destructuringAbort.proposed_result?.check_exit===0 && destructuringAbort.proposed_result?.native_exit===1
+  && destructuringAbort.proposed_result?.stdout==='before\n'
+  && destructuringAbort.proposed_result?.stderr_first_line===`Nova panic: integer overflow at file#0:${destructuringAbort.primary.start}..${destructuringAbort.primary.end}`,'P26 invalid proposed Abort');
+const destructuringVectors=JSON.parse(fs.readFileSync(path.join(destructuringRoot,'coverage-vectors.json'),'utf8'));
+assert(destructuringVectors.proposal==='P26' && destructuringVectors.finite_domain_reference_only===true && destructuringVectors.cases?.length===6,'P26 invalid independent reference ledger');
+checks.push('P26 Draft/미승인·미구현 ledger·62-production 제안 EBNF/기존 60개 보존·N3103 미등록 제안·두 파일/정상 3/부정 22/Runtime 1 UTF-8 Span·proposed 17줄·finite irrefutability vector 6개 (Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

@@ -1,0 +1,225 @@
+{
+  "proposal": "P26",
+  "finite_domain_reference_only": true,
+  "cases": [
+    {
+      "name": "tuple_binders",
+      "domain": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "pattern": [
+        "_",
+        "_"
+      ],
+      "missing_indexes": []
+    },
+    {
+      "name": "unit",
+      "domain": [
+        {
+          "unit": true
+        }
+      ],
+      "pattern": {
+        "unit": true
+      },
+      "missing_indexes": []
+    },
+    {
+      "name": "single_enum_tuple",
+      "domain": [
+        {
+          "variant": "W::Data",
+          "fields": [
+            [
+              false,
+              false
+            ]
+          ]
+        },
+        {
+          "variant": "W::Data",
+          "fields": [
+            [
+              false,
+              true
+            ]
+          ]
+        },
+        {
+          "variant": "W::Data",
+          "fields": [
+            [
+              true,
+              false
+            ]
+          ]
+        },
+        {
+          "variant": "W::Data",
+          "fields": [
+            [
+              true,
+              true
+            ]
+          ]
+        }
+      ],
+      "pattern": {
+        "variant": "W::Data",
+        "fields": [
+          [
+            "_",
+            "_"
+          ]
+        ]
+      },
+      "missing_indexes": []
+    },
+    {
+      "name": "known_true_still_refutable",
+      "domain": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "pattern": [
+        "_",
+        true
+      ],
+      "initializer_example": [
+        true,
+        true
+      ],
+      "missing_indexes": [
+        0,
+        2
+      ]
+    },
+    {
+      "name": "known_enum_still_refutable",
+      "domain": [
+        {
+          "variant": "E::A",
+          "fields": [
+            false
+          ]
+        },
+        {
+          "variant": "E::A",
+          "fields": [
+            true
+          ]
+        },
+        {
+          "variant": "E::B",
+          "fields": []
+        }
+      ],
+      "pattern": {
+        "variant": "E::A",
+        "fields": [
+          "_"
+        ]
+      },
+      "initializer_example": {
+        "variant": "E::A",
+        "fields": [
+          true
+        ]
+      },
+      "missing_indexes": [
+        2
+      ]
+    },
+    {
+      "name": "nested_option_refutable",
+      "domain": [
+        {
+          "variant": "W::Data",
+          "fields": [
+            {
+              "variant": "Option::None",
+              "fields": []
+            }
+          ]
+        },
+        {
+          "variant": "W::Data",
+          "fields": [
+            {
+              "variant": "Option::Some",
+              "fields": [
+                false
+              ]
+            }
+          ]
+        },
+        {
+          "variant": "W::Data",
+          "fields": [
+            {
+              "variant": "Option::Some",
+              "fields": [
+                true
+              ]
+            }
+          ]
+        }
+      ],
+      "pattern": {
+        "variant": "W::Data",
+        "fields": [
+          {
+            "variant": "Option::Some",
+            "fields": [
+              "_"
+            ]
+          }
+        ]
+      },
+      "initializer_example": {
+        "variant": "W::Data",
+        "fields": [
+          {
+            "variant": "Option::Some",
+            "fields": [
+              true
+            ]
+          }
+        ]
+      },
+      "missing_indexes": [
+        0
+      ]
+    }
+  ]
+}

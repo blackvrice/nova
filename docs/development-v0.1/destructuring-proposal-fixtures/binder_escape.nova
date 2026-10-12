@@ -1,0 +1,2 @@
+// P26 Draft: proposed source; not approved or implemented.
+func main(){if true{let (n,flag)=(2,true)};print("{n}")}

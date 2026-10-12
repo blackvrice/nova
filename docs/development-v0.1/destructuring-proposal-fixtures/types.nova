@@ -1,0 +1,12 @@
+// P26 Draft: proposed source; not approved or implemented.
+public type Pair=(int8,bool)
+public enum Wrap { Data((int8,bool),char,()) }
+public struct Point { var x:int8; func value(self)->int8 { return self.x } }
+public func make()->Wrap { print("initializer"); return Wrap::Data((7,true),'한',()) }
+public func pair()->Pair { print("pair"); return (3,false) }
+public func unit() { print("unit-call") }
+public func fetch(fail:bool)->Result<Pair,int8> {
+    print("fetch")
+    if fail { return Result::Error(5) }
+    return Result::Success((4,true))
+}

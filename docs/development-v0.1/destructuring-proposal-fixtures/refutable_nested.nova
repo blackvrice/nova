@@ -1,0 +1,2 @@
+// P26 Draft: proposed source; not approved or implemented.
+enum W{Data((int8,bool))}func main(){let W::Data((n,true))=W::Data((7,true))}

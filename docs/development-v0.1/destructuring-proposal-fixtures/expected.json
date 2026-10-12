@@ -1,0 +1,329 @@
+{
+  "proposal": "P26",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "types"
+  ],
+  "grammar": "GRAMMAR_STAGE_B_DESTRUCTURING.ebnf",
+  "grammar_productions": 62,
+  "proposed_diagnostic_codes": [
+    "N3103"
+  ],
+  "positive_cases": [
+    {
+      "name": "discard_effect",
+      "source": "discard_effect.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "discard-effect\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "opaque_copy",
+      "source": "opaque_copy.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "opaque=6\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "annotation_context",
+      "source": "annotation_context.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "annotation=255/🙂\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "tuple_arity",
+      "source": "tuple_arity.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "(a,b)",
+      "primary": {
+        "start": 76,
+        "end": 81
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "tuple_type",
+      "source": "tuple_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "(a,b)",
+      "primary": {
+        "start": 76,
+        "end": 81
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "unit_type",
+      "source": "unit_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "()",
+      "primary": {
+        "start": 76,
+        "end": 78
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "duplicate_binder",
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "값",
+      "primary": {
+        "start": 81,
+        "end": 84
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "same_scope",
+      "source": "same_scope.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "n",
+      "primary": {
+        "start": 85,
+        "end": 86
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "refutable_bool",
+      "source": "refutable_bool.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "(n,true)",
+      "primary": {
+        "start": 76,
+        "end": 84
+      }
+    },
+    {
+      "name": "refutable_enum",
+      "source": "refutable_enum.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "E::A(n)",
+      "primary": {
+        "start": 93,
+        "end": 100
+      }
+    },
+    {
+      "name": "refutable_option",
+      "source": "refutable_option.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "Option::Some(n)",
+      "primary": {
+        "start": 76,
+        "end": 91
+      }
+    },
+    {
+      "name": "refutable_result",
+      "source": "refutable_result.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "Result::Success(n)",
+      "primary": {
+        "start": 76,
+        "end": 94
+      }
+    },
+    {
+      "name": "refutable_nested",
+      "source": "refutable_nested.nova",
+      "expected_diagnostic": "N3103",
+      "primary_text": "W::Data((n,true))",
+      "primary": {
+        "start": 101,
+        "end": 118
+      }
+    },
+    {
+      "name": "unknown_variant",
+      "source": "unknown_variant.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "Missing",
+      "primary": {
+        "start": 88,
+        "end": 95
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "variant_mismatch",
+      "source": "variant_mismatch.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "E::A",
+      "primary": {
+        "start": 94,
+        "end": 98
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "payload_arity",
+      "source": "payload_arity.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "E::A(n,m)",
+      "primary": {
+        "start": 91,
+        "end": 100
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "nullary_parentheses",
+      "source": "nullary_parentheses.nova",
+      "expected_diagnostic": "N2201",
+      "primary_text": "E::A()",
+      "primary": {
+        "start": 85,
+        "end": 91
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "immutable_binder",
+      "source": "immutable_binder.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "n",
+      "primary": {
+        "start": 94,
+        "end": 95
+      }
+    },
+    {
+      "name": "binder_escape",
+      "source": "binder_escape.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "n",
+      "primary": {
+        "start": 111,
+        "end": 112
+      }
+    },
+    {
+      "name": "initializer_self",
+      "source": "initializer_self.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "n",
+      "primary": {
+        "start": 86,
+        "end": 87
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "var_pattern",
+      "source": "var_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "(",
+      "primary": {
+        "start": 76,
+        "end": 77
+      }
+    },
+    {
+      "name": "const_pattern",
+      "source": "const_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "(",
+      "primary": {
+        "start": 78,
+        "end": 79
+      }
+    },
+    {
+      "name": "guard_pattern",
+      "source": "guard_pattern.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "if",
+      "primary": {
+        "start": 85,
+        "end": 87
+      }
+    },
+    {
+      "name": "annotation_range",
+      "source": "annotation_range.nova",
+      "expected_diagnostic": "N2102",
+      "primary_text": "300",
+      "primary": {
+        "start": 98,
+        "end": 101
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    },
+    {
+      "name": "alias_head",
+      "source": "alias_head.nova",
+      "expected_diagnostic": "N1102",
+      "primary_text": "Alias::A",
+      "primary": {
+        "start": 104,
+        "end": 112
+      },
+      "forbidden_diagnostics": [
+        "N3103"
+      ]
+    }
+  ],
+  "runtime_cases": [
+    {
+      "name": "initializer_abort",
+      "source": "initializer_abort.nova",
+      "primary_text": "x+1",
+      "primary": {
+        "start": 117,
+        "end": 120
+      },
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: integer overflow at file#0:117..120"
+      }
+    }
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "initializer\nnested=7/true/한\npair\npair=3/false\ncopy=5/true/6\noriginal=9\nsingle=true\nunit-call\nshadow=3\nlegacy=9\npoint=7/9\nloop=2\nfetch\nafter=true\nok=4\nfetch\nerror=5\n",
+    "stderr": ""
+  }
+}

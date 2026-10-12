@@ -1,0 +1,2 @@
+// P26 Draft: proposed source; not approved or implemented.
+func main(){let x:int8=127;print("before");let (n,flag)=(x+1,true);print("wrong={n}/{flag}")}

@@ -56,6 +56,8 @@ Copy struct generated constructor 이름 인수·field mapping·source-order sna
 
 Copy match Bool guard·pattern-success 단일 평가·false continuation·unguarded 합집합 coverage·try/Source/MIR 계약은 [P25 Accepted](../GUARD_STAGE_B_PROPOSAL.md)·[61-production EBNF](../GRAMMAR_STAGE_B_GUARD.ebnf)·[수용 fixture](../guard-proposal-fixtures/README.md)와 [구현 기록](../GUARD_IMPLEMENTATION.md)을 따른다. 구현·검증 완료이며 P01~P24와 guard 없는 경로를 보존한다. guard truth/refinement 증명·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.
 
+Irrefutable Copy local let 구조 분해·Tuple/Unit/single-variant Enum·initializer 단일 평가/snapshot·선언 시점·Source/MIR 계약은 [P26 Draft](../DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production 제안 EBNF](../GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 계획](../destructuring-proposal-fixtures/README.md)에 제안했다. 미승인·미구현이며 N3103은 미등록 제안 code다. P01~P25·일반 IDENT binding을 보존하고 var/const/global/parameter/for/assignment destructuring·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.
+
 ## MIR 구조
 Body는 typed locals/scopes/basic blocks를 가지며 block은 Statements와 하나의 Terminator다. Place=root+projection, Operand=Copy/Move/Constant, Rvalue=Use/Binary/Aggregate/Ref 등으로 제안한다.
 

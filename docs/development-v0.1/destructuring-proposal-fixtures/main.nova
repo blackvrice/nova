@@ -1,0 +1,51 @@
+// P26 Draft: proposed source; not approved or implemented.
+use types::Pair
+use types::Wrap as W
+use types::Point as 点
+use types::make
+use types::pair
+use types::unit
+use types::fetch
+func worker(fail:bool)->Result<int8,int8> {
+    let (n,flag):Pair=try fetch(fail)
+    print("after={flag}")
+    return Result::Success(n)
+}
+func main() {
+    let W::Data((값,flag),ch,())=make()
+    print("nested={값}/{flag}/{ch}")
+    let (a,b):Pair=pair()
+    print("pair={a}/{b}")
+    var original=((5,true),6)
+    let ((copy,enabled),other)=original
+    original.0.0=9
+    print("copy={copy}/{enabled}/{other}")
+    print("original={original.0.0}")
+    let (single,):(bool,)=(true,)
+    print("single={single}")
+    let ()=unit()
+    let outer=2
+    if true {
+        let (outer,_)=(outer+1,false)
+        print("shadow={outer}")
+    }
+    let _=9
+    print("legacy={_}")
+    let (p,())=(点(x:7),())
+    var q=p
+    q.x=9
+    print("point={p.value()}/{q.value()}")
+    for i in 1 through 2 {
+        let (n,flag)=(i,i==2)
+        if !flag { continue }
+        print("loop={n}")
+    }
+    match worker(false) {
+        Result::Success(n)=>{print("ok={n}")}
+        Result::Error(e)=>{print("wrong={e}")}
+    }
+    match worker(true) {
+        Result::Success(n)=>{print("wrong={n}")}
+        Result::Error(e)=>{print("error={e}")}
+    }
+}

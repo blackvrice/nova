@@ -172,3 +172,9 @@ guard·or/range·일반 literal·struct destructuring·Array·Move/Drop은 후�
 Bool guard·pattern-success 단일 평가·false continuation·unguarded 합집합 coverage·try·Source/MIR 검증을 지원한다.
 [61-production EBNF](GRAMMAR_STAGE_B_GUARD.ebnf)·[수용 fixture](guard-proposal-fixtures/README.md)·[구현 기록](GUARD_IMPLEMENTATION.md)·[독립 예제/명령](../../TESTING.md)을 제공한다.
 Array·일반 Move/Drop·guard truth/refinement 증명은 후속 계약이다.
+
+
+[P26 irrefutable Copy let 구조 분해](DESTRUCTURING_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.
+Tuple/Unit/single-variant Enum·불변 Copy binder·initializer 단일 평가/snapshot·선언 시점·새 N3103/Source/MIR를 제안한다.
+[62-production EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[두 파일/정상 3/부정 22/Runtime 1 수용 계획](destructuring-proposal-fixtures/README.md)을 제공한다.
+var/const/parameter/for/assignment 구조 분해·Array·일반 Move/Drop은 이번 범위 밖이다.

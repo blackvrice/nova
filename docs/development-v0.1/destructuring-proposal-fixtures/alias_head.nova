@@ -1,0 +1,2 @@
+// P26 Draft: proposed source; not approved or implemented.
+enum E{A(int8)}type Alias=E;func main(){let Alias::A(n)=E::A(7)}

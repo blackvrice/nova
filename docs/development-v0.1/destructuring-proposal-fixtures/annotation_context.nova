@@ -1,0 +1,3 @@
+// P26 Draft: proposed source; not approved or implemented.
+type Pair=(uint8,char)
+func main(){let (n,ch):Pair=(255,'🙂');print("annotation={n}/{ch}")}

@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P26 irrefutable Copy let 구조 분해 착수안 (Draft)
+
+[최소 계약](DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production 제안 EBNF](GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 계획](destructuring-proposal-fixtures/README.md)을 준비했다.
+binding 한 production만 확장·destructuring_pattern 하나 추가·기존 60개 보존이다. 두 파일/정상 3/부정 22/Runtime 1·irrefutability oracle 6개다.
+미승인·미구현이며 N3103도 미등록 제안이다. 원본·Canonical·P01~P25 승인 ledger/계약/fixture와 Compiler/Runtime/Cargo는 보존한다.
+
 ## 2026-10-12 — P25 승인과 Copy match guard 구현
 
 사용자 “P25 승인하고 Copy match guard 구현 진행” 답변으로 P25를 승인했다.

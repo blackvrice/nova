@@ -14,6 +14,8 @@ Copy struct Read instance method·contextual self·member scope/visibility·rece
 
 Copy struct generated constructor 이름 인수·field mapping·source-order snapshot·const/default·Source/MIR 계약은 [P23 Accepted](../STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture](../struct-named-arguments-proposal-fixtures/README.md)·[구현 기록](../STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다. 구현·검증 완료이며 승인 P22 58-production EBNF를 변경 없이 재사용한다. explicit init·field default·Enum/sum named constructor·Array·일반 Move/Drop은 범위 밖이다.
 
+Irrefutable Copy local let 구조 분해·Tuple/Unit/single-variant Enum·initializer 단일 평가/snapshot·선언 시점·Source/MIR 계약은 [P26 Draft](../DESTRUCTURING_STAGE_B_PROPOSAL.md)·[62-production 제안 EBNF](../GRAMMAR_STAGE_B_DESTRUCTURING.ebnf)·[수용 계획](../destructuring-proposal-fixtures/README.md)에 제안했다. 미승인·미구현이며 N3103은 미등록 제안 code다. P01~P25·일반 IDENT binding을 보존하고 var/const/global/parameter/for/assignment destructuring·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.
+
 ## Overload 초안 — D11
 후보는 이름/visibility/arity/label/mode로 필터하고 generic inference 후 변환 비용을 계산한다. identity=0, lossless numeric widening=1, 나머지 implicit conversion은 불허를 제안한다.
 

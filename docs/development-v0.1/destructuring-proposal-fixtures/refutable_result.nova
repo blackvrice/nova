@@ -1,0 +1,2 @@
+// P26 Draft: proposed source; not approved or implemented.
+func main(){let Result::Success(n):Result<int8,int8>=Result::Success(7)}
