@@ -1,0 +1,2 @@
+// P25 Draft: proposed source; not approved or implemented.
+func main(){let x:int8=127;print("before");match x==127{true if x+1==0=>{print("wrong")},_=>{print("wrong-fallback")}}}

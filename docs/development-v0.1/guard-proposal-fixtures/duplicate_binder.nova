@@ -1,0 +1,2 @@
+// P25 Draft: proposed source; not approved or implemented.
+func main(){match (2,true){(값,값) if true=>{},_=>{}}}

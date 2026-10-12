@@ -1,0 +1,276 @@
+{
+  "proposal": "P25",
+  "finite_domain_reference_only": true,
+  "cases": [
+    {
+      "name": "false_guard_fallback",
+      "domain": [
+        false,
+        true
+      ],
+      "arms": [
+        {
+          "pattern": "_",
+          "guard": false,
+          "trace": "g"
+        },
+        {
+          "pattern": "_",
+          "guard": null
+        }
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": [],
+      "winners": [
+        1,
+        1
+      ],
+      "traces": [
+        [
+          "g"
+        ],
+        [
+          "g"
+        ]
+      ]
+    },
+    {
+      "name": "mismatch_skips_guard",
+      "domain": [
+        false,
+        true
+      ],
+      "arms": [
+        {
+          "pattern": true,
+          "guard": true,
+          "trace": "g"
+        },
+        {
+          "pattern": "_",
+          "guard": null
+        }
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": [],
+      "winners": [
+        1,
+        0
+      ],
+      "traces": [
+        [],
+        [
+          "g"
+        ]
+      ]
+    },
+    {
+      "name": "literal_true_not_proof",
+      "domain": [
+        false,
+        true
+      ],
+      "arms": [
+        {
+          "pattern": "_",
+          "guard": true,
+          "trace": "g"
+        }
+      ],
+      "missing_indexes": [
+        0,
+        1
+      ],
+      "unreachable_arms": [],
+      "winners": [
+        0,
+        0
+      ],
+      "traces": [
+        [
+          "g"
+        ],
+        [
+          "g"
+        ]
+      ]
+    },
+    {
+      "name": "same_guarded_pattern",
+      "domain": [
+        false,
+        true
+      ],
+      "arms": [
+        {
+          "pattern": "_",
+          "guard": false,
+          "trace": "first"
+        },
+        {
+          "pattern": "_",
+          "guard": true,
+          "trace": "second"
+        },
+        {
+          "pattern": "_",
+          "guard": null
+        }
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": [],
+      "winners": [
+        1,
+        1
+      ],
+      "traces": [
+        [
+          "first",
+          "second"
+        ],
+        [
+          "first",
+          "second"
+        ]
+      ]
+    },
+    {
+      "name": "guarded_union_not_proof",
+      "domain": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "arms": [
+        {
+          "pattern": [
+            true,
+            "_"
+          ],
+          "guard": true,
+          "trace": "a"
+        },
+        {
+          "pattern": [
+            "_",
+            true
+          ],
+          "guard": true,
+          "trace": "b"
+        },
+        {
+          "pattern": [
+            false,
+            false
+          ],
+          "guard": null
+        }
+      ],
+      "missing_indexes": [
+        1,
+        2,
+        3
+      ],
+      "unreachable_arms": [],
+      "winners": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "traces": [
+        [],
+        [
+          "b"
+        ],
+        [
+          "a"
+        ],
+        [
+          "a"
+        ]
+      ]
+    },
+    {
+      "name": "unguarded_union_covers_guard",
+      "domain": [
+        [
+          false,
+          false
+        ],
+        [
+          false,
+          true
+        ],
+        [
+          true,
+          false
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "arms": [
+        {
+          "pattern": [
+            true,
+            true
+          ],
+          "guard": null
+        },
+        {
+          "pattern": [
+            true,
+            false
+          ],
+          "guard": null
+        },
+        {
+          "pattern": [
+            true,
+            "_"
+          ],
+          "guard": false,
+          "trace": "skipped"
+        },
+        {
+          "pattern": [
+            false,
+            "_"
+          ],
+          "guard": null
+        }
+      ],
+      "missing_indexes": [],
+      "unreachable_arms": [
+        2
+      ],
+      "winners": [
+        3,
+        3,
+        1,
+        0
+      ],
+      "traces": [
+        [],
+        [],
+        [],
+        []
+      ]
+    }
+  ]
+}

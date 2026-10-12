@@ -1,0 +1,5 @@
+// P25 Draft: proposed source; not approved or implemented.
+func main(){match (true,){(flag,) if
+    flag &&
+    true
+    =>{print("multiline")},_=>{}}}

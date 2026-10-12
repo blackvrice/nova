@@ -1,0 +1,2 @@
+// P25 Draft: proposed source; not approved or implemented.
+func main(){match (2,true){(n,flag) if flag=>{n=2},_=>{}}}

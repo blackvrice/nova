@@ -1,0 +1,2 @@
+// P25 Draft: proposed source; not approved or implemented.
+func main(){match 7{n if true=>{},_=>{}}}

@@ -50,6 +50,8 @@ Copy struct Read instance method·contextual self·member scope/visibility·rece
 
 Copy struct generated constructor 이름 인수·field mapping·source-order snapshot·const/default·Source/MIR 계약은 [P23 Accepted](../STRUCT_NAMED_ARGUMENTS_STAGE_B_PROPOSAL.md)·[수용 fixture](../struct-named-arguments-proposal-fixtures/README.md)·[구현 기록](../STRUCT_NAMED_ARGUMENTS_IMPLEMENTATION.md)을 따른다. 구현·검증 완료이며 승인 P22 58-production EBNF를 변경 없이 재사용한다. explicit init·field default·Enum/sum named constructor·Array·일반 Move/Drop은 범위 밖이다.
 
+Copy match Bool guard·pattern-success 단일 평가·false continuation·unguarded 합집합 coverage·try/Source/MIR 계약은 [P25 Draft](../GUARD_STAGE_B_PROPOSAL.md)·[61-production 제안 EBNF](../GRAMMAR_STAGE_B_GUARD.ebnf)·[수용 계획](../guard-proposal-fixtures/README.md)에 제안했다. 미승인·미구현이며 P01~P24와 guard 없는 경로를 보존한다. guard truth/refinement 증명·Array·Move/loan/Drop·전체 D08/D10/D12/D16/D25/D30은 제외한다.
+
 ## 비SSA 결정
 MVP MIR은 Place 기반 비SSA다. Move/Borrow/Drop 분석은 SSA 이전에 수행한다. phi node 요구 때문에 source ownership 모델을 바꾸지 않는다.
 

@@ -1,0 +1,258 @@
+{
+  "proposal": "P25",
+  "status": "Draft",
+  "implementation_verified": false,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "types"
+  ],
+  "grammar": "GRAMMAR_STAGE_B_GUARD.ebnf",
+  "grammar_productions": 61,
+  "positive_cases": [
+    {
+      "name": "literal_guards",
+      "source": "literal_guards.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "unguarded\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "multiline",
+      "source": "multiline.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "multiline\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "binder_scope",
+      "source": "binder_scope.nova",
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "binder=2\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "name": "guard_integer",
+      "source": "guard_integer.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "n+1",
+      "primary": {
+        "start": 96,
+        "end": 99
+      },
+      "forbidden_diagnostics": [
+        "N3101",
+        "N3102"
+      ]
+    },
+    {
+      "name": "guard_unit",
+      "source": "guard_unit.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "()",
+      "primary": {
+        "start": 91,
+        "end": 93
+      },
+      "forbidden_diagnostics": [
+        "N3101",
+        "N3102"
+      ]
+    },
+    {
+      "name": "guard_unknown",
+      "source": "guard_unknown.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "missing",
+      "primary": {
+        "start": 91,
+        "end": 98
+      },
+      "forbidden_diagnostics": [
+        "N3101",
+        "N3102"
+      ]
+    },
+    {
+      "name": "duplicate_binder",
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "primary_text": "값",
+      "primary": {
+        "start": 92,
+        "end": 95
+      },
+      "forbidden_diagnostics": [
+        "N3101",
+        "N3102"
+      ]
+    },
+    {
+      "name": "immutable_binder",
+      "source": "immutable_binder.nova",
+      "expected_diagnostic": "N3004",
+      "primary_text": "n",
+      "primary": {
+        "start": 106,
+        "end": 107
+      }
+    },
+    {
+      "name": "binder_escape",
+      "source": "binder_escape.nova",
+      "expected_diagnostic": "N2001",
+      "primary_text": "n",
+      "primary": {
+        "start": 123,
+        "end": 124
+      }
+    },
+    {
+      "name": "guarded_wildcard",
+      "source": "guarded_wildcard.nova",
+      "expected_diagnostic": "N3101",
+      "primary_text": "match",
+      "primary": {
+        "start": 72,
+        "end": 77
+      }
+    },
+    {
+      "name": "literal_true_coverage",
+      "source": "literal_true_coverage.nova",
+      "expected_diagnostic": "N3101",
+      "primary_text": "match",
+      "primary": {
+        "start": 72,
+        "end": 77
+      }
+    },
+    {
+      "name": "covered_guard",
+      "source": "covered_guard.nova",
+      "expected_diagnostic": "N3102",
+      "primary_text": "true",
+      "primary": {
+        "start": 92,
+        "end": 96
+      }
+    },
+    {
+      "name": "union_covered_guard",
+      "source": "union_covered_guard.nova",
+      "expected_diagnostic": "N3102",
+      "primary_text": "(true,_)",
+      "primary": {
+        "start": 123,
+        "end": 131
+      }
+    },
+    {
+      "name": "missing_return",
+      "source": "missing_return.nova",
+      "expected_diagnostic": "N3003",
+      "primary_text": "{match x{true if true=>{return 1},true=>{},false=>{return 2}}}",
+      "primary": {
+        "start": 79,
+        "end": 141
+      }
+    },
+    {
+      "name": "try_unit",
+      "source": "try_unit.nova",
+      "expected_diagnostic": "N3002",
+      "primary_text": "try",
+      "primary": {
+        "start": 152,
+        "end": 155
+      },
+      "forbidden_diagnostics": [
+        "N3101",
+        "N3102"
+      ]
+    },
+    {
+      "name": "try_error_type",
+      "source": "try_error_type.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "try",
+      "primary": {
+        "start": 169,
+        "end": 172
+      },
+      "forbidden_diagnostics": [
+        "N3101",
+        "N3102"
+      ]
+    },
+    {
+      "name": "newline_before_if",
+      "source": "newline_before_if.nova",
+      "expected_diagnostic": "N1101",
+      "primary_text": "\n",
+      "primary": {
+        "start": 87,
+        "end": 88
+      }
+    },
+    {
+      "name": "double_guard",
+      "source": "double_guard.nova",
+      "expected_diagnostic": "N1101",
+      "primary_text": "if",
+      "primary": {
+        "start": 96,
+        "end": 98
+      }
+    },
+    {
+      "name": "root_scalar",
+      "source": "root_scalar.nova",
+      "expected_diagnostic": "N2101",
+      "primary_text": "7",
+      "primary": {
+        "start": 78,
+        "end": 79
+      },
+      "forbidden_diagnostics": [
+        "N3101",
+        "N3102"
+      ]
+    }
+  ],
+  "runtime_cases": [
+    {
+      "name": "guard_abort",
+      "source": "guard_abort.nova",
+      "primary_text": "x+1",
+      "primary": {
+        "start": 124,
+        "end": 127
+      },
+      "proposed_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: integer overflow at file#0:124..127"
+      }
+    }
+  ],
+  "proposed_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "scrutinee\ng1\ng2\nselected=7\ng3\nfallback\nsnapshot-guard\nsnapshot=true/6\noriginal=false/6\nprobe\nworker-fallback\nok=9\nprobe\nerror=5\nloop=2\nunit\n",
+    "stderr": ""
+  }
+}

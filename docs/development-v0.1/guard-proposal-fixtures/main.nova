@@ -1,0 +1,52 @@
+// P25 Draft: proposed source; not approved or implemented.
+use types::Event as E
+use types::make
+use types::guard
+use types::probe
+func worker(fail:bool)->Result<int8,int8> {
+    let value:Option<int8> = Option::Some(4)
+    match value {
+        Option::Some(n) if try probe(fail) => { return Result::Success(n) }
+        _ => { print("worker-fallback"); return Result::Success(9) }
+    }
+}
+func main() {
+    match make() {
+        Option::Some(E::Data((n,flag))) if guard("g1",false) => { print("wrong") }
+        Option::Some(E::Data((n,true))) if guard("g2",n>0) => { print("selected={n}") }
+        none if guard("skipped",true) => { print("wrong") }
+        _ => { print("wrong-fallback") }
+    }
+    match false {
+        true if guard("mismatch",true) => { print("wrong") }
+        false if guard("g3",false) => { print("wrong") }
+        _ => { print("fallback") }
+    }
+    var pair=(true,6)
+    match pair {
+        (flag,n) if guard("snapshot-guard",flag) => {
+            pair.0=false
+            print("snapshot={flag}/{n}")
+        }
+        _ => { print("wrong") }
+    }
+    print("original={pair.0}/{pair.1}")
+    match worker(false) {
+        Result::Success(n) => { print("ok={n}") }
+        Result::Error(e) => { print("wrong={e}") }
+    }
+    match worker(true) {
+        Result::Success(n) => { print("wrong={n}") }
+        Result::Error(e) => { print("error={e}") }
+    }
+    for i in 1 through 2 {
+        match (true,i) {
+            (true,n) if n==1 => { continue }
+            _ => { print("loop={i}") }
+        }
+    }
+    match () {
+        () if false => { print("wrong") }
+        () => { print("unit") }
+    }
+}

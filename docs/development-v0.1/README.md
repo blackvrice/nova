@@ -186,3 +186,9 @@ change/take·일반 Move/borrow/Drop·init·overload·bound method·Enum method�
 중첩 Enum/Option/Result·Copy Tuple/Unit 패턴, 불변 binder와 합집합 완전성·도달성 검사, 자원·Source/MIR 검증을 지원한다.
 [60-production EBNF](GRAMMAR_STAGE_B_NESTED_PATTERN.ebnf)·[수용 fixture](nested-pattern-proposal-fixtures/README.md)·[구현 기록](NESTED_PATTERN_IMPLEMENTATION.md)·[독립 예제/명령](../../TESTING.md)을 제공한다.
 guard·or/range·일반 literal·struct destructuring·Array·Move/Drop은 후속 계약이다.
+
+
+[P25 Copy match guard](GUARD_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.
+`pattern if Bool expression => block`·단일 snapshot·pattern-success guard 평가·false continuation·unguarded 합집합 coverage·try/Source/MIR를 제안한다.
+[61-production EBNF](GRAMMAR_STAGE_B_GUARD.ebnf)·[두 파일/정상 3/부정 16/Runtime 1 수용 계획](guard-proposal-fixtures/README.md)을 제공한다.
+Array·일반 Move/Drop·guard truth/refinement 증명은 이번 범위 밖이다.

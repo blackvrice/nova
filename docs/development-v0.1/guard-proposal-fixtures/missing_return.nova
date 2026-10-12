@@ -1,0 +1,2 @@
+// P25 Draft: proposed source; not approved or implemented.
+func f(x:bool)->int{match x{true if true=>{return 1},true=>{},false=>{return 2}}}

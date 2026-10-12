@@ -1,0 +1,2 @@
+// P25 Draft: proposed source; not approved or implemented.
+func main(){match true{true if true=>{},false=>{}}}

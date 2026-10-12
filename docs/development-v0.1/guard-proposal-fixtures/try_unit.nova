@@ -1,0 +1,2 @@
+// P25 Draft: proposed source; not approved or implemented.
+func probe()->Result<bool,int8>{return Result::Success(true)}func main(){match true{flag if try probe()=>{},_=>{}}}

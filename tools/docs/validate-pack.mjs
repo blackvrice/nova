@@ -1061,6 +1061,69 @@ assert(nestedVectors.proposal === 'P24' && nestedVectors.finite_domain_reference
 assert(Object.keys(nestedFixture.source_sha256 ?? {}).length === nestedSources.size, 'P24 source hash count');
 checks.push('P24 Accepted/승인·구현 ledger·60-production EBNF/기존 56개 보존·원 source 24개 hash·두 파일/정상 3/부정 18/Runtime 1 UTF-8 Span·검증된 12줄 metadata·finite coverage vector 6개 (문서 validator 자체는 Compiler/Native 실행 아님)');
 
+
+const guardProposal = manifest.draft_proposals?.find(p => p.id === 'P25');
+assert(guardProposal?.status === 'Draft' && guardProposal?.implementation_verified === false
+  && guardProposal?.document === 'GUARD_STAGE_B_PROPOSAL.md' && guardProposal?.grammar === 'GRAMMAR_STAGE_B_GUARD.ebnf'
+  && guardProposal?.grammar_change === true && !guardProposal?.approval_date
+  && !manifest.accepted_proposals?.some(p => p.id === 'P25'), 'P25 incorrectly approved/verified');
+const guardText = fs.readFileSync(path.join(pack, 'GUARD_STAGE_B_PROPOSAL.md'), 'utf8');
+for (const requirement of ['Draft / 사용자 승인 대기 / 미구현', '기존 59개 보존', '10,000개', '100,000개', '1,000,000개',
+  'guard 없는', 'literal true/false', 'pattern mismatch', 'false', 'try', 'N3101', 'N3102', 'ancestor', 'Array', 'Move/Drop']) {
+  assert(guardText.includes(requirement), 'P25 missing boundary '+requirement);
+}
+validateGrammar('GRAMMAR_STAGE_B_GUARD.ebnf');
+const guardGrammar = fs.readFileSync(path.join(pack, 'GRAMMAR_STAGE_B_GUARD.ebnf'), 'utf8');
+const guardProductions = productions(guardGrammar);
+assert(guardGrammar.includes('Draft, not approved or implemented') && guardProductions.size === 61, 'P25 invalid Draft grammar');
+for (const [name, value] of nestedProductions) {
+  if (name !== 'match_arm') assert(guardProductions.get(name) === value, 'P25 changed approved production '+name);
+}
+assert(guardProductions.get('match_arm') === 'pattern,[match_guard],"=>",block,(end|",")'
+  && guardProductions.get('match_guard') === '"if",expression', 'P25 invalid guard extension');
+const guardRoot = path.join(pack, 'guard-proposal-fixtures');
+const guardFixture = JSON.parse(fs.readFileSync(path.join(guardRoot, 'expected.json'), 'utf8'));
+const guardOutput = 'scrutinee\ng1\ng2\nselected=7\ng3\nfallback\nsnapshot-guard\nsnapshot=true/6\noriginal=false/6\nprobe\nworker-fallback\nok=9\nprobe\nerror=5\nloop=2\nunit\n';
+assert(guardFixture.proposal === 'P25' && guardFixture.status === 'Draft' && guardFixture.implementation_verified === false
+  && !guardFixture.approval_date && !guardFixture.validated_result && guardFixture.entry === 'main.nova'
+  && guardFixture.source_root === '.' && guardFixture.grammar === 'GRAMMAR_STAGE_B_GUARD.ebnf'
+  && guardFixture.grammar_productions === 61 && JSON.stringify(guardFixture.reachable_modules) === '["main","types"]'
+  && guardFixture.proposed_result?.check_exit === 0 && guardFixture.proposed_result?.native_exit === 0
+  && guardFixture.proposed_result?.stdout === guardOutput && guardFixture.proposed_result?.stderr === '', 'P25 invalid Draft entry/proposed output');
+assert(guardFixture.positive_cases?.length === 3 && guardFixture.negative_cases?.length === 16
+  && guardFixture.runtime_cases?.length === 1, 'P25 invalid fixture counts');
+const guardCases = [...guardFixture.positive_cases, ...guardFixture.negative_cases, ...guardFixture.runtime_cases];
+assert(new Set(guardCases.map(c => c.name)).size === guardCases.length, 'P25 duplicate case name');
+const guardSources = new Set(['main.nova','types.nova']);
+for (const c of guardCases) {
+  assert(path.basename(c.source) === c.source && c.source.endsWith('.nova') && !c.validated_result, 'P25 invalid source/verification '+c.name);
+  guardSources.add(c.source);
+  if (c.expected_diagnostic) assert(knownCodes.has(c.expected_diagnostic) && !c.proposed_result, 'P25 invalid diagnostic '+c.name);
+  if (c.primary) {
+    const bytes = fs.readFileSync(path.join(guardRoot,c.source));
+    const boundaries = new Set([0]); let at = 0;
+    for (const char of bytes.toString('utf8')) { at += Buffer.byteLength(char); boundaries.add(at); }
+    assert(c.primary.start >= 0 && c.primary.start < c.primary.end && c.primary.end <= bytes.length
+      && boundaries.has(c.primary.start) && boundaries.has(c.primary.end)
+      && bytes.subarray(c.primary.start,c.primary.end).toString('utf8') === c.primary_text, 'P25 invalid UTF-8 primary '+c.name);
+  }
+  if (c.forbidden_diagnostics) assert(c.forbidden_diagnostics.every(code => knownCodes.has(code) && code !== c.expected_diagnostic), 'P25 invalid cascade '+c.name);
+}
+for (const name of guardSources) {
+  const bytes=fs.readFileSync(path.join(guardRoot,name)); const text=bytes.toString('utf8');
+  assert(Buffer.from(text).equals(bytes) && text.endsWith('\n') && !text.includes('\r') && text.includes('P25 Draft'), 'P25 invalid UTF-8/LF/Draft source '+name);
+}
+assert(guardSources.size === 22, 'P25 wrong source count');
+for (const c of guardFixture.positive_cases) assert(c.proposed_result?.check_exit === 0 && c.proposed_result?.native_exit === 0
+  && c.proposed_result?.stdout.endsWith('\n') && c.proposed_result?.stderr === '', 'P25 invalid proposed positive '+c.name);
+const guardAbort=guardFixture.runtime_cases[0];
+assert(guardAbort.proposed_result?.check_exit === 0 && guardAbort.proposed_result?.native_exit === 1
+  && guardAbort.proposed_result?.stdout === 'before\n'
+  && guardAbort.proposed_result?.stderr_first_line === `Nova panic: integer overflow at file#0:${guardAbort.primary.start}..${guardAbort.primary.end}`, 'P25 invalid proposed Abort');
+const guardVectors=JSON.parse(fs.readFileSync(path.join(guardRoot,'coverage-vectors.json'),'utf8'));
+assert(guardVectors.proposal === 'P25' && guardVectors.finite_domain_reference_only === true && guardVectors.cases?.length === 6, 'P25 invalid finite reference ledger');
+checks.push('P25 Draft/미승인·미구현 ledger·61-production 제안 EBNF/기존 59개 보존·두 파일/정상 3/부정 16/Runtime 1 UTF-8 Span·proposed 16줄·finite coverage/trace vector 6개 (Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

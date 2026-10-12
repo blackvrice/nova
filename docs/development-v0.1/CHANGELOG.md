@@ -1,5 +1,11 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P25 Copy match guard 착수안 (Draft)
+
+[최소 계약](GUARD_STAGE_B_PROPOSAL.md)·[61-production 제안 EBNF](GRAMMAR_STAGE_B_GUARD.ebnf)·[수용 계획](guard-proposal-fixtures/README.md)을 준비했다.
+match_arm 한 production만 확장·match_guard 하나 추가·기존 59개 보존이다. 두 파일/정상 3/부정 16/Runtime 1·coverage/trace oracle 6개다.
+미승인·미구현이며 원본·Canonical·P01~P24 승인 ledger/계약/fixture와 Compiler/Runtime/Cargo는 보존한다.
+
 ## 2026-10-08 — P24 승인과 중첩 Copy 패턴·Tuple match 구현
 
 사용자 “P24 승인하고 중첩 Copy 패턴·Tuple match 구현 진행” 답변으로 P24를 승인했다.

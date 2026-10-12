@@ -1,0 +1,15 @@
+// P25 Draft: proposed source; not approved or implemented.
+public enum Event { Empty; Data((int8,bool)) }
+public func make()->Option<Event> {
+    print("scrutinee")
+    return Option::Some(Event::Data((7,true)))
+}
+public func guard(label:string,value:bool)->bool {
+    print("{label}")
+    return value
+}
+public func probe(fail:bool)->Result<bool,int8> {
+    print("probe")
+    if fail { return Result::Error(5) }
+    return Result::Success(false)
+}

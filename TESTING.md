@@ -2,6 +2,8 @@
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
 현재 개발 완료 기능은 P24 중첩 Copy 패턴·Tuple match까지다.
+P25 guard는 Draft / 미구현이다. [제안 수용 계획](docs/development-v0.1/guard-proposal-fixtures/README.md)을 제공한다.
+`node tools/docs/validate-pack.mjs`·`node tools/tests/guard-oracle.mjs`는 문서 기대값만 검사하며 P25 Native 성공 기록이 아니다.
 
 ## P24 중첩 Copy 패턴·Tuple match
 
