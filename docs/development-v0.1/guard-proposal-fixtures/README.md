@@ -1,10 +1,11 @@
-# P25 Copy match guard 수용 fixture — Draft
+# P25 Copy match guard 수용 fixture — Accepted
 
-**사용자 승인 대기 / 미구현**. [계약](../GUARD_STAGE_B_PROPOSAL.md)·[61-production 제안 EBNF](../GRAMMAR_STAGE_B_GUARD.ebnf)을 따른다.
+2026-10-12 사용자 승인. **Accepted / 구현·검증 완료**. [계약](../GUARD_STAGE_B_PROPOSAL.md)·[61-production EBNF](../GRAMMAR_STAGE_B_GUARD.ebnf)을 따른다.
 두 파일 main/types·추가 정상 3·부정 16·Runtime 1이다. source 22개는 UTF-8/LF다.
-expected.json의 proposed_result는 향후 수용 기준이며 implementation_verified=false다. 현재 Compiler/Native 성공 기록이 아니다.
+expected.json의 validated_result는 실제 Compiler/Native 검증 결과이며 implementation_verified=true다.
+22개 Nova source의 원 UTF-8/LF bytes와 Draft 주석은 승인 전 기록으로 보존하고 source_sha256으로 검사한다. [구현 기록](../GUARD_IMPLEMENTATION.md)을 따른다.
 
-## 제안된 main 출력
+## 검증된 main 출력
 
 ```text
 scrutinee
@@ -42,9 +43,9 @@ cargo test --workspace --offline
 oracle는 독립 유한 domain의 unguarded coverage/usefulness와 runtime 선택/guard trace를 검사한다.
 문서 validator는 source·byte Span·grammar·Draft ledger 검사다. 둘 다 P25 Compiler/Native 성공을 증명하지 않는다.
 
-## 승인 후 구현에 사용할 수용 명령
+## 직접 실행하는 수용 명령
 
-아래 명령은 **아직 성공하지 않는 향후 수용 명령**이다. 구현 후 debug/release의 위 16줄·빈 stderr·exit 0을 검증한다.
+아래 명령은 check exit 0·debug/release의 위 16줄·빈 stderr·exit 0을 확인한다.
 
 ```powershell
 cargo run -p nova-cli --offline -- check docs/development-v0.1/guard-proposal-fixtures/main.nova --source-root docs/development-v0.1/guard-proposal-fixtures
@@ -53,4 +54,7 @@ cargo run -p nova-cli --offline -- run docs/development-v0.1/guard-proposal-fixt
 cargo run -p nova-cli --offline -- run docs/development-v0.1/guard-proposal-fixtures/main.nova --source-root docs/development-v0.1/guard-proposal-fixtures --profile release
 ```
 
-현재 구현된 P24를 직접 실행하려면 [TESTING.md](../../../TESTING.md)의 examples/nested_patterns.nova 명령을 사용한다.
+현재 P25 [독립 예제](../../../examples/match_guards.nova)·[실행 명령](../../../TESTING.md)을 제공한다.
+집중 회귀는 `cargo test --workspace --offline p25_`다. NOVA_CLANG 설정 후 실제 LLVM/Native는
+`cargo test -p nova-codegen-llvm --test emission --offline p25_ -- --ignored --test-threads=1`과
+`cargo test -p nova-cli --test native --offline p25_ -- --ignored --test-threads=1`이다.

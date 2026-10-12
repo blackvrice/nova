@@ -1,5 +1,12 @@
 # 문서 변경 기록
 
+## 2026-10-12 — P25 승인과 Copy match guard 구현
+
+사용자 “P25 승인하고 Copy match guard 구현 진행” 답변으로 P25를 승인했다.
+guard 구문/스코프/Bool·단일 평가/false continuation·unguarded matrix coverage·try/flow·Source/Checked/MIR 검증을 구현했다.
+기본 404·LLVM 21·Native 58, 총 483 PASS / 0 FAIL. 새 기본 12·LLVM 1·Native 2다.
+P01~P24·Canonical·원본 148개·P25 fixture 원 source bytes를 보존했다. [구현 기록](GUARD_IMPLEMENTATION.md)·[직접 실행 명령](../../TESTING.md)을 제공한다.
+
 ## 2026-10-12 — P25 Copy match guard 착수안 (Draft)
 
 [최소 계약](GUARD_STAGE_B_PROPOSAL.md)·[61-production 제안 EBNF](GRAMMAR_STAGE_B_GUARD.ebnf)·[수용 계획](guard-proposal-fixtures/README.md)을 준비했다.

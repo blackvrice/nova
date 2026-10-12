@@ -330,11 +330,25 @@ impl<'a> Parser<'a> {
             let start = self.current().span.start();
             let diagnostics_before = self.diagnostics.len();
             let pattern = self.pattern();
+            let mut arm_children = vec![pattern];
+            if self.kind() == TokenKind::Keyword(Keyword::If) {
+                let keyword = self.bump().span;
+                let condition = self.expression(0);
+                arm_children.push(self.node(
+                    NodeKind::MatchGuard { keyword },
+                    keyword.start(),
+                    vec![condition],
+                ));
+            }
             if self.kind() != TokenKind::Symbol(Symbol::FatArrow) {
                 self.report(
-                    1102,
+                    if self.at_end() || self.kind() == TokenKind::Keyword(Keyword::If) {
+                        1101
+                    } else {
+                        1102
+                    },
                     self.current().span,
-                    "guards and other pattern extensions are outside P24",
+                    "expected match arm =>; this pattern extension is unsupported",
                 );
                 while !matches!(
                     self.kind(),
@@ -346,6 +360,7 @@ impl<'a> Parser<'a> {
             }
             self.expect(TokenKind::Symbol(Symbol::FatArrow));
             let body = self.block();
+            arm_children.push(body);
             children.push(self.node(
                 if self.diagnostics.len() == diagnostics_before {
                     NodeKind::Arm
@@ -353,7 +368,7 @@ impl<'a> Parser<'a> {
                     NodeKind::Error
                 },
                 start,
-                vec![pattern, body],
+                arm_children,
             ));
             if !self.eat(TokenKind::Comma) && !self.at_end() && self.kind() != TokenKind::RightBrace
             {

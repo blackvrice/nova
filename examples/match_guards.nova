@@ -1,0 +1,18 @@
+// P25: Copy match guards evaluate only after their pattern matches.
+func guard(label:string,value:bool)->bool {
+    print("guard={label}")
+    return value
+}
+func choose(value:Option<int8>)->int8 {
+    match value {
+        Option::Some(n) if guard("first",false) => { return -1 }
+        Option::Some(n) if guard("positive",n>0) => { return n }
+        Option::Some(_) => { return 0 }
+        none => { return -2 }
+    }
+}
+func main() {
+    print("some={choose(Option::Some(7))}")
+    print("fallback={choose(Option::Some(-3))}")
+    print("none={choose(none)}")
+}

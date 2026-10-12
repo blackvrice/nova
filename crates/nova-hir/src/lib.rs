@@ -92,7 +92,12 @@ pub enum HirKind {
     Match {
         keyword: Span,
     },
+    /// Pattern, optional MatchGuard, then body.
     Arm,
+    /// P25 if keyword and exactly one Bool condition child.
+    MatchGuard {
+        keyword: Span,
+    },
     PatternVariant {
         owner: SymbolId,
         owner_span: Span,
@@ -903,6 +908,7 @@ pub fn lower(
                 | NodeKind::PatternUnit
                 | NodeKind::Binder { .. }
                 | NodeKind::Arm
+                | NodeKind::MatchGuard { .. }
                 | NodeKind::Match { .. }
         ) && !valid_pattern_source(sources, arena, node)?
         {
@@ -1214,6 +1220,7 @@ pub fn lower(
             },
             NodeKind::Match { keyword } => HirKind::Match { keyword },
             NodeKind::Arm => HirKind::Arm,
+            NodeKind::MatchGuard { keyword } => HirKind::MatchGuard { keyword },
             NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
             NodeKind::PatternTuple => HirKind::PatternTuple,
             NodeKind::PatternUnit => HirKind::PatternUnit,
@@ -1571,10 +1578,36 @@ fn valid_pattern_source(
         )?
         .is_some_and(|s| s.ends_with('}') && separator(&s[..s.len() - 1])));
     }
+    if let NodeKind::MatchGuard { keyword } = node.kind {
+        return Ok(keyword.start() == node.span.start()
+            && keyword.end() <= children[0].span.start()
+            && inside(node.span, keyword)
+            && sources.slice(keyword)? == "if"
+            && token_boundary(sources.file(keyword.file())?.text(), keyword)
+            && children[0].span.end() == node.span.end()
+            && gap(keyword.end(), children[0].span.start(), &[""])?);
+    }
     if node.kind == NodeKind::Arm {
+        let body = children.last().expect("valid arm");
+        if children.len() == 3 {
+            let raw = sources.slice(Span::new(
+                node.span.file(),
+                children[0].span.end(),
+                children[1].span.start(),
+            )?)?;
+            if raw.contains(['\n', '\r'])
+                || !gap(children[0].span.end(), children[1].span.start(), &[""])?
+            {
+                return Ok(false);
+            }
+        }
         return Ok(children[0].span.start() == node.span.start()
-            && children[1].span.end() == node.span.end()
-            && gap(children[0].span.end(), children[1].span.start(), &["=>"])?);
+            && body.span.end() == node.span.end()
+            && gap(
+                children[children.len() - 2].span.end(),
+                body.span.start(),
+                &["=>"],
+            )?);
     }
     let start = if let NodeKind::PatternVariant {
         owner,
@@ -1778,10 +1811,12 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                     .all(|k| matches!(k, NodeKind::Arm | NodeKind::Error))
         }
         NodeKind::Arm => {
-            kinds.len() == 2
+            (kinds.len() == 2
+                || kinds.len() == 3 && matches!(kinds[1], NodeKind::MatchGuard { .. }))
                 && pattern(kinds[0])
-                && matches!(kinds[1], NodeKind::Block | NodeKind::Error)
+                && matches!(kinds.last(), Some(NodeKind::Block | NodeKind::Error))
         }
+        NodeKind::MatchGuard { .. } => kinds.len() == 1 && expr(kinds[0]),
         NodeKind::Struct { .. } => kinds.iter().all(|k| {
             matches!(
                 k,

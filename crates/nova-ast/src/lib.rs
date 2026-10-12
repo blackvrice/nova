@@ -104,7 +104,12 @@ pub enum NodeKind {
     Match {
         keyword: Span,
     },
+    /// Pattern, optional MatchGuard, then body.
     Arm,
+    /// P25 if keyword and exactly one Bool condition child.
+    MatchGuard {
+        keyword: Span,
+    },
     PatternVariant {
         owner: Span,
         name: Span,

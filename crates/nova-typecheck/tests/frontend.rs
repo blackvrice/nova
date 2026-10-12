@@ -2359,9 +2359,10 @@ fn p14_documented_negative_fixtures_preserve_exact_code_and_byte_spans() {
             include_str!(
                 "../../../docs/development-v0.1/enum-proposal-fixtures/guard_unsupported.nova"
             ),
-            "N1102",
-            81,
-            83,
+            // P25 accepts guard syntax but guarded-only coverage is incomplete.
+            "N3101",
+            63,
+            68,
         ),
     ] {
         let result = frontend(source);
@@ -4207,4 +4208,148 @@ fn p24_missing_witnesses_bounded_and_in_constructor_order() {
     assert!(notes
         .iter()
         .any(|n| n.contains("additional missing cases omitted")));
+}
+
+#[test]
+fn p25_guard_scope_bool_context_try_methods_and_independent_errors() {
+    for source in [
+        "const n=99;func f(v:(int8,bool)){match v{(n,flag) if flag && n>0=>{print(\"{n}\")},_=>{}}}",
+        "struct P{let x:int8;func ready(self,limit:int8=0)->bool{return self.x>limit}}func f(p:(P,())){match p{(point,()) if point.ready(limit:1)=>{},_=>{}}}",
+        "func g()->Result<bool,int8>{return Result::Success(false)}func f()->Result<int8,int8>{match true{flag if try g()=>{return Result::Success(1)},_=>{return Result::Success(2)}}}",
+        "func f(v:Option<int8>){match v{Option::Some(n) if n>0=>{const x=2;print(\"{x}\")},_=>{}}}",
+    ] {let r=pass(source);let (_,_,c)=r.semantic.unwrap();assert!(c.guards.iter().any(Option::is_some));assert!(c.dump().contains("guard arm"));}
+    let r = frontend("func f(){match true{flag if 1=>{print(missing)}}}");
+    assert!(codes(&r).contains(&"N2101".into()));
+    assert!(codes(&r).contains(&"N2001".into()));
+    assert!(!codes(&r)
+        .iter()
+        .any(|c| matches!(c.as_str(), "N3101" | "N3102")));
+    for source in [
+        "func f(){match true{flag if flag=>{let flag=true},_=>{}}}",
+        "func f(){match true{flag if flag=>{flag=false},_=>{}}}",
+    ] {
+        assert!(!frontend(source).diagnostics().is_empty());
+    }
+}
+
+#[test]
+fn p25_unguarded_union_coverage_matches_independent_finite_reference() {
+    let atoms = ["_", "false", "true"];
+    for a in 0..9 {
+        for b in 0..9 {
+            for c in 0..9 {
+                for mask in [0, 1, 2, 4] {
+                    let mut covered = [false; 4];
+                    let mut unreachable = 0;
+                    let mut arms = vec![];
+                    for (arm, p) in [a, b, c].into_iter().enumerate() {
+                        let (left, right) = (p / 3, p % 3);
+                        let accepts = |slot: usize, value: bool| slot == 0 || (slot == 2) == value;
+                        let matching = (0..4)
+                            .filter(|v| accepts(left, v & 2 != 0) && accepts(right, v & 1 != 0))
+                            .collect::<Vec<_>>();
+                        if matching.iter().all(|&v| covered[v]) {
+                            unreachable += 1;
+                        }
+                        let guarded = mask & (1 << arm) != 0;
+                        if !guarded {
+                            for v in matching {
+                                covered[v] = true;
+                            }
+                        }
+                        arms.push(format!(
+                            "({},{}){}=>{{}}",
+                            atoms[left],
+                            atoms[right],
+                            if guarded {
+                                if arm % 2 == 0 {
+                                    " if true"
+                                } else {
+                                    " if false"
+                                }
+                            } else {
+                                ""
+                            }
+                        ));
+                    }
+                    let source = format!("func f(x:(bool,bool)){{match x{{{}}}}}", arms.join(","));
+                    let result = frontend(&source);
+                    let actual = codes(&result);
+                    assert_eq!(
+                        actual.iter().filter(|c| *c == "N3102").count(),
+                        unreachable,
+                        "{source}"
+                    );
+                    assert_eq!(
+                        actual.iter().filter(|c| *c == "N3101").count(),
+                        usize::from(covered.contains(&false)),
+                        "{source}"
+                    );
+                    assert!(
+                        actual
+                            .iter()
+                            .all(|c| matches!(c.as_str(), "N3101" | "N3102")),
+                        "{source}: {actual:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn p25_guard_arm_resource_boundary_cache_hits_and_pattern_budget() {
+    let source = |n: usize| {
+        format!(
+            "func f(x:bool){{match x{{{}_=>{{}}}}}}",
+            vec!["_ if false=>{},"; n].join("")
+        )
+    };
+    let c = pass(&source(1024)).semantic.unwrap().2;
+    assert_eq!(c.guards.iter().flatten().count(), 1024);
+    let r = frontend(&source(1025));
+    assert_eq!(codes(&r), ["N8901"]);
+    let source = |extra: usize| {
+        let mut variants = vec![];
+        let mut arms = vec![];
+        for i in 0..10 {
+            let n = if i == 9 { 989 + extra } else { 1000 };
+            variants.push(format!("V{i}({})", vec!["()"; n].join(",")));
+            arms.push(format!(
+                "E::V{i}({}) if false=>{{}}",
+                vec!["_"; n].join(",")
+            ));
+        }
+        format!(
+            "enum E{{{}}}func f(x:E){{match x{{{},_=>{{}}}}}}",
+            variants.join(";"),
+            arms.join(",")
+        )
+    };
+    let c = pass(&source(0)).semantic.unwrap().2;
+    assert_eq!(c.recursive_patterns.iter().flatten().count(), 10000);
+    let r = frontend(&source(1));
+    assert_eq!(codes(&r), ["N8901"]);
+    assert_eq!(
+        r.sources.slice(r.diagnostics()[0].primary.span).unwrap(),
+        "_"
+    );
+}
+
+#[test]
+fn p25_guard_flow_and_coverage_notes_exclude_guarded_predecessors() {
+    pass("func f(x:bool)->int{match x{true if false=>{return 1},true=>{return 2},false=>{return 3}}}");
+    let r = frontend(
+        "func f(x:bool)->int{match x{true if true=>{return 1},true=>{},false=>{return 2}}}",
+    );
+    assert_eq!(codes(&r), ["N3003"]);
+    let r=frontend("func f(x:(bool,bool)){match x{(true,_) if true=>{},(true,true)=>{},(true,false)=>{},(true,_) if false=>{},(false,_)=>{}}}");
+    assert_eq!(codes(&r), ["N3102"]);
+    let d = &r.diagnostics()[0];
+    assert_eq!(d.secondary.len(), 2);
+    assert_eq!(r.sources.slice(d.primary.span).unwrap(), "(true,_)");
+    assert!(d
+        .secondary
+        .iter()
+        .all(|s| !r.sources.slice(s.span).unwrap().contains("if")));
 }

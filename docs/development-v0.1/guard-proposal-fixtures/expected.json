@@ -1,7 +1,7 @@
 {
   "proposal": "P25",
-  "status": "Draft",
-  "implementation_verified": false,
+  "status": "Accepted",
+  "implementation_verified": true,
   "entry": "main.nova",
   "source_root": ".",
   "reachable_modules": [
@@ -14,7 +14,7 @@
     {
       "name": "literal_guards",
       "source": "literal_guards.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "unguarded\n",
@@ -24,7 +24,7 @@
     {
       "name": "multiline",
       "source": "multiline.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "multiline\n",
@@ -34,7 +34,7 @@
     {
       "name": "binder_scope",
       "source": "binder_scope.nova",
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 0,
         "stdout": "binder=2\n",
@@ -241,7 +241,7 @@
         "start": 124,
         "end": 127
       },
-      "proposed_result": {
+      "validated_result": {
         "check_exit": 0,
         "native_exit": 1,
         "stdout": "before\n",
@@ -249,10 +249,35 @@
       }
     }
   ],
-  "proposed_result": {
+  "approval_date": "2026-10-12",
+  "validated_result": {
     "check_exit": 0,
     "native_exit": 0,
     "stdout": "scrutinee\ng1\ng2\nselected=7\ng3\nfallback\nsnapshot-guard\nsnapshot=true/6\noriginal=false/6\nprobe\nworker-fallback\nok=9\nprobe\nerror=5\nloop=2\nunit\n",
     "stderr": ""
+  },
+  "source_sha256": {
+    "binder_escape.nova": "ab6250604b476a3b076d69ed941365260c02c167cc7bf421074a975e525c2f2e",
+    "binder_scope.nova": "6dd4968be3a770dc60ada931273badb1b2cab9043e8b4e37e41096bb421a5987",
+    "covered_guard.nova": "e5c908904b1822fcb212ba5b4c5fa124b9d7e973f0cf1f8f5e69ba7cc3c5ca00",
+    "double_guard.nova": "b53c21488dcf7f9c12284181349713c3aa7ee0bd2838cb4a02631a4b247d93ef",
+    "duplicate_binder.nova": "530908cccd3f0efa94f4867785bc46f4f3d90d5caf5277370cb3c47b4436bc44",
+    "guard_abort.nova": "b03a411c3bd8b1619f45138f33cc6ae30af992ac4a73159dd39ba85b40b74c2f",
+    "guard_integer.nova": "3460844db6088a531a3b8cf2da102c636887a069e2e3e0b642640b1c41842c6f",
+    "guard_unit.nova": "ce1336480307a81554e09ac2a1ad1a8132a9c3568dfaf38540d42edae16af068",
+    "guard_unknown.nova": "f8f8f1475f07dd980a4360fb3c5377b07d33857cbe249537756774474c5ac67b",
+    "guarded_wildcard.nova": "a6102aa315381d3c86bf26301214924c2f71c69ef886f7402a555df149c345d5",
+    "immutable_binder.nova": "fb80a5e8ad1bf9efea54bacc6194965a133dbd2f007f5489499d1d8197e2849b",
+    "literal_guards.nova": "9eded72629e53400b14c266243fcf83ce1f6cab4b67999cc595eb894acd21f1c",
+    "literal_true_coverage.nova": "aa7892b6cad8898fda70963140d29e702737899f94002f00f7cce1899ed5f35b",
+    "main.nova": "97a227d4c9ff7c1f2a9d8a12759c287a2bde6ca356808f9e5b8d9ad0a2178ff7",
+    "missing_return.nova": "7005f032ce38ae2c3a7526fc228fa6a23d8bd25d5d342b7e2e2566de14a127c4",
+    "multiline.nova": "ebe0e0d367f3762932841fda9c88c63ae023e7334c8ad416da057c10a99b1c71",
+    "newline_before_if.nova": "439a0400a874f3d74bc17ca4638789a4eca2c244b659880b480aab8b6d02a089",
+    "root_scalar.nova": "cb33a7a21c50df28392ea017ba7cb71303ccaa14b30e092a76fc2fcdde556b3c",
+    "try_error_type.nova": "d4e5ed245b5da63c58260db490959b2cdb7a2f2e9dc41a78c2aee86c43b167c7",
+    "try_unit.nova": "4d4c8e85efa778a732fe93956f1383be8259fbd83ff01fc2135ab4b0f8aab4e6",
+    "types.nova": "696dc20f3cfa145a022b2ac4521f2f2cb6dfd0b9c8f216c2c35ff2fab065ce13",
+    "union_covered_guard.nova": "2285836cc8e09670ace2a6efa86b3714707edf3fff7033b50feb6ff6e75b17a2"
   }
 }

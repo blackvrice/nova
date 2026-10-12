@@ -599,7 +599,13 @@ pub fn resolve(module: &Module) -> Resolved {
                         }
                         patterns.extend(module.nodes()[pattern.0].children.iter().rev().copied());
                     }
-                    pending.push(Work::Body(node.children[1], arm_scope));
+                    pending.push(Work::Body(
+                        *node.children.last().expect("arm body"),
+                        arm_scope,
+                    ));
+                    if node.children.len() == 3 {
+                        pending.push(Work::Visit(node.children[1], arm_scope));
+                    }
                 }
                 HirKind::Name(name) => {
                     let spelling = module.symbol(name).expect("reference symbol exists");

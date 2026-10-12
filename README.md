@@ -214,7 +214,7 @@ P23 생성자 기능을 지원한다. explicit init·field default·Enum/sum nam
 guard·or/range·일반 literal·struct destructuring·Array·Move/Drop은 후속 계약이다.
 
 
-[P25 Copy match guard](docs/development-v0.1/GUARD_STAGE_B_PROPOSAL.md)는 **Draft / 승인 대기 / 미구현**이다.
-`pattern if Bool expression => block`·단일 snapshot·pattern-success guard 평가·false continuation·unguarded 합집합 coverage·try/Source/MIR를 제안한다.
-[61-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_GUARD.ebnf)·[두 파일/정상 3/부정 16/Runtime 1 수용 계획](docs/development-v0.1/guard-proposal-fixtures/README.md)을 제공한다.
-Array·일반 Move/Drop·guard truth/refinement 증명은 이번 범위 밖이다.
+[P25 Copy match guard](docs/development-v0.1/GUARD_STAGE_B_PROPOSAL.md)는 **Accepted / 구현·검증 완료**다.
+Bool guard·pattern-success 단일 평가·false continuation·unguarded 합집합 coverage·try·Source/MIR 검증을 지원한다.
+[61-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_GUARD.ebnf)·[수용 fixture](docs/development-v0.1/guard-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/GUARD_IMPLEMENTATION.md)·[독립 예제/명령](TESTING.md)을 제공한다.
+Array·일반 Move/Drop·guard truth/refinement 증명은 후속 계약이다.

@@ -1123,3 +1123,45 @@ fn p24_nested_checks_and_invalid_patterns_gate_before_native_tools() {
         assert!(error.contains("N3102") && !error.contains("missing-clang"));
     }
 }
+
+#[test]
+fn p25_guard_checks_and_invalid_guards_gate_before_native_tools() {
+    let dir = directory();
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/guard-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "literal_guards.nova",
+        "multiline.nova",
+        "binder_scope.nova",
+        "guard_abort.nova",
+    ] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg("check")
+            .arg(fixtures.join(name))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert!(r.stdout.is_empty() && r.stderr.is_empty());
+    }
+    for command in ["check", "build", "run"] {
+        let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+            .arg(command)
+            .arg(fixtures.join("union_covered_guard.nova"))
+            .arg("--source-root")
+            .arg(&fixtures)
+            .env("NOVA_CLANG", "missing-clang")
+            .current_dir(&dir)
+            .output()
+            .unwrap();
+        assert_eq!(r.status.code(), Some(1));
+        let error = String::from_utf8(r.stderr).unwrap();
+        assert!(error.contains("N3102") && !error.contains("missing-clang"));
+    }
+}

@@ -2039,3 +2039,65 @@ fn p24_nested_payload_abort_exact_utf8_span_and_arm_effect_o0_o2() {
         );
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p25_native_guard_order_snapshot_try_scope_loops_o0_o2() {
+    let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/guard-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="scrutinee\ng1\ng2\nselected=7\ng3\nfallback\nsnapshot-guard\nsnapshot=true/6\noriginal=false/6\nprobe\nworker-fallback\nok=9\nprobe\nerror=5\nloop=2\nunit\n";
+    for profile in ["debug", "release"] {
+        for (name, out) in [
+            ("main.nova", expected),
+            ("literal_guards.nova", "unguarded\n"),
+            ("multiline.nova", "multiline\n"),
+            ("binder_scope.nova", "binder=2\n"),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(fixtures.join(name))
+                .arg("--source-root")
+                .arg(&fixtures)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, out.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let r=program_profile("func partial(v:(bool,bool))->int{match v{(true,_) if false=>{return 10},(_,true) if true=>{return 20},_=>{return 30}}}func main(){print(\"{partial((false,false))}/{partial((false,true))}/{partial((true,false))}/{partial((true,true))}\")}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"30/20/30/20\n");
+        assert!(r.stderr.is_empty());
+        let r=program_profile("enum E{Empty;Int(int8);Flag(bool)}func f(v:(Option<E>,Option<E>))->int8{match v{(Option::Some(E::Int(a)),Option::Some(E::Int(b))) if a>b=>{return a-b},(Option::Some(E::Flag(flag)),_) if flag=>{return 1},_=>{return 0}}}func main(){print(\"{f((Option::Some(E::Int(7)),Option::Some(E::Int(2))))}/{f((none,none))}/{f((Option::Some(E::Empty),none))}/{f((Option::Some(E::Flag(true)),none))}\")}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"5/0/0/1\n");
+        assert!(r.stderr.is_empty());
+        let r=program_profile("struct P{let x:int8;func positive(self,limit:int8=0)->bool{print(\"method\");return self.x>limit}}func mark(name:string,value:bool)->bool{print(name);return value}func main(){match (P(7),Option::Some(true)){(p,Option::Some(flag)) if p.positive(limit:1)&&mark(\"rhs\",flag)=>{print(\"method-body\")},_=>{print(\"wrong\")}}match false{flag if mark(\"left\",false)&&mark(\"skipped\",true)=>{print(\"wrong\")},_=>{print(\"short\")}}match false{flag if mark(\"left2\",true)||mark(\"skipped\",true)=>{print(\"or-body\")},_=>{print(\"wrong\")}}}",profile);
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(
+            r.stdout,
+            b"method\nrhs\nmethod-body\nleft\nshort\nleft2\nor-body\n"
+        );
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p25_guard_abort_exact_utf8_span_and_skipped_fallback_o0_o2() {
+    let source =
+        include_str!("../../../docs/development-v0.1/guard-proposal-fixtures/guard_abort.nova");
+    let at = source.find("x+1").unwrap();
+    for profile in ["debug", "release"] {
+        let r = program_profile(source, profile);
+        assert_eq!(r.status.code(), Some(1));
+        assert_eq!(r.stdout, b"before\n");
+        assert_eq!(
+            String::from_utf8(r.stderr).unwrap().lines().next(),
+            Some(format!("Nova panic: integer overflow at file#0:{at}..{}", at + 3).as_str())
+        );
+    }
+}

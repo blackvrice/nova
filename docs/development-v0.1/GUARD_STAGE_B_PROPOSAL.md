@@ -1,10 +1,10 @@
 # Stage B Copy match guard 최소 계약 — P25
 
-작성일: 2026-10-12. 상태: **Draft / 사용자 승인 대기 / 미구현**.
+작성일·승인일: 2026-10-12. 상태: **Accepted / 구현·검증 완료**.
+사용자 “P25 승인하고 Copy match guard 구현 진행” 답변으로 이 범위를 승인했다.
 P01~P24·D01~D05·Canonical·원본 148개 문서를 보존한다.
-[61-production 제안 EBNF](GRAMMAR_STAGE_B_GUARD.ebnf)·[고정 수용 계획](guard-proposal-fixtures/README.md)을 함께 검토한다.
-이 문서와 proposed_result는 승인 또는 Compiler/Native 실행 증거가 아니다.
-[착수 준비 기록](GUARD_PREPARATION.md)에 현재 회귀 검사와 미구현 진단을 기록했다.
+[61-production EBNF](GRAMMAR_STAGE_B_GUARD.ebnf)·[고정 수용 fixture](guard-proposal-fixtures/README.md)·[구현·검증 기록](GUARD_IMPLEMENTATION.md)을 따른다.
+[착수 준비 기록](GUARD_PREPARATION.md)은 승인 전의 역사이며 현재 구현 결과는 별도 기록한다.
 
 ## Specification Change Proposal
 
@@ -13,7 +13,7 @@ P01~P24·D01~D05·Canonical·원본 148개 문서를 보존한다.
   의존 계약은 [P24 중첩 Copy 패턴](NESTED_PATTERN_STAGE_B_PROPOSAL.md), [P16 try](TRY_STAGE_B_PROPOSAL.md),
   [P19 loop](RANGE_LOOP_STAGE_B_PROPOSAL.md), [P22 Read method](METHOD_STAGE_B_PROPOSAL.md)다.
 - 현재 사양: Bool/Copy sum/Tuple/Unit statement match·recursive immutable Copy binder·단일 snapshot·bounded matrix coverage를 구현했다.
-  guard는 P24의 명시적 제외 범위다. 기존 Parser는 pattern 뒤 if를 N1102로 거부한다.
+  guard는 P24의 명시적 제외 범위다. P25 승인 전 Parser는 pattern 뒤 if를 N1102로 거부했다.
 - 발견된 문제: payload에 대한 Bool 조건과 함수 효과를 한 arm에서 검사하려면 guard의 scope·평가 순서·false continuation·coverage 기여를 정의해야 한다.
 - 제안 변경: `pattern if expression => block` 형태의 선택적 Bool guard를 추가한다. Copy pattern과 statement match만 확장한다.
 - 변경 이유: 기존 Stage B match/try/loop를 연결하며 Array의 ownership/Drop 선행 조건은 유지한다.
@@ -84,14 +84,14 @@ P01~P24·D01~D05·Canonical·원본 148개 문서를 보존한다.
   false edge의 임시 local을 뒤 arm binder로 재사용하지 않는다. inactive payload read는 모든 ancestor active tag에 지배돼야 한다.
   tag/Bool 검사·snapshot single write·guard single evaluation·source-order effect·body/join·try Error/Abort edges를 독립 검증한다.
   같은 타입 guard operand/arm 교환·guard bypass·false edge→body·snapshot overwrite·inactive read·effect/try/jump/body 삭제를 거부한다.
-- 기존 private source/full-body certificates와 aggregate ABI를 유지한다. LLVM COFF/ELF O0/O2·Windows Native debug/release를 승인 후 검증한다.
+- 기존 private source/full-body certificates와 aggregate ABI를 유지한다. LLVM COFF/ELF O0/O2·Windows Native debug/release를 검증했다.
   Linux object 생성과 Linux Native host 실행 증거를 구분한다.
 
 ## 수용 계획·승인 경계
 
-- 두 파일 main/types·정상 3·부정 16·Runtime 1의 고정 UTF-8/LF source·proposed_result·byte Span을 제공한다.
-  main 제안 출력 16줄은 mismatch skip·guard order·first match·snapshot·try false/Error·loop·Unit을 관측한다.
+- 두 파일 main/types·정상 3·부정 16·Runtime 1의 고정 UTF-8/LF source·validated_result·byte Span을 검증했다.
+  main 검증 출력 16줄은 mismatch skip·guard order·first match·snapshot·try false/Error·loop·Unit을 관측한다.
   [독립 유한 reference](../../tools/tests/guard-oracle.mjs)는 6개 vector의 unguarded coverage/usefulness와 runtime 선택/trace만 열거한다. Compiler 검증을 대신하지 않는다.
-- 승인 후 Parser/END/prefix·Source tampering·scope/type/cascade·literal guard coverage·union·예산 경계·Checked/MIR forgery와 실제 Native tests를 구현한다.
-  guard 없는 P01~P24 회귀와 실제 LLVM/Native 검사도 유지한다. 성공 전 implementation_verified를 true로 바꾸지 않는다.
+- Parser/END/prefix·Source tampering·scope/type/cascade·literal guard coverage·union·예산 경계·Checked/MIR forgery와 실제 Native tests를 구현한다.
+  guard 없는 P01~P24 회귀와 실제 LLVM/Native 검사도 유지한다. Compiler 진단/Span과 Native 출력을 검증한 뒤 implementation_verified=true를 기록했다.
 - or/range/general literal·struct/let destructuring·match expression·guard refinement/predicate proving·Array·Read loan/take·일반 Move/Drop·전체 D08/D10/D12/D16/D25/D30은 별도 계약이다.

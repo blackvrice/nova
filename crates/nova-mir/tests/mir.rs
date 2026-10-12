@@ -2989,3 +2989,118 @@ fn p24_snapshot_source_same_type_projection_sink_and_body_proof() {
         assert!(!validate(&bad).is_empty(), "change {change}");
     }
 }
+
+#[test]
+fn p25_checked_guard_condition_arm_body_keyword_deletion_rejected() {
+    let source =
+        "func g(v:bool)->bool{return v}func main(){match (true,true){(a,b) if g(a)=>{},_=>{}}}";
+    for change in 0..6 {
+        let mut db = SourceDatabase::default();
+        let file = db.add("p25", source.into()).unwrap();
+        let l = lex(&db, file).unwrap();
+        let p = parse(&db, file, &normalize_ends(&l.tokens)).unwrap();
+        let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+        let r = resolve(&h);
+        let mut c = check(&h, &r).unwrap();
+        let arm = c.guards.iter().position(Option::is_some).unwrap();
+        match change {
+            0 => c.guards[arm] = None,
+            1 => c.guards[arm].as_mut().unwrap().condition = c.guards[arm].unwrap().pattern,
+            2 => c.guards[arm].as_mut().unwrap().body = c.guards[arm].unwrap().condition,
+            3 => c.guards[arm].as_mut().unwrap().keyword = h.nodes()[0].span,
+            4 => {
+                let guard = c.guards[arm].take().unwrap();
+                c.guards[arm - 1] = Some(guard)
+            }
+            _ => {
+                let node = c.guards[arm].unwrap().node;
+                c.type_table[node.0] = c.types.intern(Type::Int32)
+            }
+        };
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+
+#[test]
+fn p25_guard_cfg_effect_false_branch_snapshot_and_inactive_payload_forgery() {
+    let original=pass("func g(v:bool)->bool{print(\"guard\");return v}func f(x:Option<bool>){match x{Option::Some(flag) if g(flag)=>{print(\"body\")},_=>{print(\"fallback\")}}}func main(){f(none)}");
+    let body = original
+        .bodies
+        .iter()
+        .position(|b| original.callees[b.callee.0].name == "f")
+        .unwrap();
+    for change in 0..5 {
+        let mut bad = original.clone();
+        let branch = bad.bodies[body]
+            .blocks
+            .iter()
+            .position(|b| {
+                matches!(
+                    b.terminator.as_ref().map(|t| &t.kind),
+                    Some(TerminatorKind::Branch { .. })
+                )
+            })
+            .unwrap();
+        match change {
+            0 => {
+                if let TerminatorKind::Branch {
+                    then_block,
+                    else_block,
+                    ..
+                } = &mut bad.bodies[body].blocks[branch]
+                    .terminator
+                    .as_mut()
+                    .unwrap()
+                    .kind
+                {
+                    std::mem::swap(then_block, else_block);
+                }
+            }
+            1 => {
+                let call = bad.bodies[body]
+                    .blocks
+                    .iter_mut()
+                    .find(|b| {
+                        matches!(
+                            b.terminator.as_ref().map(|t| &t.kind),
+                            Some(TerminatorKind::Call { .. })
+                        )
+                    })
+                    .unwrap();
+                if let TerminatorKind::Call { target, .. } =
+                    &mut call.terminator.as_mut().unwrap().kind
+                {
+                    *target = BlockId(branch + 1)
+                }
+            }
+            2 => {
+                let entry = bad.bodies[body].entry;
+                let snapshot = bad.bodies[body].blocks[entry.0]
+                    .statements
+                    .last()
+                    .unwrap()
+                    .clone();
+                bad.bodies[body].blocks[entry.0].statements.push(snapshot);
+            }
+            3 => {
+                let payload = bad.bodies[body]
+                    .blocks
+                    .iter()
+                    .position(|b| {
+                        b.statements.iter().any(|s| {
+                            matches!(s.kind, StatementKind::Assign(_, Rvalue::EnumPayload(..)))
+                        })
+                    })
+                    .unwrap();
+                bad.bodies[body].entry = BlockId(payload);
+            }
+            _ => {
+                bad.bodies.remove(body);
+            }
+        }
+        assert!(!validate(&bad).is_empty(), "forgery {change}");
+    }
+}

@@ -38,6 +38,9 @@ impl Checker<'_> {
             if self.module.nodes()[arm.0].kind != HirKind::Arm {
                 return false;
             }
+            if self.module.nodes()[arm.0].children.len() == 3 {
+                return true;
+            }
             let pattern = &self.module.nodes()[self.module.nodes()[arm.0].children[0].0];
             match pattern.kind {
                 HirKind::Wildcard | HirKind::PatternBoolean(_) | HirKind::PatternNone => false,
@@ -55,7 +58,7 @@ impl Checker<'_> {
     pub(super) fn prepare_nested_match(&mut self, id: HirId) {
         self.result.nested_matches.insert(id.0);
         let node = &self.module.nodes()[id.0];
-        let HirKind::Match { keyword } = node.kind else {
+        let HirKind::Match { .. } = node.kind else {
             return;
         };
         let ty = self.ty(self.result.type_table[node.children[0].0]);
@@ -69,8 +72,6 @@ impl Checker<'_> {
             );
         }
         let before = self.result.diagnostics.len();
-        let mut roots = vec![];
-        let mut all = vec![];
         let mut count = 0;
         for (ordinal, &arm) in node.children[1..].iter().enumerate() {
             if self.module.nodes()[arm.0].kind != HirKind::Arm {
@@ -78,7 +79,6 @@ impl Checker<'_> {
                 continue;
             }
             let root = self.module.nodes()[arm.0].children[0];
-            roots.push(root);
             if ordinal == 1025 {
                 self.enum_limit(self.module.nodes()[root.0].span, "match arm limit: 1025");
                 valid = false;
@@ -87,7 +87,6 @@ impl Checker<'_> {
             let mut work = vec![(root, ty, None)];
             while let Some((pattern, expected, annotation)) = work.pop() {
                 count += 1;
-                all.push(pattern);
                 if count == PATTERN_NODE_LIMIT + 1 {
                     self.enum_limit(
                         self.module.nodes()[pattern.0].span,
@@ -294,15 +293,54 @@ impl Checker<'_> {
         }
         valid &= self.result.diagnostics.len() == before && ty != Type::Error;
         if !valid {
+            self.invalid_nested_matches.insert(id.0);
             return;
         }
+        if !node.children[1..]
+            .iter()
+            .any(|arm| self.module.nodes()[arm.0].children.len() == 3)
+        {
+            self.finish_nested_coverage(id);
+        }
+    }
+
+    pub(super) fn finish_nested_coverage(&mut self, id: HirId) {
+        if self.invalid_nested_matches.contains(&id.0) {
+            return;
+        }
+        let node = &self.module.nodes()[id.0];
+        let HirKind::Match { keyword } = node.kind else {
+            return;
+        };
+        let ty = self.ty(self.result.type_table[node.children[0].0]);
+        let roots = node.children[1..]
+            .iter()
+            .map(|arm| self.module.nodes()[arm.0].children[0])
+            .collect::<Vec<_>>();
+        let guarded = node.children[1..]
+            .iter()
+            .map(|arm| self.module.nodes()[arm.0].children.len() == 3)
+            .collect::<Vec<_>>();
+        let mut all = vec![];
+        let mut work = roots.iter().rev().copied().collect::<Vec<_>>();
+        while let Some(pattern) = work.pop() {
+            all.push(pattern);
+            work.extend(
+                self.result.recursive_patterns[pattern.0]
+                    .as_ref()
+                    .expect("valid pattern")
+                    .children
+                    .iter()
+                    .rev()
+                    .copied(),
+            );
+        }
         let result = analyze(
-            &self.result.structs,
-            &self.result.enums,
-            &self.result.sums,
+            (&self.result.structs, &self.result.enums, &self.result.sums),
             &self.result.recursive_patterns,
             &all,
             &roots,
+            &guarded,
             ty,
         );
         let report = match result {
@@ -802,15 +840,14 @@ struct Report {
     more_missing: bool,
 }
 fn analyze(
-    structs: &StructRegistry,
-    enums: &EnumRegistry,
-    sums: &SumRegistry,
+    registries: (&StructRegistry, &EnumRegistry, &SumRegistry),
     patterns: &[Option<RecursivePattern>],
     all: &[HirId],
     roots: &[HirId],
+    guarded: &[bool],
     ty: Type,
 ) -> Result<Report, Limit> {
-    let mut engine = Engine::new(structs, enums, sums);
+    let mut engine = Engine::new(registries.0, registries.1, registries.2);
     let mut mapped = HashMap::new();
     for &id in all.iter().rev() {
         let p = patterns[id.0].as_ref().expect("typed pattern");
@@ -847,7 +884,7 @@ fn analyze(
                     .filter(|&previous| engine.intersects(pattern, mapped[&roots[previous].0]))
                     .collect(),
             ));
-        } else {
+        } else if !guarded[at] {
             rows.push(vec![pattern]);
             reachable.push(at);
         }

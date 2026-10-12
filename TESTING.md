@@ -1,9 +1,44 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P24 중첩 Copy 패턴·Tuple match까지다.
-P25 guard는 Draft / 미구현이다. [제안 수용 계획](docs/development-v0.1/guard-proposal-fixtures/README.md)을 제공한다.
-`node tools/docs/validate-pack.mjs`·`node tools/tests/guard-oracle.mjs`는 문서 기대값만 검사하며 P25 Native 성공 기록이 아니다.
+현재 개발 완료 기능은 P25 Copy match guard까지다.
+
+## P25 Copy match guard
+
+```powershell
+cargo run -p nova-cli --offline -- check examples/match_guards.nova
+$env:NOVA_CLANG = (Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/match_guards.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/match_guards.nova --profile release
+```
+
+check는 exit 0, debug/release는 다음 7줄/LF·빈 stderr·exit 0이다. none에서는 guard 호출이 없다.
+
+```text
+guard=first
+guard=positive
+some=7
+guard=first
+guard=positive
+fallback=0
+none=-2
+```
+
+[두 파일 수용 예제](docs/development-v0.1/guard-proposal-fixtures/README.md)의 16줄은 snapshot·try·loop를 추가로 검증한다.
+[계약](docs/development-v0.1/GUARD_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/GUARD_IMPLEMENTATION.md)을 제공한다.
+
+```powershell
+cargo test --workspace --offline p25_
+cargo test -p nova-codegen-llvm --test emission --offline p25_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p25_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/guard-proposal-fixtures/guarded_wildcard.nova
+node tools/docs/validate-pack.mjs
+node tools/tests/guard-oracle.mjs
+```
+
+새 기본 12개·실제 LLVM 1개·Native 2개다. 부정 예제 check는 N3101·exit 1이다.
+guard가 literal true여도 완전성 증명에는 사용하지 않는다. 독립 finite reference 2,916개·예산 경계·Source/Checked/MIR 변조를 검사한다.
+Array·Move/Drop·guard truth/refinement 증명은 후속 계약이다.
 
 ## P24 중첩 Copy 패턴·Tuple match
 

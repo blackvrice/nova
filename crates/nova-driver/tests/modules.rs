@@ -1035,3 +1035,126 @@ fn p24_fixed_diagnostics_utf8_primary_and_cascade_suppression() {
         }
     }
 }
+
+#[test]
+fn p25_fixed_guard_negative_utf8_spans_and_cascade_boundaries() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/guard-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for (name, code, start, end, forbidden) in [
+        (
+            "guard_integer.nova",
+            "N2101",
+            96,
+            99,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "guard_unit.nova",
+            "N2101",
+            91,
+            93,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "guard_unknown.nova",
+            "N2001",
+            91,
+            98,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "duplicate_binder.nova",
+            "N2002",
+            92,
+            95,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        ("immutable_binder.nova", "N3004", 106, 107, &[] as &[&str]),
+        ("binder_escape.nova", "N2001", 123, 124, &[] as &[&str]),
+        ("guarded_wildcard.nova", "N3101", 72, 77, &[] as &[&str]),
+        (
+            "literal_true_coverage.nova",
+            "N3101",
+            72,
+            77,
+            &[] as &[&str],
+        ),
+        ("covered_guard.nova", "N3102", 92, 96, &[] as &[&str]),
+        (
+            "union_covered_guard.nova",
+            "N3102",
+            123,
+            131,
+            &[] as &[&str],
+        ),
+        ("missing_return.nova", "N3003", 79, 141, &[] as &[&str]),
+        (
+            "try_unit.nova",
+            "N3002",
+            152,
+            155,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        (
+            "try_error_type.nova",
+            "N2101",
+            169,
+            172,
+            &["N3101", "N3102"] as &[&str],
+        ),
+        ("newline_before_if.nova", "N1101", 87, 88, &[] as &[&str]),
+        ("double_guard.nova", "N1101", 96, 98, &[] as &[&str]),
+        (
+            "root_scalar.nova",
+            "N2101",
+            78,
+            79,
+            &["N3101", "N3102"] as &[&str],
+        ),
+    ] {
+        let loaded = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = loaded.diagnostics.clone();
+        if let Some(hir) = &loaded.module {
+            let resolved = nova_resolve::resolve(hir);
+            let checked = nova_typecheck::check(hir, &resolved).unwrap();
+            diagnostics.extend(resolved.diagnostics);
+            diagnostics.extend(checked.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && d.primary.span.start() == start
+                && d.primary.span.end() == end),
+            "{name}: {diagnostics:?}"
+        );
+        assert!(
+            forbidden
+                .iter()
+                .all(|code| diagnostics.iter().all(|d| d.code.to_string() != *code)),
+            "{name}: {diagnostics:?}"
+        );
+        for d in diagnostics {
+            loaded.sources.slice(d.primary.span).unwrap();
+            for s in d.secondary {
+                loaded.sources.slice(s.span).unwrap();
+            }
+        }
+    }
+}
+#[test]
+fn p25_guard_bundle_positive_and_runtime_units() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/guard-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    for name in [
+        "main.nova",
+        "literal_guards.nova",
+        "multiline.nova",
+        "binder_scope.nova",
+        "guard_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+}

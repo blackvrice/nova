@@ -458,7 +458,13 @@ enum Work {
         exit: BlockId,
     },
     Match(HirId),
+    GuardBranch {
+        arm: HirId,
+        join: BlockId,
+        failure: BlockId,
+    },
     ArmEntry {
+        failure: Option<BlockId>,
         arm: HirId,
         block: BlockId,
         snapshot: Place,
@@ -769,6 +775,7 @@ impl Builder<'_> {
                             let components = self.pattern_test(pattern, snapshot, failure)?;
                             let block = self.current.ok_or(LoweringError::InvalidAnalysis)?;
                             entries.push(Work::ArmEntry {
+                                failure: Some(failure),
                                 arm,
                                 block,
                                 snapshot,
@@ -795,6 +802,7 @@ impl Builder<'_> {
                             block,
                         ));
                         entries.push(Work::ArmEntry {
+                            failure: None,
                             arm,
                             block,
                             snapshot,
@@ -813,6 +821,7 @@ impl Builder<'_> {
                     work.extend(entries.into_iter().rev());
                 }
                 Work::ArmEntry {
+                    failure,
                     arm,
                     block,
                     snapshot,
@@ -850,8 +859,37 @@ impl Builder<'_> {
                             }
                         }
                     }
+                    if let Some(guard) = self.checked.guards[arm.0] {
+                        work.push(Work::GuardBranch {
+                            arm,
+                            join,
+                            failure: failure.ok_or(LoweringError::InvalidAnalysis)?,
+                        });
+                        work.push(Work::Expression(guard.condition));
+                    } else {
+                        work.push(Work::ArmDone { arm, join });
+                        work.push(Work::Statement(
+                            *self.hir.nodes()[arm.0]
+                                .children
+                                .last()
+                                .ok_or(LoweringError::InvalidAnalysis)?,
+                        ));
+                    }
+                }
+                Work::GuardBranch { arm, join, failure } => {
+                    let guard = self.checked.guards[arm.0].ok_or(LoweringError::InvalidAnalysis)?;
+                    let body = self.block();
+                    self.end(
+                        TerminatorKind::Branch {
+                            condition: self.value(guard.condition)?,
+                            then_block: body,
+                            else_block: failure,
+                        },
+                        guard.node,
+                    )?;
+                    self.current = Some(body);
                     work.push(Work::ArmDone { arm, join });
-                    work.push(Work::Statement(self.hir.nodes()[arm.0].children[1]));
+                    work.push(Work::Statement(guard.body));
                 }
                 Work::ArmDone { arm, join } => {
                     if self.current.is_some() {

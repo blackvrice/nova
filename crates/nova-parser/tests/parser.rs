@@ -978,13 +978,16 @@ fn p14_enum_match_syntax_utf8_truncation_and_recovery() {
         "enum E{A();}",
         "enum E{public A;}",
         "enum E{A=1;}",
-        "func f(){match true{true if false=>{},false=>{}}}",
         "func f(){let x=match true{true=>{}}}",
     ] {
         let (_, _, p) = run(&format!("{bad}func later(){{}}"));
         assert!(p.has_errors(), "{bad}");
         assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function{name,..} if n.span.start()>=bad.len() && name.start()>bad.len())),"{bad}\n{:?}",p.diagnostics);
     }
+    // P25 extends this former P14 unsupported syntax; raw fixtures remain historical.
+    assert!(!run("func f(){match true{true if false=>{},false=>{}}}")
+        .2
+        .has_errors());
     let deep = format!(
         "func f(){{{}{} }}",
         "match true{_=>{".repeat(140),
@@ -1490,5 +1493,33 @@ fn p24_nested_pattern_trailing_commas_and_separate_pattern_depth() {
             "depth {depth}: {:?}",
             p.diagnostics
         );
+    }
+}
+
+#[test]
+fn p25_guard_ast_end_recovery_and_expression_shapes() {
+    for source in [
+        "func f(){match true{flag if\n flag &&\n true\n =>{},_=>{}}}",
+        "func f(){match (true,()){(flag,()) if flag=>{},_=>{}}}",
+    ] {
+        let (_, l, p) = run(source);
+        assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+        assert!(p
+            .arena
+            .iter()
+            .any(|(_, n)| matches!(n.kind, NodeKind::MatchGuard { .. }) && n.children.len() == 1));
+        assert!(p
+            .arena
+            .iter()
+            .any(|(_, n)| n.kind == NodeKind::Arm && n.children.len() == 3));
+    }
+    for source in [
+        "func f(){match true{flag\nif true=>{},_=>{}}}",
+        "func f(){match true{flag if=>{},_=>{}}}",
+        "func f(){match true{flag if true if false=>{},_=>{}}}",
+    ] {
+        let (_, _, p) = run(&format!("{source}func later(){{}}"));
+        assert!(p.has_errors());
+        assert!(p.arena.iter().any(|(_,n)|matches!(n.kind,NodeKind::Function{name,..} if n.span.start()>=source.len()&&name.start()>source.len())));
     }
 }

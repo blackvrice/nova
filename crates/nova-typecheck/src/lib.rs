@@ -32,6 +32,14 @@ pub struct Signature {
     pub parameter_spans: Vec<Option<Span>>,
     pub return_span: Option<Span>,
 }
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct MatchGuard {
+    pub pattern: HirId,
+    pub node: HirId,
+    pub condition: HirId,
+    pub body: HirId,
+    pub keyword: Span,
+}
 #[derive(Debug, Eq, PartialEq)]
 pub struct Checked {
     /// P22 direct method projection identity; no bound function values.
@@ -47,6 +55,8 @@ pub struct Checked {
     pub variants: Vec<Option<nova_types::VariantId>>,
     pub patterns: Vec<Option<MatchPattern>>,
     pub recursive_patterns: Vec<Option<RecursivePattern>>,
+    /// P25 exact arm/condition/body source mapping.
+    pub guards: Vec<Option<MatchGuard>>,
     pub nested_matches: std::collections::BTreeSet<usize>,
     pub exhaustive_matches: std::collections::BTreeSet<usize>,
     pub tuple_ids: std::collections::BTreeSet<nova_types::StructId>,
@@ -106,6 +116,11 @@ impl Checked {
                     range.binder.0,
                     self.types.get(range.ty)
                 );
+            }
+        }
+        for (arm, guard) in self.guards.iter().enumerate() {
+            if let Some(guard) = guard {
+                let _ = writeln!(output, "guard arm {arm} {guard:?}");
             }
         }
         for (index, pattern) in self.recursive_patterns.iter().enumerate() {
@@ -177,6 +192,7 @@ impl fmt::Display for CheckError {
 impl std::error::Error for CheckError {}
 
 struct Checker<'a> {
+    invalid_nested_matches: std::collections::BTreeSet<usize>,
     method_heads: std::collections::BTreeSet<usize>,
     parameter_indices:
         std::collections::HashMap<usize, std::collections::HashMap<nova_hir::SymbolId, usize>>,
@@ -217,6 +233,7 @@ enum Work {
     Exit(HirId, Context),
     AssignmentValue(HirId, Context),
     MatchArms(HirId, Context),
+    GuardCoverage(HirId, usize),
     MethodArguments(HirId, Context),
     Peer {
         literal: HirId,
@@ -325,6 +342,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
         variants: vec![None; size],
         patterns: vec![None; size],
         recursive_patterns: vec![None; size],
+        guards: vec![None; size],
         nested_matches: Default::default(),
         exhaustive_matches: Default::default(),
         tuple_ids: Default::default(),
@@ -376,6 +394,7 @@ pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError
                 flags
             });
     let mut checker = Checker {
+        invalid_nested_matches: Default::default(),
         method_heads: module
             .nodes()
             .iter()
@@ -771,19 +790,57 @@ impl Checker<'_> {
                     ));
                     continue;
                 }
+                Work::GuardCoverage(id, before) => {
+                    if self.result.diagnostics.len() == before
+                        && self.module.nodes()[id.0].children[1..].iter().all(|arm| {
+                            self.result.guards[arm.0].map_or(true, |guard| {
+                                self.ty(self.result.type_table[guard.node.0]) == Type::Bool
+                            })
+                        })
+                    {
+                        self.finish_nested_coverage(id);
+                    }
+                    continue;
+                }
                 Work::MatchArms(id, cx) => {
                     self.prepare_match(id);
-                    for &arm in self.module.nodes()[id.0].children[1..].iter().rev() {
-                        if self.module.nodes()[arm.0].kind == HirKind::Arm {
-                            pending.push(Work::Enter(
-                                self.module.nodes()[arm.0].children[1],
-                                Context {
-                                    expected: None,
-                                    expected_span: None,
-                                    direct_callee: false,
-                                    ..cx
-                                },
-                            ));
+                    let clean = Context {
+                        expected: None,
+                        expected_span: None,
+                        direct_callee: false,
+                        ..cx
+                    };
+                    let arms = &self.module.nodes()[id.0].children[1..];
+                    for &arm in arms.iter().rev() {
+                        let node = &self.module.nodes()[arm.0];
+                        if node.kind == HirKind::Arm {
+                            pending
+                                .push(Work::Enter(*node.children.last().expect("arm body"), clean));
+                        }
+                    }
+                    if arms.iter().any(|arm| {
+                        self.module.nodes()[arm.0].kind == HirKind::Arm
+                            && self.module.nodes()[arm.0].children.len() == 3
+                    }) {
+                        pending.push(Work::GuardCoverage(id, self.result.diagnostics.len()));
+                        for &arm in arms.iter().rev() {
+                            let node = &self.module.nodes()[arm.0];
+                            if node.kind == HirKind::Arm && node.children.len() == 3 {
+                                let guard = node.children[1];
+                                let HirKind::MatchGuard { keyword } =
+                                    self.module.nodes()[guard.0].kind
+                                else {
+                                    unreachable!("valid HIR guard")
+                                };
+                                self.result.guards[arm.0] = Some(MatchGuard {
+                                    pattern: node.children[0],
+                                    node: guard,
+                                    condition: self.module.nodes()[guard.0].children[0],
+                                    body: node.children[2],
+                                    keyword,
+                                });
+                                pending.push(Work::Enter(guard, clean));
+                            }
                         }
                     }
                     continue;
@@ -903,6 +960,18 @@ impl Checker<'_> {
                             expected_span: None,
                             direct_callee: false,
                             loop_depth: context.loop_depth + 1,
+                            ..context
+                        },
+                    ));
+                }
+                HirKind::MatchGuard { keyword } => {
+                    let expected = self.result.types.intern(Type::Bool);
+                    pending.push(Work::Enter(
+                        node.children[0],
+                        Context {
+                            expected: Some(expected),
+                            expected_span: Some(keyword),
+                            direct_callee: false,
                             ..context
                         },
                     ));
@@ -1279,11 +1348,20 @@ impl Checker<'_> {
     fn finish(&mut self, id: HirId, context: Context) {
         let node = &self.module.nodes()[id.0];
         match &node.kind {
+            HirKind::MatchGuard { .. } => {
+                self.set(id, self.ty(self.result.type_table[node.children[0].0]));
+            }
             HirKind::Match { .. } => {
                 let flows = node.children[1..]
                     .iter()
                     .filter(|a| self.module.nodes()[a.0].kind == HirKind::Arm)
-                    .map(|a| self.flow[self.module.nodes()[a.0].children[1].0])
+                    .map(|a| {
+                        self.flow[self.module.nodes()[a.0]
+                            .children
+                            .last()
+                            .expect("arm body")
+                            .0]
+                    })
                     .collect::<Vec<_>>();
                 if self.result.exhaustive_matches.contains(&id.0) && !flows.is_empty() {
                     self.flow[id.0] = if flows.iter().all(|f| *f == Flow::Return) {
