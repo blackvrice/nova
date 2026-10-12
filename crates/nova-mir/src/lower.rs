@@ -649,6 +649,10 @@ impl Builder<'_> {
                 if discard_wildcards && self.hir.nodes()[child.0].kind == HirKind::Wildcard {
                     continue;
                 }
+                if p.kind == Kind::NamedField {
+                    work.push(Step::Test(child, value));
+                    continue;
+                }
                 let projection = match p.kind {
                     Kind::Struct(structure) | Kind::Tuple(structure) => Rvalue::Project(
                         Operand::Place(value),

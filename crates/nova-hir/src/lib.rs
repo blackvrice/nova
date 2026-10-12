@@ -109,6 +109,11 @@ pub enum HirKind {
         name: SymbolId,
         name_span: Span,
     },
+    PatternField {
+        name: SymbolId,
+        name_span: Span,
+        colon: Span,
+    },
     PatternBoolean(bool),
     PatternCharacter(char),
     PatternInteger {
@@ -374,6 +379,7 @@ impl Module {
                     HirKind::Function { name, .. }
                     | HirKind::Struct { name, .. }
                     | HirKind::PatternStruct { name, .. }
+                    | HirKind::PatternField { name, .. }
                     | HirKind::TypeAlias { name, .. }
                     | HirKind::Enum { name, .. }
                     | HirKind::Variant { name, .. }
@@ -789,7 +795,9 @@ pub fn lower(
                 return Err(LoweringError::MalformedAst);
             }
         }
-        if let NodeKind::NamedArgument { name, colon } = node.kind {
+        if let NodeKind::NamedArgument { name, colon } | NodeKind::PatternField { name, colon } =
+            node.kind
+        {
             let value = arena
                 .get(*node.children.first().ok_or(LoweringError::MalformedAst)?)
                 .ok_or(LoweringError::MalformedAst)?;
@@ -1271,6 +1279,11 @@ pub fn lower(
             NodeKind::PatternStruct { name } => HirKind::PatternStruct {
                 name: intern(name, &mut module, &mut interned)?,
                 name_span: name,
+            },
+            NodeKind::PatternField { name, colon } => HirKind::PatternField {
+                name: intern(name, &mut module, &mut interned)?,
+                name_span: name,
+                colon,
             },
             NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
             NodeKind::PatternInteger { digits, minus } => HirKind::PatternInteger {
@@ -1955,7 +1968,10 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::PatternInteger { .. }
         | NodeKind::PatternUnit
         | NodeKind::Wildcard => kinds.is_empty(),
-        NodeKind::PatternStruct { .. } => kinds.iter().all(|k| pattern(*k)),
+        NodeKind::PatternStruct { .. } => kinds
+            .iter()
+            .all(|k| pattern(*k) || matches!(k, NodeKind::PatternField { .. })),
+        NodeKind::PatternField { .. } => kinds.len() == 1 && pattern(kinds[0]),
         NodeKind::PatternVariant { arguments, .. } => {
             (arguments || kinds.is_empty()) && kinds.iter().all(|k| pattern(*k))
         }

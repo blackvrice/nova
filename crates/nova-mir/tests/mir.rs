@@ -3888,3 +3888,117 @@ fn p33_struct_const_materialization_and_single_runtime_snapshot() {
     );
     assert!(validate(&m).is_empty());
 }
+
+#[test]
+fn p34_named_struct_checked_mapping_wrapper_type_and_cache_forgery_rejected() {
+    let source="struct S{let n:int8;let b:bool}const S(b:B,n:N)=S(7,true);func main(){let S(b:b,n:n)=S(N,B);match S(n,b){S(b:true,n:7)=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternStruct { .. }))
+        .unwrap();
+    let field = h.nodes()[id].children[0];
+    lower(&h, &r, &check(&h, &r).unwrap(), false).unwrap();
+    for change in 0..4 {
+        let mut c = check(&h, &r).unwrap();
+        match change {
+            0 => c.recursive_patterns[id]
+                .as_mut()
+                .unwrap()
+                .children
+                .reverse(),
+            1 => {
+                c.recursive_patterns[field.0].as_mut().unwrap().kind =
+                    nova_typecheck::RecursivePatternKind::Wildcard
+            }
+            2 => c.recursive_patterns[field.0].as_mut().unwrap().ty = Type::Int8,
+            _ => {
+                let n = r.definitions.iter().position(|d| d.name == "N").unwrap();
+                let ConstEvaluation::Value { value, .. } = &mut c.const_values[n] else {
+                    panic!()
+                };
+                *value = nova_types::ConstValue::Integer(
+                    nova_types::IntegerValue::new(nova_types::IntKind::I8, 8).unwrap(),
+                );
+            }
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p34_named_struct_mir_same_type_field_index_source_and_guard_branch_forgery() {
+    let m=pass("struct S{let a:bool;let b:bool}func main(){match Option::Some(S(true,false)){Option::Some(S(b:b,a:a)) if a=>{print(\"ok\")},_=>{}}}");
+    for change in 0..3 {
+        let mut bad = m.clone();
+        let body = &mut bad.bodies[0];
+        if change < 2 {
+            let s = body
+                .blocks
+                .iter_mut()
+                .flat_map(|b| &mut b.statements)
+                .find(|s| {
+                    matches!(
+                        s.kind,
+                        StatementKind::Assign(
+                            _,
+                            Rvalue::Project(_, nova_types::FieldId { index: 0, .. })
+                        )
+                    )
+                })
+                .unwrap();
+            if change == 0 {
+                let StatementKind::Assign(_, Rvalue::Project(_, field)) = &mut s.kind else {
+                    panic!()
+                };
+                field.index = 1;
+            } else {
+                s.source = body.source;
+            }
+        } else {
+            let b = body
+                .blocks
+                .iter_mut()
+                .find(|b| {
+                    matches!(
+                        b.terminator.as_ref().unwrap().kind,
+                        TerminatorKind::Branch { .. }
+                    )
+                })
+                .unwrap();
+            let TerminatorKind::Branch {
+                then_block,
+                else_block,
+                ..
+            } = &mut b.terminator.as_mut().unwrap().kind
+            else {
+                panic!()
+            };
+            std::mem::swap(then_block, else_block);
+        }
+        assert!(!validate(&bad).is_empty());
+    }
+}
+#[test]
+fn p34_named_const_materialization_and_single_scrutinee_initializer_evaluation() {
+    let m=pass("struct S{let n:int;let b:bool}func make()->S{return S(1,true)}const S(b:B,n:N)=S(7,true);func main(){const S(b:b,n:n)=S(N,B);let S(b:y,n:x)=make();match make(){S(b:_,n:v)=>{}}}");
+    let body = body_named(&m, "main");
+    assert_eq!(body.blocks.iter().filter(|b|matches!(&b.terminator.as_ref().unwrap().kind,TerminatorKind::Call{callee,..} if m.callees[callee.0].name=="make")).count(),2);
+    assert_eq!(
+        body.blocks
+            .iter()
+            .flat_map(|b| &b.statements)
+            .filter(|s| matches!(s.kind, StatementKind::Assign(_, Rvalue::Aggregate(_, _))))
+            .count(),
+        0
+    );
+    assert!(validate(&m).is_empty());
+}

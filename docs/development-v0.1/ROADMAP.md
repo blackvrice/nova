@@ -1,5 +1,10 @@
 # 문서 동결과 Nova 구현 로드맵
 
+현재 구현은 **P34 Copy struct 이름 필드 패턴까지 완료**다.
+[P34 계약](STRUCT_NAMED_PATTERN_STAGE_B_PROPOSAL.md)·[66-production EBNF](GRAMMAR_STAGE_B_STRUCT_NAMED_PATTERN.ebnf)·[수용 fixture](struct-named-pattern-proposal-fixtures/README.md)·[구현 기록](STRUCT_NAMED_PATTERN_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
+역순/위치 prefix field label·전체 field 대응·정규화 plan·let/var/const·coverage/Source/MIR를 지원한다. rest/shorthand·Array·일반 Move/Drop은 후속 계약이다.
+
+
 현재 구현은 **P33 Copy struct 위치 패턴까지 완료**다.
 [P33 계약](STRUCT_PATTERN_STAGE_B_PROPOSAL.md)·[64-production EBNF](GRAMMAR_STAGE_B_STRUCT_PATTERN.ebnf)·[수용 fixture](struct-pattern-proposal-fixtures/README.md)·[구현 기록](STRUCT_PATTERN_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
 nominal/import struct pattern·private field 검사·let/var/const 분해·bounded coverage·Source/MIR projection을 지원한다. 이름 field/rest 패턴·Array·일반 Move/Drop은 후속 계약이다.

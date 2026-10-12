@@ -118,6 +118,11 @@ pub enum NodeKind {
     PatternStruct {
         name: Span,
     },
+    /// P34 struct argument label followed by exactly one value pattern.
+    PatternField {
+        name: Span,
+        colon: Span,
+    },
     PatternBoolean(bool),
     PatternCharacter,
     PatternInteger {

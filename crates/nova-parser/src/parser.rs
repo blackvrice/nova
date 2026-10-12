@@ -534,7 +534,23 @@ impl<'a> Parser<'a> {
                         | TokenKind::Symbol(Symbol::FatArrow)
                 ) {
                     let before = self.cursor;
-                    children.push(self.pattern());
+                    if self.kind() == TokenKind::Identifier
+                        && self
+                            .tokens
+                            .get(self.cursor + 1)
+                            .is_some_and(|t| t.kind == TokenKind::Colon)
+                    {
+                        let name = self.bump().span;
+                        let colon = self.bump().span;
+                        let pattern = self.pattern();
+                        children.push(self.node(
+                            NodeKind::PatternField { name, colon },
+                            name.start(),
+                            vec![pattern],
+                        ));
+                    } else {
+                        children.push(self.pattern());
+                    }
                     if !self.eat(TokenKind::Comma) || before == self.cursor {
                         break;
                     }

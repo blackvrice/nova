@@ -13,6 +13,7 @@ pub const MATRIX_CELL_LIMIT: usize = 1_000_000;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RecursivePatternKind {
     Wildcard,
+    NamedField,
     Bool(bool),
     Char(char),
     Integer(nova_types::IntegerValue),
@@ -80,6 +81,7 @@ impl Checker<'_> {
                 valid = false;
             }
             let p = &self.module.nodes()[pattern.0];
+            let mut pattern_children = p.children.clone();
             let mut fields = vec![];
             let mut field_annotations = vec![];
             let kind = match p.kind {
@@ -90,6 +92,10 @@ impl Checker<'_> {
                     RecursivePatternKind::Wildcard
                 }
                 HirKind::Wildcard => RecursivePatternKind::Wildcard,
+                HirKind::PatternField { .. } => {
+                    fields.push(expected);
+                    RecursivePatternKind::NamedField
+                }
                 HirKind::PatternInteger {
                     ref spelling,
                     minus,
@@ -179,7 +185,33 @@ impl Checker<'_> {
                                             .get(&sid)
                                             .cloned()
                                             .unwrap_or_default();
-                                        if fields.len() != p.children.len() {
+                                        if p.children.iter().any(|c| {
+                                            matches!(
+                                                self.module.nodes()[c.0].kind,
+                                                HirKind::PatternField { .. }
+                                            )
+                                        }) {
+                                            if let Some(mapping) =
+                                                self.struct_pattern_mapping(pattern, sid)
+                                            {
+                                                let mut canonical = vec![pattern; fields.len()];
+                                                for (&child, &at) in p.children.iter().zip(&mapping)
+                                                {
+                                                    canonical[at] = child;
+                                                }
+                                                pattern_children = canonical;
+                                                fields =
+                                                    mapping.iter().map(|&at| fields[at]).collect();
+                                                field_annotations = mapping
+                                                    .iter()
+                                                    .map(|&at| field_annotations[at])
+                                                    .collect();
+                                            } else {
+                                                valid = false;
+                                                fields.clear();
+                                                field_annotations.clear();
+                                            }
+                                        } else if fields.len() != p.children.len() {
                                             self.report(
                                                 2201,
                                                 p.span,
@@ -361,15 +393,19 @@ impl Checker<'_> {
             self.result.recursive_patterns[pattern.0] = Some(RecursivePattern {
                 ty: expected,
                 kind,
-                children: p.children.clone(),
+                children: pattern_children,
             });
             for (at, &child) in p.children.iter().enumerate().rev() {
                 work.push((
                     child,
                     fields.get(at).copied().unwrap_or(Type::Error),
-                    field_annotations
-                        .get(at)
-                        .map(|s| self.module.nodes()[s.0].span),
+                    if kind == RecursivePatternKind::NamedField {
+                        annotation
+                    } else {
+                        field_annotations
+                            .get(at)
+                            .map(|s| self.module.nodes()[s.0].span)
+                    },
                 ));
             }
         }
@@ -1158,8 +1194,13 @@ fn analyze(
     let mut mapped = HashMap::new();
     for &id in all.iter().rev() {
         let p = patterns[id.0].as_ref().expect("typed pattern");
+        if p.kind == RecursivePatternKind::NamedField {
+            mapped.insert(id.0, mapped[&p.children[0].0]);
+            continue;
+        }
         let constructor = match p.kind {
             RecursivePatternKind::Wildcard => None,
+            RecursivePatternKind::NamedField => unreachable!("transparent field wrapper"),
             RecursivePatternKind::Bool(b) => Some(Constructor::Bool(b)),
             RecursivePatternKind::Char(c) => Some(Constructor::Char(c)),
             RecursivePatternKind::Integer(v) => Some(Constructor::Integer(v.kind(), v.value())),

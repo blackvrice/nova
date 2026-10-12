@@ -1,0 +1,9 @@
+struct Point{let x:int;let y:bool}
+func main(){
+    let Point(y:flag,x:x)=Point(3,true)
+    print("point={x}/{flag}")
+    var Point(y:ok,x:n)=Point(4,false)
+    n=n+1;ok=true
+    print("mutable={n}/{ok}")
+    match Point(7,true){Point(y:true,x:v)=>{print("match={v}")},Point(_,y:false)=>{print("false")}}
+}

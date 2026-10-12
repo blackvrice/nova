@@ -5,6 +5,7 @@ mod arguments;
 mod const_patterns;
 mod defaults;
 mod ranges;
+mod struct_patterns;
 pub use defaults::{DefaultArgument, ParameterDefault};
 pub use ranges::RangeInfo;
 mod enums;

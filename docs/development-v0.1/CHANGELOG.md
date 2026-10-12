@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-13 — P34 Copy struct 이름 필드 패턴
+
+- 다음 단계 사용자 승인으로 제한 계약·66-production EBNF를 구현 전에 기록했다.
+- 역순/위치 혼합 label·전체 field 대응·정규화 plan·transparent wrapper·const/coverage·MIR projection 구현.
+- 새 테스트 18개, 기본 524·LLVM 30·Native 75 PASS, fmt/check/Clippy·문서 검증 완료.
+- P01~P33 ledger·원본/기존 fixture/grammar bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-12 — P33 Copy struct 위치 패턴
 
 - 다음 단계 사용자 승인으로 제한 계약·64-production EBNF를 구현 전에 기록했다.

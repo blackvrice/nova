@@ -5368,3 +5368,202 @@ fn p33_struct_guard_try_return_and_binder_mutability() {
         ["N3201"]
     );
 }
+
+#[test]
+fn p34_named_struct_fields_canonical_mapping_source_order_and_component_types() {
+    pass(include_str!("../../../examples/struct_named_patterns.nova"));
+    let r=pass("struct S{let n:int8;let flag:bool}func f(s:S){let S(flag:b,n:n)=s;match s{S(n,flag:false)=>{},S(flag:true,n:_)=>{}}}");
+    let (h, _, c) = r.semantic.unwrap();
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternStruct { .. }))
+        .unwrap();
+    let labels = |ids: &[nova_hir::HirId]| {
+        ids.iter()
+            .filter_map(|id| match h.nodes()[id.0].kind {
+                HirKind::PatternField { name, .. } => h.symbol(name),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(labels(&h.nodes()[id].children), ["flag", "n"]);
+    assert_eq!(
+        labels(&c.recursive_patterns[id].as_ref().unwrap().children),
+        ["n", "flag"]
+    );
+    for id in &h.nodes()[id].children {
+        let p = c.recursive_patterns[id.0].as_ref().unwrap();
+        assert_eq!(p.kind, nova_typecheck::RecursivePatternKind::NamedField);
+        assert_eq!(
+            p.ty,
+            c.recursive_patterns[p.children[0].0].as_ref().unwrap().ty
+        );
+    }
+    for (source, code) in [
+        (
+            "struct S{let n:int8;let b:bool}func f(s:S){match s{S(b:1,n:_)=>{},_=>{}}}",
+            "N2101",
+        ),
+        (
+            "struct S{let n:int8;let b:bool}func f(s:S){match s{S(b:_,n:128)=>{},_=>{}}}",
+            "N2102",
+        ),
+        (
+            "struct S{let n:int}type A=S;func f(s:S){let A(n:n)=s}",
+            "N1102",
+        ),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code]);
+    }
+    pass("struct S{let n:int}func f(s:S){let S=9;let S(n:n)=s;match s{S=>{let v=S.n}}}");
+}
+#[test]
+fn p34_struct_label_errors_and_binder_names_are_separate_with_cascade_suppression() {
+    for args in ["wrong:_", "n:_,n:_", "_,n:_", "b:_,_", "b:_", "_,_,n:_"] {
+        let r = frontend(&format!(
+            "struct S{{let n:int;let b:bool}}func f(s:S){{match s{{S({args})=>{{}}}}}}"
+        ));
+        assert_eq!(codes(&r), ["N2201"], "{args}");
+    }
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int;let b:bool}func f(s:S){let S(b:x,n:x)=s}"
+        )),
+        ["N2002"]
+    );
+    assert_eq!(
+        codes(&frontend("struct S{let n:int}func f(){let S(n:n)=S(n)}")),
+        ["N2001"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}const S(wrong:N)=S(1/0);const NEXT=N+1;func f(){}"
+        )),
+        ["N2201"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}func f(){match missing{S(n:1)=>{},_=>{}}}"
+        )),
+        ["N2001"]
+    );
+}
+#[test]
+fn p34_named_and_positional_struct_product_coverage_matches_independent_oracle() {
+    let values = [(false, false), (false, true), (true, false), (true, true)];
+    for mask in 0..16 {
+        let arms = values
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| mask & (1 << i) != 0)
+            .map(|(i, (a, b))| {
+                if i % 2 == 0 {
+                    format!("S(b:{b},a:{a})=>{{}},")
+                } else {
+                    format!("S({a},b:{b})=>{{}},")
+                }
+            })
+            .collect::<String>();
+        let r = frontend(&format!(
+            "struct S{{let a:bool;let b:bool}}func f(s:S){{match s{{{arms}}}}}"
+        ));
+        assert_eq!(
+            codes(&r),
+            if mask == 15 {
+                vec![]
+            } else {
+                vec!["N3101".to_string()]
+            },
+            "mask {mask}"
+        );
+    }
+    assert_eq!(codes(&frontend("struct S{let a:bool;let b:bool}func f(s:S){match s{S(true,false)=>{},S(b:false,a:true)=>{},_=>{}}}")),["N3102"]);
+    pass("struct S{let b:bool}func f(s:S){match s{S(b:true) if true=>{},S(true)=>{},S(b:false)=>{}}}");
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let b:bool}func f(s:S){match s{S(b:_) if true=>{}}}"
+        )),
+        ["N3101"]
+    );
+}
+#[test]
+fn p34_named_struct_irrefutable_const_projection_refutable_source_order_and_float_copy() {
+    let r=pass("struct S{let n:int8;let b:bool}struct Outer{let s:S;let pair:(char,())}const Outer(pair:(CH,()),s:S(b:FLAG,n:N))=Outer(S(NEXT,true),('🙂',()));const NEXT:int8=7;func f(){const S(b:b,n:n)=S(N,FLAG);var S(b:ok,n:v)=S(n,b);v=v+1;ok=false}");
+    let (_, r, c) = r.semantic.unwrap();
+    let n = r.definitions.iter().position(|d| d.name == "N").unwrap();
+    assert!(
+        matches!(&c.const_values[n],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==7 && v.kind()==IntKind::I8)
+    );
+    for keyword in ["let", "var", "const"] {
+        let r = frontend(&format!(
+            "struct S{{let n:int;let b:bool}}func f(){{{keyword} S(b:true,n:1)=S(1/0,true)}}"
+        ));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "true"
+        );
+    }
+    pass("struct S{let n:float;let b:bool}const S(b:B,n:N)=S(1.5,true);func f(){let S(b:b,n:n)=S(N,B)}");
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}const S(n:N)=S(NEXT);const NEXT=N+1;func f(){}"
+        )),
+        ["N3202"]
+    );
+}
+#[test]
+fn p34_named_field_wrappers_count_at_exact_pattern_node_budget() {
+    fn source(extra: usize) -> String {
+        let mut structs = String::new();
+        let mut variants = vec![];
+        let mut arms = vec![];
+        for i in 0..5 {
+            let count = if i == 4 { 1004 } else { 998 };
+            structs.push_str(&format!(
+                "struct S{i}{{{}}}",
+                (0..count)
+                    .map(|j| format!("let f{j}:();"))
+                    .collect::<String>()
+            ));
+            variants.push(format!("V{i}(S{i})"));
+            let fields = (0..count)
+                .map(|j| {
+                    if i == 4 && j < 2 - extra {
+                        "_".into()
+                    } else {
+                        format!("f{j}:_")
+                    }
+                })
+                .collect::<Vec<String>>();
+            arms.push(format!("E::V{i}(S{i}({}))=>{{}}", fields.join(",")));
+        }
+        format!(
+            "{structs}enum E{{{}}}func f(e:E){{match e{{{}}}}}",
+            variants.join(";"),
+            arms.join(",")
+        )
+    }
+    let good = pass(&source(0));
+    assert_eq!(
+        good.semantic
+            .unwrap()
+            .2
+            .recursive_patterns
+            .iter()
+            .flatten()
+            .count(),
+        10000
+    );
+    let bad = frontend(&source(1));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        "_"
+    );
+}

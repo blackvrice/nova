@@ -63,7 +63,10 @@ impl Checker<'_> {
                     .as_ref()
                     .expect("valid typed pattern");
                 if !typed.children.is_empty() {
-                    let fields = match (typed.kind, value) {
+                    let fields: &[ConstValue] = match (typed.kind, value) {
+                        (crate::RecursivePatternKind::NamedField, value) => {
+                            std::slice::from_ref(value)
+                        }
                         (
                             crate::RecursivePatternKind::Struct(expected),
                             ConstValue::Struct(actual, fields),

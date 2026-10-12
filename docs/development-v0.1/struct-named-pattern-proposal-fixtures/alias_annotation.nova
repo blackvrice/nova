@@ -1,0 +1,3 @@
+struct Pair{let n:int8;let flag:bool}
+type Alias=Pair
+func main(){let Pair(flag:flag,n:n):Alias=Pair(3,true);print("alias={n}/{flag}")}

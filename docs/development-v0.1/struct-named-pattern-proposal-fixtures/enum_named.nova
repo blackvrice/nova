@@ -1,0 +1,2 @@
+enum E{One(int)}
+func main(){match E::One(1){E::One(value:n)=>{}}}

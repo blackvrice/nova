@@ -1493,6 +1493,37 @@ assert(structPatternAbort.validated_result?.check_exit===0 && structPatternAbort
   && structPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${structPatternAbort.primary.start}..${structPatternAbort.primary.end}`,'P33 runtime Source/result');
 checks.push('P33 Accepted/next-step 승인 ledger·64-production EBNF/기존 61개 보존·26개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 20 code별 byte Span/Runtime 1 (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const structNamedPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P34');
+assert(structNamedPatternProposal?.status==='Accepted' && structNamedPatternProposal.implementation_verified===true && structNamedPatternProposal.approval_date==='2026-10-12'
+  && structNamedPatternProposal.approval_evidence==='다음 작업 승인할테니 개발 작업 진행해줘' && structNamedPatternProposal.document==='STRUCT_NAMED_PATTERN_STAGE_B_PROPOSAL.md'
+  && structNamedPatternProposal.grammar==='GRAMMAR_STAGE_B_STRUCT_NAMED_PATTERN.ebnf' && structNamedPatternProposal.grammar_change===true && !manifest.draft_proposals?.some(p=>p.id==='P34'),'P34 approval ledger');
+const structNamedPatternText=fs.readFileSync(path.join(pack,structNamedPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','66개 production','63개 보존','Point(y:flag,x:n)','N2201','N2004','N2002','N3103','1,025','10,000','100,000','1,000,000','Source 순서','transparent','전체 D06','Move/borrow/Drop'])assert(structNamedPatternText.includes(phrase),'P34 missing boundary '+phrase);
+validateGrammar(structNamedPatternProposal.grammar);const structNamedPatternGrammar=fs.readFileSync(path.join(pack,structNamedPatternProposal.grammar),'utf8');const structNamedPatternProductions=productions(structNamedPatternGrammar);
+assert(structNamedPatternProductions.size===66 && structNamedPatternGrammar.includes('Accepted 2026-10-12; implemented and verified'),'P34 grammar status/count');
+for(const [name,value]of structPatternProductions)if(name!=='struct_pattern')assert(structNamedPatternProductions.get(name)===value,'P34 changed approved production '+name);
+assert(structNamedPatternProductions.get('struct_pattern')==='"IDENT","(",[struct_pattern_arguments],")"'
+  && structNamedPatternProductions.get('struct_pattern_arguments')==='struct_pattern_argument,{",",struct_pattern_argument},[","]'
+  && structNamedPatternProductions.get('struct_pattern_argument')==='["IDENT",":"],pattern','P34 named field argument productions');
+const structNamedPatternRoot=path.join(pack,'struct-named-pattern-proposal-fixtures');const structNamedPatternFixture=JSON.parse(fs.readFileSync(path.join(structNamedPatternRoot,'expected.json'),'utf8'));const structNamedPatternLF=String.fromCharCode(10);
+assert(structNamedPatternFixture.proposal==='P34' && structNamedPatternFixture.status==='Accepted' && structNamedPatternFixture.implementation_verified===true && structNamedPatternFixture.validation_date==='2026-10-13'
+  && structNamedPatternFixture.approval_date===structNamedPatternProposal.approval_date && structNamedPatternFixture.approval_evidence===structNamedPatternProposal.approval_evidence
+  && structNamedPatternFixture.grammar===structNamedPatternProposal.grammar && structNamedPatternFixture.grammar_change===true && structNamedPatternFixture.grammar_productions===66
+  && structNamedPatternFixture.entry==='main.nova' && structNamedPatternFixture.source_root==='.' && JSON.stringify(structNamedPatternFixture.reachable_modules)==='["main","values"]'
+  && structNamedPatternFixture.validated_result?.check_exit===0 && structNamedPatternFixture.validated_result?.native_exit===0
+  && structNamedPatternFixture.validated_result?.stdout===['scrutinee','first','second','nested=-7/🙂','initializer','let=3/true/가','var=5/true','const=9/true/-7','empty','complete=3','option=5','try-ok','result=1','error=4','loop=1',''].join(structNamedPatternLF)
+  && structNamedPatternFixture.validated_result?.stderr==='','P34 validated result');
+const structNamedPatternSources=Object.keys(structNamedPatternFixture.source_sha256??{});assert(structNamedPatternSources.length===31 && fs.readdirSync(structNamedPatternRoot).filter(n=>n.endsWith('.nova')).length===31,'P34 source count');
+for(const name of structNamedPatternSources){const bytes=fs.readFileSync(path.join(structNamedPatternRoot,name));assert(hash(bytes)===structNamedPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P34 source hash/UTF8/LF '+name);}
+assert(structNamedPatternFixture.negative_cases?.length===25 && structNamedPatternFixture.positive_cases?.length===3 && structNamedPatternFixture.runtime_cases?.length===1,'P34 fixture counts');
+for(const c of structNamedPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(structNamedPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && (c.primary.start<c.primary.end || c.expected_diagnostic==='N1101' && c.primary_kind==='insertion' && c.primary.start===c.primary.end) && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(0,c.primary.start).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.start)) && Buffer.from(bytes.subarray(0,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.end)) && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P34 negative byte Span '+c.source);}
+for(const c of structNamedPatternFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0 && c.validated_result?.stdout.endsWith(structNamedPatternLF) && c.validated_result?.stderr==='','P34 positive '+c.source);
+const structNamedPatternAbort=structNamedPatternFixture.runtime_cases[0];const structNamedPatternAbortBytes=fs.readFileSync(path.join(structNamedPatternRoot,structNamedPatternAbort.source));
+assert(structNamedPatternAbort.validated_result?.check_exit===0 && structNamedPatternAbort.validated_result?.native_exit===1 && structNamedPatternAbort.validated_result?.stdout==='before'+structNamedPatternLF
+  && structNamedPatternAbortBytes.subarray(structNamedPatternAbort.primary.start,structNamedPatternAbort.primary.end).toString('utf8')===structNamedPatternAbort.primary_text
+  && structNamedPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${structNamedPatternAbort.primary.start}..${structNamedPatternAbort.primary.end}`,'P34 runtime Source/result');
+checks.push('P34 Accepted/next-step 승인 ledger·66-production EBNF/기존 63개 보존·31개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 25 code별 byte Span/Runtime 1 (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

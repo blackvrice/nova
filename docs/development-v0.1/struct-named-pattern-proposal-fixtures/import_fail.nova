@@ -1,0 +1,2 @@
+use values::Missing
+func main(){match 1{Missing(_)=>{},_=>{}}}

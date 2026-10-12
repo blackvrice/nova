@@ -1,0 +1,3 @@
+struct Pair{let n:int8;let flag:bool}
+enum Choice{One}
+func main(){match Pair(1,true){Choice(flag:_,n:_)=>{}}}

@@ -1592,3 +1592,73 @@ fn p33_struct_pattern_head_span_children_order_and_expression_shape_forgery() {
         );
     }
 }
+
+#[test]
+fn p34_named_pattern_field_source_tokens_shape_order_and_expression_wrapper_forgery() {
+    let source = "func f(){match x{P(b /*🙂*/ : flag,a:n)=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    assert!(lower(&db, &p.arena, p.root).is_ok());
+    for change in 0..6 {
+        let mut arena = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let mut children = n
+                .children
+                .iter()
+                .map(|id| ids[id.index()])
+                .collect::<Vec<_>>();
+            if let NodeKind::PatternField { name, colon } = &mut kind {
+                match change {
+                    0 => *name = Span::new(f, name.start(), name.end() - 1).unwrap(),
+                    1 => *colon = Span::new(f, colon.start(), colon.end() + 1).unwrap(),
+                    2 => {
+                        kind = NodeKind::NamedArgument {
+                            name: *name,
+                            colon: *colon,
+                        }
+                    }
+                    3 => {
+                        children.clear();
+                    }
+                    4 => {
+                        children.push(children[0]);
+                    }
+                    _ => {}
+                }
+            }
+            if change == 5 && matches!(kind, NodeKind::PatternStruct { .. }) {
+                children.reverse();
+            }
+            ids.push(arena.insert(kind, n.span, children).unwrap());
+        }
+        assert!(
+            lower(&db, &arena, ids[p.root.index()]).is_err(),
+            "change {change}"
+        );
+    }
+}
+#[test]
+fn p34_named_field_wrapper_cannot_escape_struct_argument_into_tuple_or_variant() {
+    for source in ["func f(){match x{P(n:v)=>{}}}", "func f(){let P(n:v)=x}"] {
+        let mut db = SourceDatabase::default();
+        let f = db.add("api", source.into()).unwrap();
+        let l = lex(&db, f).unwrap();
+        let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+        let mut arena = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let kind = if matches!(n.kind, NodeKind::PatternStruct { .. }) {
+                NodeKind::PatternTuple
+            } else {
+                n.kind
+            };
+            let children = n.children.iter().map(|id| ids[id.index()]).collect();
+            ids.push(arena.insert(kind, n.span, children).unwrap());
+        }
+        assert!(lower(&db, &arena, ids[p.root.index()]).is_err());
+    }
+}
