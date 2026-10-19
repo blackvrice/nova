@@ -1886,7 +1886,6 @@ fn p35_struct_rest_adjacent_tokens_trailing_comma_and_parent_context() {
         "func f(){let P(..,..)=p}",
         "func f(){let P(. .)=p}",
         "func f(){let P(x:..)=p}",
-        "func f(){let(x,..)=p}",
         "func f(){match p{E::V(..)=>{}}}",
     ] {
         assert!(run(source).2.has_errors(), "{source}");
@@ -1901,5 +1900,67 @@ fn p35_rest_utf8_prefix_recovery_is_deterministic() {
         let (_, _, b) = run(&source[..end]);
         assert_eq!(a.arena.dump(), b.arena.dump());
         assert_eq!(a.diagnostics, b.diagnostics);
+    }
+}
+
+#[test]
+fn p36_tuple_rest_spelling_trailing_comma_parent_context_and_history() {
+    let source = "const(..)=(1,true);func f(){let(n,..,)=x;var(a,b,..)=x;match x{(/*🙂*/..)=>{}}}";
+    let (db, l, p) = run(source);
+    assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+    let rest = p
+        .arena
+        .iter()
+        .filter(|(_, n)| n.kind == NodeKind::PatternRest)
+        .collect::<Vec<_>>();
+    assert_eq!(rest.len(), 4);
+    for (_, n) in rest {
+        assert_eq!(db.slice(n.span).unwrap(), "..");
+        assert!(n.children.is_empty());
+    }
+    assert!(!run("func f(){let(x,..)=p}").2.has_errors());
+    for s in [
+        "func f(){let(a,..,b)=x}",
+        "func f(){let(..,..)=x}",
+        "func f(){let(. .)=x}",
+        "func f(){let(n:..)=x}",
+        "func f(){match x{E::V(..)=>{}}}",
+    ] {
+        assert!(run(s).2.has_errors(), "{s}");
+    }
+}
+#[test]
+fn p36_tuple_rest_utf8_prefix_recovery_deterministic() {
+    let source = "func f(){let((n,..),..)=x;match x{(('🙂',..),..,)=>{}}}func later(){}";
+    for end in (0..=source.len()).filter(|i| source.is_char_boundary(*i)) {
+        let (_, _, a) = run(&source[..end]);
+        let (_, _, b) = run(&source[..end]);
+        assert_eq!(a.arena.dump(), b.arena.dump());
+        assert_eq!(a.diagnostics, b.diagnostics);
+    }
+}
+#[test]
+fn p36_struct_and_tuple_pattern_nesting_128_129_are_bounded() {
+    for tuple in [false, true] {
+        for depth in [128, 129] {
+            let mut pattern = "n".to_string();
+            for _ in 0..depth {
+                pattern = if tuple {
+                    format!("({pattern},)")
+                } else {
+                    format!("S({pattern})")
+                };
+            }
+            let source = format!("func f(){{match x{{{pattern}=>{{}}}}}}");
+            let (_, _, p) = run(&source);
+            assert_eq!(
+                p.diagnostics.iter().any(|d| d.code.to_string() == "N8901"),
+                depth == 129,
+                "tuple={tuple},depth={depth}"
+            );
+            if depth == 128 {
+                assert!(!p.has_errors(), "{:?}", p.diagnostics);
+            }
+        }
     }
 }

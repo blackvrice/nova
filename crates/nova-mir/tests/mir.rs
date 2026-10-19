@@ -4099,3 +4099,121 @@ fn p35_sparse_snapshot_calls_once_and_only_explicit_fields_projected() {
     assert_eq!(projections, [1]);
     assert!(validate(&m).is_empty());
 }
+
+#[test]
+fn p36_tuple_rest_checked_indices_children_cache_forgery() {
+    let source =
+        "const(N,..):(int8,bool)=(7,true);func main(){match(true,false,N){(b,..) if b=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| n.kind == HirKind::PatternTuple)
+        .unwrap();
+    let rest = *h.nodes()[id].children.last().unwrap();
+    lower(&h, &r, &check(&h, &r).unwrap(), false).unwrap();
+    for change in 0..4 {
+        let mut c = check(&h, &r).unwrap();
+        match change {
+            0 => c.recursive_patterns[id].as_mut().unwrap().field_indices[0] = 1,
+            1 => c.recursive_patterns[id]
+                .as_mut()
+                .unwrap()
+                .field_indices
+                .clear(),
+            2 => c.recursive_patterns[id]
+                .as_mut()
+                .unwrap()
+                .children
+                .push(rest),
+            _ => {
+                let n = r.definitions.iter().position(|d| d.name == "N").unwrap();
+                let ConstEvaluation::Value { value, .. } = &mut c.const_values[n] else {
+                    panic!()
+                };
+                *value = nova_types::ConstValue::Integer(
+                    nova_types::IntegerValue::new(nova_types::IntKind::I8, 8).unwrap(),
+                );
+            }
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p36_tuple_rest_mir_same_type_index_source_and_guard_forgery() {
+    let m = pass("func main(){match(true,false){(b,..) if b=>{},_=>{}}}");
+    for change in 0..3 {
+        let mut bad = m.clone();
+        let body = &mut bad.bodies[0];
+        if change < 2 {
+            let s = body
+                .blocks
+                .iter_mut()
+                .flat_map(|b| &mut b.statements)
+                .find(|s| {
+                    matches!(
+                        s.kind,
+                        StatementKind::Assign(
+                            _,
+                            Rvalue::Project(_, nova_types::FieldId { index: 0, .. })
+                        )
+                    )
+                })
+                .unwrap();
+            if change == 0 {
+                let StatementKind::Assign(_, Rvalue::Project(_, field)) = &mut s.kind else {
+                    panic!()
+                };
+                field.index = 1;
+            } else {
+                s.source = body.source;
+            }
+        } else {
+            let b = body
+                .blocks
+                .iter_mut()
+                .find(|b| {
+                    matches!(
+                        b.terminator.as_ref().unwrap().kind,
+                        TerminatorKind::Branch { .. }
+                    )
+                })
+                .unwrap();
+            let TerminatorKind::Branch {
+                then_block,
+                else_block,
+                ..
+            } = &mut b.terminator.as_mut().unwrap().kind
+            else {
+                panic!()
+            };
+            std::mem::swap(then_block, else_block);
+        }
+        assert!(!validate(&bad).is_empty());
+    }
+}
+#[test]
+fn p36_tuple_rest_single_snapshot_only_prefix_projection() {
+    let m=pass("func make()->(bool,bool){return(true,false)}func main(){let(b,..)=make();match make(){(..)=>{}}}");
+    let body = body_named(&m, "main");
+    assert_eq!(body.blocks.iter().filter(|b|matches!(&b.terminator.as_ref().unwrap().kind,TerminatorKind::Call{callee,..} if m.callees[callee.0].name=="make")).count(),2);
+    let projections = body
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .filter_map(|s| match s.kind {
+            StatementKind::Assign(_, Rvalue::Project(_, f)) => Some(f.index),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(projections, [0]);
+    assert!(validate(&m).is_empty());
+}

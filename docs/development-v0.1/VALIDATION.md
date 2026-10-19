@@ -1,11 +1,11 @@
 # 문서 기계 검증 결과
 
-검사일: 2026-10-19. 명령: node tools/docs/validate-pack.mjs
+검사일: 2026-10-20. 명령: node tools/docs/validate-pack.mjs
 
 결과: **PASS**
 
 - 148개 NOVA ID 연속성/중복/원본·보완 SHA-256/상태/본문 섹션
-- 4970개 로컬 Markdown 링크/코드 fence/D·T 참조
+- 5070개 로컬 Markdown 링크/코드 fence/D·T 참조
 - 30개 결정 (Accepted 5 / Draft 25), 60개 수용 묶음, 43개 진단 코드 유일성/영역
 - GRAMMAR.ebnf: 94개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - GRAMMAR_STAGE_A.ebnf: 26개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
@@ -73,6 +73,8 @@
 - P34 Accepted/next-step 승인 ledger·66-production EBNF/기존 63개 보존·31개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 25 code별 byte Span/Runtime 1 (문서 검사 자체는 Compiler/Native 실행 아님)
 - GRAMMAR_STAGE_B_STRUCT_REST_PATTERN.ebnf: 67개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
 - P35 Accepted/next-step 승인 ledger·67-production EBNF/기존 65개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2 (문서 검사 자체는 Compiler/Native 실행 아님)
+- GRAMMAR_STAGE_B_TUPLE_REST_PATTERN.ebnf: 68개 EBNF production 중복/미정의·도달 불가 nonterminal 검사 (무모호성 증명 아님)
+- P36 Accepted/next-step 승인 ledger·68-production EBNF/기존 66개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2·P35 고정 source/당시 거부 metadata/current override (문서 검사 자체는 Compiler/Native 실행 아님)
 - 20개 예제 sidecar/UTF-8 byte Span/등록 code 검사 (컴파일 실행 아님)
 
 ## 검증의 범위

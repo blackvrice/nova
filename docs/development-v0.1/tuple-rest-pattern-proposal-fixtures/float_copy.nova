@@ -1,0 +1,2 @@
+const(N,..):(float,bool)=(1.5,true)
+func main(){let(n,..)=(N,false);print("float={n}")}

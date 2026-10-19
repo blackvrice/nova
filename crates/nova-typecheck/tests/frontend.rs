@@ -5744,3 +5744,149 @@ fn p35_rest_marker_counts_at_10000_10001_without_synthetic_omitted_nodes() {
         ".."
     );
 }
+
+#[test]
+fn p36_tuple_rest_prefix_indices_marker_and_unit_distinction() {
+    pass(include_str!("../../../examples/tuple_rest_patterns.nova"));
+    let r =
+        pass("type T=(int8,bool,char);func f(t:T){let(n,..)=t;match t{(_,true,..)=>{},(..)=>{}}}");
+    let (h, _, c) = r.semantic.unwrap();
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| n.kind == HirKind::PatternTuple)
+        .unwrap();
+    let p = c.recursive_patterns[id].as_ref().unwrap();
+    assert_eq!(p.field_indices, [0]);
+    assert_eq!(p.children.len(), 1);
+    assert!(p
+        .children
+        .iter()
+        .all(|id| h.nodes()[id.0].kind != HirKind::PatternRest));
+    pass("func f(){let(n,..)=(1,);let(..,)=(true,1);const(..)=(true,1);match(){()=>{}}}");
+    for source in [
+        "func f(){let(..)=()}",
+        "func f(){match 1{(..)=>{}}}",
+        "struct S{let n:int}func f(s:S){match s{(..)=>{}}}",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N2101"]);
+    }
+    for source in ["func f(){let(a,b,..)=(1,)}", "func f(){let(a,)=(1,true)}"] {
+        assert_eq!(codes(&frontend(source)), ["N2201"]);
+    }
+}
+#[test]
+fn p36_tuple_rest_coverage_matches_independent_bool_region_oracle() {
+    let regions = [3u8, 5, 8, 15];
+    let patterns = ["(false,..)", "(_,false,..)", "(true,true,..)", "(..)"];
+    for mask in 0..16 {
+        let mut covered = 0;
+        let mut unreachable = false;
+        let mut arms = String::new();
+        for i in 0..4 {
+            if mask & (1 << i) != 0 {
+                unreachable |= regions[i] & !covered == 0;
+                covered |= regions[i];
+                arms.push_str(&format!("{}=>{{}},", patterns[i]));
+            }
+        }
+        let r = frontend(&format!("func f(t:(bool,bool)){{match t{{{arms}}}}}"));
+        let expected = if unreachable {
+            vec!["N3102".to_string()]
+        } else if covered == 15 {
+            vec![]
+        } else {
+            vec!["N3101".to_string()]
+        };
+        assert_eq!(codes(&r), expected, "mask {mask}");
+    }
+    pass("func f(t:(bool,int)){match t{(..) if false=>{},(true,..)=>{},(false,..)=>{}}}");
+}
+#[test]
+fn p36_tuple_rest_const_prefix_cache_forward_cycles_and_omitted_failure() {
+    let r=pass("type T=(int8,bool,char);const(N,..):T=(NEXT,true,'🙂');const NEXT:int8=7;func f(){const(n,..):T=(N,false,'가');var(v,..)=(n,true);v=v+1}");
+    let (_, r, c) = r.semantic.unwrap();
+    for name in ["N", "n"] {
+        let at = r.definitions.iter().position(|d| d.name == name).unwrap();
+        assert!(
+            matches!(&c.const_values[at],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==7&&v.kind()==IntKind::I8)
+        );
+    }
+    for kw in ["let", "var", "const"] {
+        let r = frontend(&format!("func f(){{{kw}(1,..)=(1/0,true)}}"));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "1"
+        );
+    }
+    assert_eq!(
+        codes(&frontend("const(B,..)=(true,1/0);const NEXT=B;func f(){}")),
+        ["N3201"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "const(N,..)=(NEXT,true);const NEXT=N+1;func f(){}"
+        )),
+        ["N3202"]
+    );
+    assert_eq!(
+        codes(&frontend("const(..)=(true,1/0);func f(){}")),
+        ["N3201"]
+    );
+}
+#[test]
+fn p36_tuple_rest_type_range_scope_mutability_and_guard_try() {
+    for (source, code) in [
+        (
+            "func f(){match(1 as int8,true){(128,..)=>{},_=>{}}}",
+            "N2102",
+        ),
+        ("func f(){match(1,true){(true,..)=>{},_=>{}}}", "N2101"),
+        ("func f(){let(n,n,..)=(1,2,true)}", "N2002"),
+        ("func f(){let(n,..)=(n,true)}", "N2001"),
+        ("func f(){let(n,..)=(1,true);n=2}", "N3004"),
+        ("func f(){match missing{(..)=>{}}}", "N2001"),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code]);
+    }
+    pass("func f(t:(int,bool),r:Result<int,bool>)->Result<int,bool>{match t{(n,..) if (try r)>n=>{},_=>{}}return Result::Success(1)}");
+}
+#[test]
+fn p36_tuple_rest_10000_10001_source_node_budget_without_implicit_nodes() {
+    fn source(extra: usize) -> String {
+        let ty = format!("({})", vec!["()"; 1024].join(","));
+        let variants = (0..10)
+            .map(|i| format!("V{i}(T)"))
+            .collect::<Vec<_>>()
+            .join(";");
+        let arms = (0..10)
+            .map(|i| {
+                let count = if i == 9 { 979 + extra } else { 999 };
+                format!("E::V{i}(({},..))=>{{}}", vec!["_"; count].join(","))
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("type T={ty};enum E{{{variants}}}func f(e:E){{match e{{{arms}}}}}")
+    }
+    let good = pass(&source(0));
+    let (h, _, c) = good.semantic.unwrap();
+    assert_eq!(c.recursive_patterns.iter().flatten().count(), 10000);
+    assert_eq!(
+        h.nodes()
+            .iter()
+            .filter(|n| n.kind == HirKind::PatternRest)
+            .count(),
+        10
+    );
+    let bad = frontend(&source(1));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        ".."
+    );
+}

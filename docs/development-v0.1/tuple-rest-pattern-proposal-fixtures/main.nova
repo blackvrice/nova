@@ -1,0 +1,24 @@
+use values::Data
+use values::Event
+use values::Holder
+use values::source
+use values::default_value
+func gate(label:string,result:bool)->bool{print(label);return result}
+func mark()->bool{print("omitted");return true}
+func binding()->Data{print("initializer");return(3,mark(),'가')}
+func propagate(r:Result<int8,int8>)->Result<int8,int8>{match(-7 as int8,true){(-7,..) if (try r)>0=>{print("try-ok")},_=>{}}return Result::Success(1)}
+func complete(p:Data)->int8{match p{(_,false,..)=>{return 2},(_,true,..)=>{return 3}}}
+func main(){
+    match source(){Event::Data((-7,..)) if gate("first",false)=>{},Event::Data((n,..)) if gate("second",true)=>{print("nested={n}")},_=>{}}
+    let(n,..):Data=binding();print("let={n}")
+    var(a,b,..)=(4 as int8,false,'가');a=a+1;b=true;print("var={a}/{b}")
+    const(c,..):Data=(9,true,'가');print("const={c}/{default_value()}")
+    match(1,){(..)=>{print("one")}}
+    match(1,true){(..,)=>{print("rest-only")}}
+    let full=complete((2,true,'가'));print("complete={full}")
+    match Holder((5,true,'가'),7){Holder(payload:(v,..),..)=>{print("struct={v}")}}
+    match Option::Some((true,6,'🙂')){Option::Some((true,v,..))=>{print("option={v}")},_=>{}}
+    match propagate(Result::Success(3)){Result::Success(v)=>{print("result={v}")},Result::Error(_)=>{}}
+    match propagate(Result::Error(4)){Result::Success(_)=>{},Result::Error(e)=>{print("error={e}")}}
+    for i in 0 until 3{match(i,true,'가'){(0,..)=>{continue},(2,..)=>{break},(v,..)=>{print("loop={v}")}}}
+}

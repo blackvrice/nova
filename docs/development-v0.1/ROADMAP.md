@@ -1,5 +1,10 @@
 # 문서 동결과 Nova 구현 로드맵
 
+현재 구현은 **P36 Copy Tuple trailing rest 패턴까지 완료**다.
+[P36 계약](TUPLE_REST_PATTERN_STAGE_B_PROPOSAL.md)·[68-production EBNF](GRAMMAR_STAGE_B_TUPLE_REST_PATTERN.ebnf)·[수용 fixture](tuple-rest-pattern-proposal-fixtures/README.md)·[구현 기록](TUPLE_REST_PATTERN_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
+Tuple trailing rest·명시 prefix·Unit 구분·전체 initializer 평가·prefix const/coverage/MIR를 지원한다. middle rest·Enum payload rest·Array·일반 Move/Drop은 후속 계약이다.
+
+
 현재 구현은 **P35 Copy struct trailing rest 패턴까지 완료**다.
 [P35 계약](STRUCT_REST_PATTERN_STAGE_B_PROPOSAL.md)·[67-production EBNF](GRAMMAR_STAGE_B_STRUCT_REST_PATTERN.ebnf)·[수용 fixture](struct-rest-pattern-proposal-fixtures/README.md)·[구현 기록](STRUCT_REST_PATTERN_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
 struct trailing rest·부분 field 대응·전체 initializer 평가·sparse const/coverage/MIR를 지원한다. shorthand·Tuple/Enum rest·Array·일반 Move/Drop은 후속 계약이다.

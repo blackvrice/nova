@@ -2121,6 +2121,11 @@ fn p35_rest_struct_bundle_source_origins_and_exact_diagnostics() {
         ("alias_head.nova", "N1102", (74, 75)),
     ] {
         let l = load(&root.join(name), Some(&root)).unwrap();
+        // P36: preserve the original P35 rejection fixture/metadata and validate current success.
+        if name == "tuple_rest.nova" {
+            unit(&l);
+            continue;
+        }
         let mut diagnostics = l.diagnostics.clone();
         if l.module.is_some() {
             let (_, c) = analyzed(&l);
@@ -2157,4 +2162,97 @@ fn p35_rest_import_alias_private_omission_and_exported_sparse_const() {
     let (_, c) = analyzed(&l);
     assert_eq!(codes(&c), ["N2004"]);
     assert_eq!(l.sources.slice(c.diagnostics[0].primary.span).unwrap(), "S");
+}
+
+#[test]
+fn p36_tuple_rest_bundle_code_specific_spans_and_historical_override() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/tuple-rest-pattern-proposal-fixtures");
+    for name in [
+        "main.nova",
+        "full_and_single.nova",
+        "float_copy.nova",
+        "guard_skipped.nova",
+        "guard_abort.nova",
+        "omitted_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+    let historical_root = root.join("../struct-rest-pattern-proposal-fixtures");
+    unit(
+        &load(
+            &historical_root.join("tuple_rest.nova"),
+            Some(&historical_root),
+        )
+        .unwrap(),
+    );
+    for (name, code, expected) in [
+        ("incomplete.nova", "N3101", (12, 17)),
+        ("duplicate.nova", "N3102", (35, 41)),
+        ("too_many.nova", "N2201", (15, 23)),
+        ("missing_no_rest.nova", "N2201", (15, 19)),
+        ("unit_wrong.nova", "N2101", (15, 19)),
+        ("scalar_wrong.nova", "N2101", (20, 24)),
+        ("component_type.nova", "N2101", (27, 31)),
+        ("too_large.nova", "N2102", (35, 38)),
+        ("immutable.nova", "N3004", (31, 32)),
+        ("let_refutable.nova", "N3103", (15, 21)),
+        ("const_refutable.nova", "N3103", (17, 23)),
+        ("global_refutable.nova", "N3103", (5, 11)),
+        ("const_omitted_failure.nova", "N3201", (18, 21)),
+        ("const_cycle.nova", "N3202", (35, 36)),
+        ("duplicate_binder.nova", "N2002", (18, 19)),
+        ("initializer_scope.nova", "N2001", (23, 24)),
+        ("middle_rest.nova", "N1102", (21, 22)),
+        ("double_rest.nova", "N1102", (19, 20)),
+        ("spaced_dots.nova", "N1102", (16, 17)),
+        ("enum_rest.nova", "N1102", (56, 57)),
+        ("tuple_label.nova", "N1102", (15, 17)),
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = l.diagnostics.clone();
+        if l.module.is_some() {
+            let (_, c) = analyzed(&l);
+            diagnostics.extend(c.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && (d.primary.span.start(), d.primary.span.end()) == expected),
+            "{name}: {diagnostics:?}"
+        );
+        if matches!(name, "const_refutable.nova" | "global_refutable.nova") {
+            assert!(!diagnostics
+                .iter()
+                .any(|d| matches!(d.code.to_string().as_str(), "N3201" | "N3202")));
+        }
+        for d in diagnostics {
+            l.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                l.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+
+#[test]
+fn p36_tuple_rest_imported_alias_global_prefix_exports_and_source_origins() {
+    let l = fixture(&[
+        (
+            "main.nova",
+            "use values::Data;use values::N;func main(){let(n,..):Data=(N,true,'🙂')}",
+        ),
+        (
+            "values.nova",
+            "public type Data=(int8,bool,char);public const(N,..):Data=(8,true,'가')",
+        ),
+    ]);
+    unit(&l);
+    let (h, _, c) = {
+        let (r, c) = analyzed(&l);
+        (l.module.as_ref().unwrap(), r, c)
+    };
+    assert!(!c.has_errors());
+    for n in h.nodes() {
+        l.sources.slice(n.span).unwrap();
+    }
 }

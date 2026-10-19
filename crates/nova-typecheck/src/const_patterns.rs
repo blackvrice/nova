@@ -82,8 +82,11 @@ impl Checker<'_> {
                         _ => unreachable!("typed irrefutable const component"),
                     };
                     for (at, &child) in typed.children.iter().enumerate().rev() {
-                        let index = if matches!(typed.kind, crate::RecursivePatternKind::Struct(_))
-                        {
+                        let index = if matches!(
+                            typed.kind,
+                            crate::RecursivePatternKind::Struct(_)
+                                | crate::RecursivePatternKind::Tuple(_)
+                        ) {
                             typed.field_indices[at]
                         } else {
                             at

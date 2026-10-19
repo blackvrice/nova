@@ -64,6 +64,8 @@ Copy struct 이름 필드 패턴·역순/위치 prefix label 대응·Source 순�
 
 Copy struct trailing rest 패턴·부분 field/명시 field_indices·전체 initializer 평가·기존 private 가시성·implicit wildcard coverage·sparse const/MIR·Source 검증은 [P35 Accepted](../STRUCT_REST_PATTERN_STAGE_B_PROPOSAL.md)·[67-production EBNF](../GRAMMAR_STAGE_B_STRUCT_REST_PATTERN.ebnf)·[수용 fixture](../struct-rest-pattern-proposal-fixtures/README.md)·[구현 기록](../STRUCT_REST_PATTERN_IMPLEMENTATION.md)을 따른다. 기존 65개 production·P01~P34 ledger·평가 순서/예산을 보존한다. shorthand·Tuple/Enum payload rest·private 접근 완화·Array·일반 Move/borrow/Drop·전체 D06/D08/D09/D10/D12/D16/D25/D30은 제외한다.
 
+Copy Tuple trailing rest 패턴·명시 prefix/field_indices·Unit 구분·전체 initializer 평가·implicit wildcard coverage·prefix const/MIR·Source 검증은 [P36 Accepted](../TUPLE_REST_PATTERN_STAGE_B_PROPOSAL.md)·[68-production EBNF](../GRAMMAR_STAGE_B_TUPLE_REST_PATTERN.ebnf)·[수용 fixture](../tuple-rest-pattern-proposal-fixtures/README.md)·[구현 기록](../TUPLE_REST_PATTERN_IMPLEMENTATION.md)을 따른다. 기존 66개 production·P01~P35 ledger·평가 순서/예산을 보존한다. middle rest·Enum payload rest·Array·일반 Move/borrow/Drop·전체 D06/D08/D09/D10/D12/D16/D25/D30은 제외한다.
+
 ## Diagnostic 구조
 code/severity/message/primary/secondary/notes/suggestions를 보존한다. N1xxx syntax, N2xxx name/type, N3xxx control/const, N4xxx ownership, N5xxx ABI/runtime, N8xxx tooling/package, N9xxx ICE다.
 

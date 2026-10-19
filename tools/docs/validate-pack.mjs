@@ -1555,6 +1555,44 @@ assert(structRestPatternAbort.validated_result?.check_exit===0 && structRestPatt
 }
 checks.push('P35 Accepted/next-step 승인 ledger·67-production EBNF/기존 65개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2 (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const tupleRestPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P36');
+assert(tupleRestPatternProposal?.status==='Accepted' && tupleRestPatternProposal.implementation_verified===true && tupleRestPatternProposal.approval_date==='2026-10-19'
+  && tupleRestPatternProposal.approval_evidence==='다음 작업 승인할테니 개발 진행해줘' && tupleRestPatternProposal.document==='TUPLE_REST_PATTERN_STAGE_B_PROPOSAL.md'
+  && tupleRestPatternProposal.grammar==='GRAMMAR_STAGE_B_TUPLE_REST_PATTERN.ebnf' && tupleRestPatternProposal.grammar_change===true && !manifest.draft_proposals?.some(p=>p.id==='P36'),'P36 approval ledger');
+const tupleRestPatternText=fs.readFileSync(path.join(pack,tupleRestPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','68개 production','66개 보존','(first,..)','(..,)','N2201','N2101','N3101','N3102','N3103','1,025','10,000','100,000','1,000,000','field_indices','128','전체 D06','Move/borrow/Drop'])assert(tupleRestPatternText.includes(phrase),'P36 missing boundary '+phrase);
+validateGrammar(tupleRestPatternProposal.grammar);const tupleRestPatternGrammar=fs.readFileSync(path.join(pack,tupleRestPatternProposal.grammar),'utf8');const tupleRestPatternProductions=productions(tupleRestPatternGrammar);
+assert(tupleRestPatternProductions.size===68 && tupleRestPatternGrammar.includes('Accepted 2026-10-19; implemented and verified'),'P36 grammar status/count');
+for(const [name,value]of structRestPatternProductions)if(name!=='tuple_pattern')assert(tupleRestPatternProductions.get(name)===value,'P36 changed approved production '+name);
+assert(tupleRestPatternProductions.get('tuple_pattern')==='"(",(tuple_pattern_rest,[","]|pattern,",",[(tuple_pattern_rest|pattern,{",",pattern},[",",tuple_pattern_rest]),[","]]),")"'
+  && tupleRestPatternProductions.get('tuple_pattern_rest')==='".."','P36 trailing tuple rest productions');
+const tupleRestPatternRoot=path.join(pack,'tuple-rest-pattern-proposal-fixtures');const tupleRestPatternFixture=JSON.parse(fs.readFileSync(path.join(tupleRestPatternRoot,'expected.json'),'utf8'));const tupleRestPatternLF=String.fromCharCode(10);
+assert(tupleRestPatternFixture.proposal==='P36' && tupleRestPatternFixture.status==='Accepted' && tupleRestPatternFixture.implementation_verified===true && tupleRestPatternFixture.validation_date==='2026-10-20'
+  && tupleRestPatternFixture.approval_date===tupleRestPatternProposal.approval_date && tupleRestPatternFixture.approval_evidence===tupleRestPatternProposal.approval_evidence
+  && tupleRestPatternFixture.grammar===tupleRestPatternProposal.grammar && tupleRestPatternFixture.grammar_change===true && tupleRestPatternFixture.grammar_productions===68
+  && tupleRestPatternFixture.entry==='main.nova' && tupleRestPatternFixture.source_root==='.' && JSON.stringify(tupleRestPatternFixture.reachable_modules)==='["main","values"]'
+  && tupleRestPatternFixture.validated_result?.check_exit===0 && tupleRestPatternFixture.validated_result?.native_exit===0
+  && tupleRestPatternFixture.validated_result?.stdout===['scrutinee','first','second','nested=-7','initializer','omitted','let=3','var=5/true','const=9/-7','one','rest-only','complete=3','struct=5','option=6','try-ok','result=1','error=4','loop=1',''].join(tupleRestPatternLF)
+  && tupleRestPatternFixture.validated_result?.stderr==='','P36 validated result');
+const tupleRestPatternSources=Object.keys(tupleRestPatternFixture.source_sha256??{});assert(tupleRestPatternSources.length===28 && fs.readdirSync(tupleRestPatternRoot).filter(n=>n.endsWith('.nova')).length===28,'P36 source count');
+for(const name of tupleRestPatternSources){const bytes=fs.readFileSync(path.join(tupleRestPatternRoot,name));assert(hash(bytes)===tupleRestPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P36 source hash/UTF8/LF '+name);}
+assert(tupleRestPatternFixture.negative_cases?.length===21 && tupleRestPatternFixture.positive_cases?.length===3 && tupleRestPatternFixture.runtime_cases?.length===2,'P36 fixture counts');
+for(const c of tupleRestPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(tupleRestPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && (c.primary.start<c.primary.end || c.expected_diagnostic==='N1101' && c.primary_kind==='insertion' && c.primary.start===c.primary.end) && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(0,c.primary.start).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.start)) && Buffer.from(bytes.subarray(0,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.end)) && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P36 negative byte Span '+c.source);}
+for(const c of tupleRestPatternFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0 && c.validated_result?.stdout.endsWith(tupleRestPatternLF) && c.validated_result?.stderr==='','P36 positive '+c.source);
+for(const tupleRestPatternAbort of tupleRestPatternFixture.runtime_cases){const tupleRestPatternAbortBytes=fs.readFileSync(path.join(tupleRestPatternRoot,tupleRestPatternAbort.source));
+assert(tupleRestPatternAbort.validated_result?.check_exit===0 && tupleRestPatternAbort.validated_result?.native_exit===1 && tupleRestPatternAbort.validated_result?.stdout==='before'+tupleRestPatternLF
+  && tupleRestPatternAbortBytes.subarray(tupleRestPatternAbort.primary.start,tupleRestPatternAbort.primary.end).toString('utf8')===tupleRestPatternAbort.primary_text
+  && tupleRestPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${tupleRestPatternAbort.primary.start}..${tupleRestPatternAbort.primary.end}`,'P36 runtime Source/result');
+}
+const tupleRestHistory=tupleRestPatternFixture.historical_overrides;
+assert(tupleRestHistory?.length===1,'P36 historical override count');
+for(const c of tupleRestHistory){const oldName='tuple_rest.nova';const oldPath=path.join(pack,'struct-rest-pattern-proposal-fixtures',oldName);
+  assert(c.proposal==='P35' && c.source==='../struct-rest-pattern-proposal-fixtures/'+oldName
+    && hash(fs.readFileSync(oldPath))===c.source_sha256 && c.source_sha256===structRestPatternFixture.source_sha256[oldName]
+    && c.original_diagnostic==='N1102' && structRestPatternFixture.negative_cases.some(n=>n.source===oldName && n.expected_diagnostic===c.original_diagnostic)
+    && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P36 frozen P35 rejection/current success override');}
+checks.push('P36 Accepted/next-step 승인 ledger·68-production EBNF/기존 66개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2·P35 고정 source/당시 거부 metadata/current override (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

@@ -256,11 +256,7 @@ pub fn lower(
                         child.0,
                         nova_types::FieldId {
                             structure,
-                            index: if matches!(p.kind, Kind::Struct(_)) {
-                                p.field_indices[at]
-                            } else {
-                                at
-                            },
+                            index: p.field_indices[at],
                         },
                     );
                 }
@@ -662,11 +658,7 @@ impl Builder<'_> {
                         Operand::Place(value),
                         nova_types::FieldId {
                             structure,
-                            index: if matches!(p.kind, Kind::Struct(_)) {
-                                p.field_indices[index]
-                            } else {
-                                index
-                            },
+                            index: p.field_indices[index],
                         },
                     ),
                     Kind::Variant(v) => Rvalue::EnumPayload(Operand::Place(value), v, index),

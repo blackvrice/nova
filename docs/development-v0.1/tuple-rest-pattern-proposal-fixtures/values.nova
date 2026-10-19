@@ -1,0 +1,6 @@
+public type Data=(int8,bool,char)
+public enum Event{Data(Data);End}
+public struct Holder{public let payload:Data;public let ignored:int}
+public const(NUMBER,..):Data=(-7,true,'가')
+public func source()->Event{print("scrutinee");return Event::Data((NUMBER,true,'🙂'))}
+public func default_value(n:int8=NUMBER)->int8{return n}

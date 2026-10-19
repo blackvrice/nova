@@ -397,10 +397,12 @@ impl<'a> Parser<'a> {
         let start = self.current().span.start();
         let compound = self.kind() == TokenKind::LeftParen
             || self.kind() == TokenKind::Identifier
-                && self
-                    .tokens
-                    .get(self.cursor + 1)
-                    .is_some_and(|t| t.kind == TokenKind::Symbol(Symbol::ColonColon));
+                && self.tokens.get(self.cursor + 1).is_some_and(|t| {
+                    matches!(
+                        t.kind,
+                        TokenKind::Symbol(Symbol::ColonColon) | TokenKind::LeftParen
+                    )
+                });
         if compound && self.pattern_depth == self.options.max_nesting {
             self.report(
                 8901,
@@ -434,6 +436,30 @@ impl<'a> Parser<'a> {
             self.pattern_depth -= 1;
         }
         result
+    }
+
+    /// Both products retain the P35 diagnostic wording and original marker Span.
+    fn trailing_pattern_rest(&mut self, subject: &str) -> AstNodeId {
+        let first = self.bump().span;
+        if self.kind() != TokenKind::Dot || first.end() != self.current().span.start() {
+            self.report(
+                1102,
+                first,
+                &format!("{subject} rest requires adjacent dots"),
+            );
+            return self.node(NodeKind::Error, first.start(), vec![]);
+        }
+        self.bump();
+        let rest = self.node(NodeKind::PatternRest, first.start(), vec![]);
+        self.eat(TokenKind::Comma);
+        if self.kind() != TokenKind::RightParen {
+            self.report(
+                1102,
+                self.current().span,
+                &format!("{subject} rest must be the last argument"),
+            );
+        }
+        rest
     }
 
     fn pattern_inner(&mut self) -> AstNodeId {
@@ -481,6 +507,20 @@ impl<'a> Parser<'a> {
                 self.close(TokenKind::RightParen);
                 return self.node(NodeKind::PatternUnit, start, vec![]);
             }
+            if self.kind() == TokenKind::Dot {
+                let rest = self.trailing_pattern_rest("tuple");
+                let closed = self.kind() == TokenKind::RightParen;
+                self.close(TokenKind::RightParen);
+                return self.node(
+                    if closed {
+                        NodeKind::PatternTuple
+                    } else {
+                        NodeKind::Error
+                    },
+                    start,
+                    vec![rest],
+                );
+            }
             let first = self.pattern();
             if !self.eat(TokenKind::Comma) {
                 self.close(TokenKind::RightParen);
@@ -500,6 +540,10 @@ impl<'a> Parser<'a> {
                     | TokenKind::Eof
                     | TokenKind::Symbol(Symbol::FatArrow)
             ) {
+                if self.kind() == TokenKind::Dot {
+                    children.push(self.trailing_pattern_rest("tuple"));
+                    break;
+                }
                 let before = self.cursor;
                 children.push(self.pattern());
                 if !self.eat(TokenKind::Comma) || before == self.cursor {
@@ -534,24 +578,7 @@ impl<'a> Parser<'a> {
                         | TokenKind::Symbol(Symbol::FatArrow)
                 ) {
                     if self.kind() == TokenKind::Dot {
-                        let first = self.bump().span;
-                        if self.kind() != TokenKind::Dot
-                            || first.end() != self.current().span.start()
-                        {
-                            self.report(1102, first, "struct rest requires adjacent dots");
-                            children.push(self.node(NodeKind::Error, first.start(), vec![]));
-                            break;
-                        }
-                        self.bump();
-                        children.push(self.node(NodeKind::PatternRest, first.start(), vec![]));
-                        self.eat(TokenKind::Comma);
-                        if self.kind() != TokenKind::RightParen {
-                            self.report(
-                                1102,
-                                self.current().span,
-                                "struct rest must be the last argument",
-                            );
-                        }
+                        children.push(self.trailing_pattern_rest("struct"));
                         break;
                     }
                     let before = self.cursor;

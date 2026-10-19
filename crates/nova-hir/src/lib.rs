@@ -1802,7 +1802,10 @@ fn valid_pattern_source(
     gap(
         children.last().expect("pattern child").span.end(),
         node.span.end(),
-        if node.kind == NodeKind::PatternTuple && children.len() == 1 {
+        if node.kind == NodeKind::PatternTuple
+            && children.len() == 1
+            && children[0].kind != NodeKind::PatternRest
+        {
             &[",)"]
         } else {
             &[",)", ")"]
@@ -2019,7 +2022,12 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         NodeKind::Projection { .. } | NodeKind::TupleProjection { .. } => {
             kinds.len() == 1 && expr(kinds[0])
         }
-        NodeKind::PatternTuple => !kinds.is_empty() && kinds.iter().all(|k| pattern(*k)),
+        NodeKind::PatternTuple => {
+            !kinds.is_empty()
+                && kinds.iter().enumerate().all(|(at, k)| {
+                    pattern(*k) || (*k == NodeKind::PatternRest && at + 1 == kinds.len())
+                })
+        }
         NodeKind::Tuple => !kinds.is_empty() && kinds.iter().all(|k| expr(*k)),
         NodeKind::GenericType { .. } => !kinds.is_empty() && kinds.iter().all(|k| ty(*k)),
         NodeKind::NullableType => kinds.len() == 1 && ty(kinds[0]),

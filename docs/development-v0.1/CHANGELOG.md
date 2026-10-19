@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-20 — P36 Copy Tuple trailing rest 패턴
+
+- 다음 단계 사용자 승인으로 제한 계약·68-production EBNF를 구현 전에 기록했다.
+- Tuple trailing rest·명시 prefix·Unit 구분·전체 initializer 평가·wildcard coverage·prefix const/MIR 및 struct nesting 한도 적용 수정.
+- 새 테스트 19개, 기본 554·LLVM 32·Native 79 PASS, fmt/check/Clippy·문서 검증 완료.
+- P01~P35 ledger·원본/기존 fixture/grammar bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-19 — P35 Copy struct trailing rest 패턴
 
 - 다음 단계 사용자 승인으로 제한 계약·67-production EBNF를 구현 전에 기록했다.

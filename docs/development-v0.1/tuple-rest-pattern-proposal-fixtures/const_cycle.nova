@@ -1,0 +1,3 @@
+const(N,..)=(NEXT,true)
+const NEXT=N+1
+func main(){}
