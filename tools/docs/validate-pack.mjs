@@ -1524,6 +1524,37 @@ assert(structNamedPatternAbort.validated_result?.check_exit===0 && structNamedPa
   && structNamedPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${structNamedPatternAbort.primary.start}..${structNamedPatternAbort.primary.end}`,'P34 runtime Source/result');
 checks.push('P34 Accepted/next-step 승인 ledger·66-production EBNF/기존 63개 보존·31개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 25 code별 byte Span/Runtime 1 (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const structRestPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P35');
+assert(structRestPatternProposal?.status==='Accepted' && structRestPatternProposal.implementation_verified===true && structRestPatternProposal.approval_date==='2026-10-19'
+  && structRestPatternProposal.approval_evidence==='다음 작업 승인할테니 개발 진행해줘' && structRestPatternProposal.document==='STRUCT_REST_PATTERN_STAGE_B_PROPOSAL.md'
+  && structRestPatternProposal.grammar==='GRAMMAR_STAGE_B_STRUCT_REST_PATTERN.ebnf' && structRestPatternProposal.grammar_change===true && !manifest.draft_proposals?.some(p=>p.id==='P35'),'P35 approval ledger');
+const structRestPatternText=fs.readFileSync(path.join(pack,structRestPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','67개 production','65개 보존','Point(..)','N2201','N2004','N3101','N3102','N3103','1,025','10,000','100,000','1,000,000','field_indices','생략하더라도 N2004','전체 D06','Move/borrow/Drop'])assert(structRestPatternText.includes(phrase),'P35 missing boundary '+phrase);
+validateGrammar(structRestPatternProposal.grammar);const structRestPatternGrammar=fs.readFileSync(path.join(pack,structRestPatternProposal.grammar),'utf8');const structRestPatternProductions=productions(structRestPatternGrammar);
+assert(structRestPatternProductions.size===67 && structRestPatternGrammar.includes('Accepted 2026-10-19; implemented and verified'),'P35 grammar status/count');
+for(const [name,value]of structNamedPatternProductions)if(name!=='struct_pattern_arguments')assert(structRestPatternProductions.get(name)===value,'P35 changed approved production '+name);
+assert(structRestPatternProductions.get('struct_pattern_arguments')==='(struct_pattern_rest|struct_pattern_argument,{",",struct_pattern_argument},[",",struct_pattern_rest]),[","]'
+  && structRestPatternProductions.get('struct_pattern_rest')==='".."','P35 trailing rest productions');
+const structRestPatternRoot=path.join(pack,'struct-rest-pattern-proposal-fixtures');const structRestPatternFixture=JSON.parse(fs.readFileSync(path.join(structRestPatternRoot,'expected.json'),'utf8'));const structRestPatternLF=String.fromCharCode(10);
+assert(structRestPatternFixture.proposal==='P35' && structRestPatternFixture.status==='Accepted' && structRestPatternFixture.implementation_verified===true && structRestPatternFixture.validation_date==='2026-10-19'
+  && structRestPatternFixture.approval_date===structRestPatternProposal.approval_date && structRestPatternFixture.approval_evidence===structRestPatternProposal.approval_evidence
+  && structRestPatternFixture.grammar===structRestPatternProposal.grammar && structRestPatternFixture.grammar_change===true && structRestPatternFixture.grammar_productions===67
+  && structRestPatternFixture.entry==='main.nova' && structRestPatternFixture.source_root==='.' && JSON.stringify(structRestPatternFixture.reachable_modules)==='["main","values"]'
+  && structRestPatternFixture.validated_result?.check_exit===0 && structRestPatternFixture.validated_result?.native_exit===0
+  && structRestPatternFixture.validated_result?.stdout===['scrutinee','first','second','nested=-7','initializer','omitted','let=3','var=5/true','const=9/-7','empty','rest-only','complete=3','option=5','try-ok','result=1','error=4','loop=1',''].join(structRestPatternLF)
+  && structRestPatternFixture.validated_result?.stderr==='','P35 validated result');
+const structRestPatternSources=Object.keys(structRestPatternFixture.source_sha256??{});assert(structRestPatternSources.length===28 && fs.readdirSync(structRestPatternRoot).filter(n=>n.endsWith('.nova')).length===28,'P35 source count');
+for(const name of structRestPatternSources){const bytes=fs.readFileSync(path.join(structRestPatternRoot,name));assert(hash(bytes)===structRestPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P35 source hash/UTF8/LF '+name);}
+assert(structRestPatternFixture.negative_cases?.length===21 && structRestPatternFixture.positive_cases?.length===3 && structRestPatternFixture.runtime_cases?.length===2,'P35 fixture counts');
+for(const c of structRestPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(structRestPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && (c.primary.start<c.primary.end || c.expected_diagnostic==='N1101' && c.primary_kind==='insertion' && c.primary.start===c.primary.end) && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(0,c.primary.start).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.start)) && Buffer.from(bytes.subarray(0,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.end)) && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P35 negative byte Span '+c.source);}
+for(const c of structRestPatternFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0 && c.validated_result?.stdout.endsWith(structRestPatternLF) && c.validated_result?.stderr==='','P35 positive '+c.source);
+for(const structRestPatternAbort of structRestPatternFixture.runtime_cases){const structRestPatternAbortBytes=fs.readFileSync(path.join(structRestPatternRoot,structRestPatternAbort.source));
+assert(structRestPatternAbort.validated_result?.check_exit===0 && structRestPatternAbort.validated_result?.native_exit===1 && structRestPatternAbort.validated_result?.stdout==='before'+structRestPatternLF
+  && structRestPatternAbortBytes.subarray(structRestPatternAbort.primary.start,structRestPatternAbort.primary.end).toString('utf8')===structRestPatternAbort.primary_text
+  && structRestPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${structRestPatternAbort.primary.start}..${structRestPatternAbort.primary.end}`,'P35 runtime Source/result');
+}
+checks.push('P35 Accepted/next-step 승인 ledger·67-production EBNF/기존 65개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2 (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

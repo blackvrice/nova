@@ -266,3 +266,8 @@ nominal/import struct pattern·private field 검사·let/var/const 분해·bound
 현재 구현은 **P34 Copy struct 이름 필드 패턴까지 완료**다.
 [P34 계약](docs/development-v0.1/STRUCT_NAMED_PATTERN_STAGE_B_PROPOSAL.md)·[66-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_STRUCT_NAMED_PATTERN.ebnf)·[수용 fixture](docs/development-v0.1/struct-named-pattern-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/STRUCT_NAMED_PATTERN_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
 역순/위치 prefix field label·전체 field 대응·정규화 plan·let/var/const·coverage/Source/MIR를 지원한다. rest/shorthand·Array·일반 Move/Drop은 후속 계약이다.
+
+
+현재 구현은 **P35 Copy struct trailing rest 패턴까지 완료**다.
+[P35 계약](docs/development-v0.1/STRUCT_REST_PATTERN_STAGE_B_PROPOSAL.md)·[67-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_STRUCT_REST_PATTERN.ebnf)·[수용 fixture](docs/development-v0.1/struct-rest-pattern-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/STRUCT_REST_PATTERN_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
+struct trailing rest·부분 field 대응·전체 initializer 평가·sparse const/coverage/MIR를 지원한다. shorthand·Tuple/Enum rest·Array·일반 Move/Drop은 후속 계약이다.

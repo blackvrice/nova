@@ -1,0 +1,4 @@
+struct S{let skip:char;let n:int8;let flag:bool}
+const S(n:N,..)=S('가',NEXT,true)
+const NEXT=N+1
+func main(){}

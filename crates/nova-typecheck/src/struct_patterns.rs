@@ -22,6 +22,9 @@ impl Checker<'_> {
         let mut valid = true;
         for (ordinal, &child) in node.children.iter().enumerate() {
             let arg = &self.module.nodes()[child.0];
+            if arg.kind == HirKind::PatternRest {
+                continue;
+            }
             let at = if let HirKind::PatternField {
                 name, name_span, ..
             } = arg.kind
@@ -71,14 +74,20 @@ impl Checker<'_> {
             }
         }
         if valid {
-            if let Some(at) = filled.iter().position(Option::is_none) {
-                self.report(
-                    2201,
-                    node.span,
-                    "missing required struct pattern field",
-                    Some(self.module.nodes()[self.result.field_sources[&sid][at].0].span),
-                );
-                return None;
+            if !node
+                .children
+                .iter()
+                .any(|c| self.module.nodes()[c.0].kind == HirKind::PatternRest)
+            {
+                if let Some(at) = filled.iter().position(Option::is_none) {
+                    self.report(
+                        2201,
+                        node.span,
+                        "missing required struct pattern field",
+                        Some(self.module.nodes()[self.result.field_sources[&sid][at].0].span),
+                    );
+                    return None;
+                }
             }
             Some(mapping)
         } else {

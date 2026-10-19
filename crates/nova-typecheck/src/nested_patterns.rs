@@ -27,6 +27,8 @@ pub struct RecursivePattern {
     pub ty: Type,
     pub kind: RecursivePatternKind,
     pub children: Vec<HirId>,
+    /// P35 explicit struct field indices, aligned with canonical children; empty for other kinds.
+    pub field_indices: Vec<usize>,
 }
 
 impl Checker<'_> {
@@ -82,6 +84,7 @@ impl Checker<'_> {
             }
             let p = &self.module.nodes()[pattern.0];
             let mut pattern_children = p.children.clone();
+            let mut field_indices = vec![];
             let mut fields = vec![];
             let mut field_annotations = vec![];
             let kind = match p.kind {
@@ -91,7 +94,7 @@ impl Checker<'_> {
                     }
                     RecursivePatternKind::Wildcard
                 }
-                HirKind::Wildcard => RecursivePatternKind::Wildcard,
+                HirKind::Wildcard | HirKind::PatternRest => RecursivePatternKind::Wildcard,
                 HirKind::PatternField { .. } => {
                     fields.push(expected);
                     RecursivePatternKind::NamedField
@@ -188,24 +191,42 @@ impl Checker<'_> {
                                         if p.children.iter().any(|c| {
                                             matches!(
                                                 self.module.nodes()[c.0].kind,
-                                                HirKind::PatternField { .. }
+                                                HirKind::PatternField { .. } | HirKind::PatternRest
                                             )
                                         }) {
                                             if let Some(mapping) =
                                                 self.struct_pattern_mapping(pattern, sid)
                                             {
-                                                let mut canonical = vec![pattern; fields.len()];
-                                                for (&child, &at) in p.children.iter().zip(&mapping)
-                                                {
-                                                    canonical[at] = child;
-                                                }
-                                                pattern_children = canonical;
+                                                let explicit = p
+                                                    .children
+                                                    .iter()
+                                                    .copied()
+                                                    .filter(|c| {
+                                                        self.module.nodes()[c.0].kind
+                                                            != HirKind::PatternRest
+                                                    })
+                                                    .collect::<Vec<_>>();
+                                                let mut canonical = explicit
+                                                    .iter()
+                                                    .copied()
+                                                    .zip(mapping.iter().copied())
+                                                    .collect::<Vec<_>>();
+                                                canonical.sort_by_key(|(_, at)| *at);
+                                                pattern_children = canonical
+                                                    .iter()
+                                                    .map(|(child, _)| *child)
+                                                    .collect();
+                                                field_indices =
+                                                    canonical.iter().map(|(_, at)| *at).collect();
                                                 fields =
                                                     mapping.iter().map(|&at| fields[at]).collect();
                                                 field_annotations = mapping
                                                     .iter()
                                                     .map(|&at| field_annotations[at])
                                                     .collect();
+                                                if explicit.len() != p.children.len() {
+                                                    fields.push(Type::Unit);
+                                                }
                                             } else {
                                                 valid = false;
                                                 fields.clear();
@@ -218,6 +239,15 @@ impl Checker<'_> {
                                                 "struct pattern arity does not match",
                                                 annotation,
                                             );
+                                        }
+                                        if field_indices.is_empty()
+                                            && !pattern_children.is_empty()
+                                            && !p.children.iter().any(|c| {
+                                                self.module.nodes()[c.0].kind
+                                                    == HirKind::PatternRest
+                                            })
+                                        {
+                                            field_indices = (0..pattern_children.len()).collect();
                                         }
                                     }
                                 }
@@ -394,6 +424,7 @@ impl Checker<'_> {
                 ty: expected,
                 kind,
                 children: pattern_children,
+                field_indices,
             });
             for (at, &child) in p.children.iter().enumerate().rev() {
                 work.push((
@@ -1209,7 +1240,15 @@ fn analyze(
             RecursivePatternKind::Tuple(id) => Some(Constructor::Tuple(id)),
             RecursivePatternKind::Variant(v) => Some(Constructor::Variant(v)),
         };
-        let children = p.children.iter().map(|id| mapped[&id.0]).collect();
+        let children = if let RecursivePatternKind::Struct(sid) = p.kind {
+            let mut children = vec![0; registries.0[&sid].fields.len()];
+            for (&at, child) in p.field_indices.iter().zip(&p.children) {
+                children[at] = mapped[&child.0];
+            }
+            children
+        } else {
+            p.children.iter().map(|id| mapped[&id.0]).collect()
+        };
         let pattern = engine.pattern(Pattern {
             constructor,
             children,

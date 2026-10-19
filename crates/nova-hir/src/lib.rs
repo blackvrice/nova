@@ -114,6 +114,7 @@ pub enum HirKind {
         name_span: Span,
         colon: Span,
     },
+    PatternRest,
     PatternBoolean(bool),
     PatternCharacter(char),
     PatternInteger {
@@ -997,6 +998,9 @@ pub fn lower(
         {
             return Err(LoweringError::MalformedAst);
         }
+        if node.kind == NodeKind::PatternRest && sources.slice(node.span)? != ".." {
+            return Err(LoweringError::MalformedAst);
+        }
         if node.kind == NodeKind::Wildcard && sources.slice(node.span)? != "_" {
             return Err(LoweringError::MalformedAst);
         }
@@ -1285,6 +1289,7 @@ pub fn lower(
                 name_span: name,
                 colon,
             },
+            NodeKind::PatternRest => HirKind::PatternRest,
             NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
             NodeKind::PatternInteger { digits, minus } => HirKind::PatternInteger {
                 spelling: sources.slice(digits)?.into(),
@@ -1967,10 +1972,13 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::PatternCharacter
         | NodeKind::PatternInteger { .. }
         | NodeKind::PatternUnit
+        | NodeKind::PatternRest
         | NodeKind::Wildcard => kinds.is_empty(),
-        NodeKind::PatternStruct { .. } => kinds
-            .iter()
-            .all(|k| pattern(*k) || matches!(k, NodeKind::PatternField { .. })),
+        NodeKind::PatternStruct { .. } => kinds.iter().enumerate().all(|(at, k)| {
+            pattern(*k)
+                || matches!(k, NodeKind::PatternField { .. })
+                || (*k == NodeKind::PatternRest && at + 1 == kinds.len())
+        }),
         NodeKind::PatternField { .. } => kinds.len() == 1 && pattern(kinds[0]),
         NodeKind::PatternVariant { arguments, .. } => {
             (arguments || kinds.is_empty()) && kinds.iter().all(|k| pattern(*k))

@@ -1,0 +1,3 @@
+use values::Hidden
+use values::hidden
+func main(){match hidden(){Hidden(..)=>{}}}

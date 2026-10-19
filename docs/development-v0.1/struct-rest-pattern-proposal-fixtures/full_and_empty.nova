@@ -1,0 +1,2 @@
+struct S{let skip:char;let n:int8;let flag:bool}
+func main(){let S(ch,n,b,..,)=S('가',1,true);print("full={n}/{b}/{ch}");const S(..)=S('가',7,false);match S('가',1,true){S('가',n:1,flag:true,..)=>{print("all")},_=>{}}}

@@ -1798,9 +1798,7 @@ fn p33_struct_patterns_head_trivia_empty_children_and_binding_contexts() {
         vec![("Empty", 0), ("P", 2), ("P", 2), ("P", 2), ("Empty", 0)]
     );
     assert!(!run("const P(n)=P(1)").2.has_errors());
-    for text in ["func f(){match P(1){P(..)=>{}}}", "func f(){let P(n)=}"] {
-        assert!(run(text).2.has_errors(), "{text}");
-    }
+    assert!(run("func f(){let P(n)=}").2.has_errors());
 }
 #[test]
 fn p33_struct_pattern_every_utf8_prefix_recovers_deterministically() {
@@ -1851,7 +1849,6 @@ fn p34_struct_field_labels_preserve_name_colon_trivia_and_parent_context() {
         "func f(){match x{(a:n,_)=>{}}}",
         "func f(){match x{E::V(a:n)=>{}}}",
         "func f(){let P(n:)=P(1)}",
-        "func f(){match x{P(..)=>{}}}",
     ] {
         assert!(run(text).2.has_errors(), "{text}");
     }
@@ -1860,6 +1857,46 @@ fn p34_struct_field_labels_preserve_name_colon_trivia_and_parent_context() {
 fn p34_named_struct_every_utf8_prefix_recovers_deterministically() {
     let source="func f(){let Outer(ch:'🙂',inner:Inner(flag:b,n:n))=x;match x{Outer(inner:Inner(n:1,flag:true),ch:'가')=>{}}}func later(){}";
     for end in (0..=source.len()).filter(|at| source.is_char_boundary(*at)) {
+        let (_, _, a) = run(&source[..end]);
+        let (_, _, b) = run(&source[..end]);
+        assert_eq!(a.arena.dump(), b.arena.dump());
+        assert_eq!(a.diagnostics, b.diagnostics);
+    }
+}
+
+#[test]
+fn p35_struct_rest_adjacent_tokens_trailing_comma_and_parent_context() {
+    let source =
+        "const P(..)=P();func f(){let P(x,..,)=p;var P(n:x,..)=p;match p{P(/*🙂*/..)=>{}}}";
+    let (db, l, p) = run(source);
+    assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+    let rest = p
+        .arena
+        .iter()
+        .filter(|(_, n)| n.kind == NodeKind::PatternRest)
+        .collect::<Vec<_>>();
+    assert_eq!(rest.len(), 4);
+    for (_, n) in rest {
+        assert_eq!(db.slice(n.span).unwrap(), "..");
+        assert!(n.children.is_empty());
+    }
+    assert!(!run("func f(){match P(1){P(..)=>{}}}").2.has_errors());
+    for source in [
+        "func f(){let P(..,x)=p}",
+        "func f(){let P(..,..)=p}",
+        "func f(){let P(. .)=p}",
+        "func f(){let P(x:..)=p}",
+        "func f(){let(x,..)=p}",
+        "func f(){match p{E::V(..)=>{}}}",
+    ] {
+        assert!(run(source).2.has_errors(), "{source}");
+    }
+}
+#[test]
+fn p35_rest_utf8_prefix_recovery_is_deterministic() {
+    let source =
+        "func f(){let Outer(inner:Inner(n:n,..),/*🙂*/..)=x;match x{Outer(..,)=>{}}}func later(){}";
+    for end in (0..=source.len()).filter(|i| source.is_char_boundary(*i)) {
         let (_, _, a) = run(&source[..end]);
         let (_, _, b) = run(&source[..end]);
         assert_eq!(a.arena.dump(), b.arena.dump());

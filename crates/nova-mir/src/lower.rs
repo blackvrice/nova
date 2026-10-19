@@ -256,7 +256,11 @@ pub fn lower(
                         child.0,
                         nova_types::FieldId {
                             structure,
-                            index: at,
+                            index: if matches!(p.kind, Kind::Struct(_)) {
+                                p.field_indices[at]
+                            } else {
+                                at
+                            },
                         },
                     );
                 }
@@ -656,7 +660,14 @@ impl Builder<'_> {
                 let projection = match p.kind {
                     Kind::Struct(structure) | Kind::Tuple(structure) => Rvalue::Project(
                         Operand::Place(value),
-                        nova_types::FieldId { structure, index },
+                        nova_types::FieldId {
+                            structure,
+                            index: if matches!(p.kind, Kind::Struct(_)) {
+                                p.field_indices[index]
+                            } else {
+                                index
+                            },
+                        },
                     ),
                     Kind::Variant(v) => Rvalue::EnumPayload(Operand::Place(value), v, index),
                     _ => return Err(LoweringError::InvalidAnalysis),

@@ -60,6 +60,8 @@
 
 [P34 Copy struct 이름 필드 패턴](STRUCT_NAMED_PATTERN_STAGE_B_PROPOSAL.md)·[66-production EBNF](GRAMMAR_STAGE_B_STRUCT_NAMED_PATTERN.ebnf)·[수용 fixture](struct-named-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](STRUCT_NAMED_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 63개 production·P01~P33 ledger를 보존한다.
 
+[P35 Copy struct trailing rest 패턴](STRUCT_REST_PATTERN_STAGE_B_PROPOSAL.md)·[67-production EBNF](GRAMMAR_STAGE_B_STRUCT_REST_PATTERN.ebnf)·[수용 fixture](struct-rest-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](STRUCT_REST_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 65개 production·P01~P34 ledger를 보존한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

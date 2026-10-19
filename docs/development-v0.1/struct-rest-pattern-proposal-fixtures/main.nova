@@ -1,0 +1,27 @@
+use values::Pair as P
+use values::Envelope
+use values::Empty
+use values::source
+use values::default_value
+func gate(label:string,result:bool)->bool{print(label);return result}
+func mark()->char{print("omitted");return '가'}
+func binding()->P{print("initializer");return P(mark(),3,true)}
+func complete(p:P)->int8{match p{P(flag:false,..)=>{return 2},P(flag:true,..)=>{return 3}}}
+func propagate(r:Result<int8,int8>)->Result<int8,int8>{match P('가',-7,true){P(flag:true,n:-7,..) if (try r)>0=>{print("try-ok")},_=>{}}return Result::Success(1)}
+func main(){
+    match source(){Envelope(pair:P(n:-7,..),..) if gate("first",false)=>{},Envelope(pair:P(flag:true,n:n,..),..) if gate("second",true)=>{print("nested={n}")},_=>{}}
+    let Envelope(pair:P(n:n,..),..)=Envelope(binding(),'🙂')
+    print("let={n}")
+    var P(flag:b,n:a,..)=P('가',4,false)
+    a=a+1;b=true;print("var={a}/{b}")
+    const P(n:c,..)=P('가',9,true)
+    print("const={c}/{default_value()}")
+    let Empty(..)=Empty()
+    match Empty(){Empty(..)=>{print("empty")}}
+    match P('가',1,false){P(..)=>{print("rest-only")}}
+    let full=complete(P('가',2,true));print("complete={full}")
+    match Option::Some(P('가',5,true)){Option::Some(P(n:v,..))=>{print("option={v}")},_=>{}}
+    match propagate(Result::Success(3)){Result::Success(v)=>{print("result={v}")},Result::Error(_)=>{}}
+    match propagate(Result::Error(4)){Result::Success(_)=>{},Result::Error(e)=>{print("error={e}")}}
+    for i in 0 until 3{match P('가',i as int8,true){P(_,0,..)=>{continue},P(n:2,..)=>{break},P(n:v,..)=>{print("loop={v}")}}}
+}

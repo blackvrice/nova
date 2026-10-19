@@ -123,6 +123,8 @@ pub enum NodeKind {
         name: Span,
         colon: Span,
     },
+    /// P35 trailing struct-only .. marker; no value children.
+    PatternRest,
     PatternBoolean(bool),
     PatternCharacter,
     PatternInteger {

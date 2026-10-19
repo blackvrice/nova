@@ -1,0 +1,2 @@
+struct S{let skip:char;let n:int8;let flag:bool}
+func main(){const S(n:1,..)=S('가',1/0,true)}

@@ -1,0 +1,2 @@
+struct S{let skip:char;let n:int8;let flag:bool}
+func main(){print("before");let n=1;match S('가',1,true){S(flag:true,..) if 2147483647+n>0=>{},_=>{}}}

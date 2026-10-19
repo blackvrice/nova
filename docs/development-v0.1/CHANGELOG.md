@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-19 — P35 Copy struct trailing rest 패턴
+
+- 다음 단계 사용자 승인으로 제한 계약·67-production EBNF를 구현 전에 기록했다.
+- trailing rest·부분 field_indices·전체 initializer 평가·기존 private 가시성·wildcard coverage·sparse const/MIR 구현.
+- 새 테스트 17개, 기본 538·LLVM 31·Native 77 PASS, fmt/check/Clippy·문서 검증 완료.
+- P01~P34 ledger·원본/기존 fixture/grammar bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-13 — P34 Copy struct 이름 필드 패턴
 
 - 다음 단계 사용자 승인으로 제한 계약·66-production EBNF를 구현 전에 기록했다.

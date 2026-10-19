@@ -1,0 +1,3 @@
+struct S{let skip:char;let n:int8;let flag:bool}
+type A=S
+func main(){let A(..)=S('가',1,true)}

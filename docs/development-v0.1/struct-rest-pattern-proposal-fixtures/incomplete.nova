@@ -1,0 +1,2 @@
+struct S{let skip:char;let n:int8;let flag:bool}
+func main(){match S('가',1,true){S(flag:true,..)=>{}}}

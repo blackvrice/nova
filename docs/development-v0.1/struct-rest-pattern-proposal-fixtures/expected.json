@@ -1,0 +1,303 @@
+{
+  "proposal": "P35",
+  "status": "Accepted",
+  "implementation_verified": true,
+  "approval_date": "2026-10-19",
+  "approval_evidence": "다음 작업 승인할테니 개발 진행해줘",
+  "grammar": "GRAMMAR_STAGE_B_STRUCT_REST_PATTERN.ebnf",
+  "grammar_change": true,
+  "grammar_productions": 67,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "values"
+  ],
+  "source_sha256": {
+    "values.nova": "e8e64b3ad64dff95b07637677cb9863458340adf36dc8f53a639f44e02918c9c",
+    "main.nova": "fec7a7b0d00015136af2ccf622085630e76a223043326f0d8320e80d076b1bd2",
+    "private.nova": "92ea9f250c5700b1b0e3bd84a10caad45d53e7761a601aa1d6fa51c09a2ca511",
+    "incomplete.nova": "397c40565a831b67c3431a8aaceb83cb823134dd0221787a117a692887ea9732",
+    "duplicate.nova": "956b643a2baa6b619504f15c21fd38a00fa03a29efa97b2e46007fd1984185b4",
+    "missing_no_rest.nova": "123fa2da9cb09b639d3a1aa84a4ff0ff0917fa15faab528d8a9ba2013de9f240",
+    "unknown_label.nova": "a30213216c75999b86958bf98fb3574f1d9c010af664e8cb07d3038a8886d803",
+    "duplicate_label.nova": "db329389c1faee066cb83a011ccaa686e97e2aaa65bf826dca89ef0fe49346bc",
+    "after_named.nova": "6c12952c75843c4f3aa96da7604ee7bce8d390f94bccd8c34cb8ff942bc287c4",
+    "overlap.nova": "91650e6496ce54239cee9bed2d7226fe003f3f6735ada5b3a8c831a1f16295eb",
+    "component_type.nova": "be70809be79beaa5d4f5583ea846572fdcfc46e2cff7faa84e762e5348b1b9cd",
+    "too_large.nova": "7fe7d3a816870b07aeea487cf2dc8a916c4aeb6ffbfa5dcd84036fd4396e803b",
+    "immutable.nova": "3670ae3b1e59aeab838d0a3dd24a9526b8446311a81bf685a5381eb07418badf",
+    "let_refutable.nova": "14c99506f37deb0fcf8f1f8310047c958243429a67442895737b55fd86514484",
+    "const_refutable.nova": "d787c6aa19c9deff1d040c69bc4ff34cba1c5525b377d8edd0a6785642ff167c",
+    "const_omitted_failure.nova": "46dddde395296f87c09d35f50aeaa752911d6a08220b274c80a18afe8818dcfa",
+    "const_cycle.nova": "d6820bcb67d0a44f3737689d189c42619adcdd06f93dfe5fdbdd9d17b69a0a80",
+    "middle_rest.nova": "d7f040eedb1a464c38d0735b6b6bce7271d47eadd9121a7e0b0cdde8655b47bd",
+    "double_rest.nova": "f801a2f1842b2f03ed3869a009d2506d8f6f34c24a415136e5fd2bc222ebe6d9",
+    "spaced_dots.nova": "5b0b391d50911da43d3bd5a573cc0243d2ab03bf1ef70f775088d0e4d4ab09fb",
+    "rest_value.nova": "f2d1da74e9a85240089000b1f1a821afe1aa04156a594f0df0ac337160a2d27d",
+    "tuple_rest.nova": "ef5ebfa8ea7b3224feae067a69da4059aae4008028f1018c1212377f1b4044d9",
+    "alias_head.nova": "9de7771ccab55ad841fc76e5bd5451079c3b106e364440a092cde09a3989f859",
+    "private_local.nova": "84577f18649bad2384c33f9430f9318a1d45792b14159ea55232c9c487c49208",
+    "full_and_empty.nova": "b6de44d21a534c0c9210f20597fe9efe3dfbb3ee954e0e49b863cad0fe8158c7",
+    "guard_skipped.nova": "d7f9f69b6a92c7232022bc8c892c5bac91ab3ce81431cda0f6fef41cd72cc8db",
+    "guard_abort.nova": "391a99e0453f629785959a53a739bad8b982210e6510a8c2069b34168588c1cd",
+    "omitted_abort.nova": "9002cd54a389beb9a3d7b70d156ad9596e065cbf65bc96a2f6ad919c18aee246"
+  },
+  "positive_cases": [
+    {
+      "source": "private_local.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "private=true\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "full_and_empty.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "full=1/true/가\nall\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "guard_skipped.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "skipped\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "source": "private.nova",
+      "expected_diagnostic": "N2004",
+      "check_exit": 1,
+      "primary": {
+        "start": 65,
+        "end": 71
+      }
+    },
+    {
+      "source": "incomplete.nova",
+      "expected_diagnostic": "N3101",
+      "check_exit": 1,
+      "primary": {
+        "start": 61,
+        "end": 66
+      }
+    },
+    {
+      "source": "duplicate.nova",
+      "expected_diagnostic": "N3102",
+      "check_exit": 1,
+      "primary": {
+        "start": 93,
+        "end": 102
+      }
+    },
+    {
+      "source": "missing_no_rest.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 83,
+        "end": 92
+      }
+    },
+    {
+      "source": "unknown_label.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 85,
+        "end": 90
+      }
+    },
+    {
+      "source": "duplicate_label.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 89,
+        "end": 90
+      }
+    },
+    {
+      "source": "after_named.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 89,
+        "end": 90
+      }
+    },
+    {
+      "source": "overlap.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 87,
+        "end": 91
+      }
+    },
+    {
+      "source": "component_type.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 90,
+        "end": 91
+      }
+    },
+    {
+      "source": "too_large.nova",
+      "expected_diagnostic": "N2102",
+      "check_exit": 1,
+      "primary": {
+        "start": 87,
+        "end": 90
+      }
+    },
+    {
+      "source": "immutable.nova",
+      "expected_diagnostic": "N3004",
+      "check_exit": 1,
+      "primary": {
+        "start": 91,
+        "end": 92
+      }
+    },
+    {
+      "source": "let_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 65,
+        "end": 80
+      }
+    },
+    {
+      "source": "const_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 67,
+        "end": 76
+      }
+    },
+    {
+      "source": "const_omitted_failure.nova",
+      "expected_diagnostic": "N3201",
+      "check_exit": 1,
+      "primary": {
+        "start": 66,
+        "end": 69
+      }
+    },
+    {
+      "source": "const_cycle.nova",
+      "expected_diagnostic": "N3202",
+      "check_exit": 1,
+      "primary": {
+        "start": 95,
+        "end": 96
+      }
+    },
+    {
+      "source": "middle_rest.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 70,
+        "end": 71
+      }
+    },
+    {
+      "source": "double_rest.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 70,
+        "end": 71
+      }
+    },
+    {
+      "source": "spaced_dots.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 67,
+        "end": 68
+      }
+    },
+    {
+      "source": "rest_value.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 69,
+        "end": 70
+      }
+    },
+    {
+      "source": "tuple_rest.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 18,
+        "end": 19
+      }
+    },
+    {
+      "source": "alias_head.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 74,
+        "end": 75
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "source": "guard_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 126,
+        "end": 138
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:126..138"
+      }
+    },
+    {
+      "source": "omitted_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 89,
+        "end": 101
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:89..101"
+      }
+    }
+  ],
+  "validation_date": "2026-10-19",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "scrutinee\nfirst\nsecond\nnested=-7\ninitializer\nomitted\nlet=3\nvar=5/true\nconst=9/-7\nempty\nrest-only\ncomplete=3\noption=5\ntry-ok\nresult=1\nerror=4\nloop=1\n",
+    "stderr": ""
+  }
+}

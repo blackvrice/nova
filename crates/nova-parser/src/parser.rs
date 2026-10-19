@@ -533,6 +533,27 @@ impl<'a> Parser<'a> {
                         | TokenKind::Eof
                         | TokenKind::Symbol(Symbol::FatArrow)
                 ) {
+                    if self.kind() == TokenKind::Dot {
+                        let first = self.bump().span;
+                        if self.kind() != TokenKind::Dot
+                            || first.end() != self.current().span.start()
+                        {
+                            self.report(1102, first, "struct rest requires adjacent dots");
+                            children.push(self.node(NodeKind::Error, first.start(), vec![]));
+                            break;
+                        }
+                        self.bump();
+                        children.push(self.node(NodeKind::PatternRest, first.start(), vec![]));
+                        self.eat(TokenKind::Comma);
+                        if self.kind() != TokenKind::RightParen {
+                            self.report(
+                                1102,
+                                self.current().span,
+                                "struct rest must be the last argument",
+                            );
+                        }
+                        break;
+                    }
                     let before = self.cursor;
                     if self.kind() == TokenKind::Identifier
                         && self

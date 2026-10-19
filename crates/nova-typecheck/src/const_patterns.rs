@@ -81,8 +81,14 @@ impl Checker<'_> {
                         ) if expected == *actual => fields,
                         _ => unreachable!("typed irrefutable const component"),
                     };
-                    for (&child, value) in typed.children.iter().zip(fields).rev() {
-                        work.push((child, value));
+                    for (at, &child) in typed.children.iter().enumerate().rev() {
+                        let index = if matches!(typed.kind, crate::RecursivePatternKind::Struct(_))
+                        {
+                            typed.field_indices[at]
+                        } else {
+                            at
+                        };
+                        work.push((child, &fields[index]));
                     }
                 }
             }

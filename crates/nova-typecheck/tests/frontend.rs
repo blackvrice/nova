@@ -5567,3 +5567,180 @@ fn p34_named_field_wrappers_count_at_exact_pattern_node_budget() {
         "_"
     );
 }
+
+#[test]
+fn p35_rest_struct_sparse_indices_type_context_and_marker_bookkeeping() {
+    pass(include_str!("../../../examples/struct_rest_patterns.nova"));
+    let r=pass("struct S{let skip:char;let n:int8;let b:bool}func f(s:S){let S(b:b,n:n,..)=s;match s{S(b:true,..)=>{},S(..)=>{}}}");
+    let (h, _, c) = r.semantic.unwrap();
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternStruct { .. }))
+        .unwrap();
+    let p = c.recursive_patterns[id].as_ref().unwrap();
+    assert_eq!(p.field_indices, [1, 2]);
+    assert_eq!(p.children.len(), 2);
+    assert!(h.nodes()[id]
+        .children
+        .iter()
+        .any(|r| h.nodes()[r.0].kind == HirKind::PatternRest));
+    assert!(p
+        .children
+        .iter()
+        .all(|r| h.nodes()[r.0].kind != HirKind::PatternRest));
+    for source in [
+        "struct E{}func f(){let E(..)=E();match E(){E(..,)=>{}}}",
+        "struct S{let n:int}func f(s:S){let S(n,..)=s;let S(..)=s;let S(n:next,..)=s}",
+    ] {
+        pass(source);
+    }
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int8}func f(s:S){match s{S(n:128,..)=>{},_=>{}}}"
+        )),
+        ["N2102"]
+    );
+}
+#[test]
+fn p35_sparse_struct_coverage_matches_independent_region_union_oracle() {
+    let regions = [3u8, 5, 8, 15];
+    let patterns = [
+        "S(a:false,..)",
+        "S(b:false,..)",
+        "S(true,b:true,..)",
+        "S(..)",
+    ];
+    for mask in 0..16 {
+        let mut covered = 0;
+        let mut unreachable = false;
+        let mut arms = String::new();
+        for i in 0..4 {
+            if mask & (1 << i) != 0 {
+                unreachable |= regions[i] & !covered == 0;
+                covered |= regions[i];
+                arms.push_str(&format!("{}=>{{}},", patterns[i]));
+            }
+        }
+        let r = frontend(&format!(
+            "struct S{{let a:bool;let b:bool}}func f(s:S){{match s{{{arms}}}}}"
+        ));
+        let expected = if unreachable {
+            vec!["N3102".to_string()]
+        } else if covered == 15 {
+            vec![]
+        } else {
+            vec!["N3101".to_string()]
+        };
+        assert_eq!(codes(&r), expected, "mask {mask}");
+    }
+    pass("struct S{let b:bool}func f(s:S){match s{S(..) if false=>{},S(b:true,..)=>{},S(b:false,..)=>{}}}");
+}
+#[test]
+fn p35_rest_const_sparse_projection_forward_cycles_and_omitted_failure() {
+    let r=pass("struct S{let skip:char;let n:int8;let b:bool}const S(b:B,n:N,..)=S('🙂',NEXT,true);const NEXT:int8=7;func f(){const S(n:n,..)=S('가',N,B);var S(b:b,..)=S('가',n,B);b=false}");
+    let (_, r, c) = r.semantic.unwrap();
+    for name in ["N", "n"] {
+        let at = r.definitions.iter().position(|d| d.name == name).unwrap();
+        assert!(
+            matches!(&c.const_values[at],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==7&&v.kind()==IntKind::I8)
+        );
+    }
+    for kw in ["let", "var", "const"] {
+        let r = frontend(&format!(
+            "struct S{{let n:int;let b:bool}}func f(){{{kw} S(b:true,..)=S(1/0,true)}}"
+        ));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "true"
+        );
+    }
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let b:bool;let n:int}const S(b:B,..)=S(true,1/0);const NEXT=B;func f(){}"
+        )),
+        ["N3201"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}const S(n:N,..)=S(NEXT);const NEXT=N+1;func f(){}"
+        )),
+        ["N3202"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}const S(..)=S(1/0);func f(){}"
+        )),
+        ["N3201"]
+    );
+}
+#[test]
+fn p35_rest_mapping_errors_scope_mutability_and_guard_try() {
+    for args in ["wrong:_,..", "n:_,n:_,..", "_,n:_,..", "b:_,_,..", "b:_"] {
+        assert_eq!(
+            codes(&frontend(&format!(
+                "struct S{{let n:int;let b:bool}}func f(s:S){{match s{{S({args})=>{{}}}}}}"
+            ))),
+            ["N2201"],
+            "{args}"
+        );
+    }
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}func f(){match missing{S(..)=>{}}}"
+        )),
+        ["N2001"]
+    );
+    assert_eq!(
+        codes(&frontend("struct S{let n:int}func f(){let S(n:n,..)=S(n)}")),
+        ["N2001"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "struct S{let n:int}func f(s:S){match s{S(n:n,..)=>{n=2}}}"
+        )),
+        ["N3004"]
+    );
+    pass("struct S{let n:int}func f(s:S,r:Result<int,bool>)->Result<int,bool>{match s{S(..) if (try r)>0=>{},_=>{}}return Result::Success(1)}");
+}
+#[test]
+fn p35_rest_marker_counts_at_10000_10001_without_synthetic_omitted_nodes() {
+    fn source(extra: usize) -> String {
+        let fields = (0..1024)
+            .map(|i| format!("let f{i}:();"))
+            .collect::<String>();
+        let variants = (0..10)
+            .map(|i| format!("V{i}(S)"))
+            .collect::<Vec<_>>()
+            .join(";");
+        let arms = (0..10)
+            .map(|i| {
+                let n = if i == 9 { 979 + extra } else { 999 };
+                format!("E::V{i}(S({},..))=>{{}}", vec!["_"; n].join(","))
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("struct S{{{fields}}}enum E{{{variants}}}func f(e:E){{match e{{{arms}}}}}")
+    }
+    let good = pass(&source(0));
+    let (h, _, c) = good.semantic.unwrap();
+    assert_eq!(c.recursive_patterns.iter().flatten().count(), 10000);
+    assert_eq!(
+        h.nodes()
+            .iter()
+            .filter(|n| n.kind == HirKind::PatternRest)
+            .count(),
+        10
+    );
+    let bad = frontend(&source(1));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        ".."
+    );
+}

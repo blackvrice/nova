@@ -1,0 +1,4 @@
+struct T{let keep:bool;let ignored:int}
+const T(keep:B,..)=T(true,1/0)
+const NEXT=B
+func main(){}
