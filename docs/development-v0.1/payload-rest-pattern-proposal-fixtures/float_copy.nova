@@ -1,0 +1,3 @@
+enum S{V(float,bool)}
+const S::V(N,..)=S::V(1.5,true)
+func main(){let S::V(n,..)=S::V(N,false);print("float={n}")}

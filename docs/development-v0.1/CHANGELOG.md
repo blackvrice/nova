@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-20 — P37 Copy Enum·sum payload trailing rest 패턴
+
+- 다음 단계 사용자 승인으로 제한 계약·69-production EBNF를 구현 전에 기록했다.
+- Enum/sum payload trailing rest·명시 prefix ordinal·nullary 괄호 금지·tag/전체 initializer 평가·wildcard coverage·const/MIR 지원.
+- 새 테스트 19개, 기본 570·LLVM 33·Native 81 PASS, fmt/check/Clippy·문서 검증 완료.
+- P01~P36 ledger·원본/기존 fixture/grammar bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-20 — P36 Copy Tuple trailing rest 패턴
 
 - 다음 단계 사용자 승인으로 제한 계약·68-production EBNF를 구현 전에 기록했다.

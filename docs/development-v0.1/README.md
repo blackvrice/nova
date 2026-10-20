@@ -1,5 +1,10 @@
 # Nova 0.1 — 개발 문서 보완팩
 
+현재 구현은 **P37 Copy Enum·sum payload trailing rest 패턴까지 완료**다.
+[P37 계약](PAYLOAD_REST_PATTERN_STAGE_B_PROPOSAL.md)·[69-production EBNF](GRAMMAR_STAGE_B_PAYLOAD_REST_PATTERN.ebnf)·[수용 fixture](payload-rest-pattern-proposal-fixtures/README.md)·[구현 기록](PAYLOAD_REST_PATTERN_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
+Enum/Option/Result payload trailing rest·명시 prefix·tag/전체 initializer 평가·const/coverage/MIR를 지원한다. middle rest·named payload·Array·일반 Move/Drop은 후속 계약이다.
+
+
 현재 구현은 **P36 Copy Tuple trailing rest 패턴까지 완료**다.
 [P36 계약](TUPLE_REST_PATTERN_STAGE_B_PROPOSAL.md)·[68-production EBNF](GRAMMAR_STAGE_B_TUPLE_REST_PATTERN.ebnf)·[수용 fixture](tuple-rest-pattern-proposal-fixtures/README.md)·[구현 기록](TUPLE_REST_PATTERN_IMPLEMENTATION.md)·[직접 테스트](../../TESTING.md).
 Tuple trailing rest·명시 prefix·Unit 구분·전체 initializer 평가·prefix const/coverage/MIR를 지원한다. middle rest·Enum payload rest·Array·일반 Move/Drop은 후속 계약이다.

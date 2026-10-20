@@ -1,0 +1,2 @@
+enum E{V(int8,bool)}
+func main(){match E::V(1,true){E::V(128,..)=>{},_=>{}}}

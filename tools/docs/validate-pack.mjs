@@ -1593,6 +1593,44 @@ for(const c of tupleRestHistory){const oldName='tuple_rest.nova';const oldPath=p
     && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P36 frozen P35 rejection/current success override');}
 checks.push('P36 Accepted/next-step 승인 ledger·68-production EBNF/기존 66개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2·P35 고정 source/당시 거부 metadata/current override (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const payloadRestPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P37');
+assert(payloadRestPatternProposal?.status==='Accepted' && payloadRestPatternProposal.implementation_verified===true && payloadRestPatternProposal.approval_date==='2026-10-20'
+  && payloadRestPatternProposal.approval_evidence==='다음 작업 승인할태니 개발 해줘' && payloadRestPatternProposal.document==='PAYLOAD_REST_PATTERN_STAGE_B_PROPOSAL.md'
+  && payloadRestPatternProposal.grammar==='GRAMMAR_STAGE_B_PAYLOAD_REST_PATTERN.ebnf' && payloadRestPatternProposal.grammar_change===true && !manifest.draft_proposals?.some(p=>p.id==='P37'),'P37 approval ledger');
+const payloadRestPatternText=fs.readFileSync(path.join(pack,payloadRestPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','69개 production','67개 보존','E::Data(first,..)','Option::Some(..)','nullary','N2201','N2101','N3101','N3102','N3103','1,025','10,000','100,000','1,000,000','field_indices','128','전체 D06','Move/borrow/Drop'])assert(payloadRestPatternText.includes(phrase),'P37 missing boundary '+phrase);
+validateGrammar(payloadRestPatternProposal.grammar);const payloadRestPatternGrammar=fs.readFileSync(path.join(pack,payloadRestPatternProposal.grammar),'utf8');const payloadRestPatternProductions=productions(payloadRestPatternGrammar);
+assert(payloadRestPatternProductions.size===69 && payloadRestPatternGrammar.includes('Accepted 2026-10-20; implemented and verified'),'P37 grammar status/count');
+for(const [name,value]of tupleRestPatternProductions)if(name!=='pattern_arguments')assert(payloadRestPatternProductions.get(name)===value,'P37 changed approved production '+name);
+assert(payloadRestPatternProductions.get('pattern_arguments')==='(payload_pattern_rest|pattern,{",",pattern},[",",payload_pattern_rest]),[","]'
+  && payloadRestPatternProductions.get('payload_pattern_rest')==='".."','P37 trailing payload rest productions');
+const payloadRestPatternRoot=path.join(pack,'payload-rest-pattern-proposal-fixtures');const payloadRestPatternFixture=JSON.parse(fs.readFileSync(path.join(payloadRestPatternRoot,'expected.json'),'utf8'));const payloadRestPatternLF=String.fromCharCode(10);
+assert(payloadRestPatternFixture.proposal==='P37' && payloadRestPatternFixture.status==='Accepted' && payloadRestPatternFixture.implementation_verified===true && payloadRestPatternFixture.validation_date==='2026-10-20'
+  && payloadRestPatternFixture.approval_date===payloadRestPatternProposal.approval_date && payloadRestPatternFixture.approval_evidence===payloadRestPatternProposal.approval_evidence
+  && payloadRestPatternFixture.grammar===payloadRestPatternProposal.grammar && payloadRestPatternFixture.grammar_change===true && payloadRestPatternFixture.grammar_productions===69
+  && payloadRestPatternFixture.entry==='main.nova' && payloadRestPatternFixture.source_root==='.' && JSON.stringify(payloadRestPatternFixture.reachable_modules)==='["main","values"]'
+  && payloadRestPatternFixture.validated_result?.check_exit===0 && payloadRestPatternFixture.validated_result?.native_exit===0
+  && payloadRestPatternFixture.validated_result?.stdout===['scrutinee','first','second','nested=-7','initializer','omitted','let=3','var=5/true','const=9/-7','one','rest-only','complete=3','struct=5','option=6','try-ok','result=1','error=4','loop=1',''].join(payloadRestPatternLF)
+  && payloadRestPatternFixture.validated_result?.stderr==='','P37 validated result');
+const payloadRestPatternSources=Object.keys(payloadRestPatternFixture.source_sha256??{});assert(payloadRestPatternSources.length===28 && fs.readdirSync(payloadRestPatternRoot).filter(n=>n.endsWith('.nova')).length===28,'P37 source count');
+for(const name of payloadRestPatternSources){const bytes=fs.readFileSync(path.join(payloadRestPatternRoot,name));assert(hash(bytes)===payloadRestPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P37 source hash/UTF8/LF '+name);}
+assert(payloadRestPatternFixture.negative_cases?.length===21 && payloadRestPatternFixture.positive_cases?.length===3 && payloadRestPatternFixture.runtime_cases?.length===2,'P37 fixture counts');
+for(const c of payloadRestPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(payloadRestPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && (c.primary.start<c.primary.end || c.expected_diagnostic==='N1101' && c.primary_kind==='insertion' && c.primary.start===c.primary.end) && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(0,c.primary.start).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.start)) && Buffer.from(bytes.subarray(0,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.end)) && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P37 negative byte Span '+c.source);}
+for(const c of payloadRestPatternFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0 && c.validated_result?.stdout.endsWith(payloadRestPatternLF) && c.validated_result?.stderr==='','P37 positive '+c.source);
+for(const payloadRestPatternAbort of payloadRestPatternFixture.runtime_cases){const payloadRestPatternAbortBytes=fs.readFileSync(path.join(payloadRestPatternRoot,payloadRestPatternAbort.source));
+assert(payloadRestPatternAbort.validated_result?.check_exit===0 && payloadRestPatternAbort.validated_result?.native_exit===1 && payloadRestPatternAbort.validated_result?.stdout==='before'+payloadRestPatternLF
+  && payloadRestPatternAbortBytes.subarray(payloadRestPatternAbort.primary.start,payloadRestPatternAbort.primary.end).toString('utf8')===payloadRestPatternAbort.primary_text
+  && payloadRestPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${payloadRestPatternAbort.primary.start}..${payloadRestPatternAbort.primary.end}`,'P37 runtime Source/result');
+}
+const payloadRestHistory=payloadRestPatternFixture.historical_overrides;
+assert(payloadRestHistory?.length===1,'P37 historical override count');
+for(const c of payloadRestHistory){const oldName='enum_rest.nova';const oldPath=path.join(pack,'tuple-rest-pattern-proposal-fixtures',oldName);
+  assert(c.proposal==='P36' && c.source==='../tuple-rest-pattern-proposal-fixtures/'+oldName
+    && hash(fs.readFileSync(oldPath))===c.source_sha256 && c.source_sha256===tupleRestPatternFixture.source_sha256[oldName]
+    && c.original_diagnostic==='N1102' && tupleRestPatternFixture.negative_cases.some(n=>n.source===oldName && n.expected_diagnostic===c.original_diagnostic)
+    && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P37 frozen P36 rejection/current success override');}
+checks.push('P37 Accepted/next-step 승인 ledger·69-production EBNF/기존 67개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2·P36 고정 source/당시 거부 metadata/current override (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

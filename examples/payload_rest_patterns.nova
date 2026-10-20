@@ -1,0 +1,8 @@
+enum Data{Value(int,bool,char)}
+func main(){
+    let Data::Value(first,..)=Data::Value(3,true,'가')
+    print("first={first}")
+    var Data::Value(n,..)=Data::Value(4,false,'🙂');n=n+1
+    print("mutable={n}")
+    match Option::Some(Data::Value(7,true,'가')){Option::Some(Data::Value(value,true,..),..)=>{print("match={value}")},_=>{print("other")}}
+}

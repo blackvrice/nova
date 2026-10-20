@@ -1,0 +1,2 @@
+enum E{V(bool,int);End}
+func main(){print("before");let n=1;match E::V(true,2147483647+n){E::V(..)=>{},E::End=>{}}}

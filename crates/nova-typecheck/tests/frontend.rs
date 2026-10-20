@@ -5890,3 +5890,202 @@ fn p36_tuple_rest_10000_10001_source_node_budget_without_implicit_nodes() {
         ".."
     );
 }
+
+#[test]
+fn p37_payload_rest_prefix_plan_types_nullary_and_tag_identity() {
+    pass(include_str!("../../../examples/payload_rest_patterns.nova"));
+    let r = pass("enum E{V(int8,bool,char);End}func f(e:E){match e{E::V(n,..)=>{},E::End=>{}}}");
+    let (h, _, c) = r.semantic.unwrap();
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternVariant { .. }) && !n.children.is_empty())
+        .unwrap();
+    let p = c.recursive_patterns[id].as_ref().unwrap();
+    assert_eq!(p.children.len(), 1);
+    assert!(p.field_indices.is_empty());
+    assert!(p
+        .children
+        .iter()
+        .all(|i| h.nodes()[i.0].kind != HirKind::PatternRest));
+    pass("enum E{V(int,bool)}func f(){let E::V(..)=E::V(1,true);let E::V(n,b,..,)=E::V(1,true);match Option::Some(1){Option::Some(n,..)=>{},none=>{}}}");
+    for source in [
+        "enum E{End}func f(){let E::End(..)=E::End}",
+        "enum E{End}func f(){let E::End()=E::End}",
+        "func f(o:int?){match o{Option::None(..)=>{},Option::Some(..)=>{}}}",
+        "enum E{V(int,bool)}func f(){let E::V(a,b,c,..)=E::V(1,true)}",
+        "enum E{V(int,bool)}func f(){let E::V(a)=E::V(1,true)}",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N2201"], "{source}");
+    }
+    assert_eq!(
+        codes(&frontend(
+            "enum E{V(int);End}func f(e:E){match e{E::V(..)=>{}}}"
+        )),
+        ["N3101"]
+    );
+    pass("enum E{V(int);End}func f(e:E){match e{E::V(..)=>{},E::End=>{}}}");
+    assert_eq!(
+        codes(&frontend(
+            "func f(o:int?){match o{Result::Success(..)=>{},_=>{}}}"
+        )),
+        ["N2101"]
+    );
+}
+#[test]
+fn p37_payload_rest_coverage_independent_bool_union_oracle() {
+    let regions = [3u8, 5, 8, 15];
+    let patterns = [
+        "E::V(false,..)",
+        "E::V(_,false,..)",
+        "E::V(true,true,..)",
+        "E::V(..)",
+    ];
+    for mask in 0..16 {
+        let mut covered = 0;
+        let mut unreachable = false;
+        let mut arms = String::new();
+        for i in 0..4 {
+            if mask & (1 << i) != 0 {
+                unreachable |= regions[i] & !covered == 0;
+                covered |= regions[i];
+                arms.push_str(&format!("{}=>{{}},", patterns[i]));
+            }
+        }
+        let r = frontend(&format!(
+            "enum E{{V(bool,bool);End}}func f(e:E){{match e{{{arms}E::End=>{{}}}}}}"
+        ));
+        let expected = if unreachable {
+            vec!["N3102".to_string()]
+        } else if covered == 15 {
+            vec![]
+        } else {
+            vec!["N3101".to_string()]
+        };
+        assert_eq!(codes(&r), expected, "mask {mask}");
+    }
+    pass("func f(o:int?){match o{Option::Some(..) if false=>{},Option::Some(..)=>{},none=>{}}}");
+}
+#[test]
+fn p37_payload_rest_const_cache_forward_cycles_omitted_failure_refutability() {
+    let r=pass("enum E{V(int8,bool,char)}type T=E;const E::V(N,..):T=E::V(NEXT,true,'🙂');const NEXT:int8=7;func f(){const E::V(n,..):T=E::V(N,false,'가');var E::V(v,..)=E::V(n,true,'가');v=v+1}");
+    let (_, r, c) = r.semantic.unwrap();
+    for name in ["N", "n"] {
+        let at = r.definitions.iter().position(|d| d.name == name).unwrap();
+        assert!(
+            matches!(&c.const_values[at],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==7&&v.kind()==IntKind::I8)
+        );
+    }
+    for kw in ["let", "var", "const"] {
+        let r = frontend(&format!(
+            "enum E{{V(int,bool)}}func f(){{{kw} E::V(1,..)=E::V(1/0,true)}}"
+        ));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "1"
+        );
+    }
+    assert_eq!(
+        codes(&frontend(
+            "enum E{V(bool,int)}const E::V(B,..)=E::V(true,1/0);const NEXT=B;func f(){}"
+        )),
+        ["N3201"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "enum E{V(int,bool)}const E::V(N,..)=E::V(NEXT,true);const NEXT=N+1;func f(){}"
+        )),
+        ["N3202"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "enum E{V(bool,int)}const E::V(..)=E::V(true,1/0);func f(){}"
+        )),
+        ["N3201"]
+    );
+    for s in [
+        "func f(){let Option::Some(..)=Option::Some(1)}",
+        "enum E{V(int);End}func f(){const E::V(..)=E::V(1/0)}",
+    ] {
+        assert_eq!(codes(&frontend(s)), ["N3103"], "{s}");
+    }
+}
+#[test]
+fn p37_payload_rest_scope_types_range_alias_and_guard_try() {
+    for (source, code) in [
+        (
+            "enum E{V(int8,bool)}func f(){match E::V(1,true){E::V(128,..)=>{},_=>{}}}",
+            "N2102",
+        ),
+        (
+            "enum E{V(int,bool)}func f(){match E::V(1,true){E::V(true,..)=>{},_=>{}}}",
+            "N2101",
+        ),
+        (
+            "enum E{V(int,int,bool)}func f(){let E::V(n,n,..)=E::V(1,2,true)}",
+            "N2002",
+        ),
+        (
+            "enum E{V(int,bool)}func f(){let E::V(n,..)=E::V(n,true)}",
+            "N2001",
+        ),
+        (
+            "enum E{V(int,bool)}func f(){let E::V(n,..)=E::V(1,true);n=2}",
+            "N3004",
+        ),
+        (
+            "enum E{V(int,bool)}type T=E;func f(e:T){match e{T::V(..)=>{},_=>{}}}",
+            "N1102",
+        ),
+        (
+            "enum E{V(int,bool)}func f(e:E){match e{E::Missing(..)=>{},_=>{}}}",
+            "N2001",
+        ),
+        (
+            "enum E{V(int,bool)}func f(){match missing{E::V(..)=>{}}}",
+            "N2001",
+        ),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code], "{source}");
+    }
+    pass("enum E{V(int,bool)}func f(e:E,r:Result<int,bool>)->Result<int,bool>{match e{E::V(n,..) if (try r)>n=>{},_=>{}}return Result::Success(1)}");
+}
+#[test]
+fn p37_payload_rest_10000_10001_source_nodes_without_synthetic_children() {
+    fn source(extra: usize) -> String {
+        let fields = vec!["()"; 1024].join(",");
+        let variants = (0..10)
+            .map(|i| format!("V{i}({fields})"))
+            .collect::<Vec<_>>()
+            .join(";");
+        let arms = (0..10)
+            .map(|i| {
+                let count = if i == 9 { 989 + extra } else { 999 };
+                format!("E::V{i}({},..)=>{{}}", vec!["_"; count].join(","))
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("enum E{{{variants}}}func f(e:E){{match e{{{arms}}}}}")
+    }
+    let good = pass(&source(0));
+    let (h, _, c) = good.semantic.unwrap();
+    assert_eq!(c.recursive_patterns.iter().flatten().count(), 10000);
+    assert_eq!(
+        h.nodes()
+            .iter()
+            .filter(|n| n.kind == HirKind::PatternRest)
+            .count(),
+        10
+    );
+    let bad = frontend(&source(1));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        ".."
+    );
+}

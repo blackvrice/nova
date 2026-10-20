@@ -409,13 +409,26 @@ impl Checker<'_> {
                                     s.iter().skip(offset).take(fields.len()).copied().collect()
                                 })
                                 .unwrap_or_default();
-                            if fields.len() != p.children.len() || arguments == fields.is_empty() {
+                            let rest = p.children.last().is_some_and(|id| {
+                                self.module.nodes()[id.0].kind == HirKind::PatternRest
+                            });
+                            let explicit = p.children.len() - usize::from(rest);
+                            if (!rest && fields.len() != explicit)
+                                || (rest && explicit > fields.len())
+                                || arguments == fields.is_empty()
+                            {
                                 self.report(
                                     2201,
                                     p.span,
                                     "variant pattern arity does not match",
                                     annotation,
                                 );
+                            }
+                            if rest {
+                                pattern_children.truncate(explicit);
+                                fields.truncate(explicit);
+                                fields.push(Type::Unit);
+                                field_annotations.truncate(explicit);
                             }
                         }
                         RecursivePatternKind::Variant(v)
@@ -1253,16 +1266,23 @@ fn analyze(
             RecursivePatternKind::Tuple(id) => Some(Constructor::Tuple(id)),
             RecursivePatternKind::Variant(v) => Some(Constructor::Variant(v)),
         };
-        let children =
-            if let RecursivePatternKind::Struct(sid) | RecursivePatternKind::Tuple(sid) = p.kind {
-                let mut children = vec![0; registries.0[&sid].fields.len()];
-                for (&at, child) in p.field_indices.iter().zip(&p.children) {
-                    children[at] = mapped[&child.0];
-                }
-                children
-            } else {
-                p.children.iter().map(|id| mapped[&id.0]).collect()
-            };
+        let children = if let RecursivePatternKind::Struct(sid) | RecursivePatternKind::Tuple(sid) =
+            p.kind
+        {
+            let mut children = vec![0; registries.0[&sid].fields.len()];
+            for (&at, child) in p.field_indices.iter().zip(&p.children) {
+                children[at] = mapped[&child.0];
+            }
+            children
+        } else if let RecursivePatternKind::Variant(v) = p.kind {
+            let mut children = vec![0; registries.1[&v.enumeration].variants[v.index].fields.len()];
+            for (at, child) in p.children.iter().enumerate() {
+                children[at] = mapped[&child.0];
+            }
+            children
+        } else {
+            p.children.iter().map(|id| mapped[&id.0]).collect()
+        };
         let pattern = engine.pattern(Pattern {
             constructor,
             children,

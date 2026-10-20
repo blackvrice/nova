@@ -2210,6 +2210,11 @@ fn p36_tuple_rest_bundle_code_specific_spans_and_historical_override() {
         ("tuple_label.nova", "N1102", (15, 17)),
     ] {
         let l = load(&root.join(name), Some(&root)).unwrap();
+        // P37 preserves this P36 rejection fixture and records its current success separately.
+        if name == "enum_rest.nova" {
+            unit(&l);
+            continue;
+        }
         let mut diagnostics = l.diagnostics.clone();
         if l.module.is_some() {
             let (_, c) = analyzed(&l);
@@ -2255,4 +2260,91 @@ fn p36_tuple_rest_imported_alias_global_prefix_exports_and_source_origins() {
     for n in h.nodes() {
         l.sources.slice(n.span).unwrap();
     }
+}
+
+#[test]
+fn p37_payload_rest_bundle_code_specific_spans_and_history() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/payload-rest-pattern-proposal-fixtures");
+    for name in [
+        "main.nova",
+        "full_and_nullary.nova",
+        "float_copy.nova",
+        "guard_skipped.nova",
+        "guard_abort.nova",
+        "omitted_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+    let historical_root = root.join("../tuple-rest-pattern-proposal-fixtures");
+    unit(
+        &load(
+            &historical_root.join("enum_rest.nova"),
+            Some(&historical_root),
+        )
+        .unwrap(),
+    );
+    for (name, code, expected) in [
+        ("incomplete.nova", "N3101", (36, 41)),
+        ("duplicate.nova", "N3102", (64, 74)),
+        ("too_many.nova", "N2201", (36, 50)),
+        ("missing_no_rest.nova", "N2201", (36, 43)),
+        ("nullary_rest.nova", "N2201", (28, 38)),
+        ("nullary_parens.nova", "N2201", (28, 36)),
+        ("none_rest.nova", "N2201", (36, 52)),
+        ("component_type.nova", "N2101", (56, 60)),
+        ("too_large.nova", "N2102", (57, 60)),
+        ("immutable.nova", "N3004", (60, 61)),
+        ("let_refutable.nova", "N3103", (36, 46)),
+        ("const_refutable.nova", "N3103", (38, 48)),
+        ("global_refutable.nova", "N3103", (26, 36)),
+        ("const_omitted_failure.nova", "N3201", (47, 50)),
+        ("const_cycle.nova", "N3202", (64, 65)),
+        ("duplicate_binder.nova", "N2002", (47, 48)),
+        ("initializer_scope.nova", "N2001", (52, 53)),
+        ("middle_rest.nova", "N1102", (46, 47)),
+        ("double_rest.nova", "N1102", (44, 45)),
+        ("spaced_dots.nova", "N1102", (41, 42)),
+        ("payload_label.nova", "N1102", (41, 42)),
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = l.diagnostics.clone();
+        if l.module.is_some() {
+            let (_, c) = analyzed(&l);
+            diagnostics.extend(c.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && (d.primary.span.start(), d.primary.span.end()) == expected),
+            "{name}: {diagnostics:?}"
+        );
+        if matches!(name, "const_refutable.nova" | "global_refutable.nova") {
+            assert!(!diagnostics
+                .iter()
+                .any(|d| matches!(d.code.to_string().as_str(), "N3201" | "N3202")));
+        }
+        for d in diagnostics {
+            l.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                l.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+
+#[test]
+fn p37_payload_rest_imported_alias_global_exports_visibility_and_source() {
+    let l=fixture(&[("main.nova","use values::Data;use values::S as Imported;use values::N;func main(){let Imported::V(n,..):Data=Imported::V(N,true,'🙂')}"),("values.nova","public enum S{V(int8,bool,char)}public type Data=S;public const S::V(N,..):Data=S::V(8,true,'가')")]);
+    unit(&l);
+    let (_, c) = analyzed(&l);
+    assert!(!c.has_errors());
+    for n in l.module.as_ref().unwrap().nodes() {
+        l.sources.slice(n.span).unwrap();
+    }
+    let bad = fixture(&[
+        ("main.nova", "use values::S;func main(){}"),
+        ("values.nova", "private enum S{V(int,bool)}"),
+    ]);
+    let (_, c) = analyzed(&bad);
+    assert!(codes(&c).contains(&"N2004".to_string()));
 }

@@ -438,7 +438,7 @@ impl<'a> Parser<'a> {
         result
     }
 
-    /// Both products retain the P35 diagnostic wording and original marker Span.
+    /// Products and payloads retain the original marker Span and product diagnostics.
     fn trailing_pattern_rest(&mut self, subject: &str) -> AstNodeId {
         let first = self.bump().span;
         if self.kind() != TokenKind::Dot || first.end() != self.current().span.start() {
@@ -635,6 +635,22 @@ impl<'a> Parser<'a> {
                         | TokenKind::Eof
                         | TokenKind::Symbol(Symbol::FatArrow)
                 ) {
+                    if self.kind() == TokenKind::Dot {
+                        children.push(self.trailing_pattern_rest("payload"));
+                        break;
+                    }
+                    if self.kind() == TokenKind::Identifier
+                        && self
+                            .tokens
+                            .get(self.cursor + 1)
+                            .is_some_and(|t| t.kind == TokenKind::Colon)
+                    {
+                        self.report(
+                            1102,
+                            self.current().span,
+                            "named payload patterns are unsupported",
+                        );
+                    }
                     let before = self.cursor;
                     children.push(self.pattern());
                     if !self.eat(TokenKind::Comma) || before == self.cursor {

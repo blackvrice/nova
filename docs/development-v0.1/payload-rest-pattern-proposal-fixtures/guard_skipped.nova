@@ -1,0 +1,2 @@
+enum E{V(int);End}
+func main(){match E::End{E::V(..) if 2147483647+1>0=>{},E::End=>{print("skipped")},_=>{}}}
