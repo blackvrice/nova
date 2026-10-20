@@ -1919,7 +1919,6 @@ fn p36_tuple_rest_spelling_trailing_comma_parent_context_and_history() {
     }
     assert!(!run("func f(){let(x,..)=p}").2.has_errors());
     for s in [
-        "func f(){let(a,..,b)=x}",
         "func f(){let(..,..)=x}",
         "func f(){let(. .)=x}",
         "func f(){let(n:..)=x}",
@@ -2010,6 +2009,64 @@ fn p37_payload_rest_nesting_128_129_is_bounded() {
         let mut pattern = "n".to_string();
         for _ in 0..depth {
             pattern = format!("E::V({pattern},..)");
+        }
+        let source = format!("func f(){{match x{{{pattern}=>{{}}}}}}");
+        let (_, _, p) = run(&source);
+        assert_eq!(
+            p.diagnostics.iter().any(|d| d.code.to_string() == "N8901"),
+            depth == 129
+        );
+        if depth == 128 {
+            assert!(!p.has_errors(), "{:?}", p.diagnostics);
+        }
+    }
+}
+
+#[test]
+fn p38_tuple_middle_rest_spelling_comma_context_history_and_trailing_only_others() {
+    let source =
+        "const(..,N)=x;func f(){let(n,..,c,)=x;var(..,a,b)=x;match x{(true,/*🙂*/..,false)=>{}}}";
+    let (db, l, p) = run(source);
+    assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+    let rest = p
+        .arena
+        .iter()
+        .filter(|(_, n)| n.kind == NodeKind::PatternRest)
+        .collect::<Vec<_>>();
+    assert_eq!(rest.len(), 4);
+    for (_, n) in rest {
+        assert_eq!(db.slice(n.span).unwrap(), "..");
+        assert!(n.children.is_empty());
+    }
+    assert!(!run("func f(){let(a,..,b)=x}").2.has_errors());
+    for s in [
+        "func f(){let(..,n,..)=x}",
+        "func f(){let(n,..,..)=x}",
+        "func f(){let(. .,n)=x}",
+        "func f(){let(..,n:x)=x}",
+        "func f(){let P(a,..,b)=x}",
+        "func f(){let E::V(a,..,b)=x}",
+        "func f(){let(..n)=x}",
+    ] {
+        assert!(run(s).2.has_errors(), "{s}");
+    }
+}
+#[test]
+fn p38_tuple_middle_rest_utf8_prefix_recovery_deterministic() {
+    let source="func f(){let(..,(n,..,'🙂'))=x;match x{(true,..,Option::Some((..,c),..),)=>{}}}func later(){}";
+    for end in (0..=source.len()).filter(|i| source.is_char_boundary(*i)) {
+        let (_, _, a) = run(&source[..end]);
+        let (_, _, b) = run(&source[..end]);
+        assert_eq!(a.arena.dump(), b.arena.dump());
+        assert_eq!(a.diagnostics, b.diagnostics);
+    }
+}
+#[test]
+fn p38_tuple_middle_rest_nesting_128_129_is_bounded() {
+    for depth in [128, 129] {
+        let mut pattern = "n".to_string();
+        for _ in 0..depth {
+            pattern = format!("(..,{pattern})");
         }
         let source = format!("func f(){{match x{{{pattern}=>{{}}}}}}");
         let (_, _, p) = run(&source);

@@ -6089,3 +6089,198 @@ fn p37_payload_rest_10000_10001_source_nodes_without_synthetic_children() {
         ".."
     );
 }
+
+#[test]
+fn p38_tuple_middle_rest_indices_empty_omission_suffix_and_unit() {
+    // Independently enumerate every prefix/suffix split for small Tuple arities.
+    for arity in 1..=5 {
+        for prefix in 0..=arity {
+            for suffix in 0..=arity - prefix {
+                let mut pieces = (0..prefix).map(|i| format!("p{i}")).collect::<Vec<_>>();
+                pieces.push("..".into());
+                pieces.extend((0..suffix).map(|i| format!("s{i}")));
+                let ty = format!("({},)", vec!["int"; arity].join(","));
+                let r = pass(&format!("func f(t:{ty}){{let({})=t}}", pieces.join(",")));
+                let (h, _, c) = r.semantic.unwrap();
+                let id = h
+                    .nodes()
+                    .iter()
+                    .position(|n| n.kind == HirKind::PatternTuple)
+                    .unwrap();
+                let expected = (0..prefix).chain(arity - suffix..arity).collect::<Vec<_>>();
+                assert_eq!(
+                    c.recursive_patterns[id].as_ref().unwrap().field_indices,
+                    expected,
+                    "{arity}/{prefix}/{suffix}"
+                );
+            }
+        }
+    }
+
+    pass(include_str!("../../../examples/tuple_middle_rest.nova"));
+    let r =
+        pass("type T=(int8,bool,char);func f(t:T){let(n,..,c)=t;match t{(..,'가')=>{},(..)=>{}}}");
+    let (h, _, c) = r.semantic.unwrap();
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| n.kind == HirKind::PatternTuple)
+        .unwrap();
+    let p = c.recursive_patterns[id].as_ref().unwrap();
+    assert_eq!(p.field_indices, [0, 2]);
+    assert_eq!(p.children.len(), 2);
+    assert!(p
+        .children
+        .iter()
+        .all(|id| h.nodes()[id.0].kind != HirKind::PatternRest));
+    pass("func f(){let(a,..,b)=(1,true);let(..,n)=(1,);let(m,..)=(1,);const(..,_)=(true,1);match(){()=>{}}}");
+    for source in [
+        "func f(){let(..,n)=()}",
+        "func f(){match 1{(..,n)=>{}}}",
+        "struct S{let n:int}func f(s:S){match s{(..,n)=>{}}}",
+    ] {
+        assert_eq!(codes(&frontend(source)), ["N2101"]);
+    }
+    for s in [
+        "func f(){let(a,..,b)=(1,)}",
+        "func f(){let(a,b)=(1,)}",
+        "func f(){let(..,a,b)=(1,)}",
+    ] {
+        assert_eq!(codes(&frontend(s)), ["N2201"], "{s}");
+    }
+}
+#[test]
+fn p38_tuple_middle_rest_coverage_independent_endpoint_oracle() {
+    let regions = [3u8, 5, 8, 15];
+    let patterns = ["(false,..)", "(..,false)", "(true,..,true)", "(..)"];
+    for mask in 0..16 {
+        let mut covered = 0;
+        let mut unreachable = false;
+        let mut arms = String::new();
+        for i in 0..4 {
+            if mask & (1 << i) != 0 {
+                unreachable |= regions[i] & !covered == 0;
+                covered |= regions[i];
+                arms.push_str(&format!("{}=>{{}},", patterns[i]));
+            }
+        }
+        let r = frontend(&format!("func f(t:(bool,int,bool)){{match t{{{arms}}}}}"));
+        let expected = if unreachable {
+            vec!["N3102".to_string()]
+        } else if covered == 15 {
+            vec![]
+        } else {
+            vec!["N3101".to_string()]
+        };
+        assert_eq!(codes(&r), expected, "mask {mask}");
+    }
+    pass("func f(t:(bool,int,bool)){match t{(..,_) if false=>{},(..,true)=>{},(..,false)=>{}}}");
+}
+#[test]
+fn p38_tuple_middle_rest_const_suffix_cache_forward_cycles_and_omitted_failure() {
+    let r=pass("type T=(int8,bool,char);const(N,..,C):T=(NEXT,true,'🙂');const NEXT:int8=7;func f(){const(n,..,c):T=(N,false,C);var(..,v)=(true,'가',n);v=v+1}");
+    let (_, r, c) = r.semantic.unwrap();
+    for name in ["N", "n"] {
+        let at = r.definitions.iter().position(|d| d.name == name).unwrap();
+        assert!(
+            matches!(&c.const_values[at],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==7&&v.kind()==IntKind::I8)
+        );
+    }
+    for name in ["C", "c"] {
+        let at = r.definitions.iter().position(|d| d.name == name).unwrap();
+        assert!(matches!(
+            &c.const_values[at],
+            ConstEvaluation::Value {
+                value: ConstValue::Char('🙂'),
+                ..
+            }
+        ));
+    }
+    for kw in ["let", "var", "const"] {
+        let r = frontend(&format!("func f(){{{kw}(..,1)=(1/0,1)}}"));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "1"
+        );
+    }
+    assert_eq!(
+        codes(&frontend(
+            "const(B,..,C)=(true,1/0,3);const NEXT=C;func f(){}"
+        )),
+        ["N3201"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "const(..,N)=(true,NEXT);const NEXT=N+1;func f(){}"
+        )),
+        ["N3202"]
+    );
+    assert_eq!(
+        codes(&frontend("const(..,_)=(1/0,true);func f(){}")),
+        ["N3201"]
+    );
+}
+#[test]
+fn p38_tuple_middle_rest_suffix_type_range_annotation_scope_and_guard_try() {
+    for (source, code) in [
+        (
+            "func f(){match(true,'가',1 as int8){(..,128)=>{},_=>{}}}",
+            "N2102",
+        ),
+        ("func f(){match(true,1,false){(..,1)=>{},_=>{}}}", "N2101"),
+        ("func f(){let(n,..,n)=(1,true,2)}", "N2002"),
+        ("func f(){let(..,n)=(true,n)}", "N2001"),
+        ("func f(){let(..,n)=(true,1);n=2}", "N3004"),
+        ("func f(){match missing{(..,n)=>{}}}", "N2001"),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code], "{source}");
+    }
+    let r = frontend("func f(t:(bool,char,int8)){match t{(..,128)=>{},_=>{}}}");
+    assert_eq!(codes(&r), ["N2102"]);
+    assert_eq!(
+        r.sources
+            .slice(r.diagnostics()[0].secondary[0].span)
+            .unwrap(),
+        "int8"
+    );
+    pass("func f(t:(bool,char,int),r:Result<int,bool>)->Result<int,bool>{match t{(true,..,n) if (try r)>n=>{},_=>{}}return Result::Success(1)}");
+}
+#[test]
+fn p38_tuple_middle_rest_10000_10001_source_nodes_without_synthetic_slots() {
+    fn source(extra: usize) -> String {
+        let ty = format!("({})", vec!["()"; 1024].join(","));
+        let variants = (0..10)
+            .map(|i| format!("V{i}(T)"))
+            .collect::<Vec<_>>()
+            .join(";");
+        let arms = (0..10)
+            .map(|i| {
+                let count = if i == 9 { 979 + extra } else { 999 };
+                format!("E::V{i}(({},..,_))=>{{}}", vec!["_"; count - 1].join(","))
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("type T={ty};enum E{{{variants}}}func f(e:E){{match e{{{arms}}}}}")
+    }
+    let good = pass(&source(0));
+    let (h, _, c) = good.semantic.unwrap();
+    assert_eq!(c.recursive_patterns.iter().flatten().count(), 10000);
+    assert_eq!(
+        h.nodes()
+            .iter()
+            .filter(|n| n.kind == HirKind::PatternRest)
+            .count(),
+        10
+    );
+    let bad = frontend(&source(1));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        "_"
+    );
+}

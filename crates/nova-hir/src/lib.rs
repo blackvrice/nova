@@ -2027,9 +2027,14 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         }
         NodeKind::PatternTuple => {
             !kinds.is_empty()
-                && kinds.iter().enumerate().all(|(at, k)| {
-                    pattern(*k) || (*k == NodeKind::PatternRest && at + 1 == kinds.len())
-                })
+                && kinds
+                    .iter()
+                    .filter(|k| **k == NodeKind::PatternRest)
+                    .count()
+                    <= 1
+                && kinds
+                    .iter()
+                    .all(|k| pattern(*k) || *k == NodeKind::PatternRest)
         }
         NodeKind::Tuple => !kinds.is_empty() && kinds.iter().all(|k| expr(*k)),
         NodeKind::GenericType { .. } => !kinds.is_empty() && kinds.iter().all(|k| ty(*k)),

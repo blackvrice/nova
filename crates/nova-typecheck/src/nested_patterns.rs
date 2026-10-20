@@ -87,6 +87,7 @@ impl Checker<'_> {
             let mut field_indices = vec![];
             let mut fields = vec![];
             let mut field_annotations = vec![];
+            let mut tuple_annotations: Option<Vec<Option<HirId>>> = None;
             let kind = match p.kind {
                 HirKind::Binder { name, .. } => {
                     if !names.insert(name.0) || self.resolved.declaration_ids[pattern.0].is_none() {
@@ -288,15 +289,14 @@ impl Checker<'_> {
                             .get(&tuple)
                             .cloned()
                             .unwrap_or_default();
-                        let rest = p.children.last().is_some_and(|id| {
-                            self.module.nodes()[id.0].kind == HirKind::PatternRest
-                        });
-                        let explicit = p.children.len() - usize::from(rest);
-                        if rest {
-                            pattern_children.truncate(explicit);
-                        }
-                        field_indices = (0..explicit).collect();
-                        if !rest && fields.len() != explicit || rest && explicit > fields.len() {
+                        let rest = p
+                            .children
+                            .iter()
+                            .position(|id| self.module.nodes()[id.0].kind == HirKind::PatternRest);
+                        let explicit = p.children.len() - usize::from(rest.is_some());
+                        if rest.is_none() && fields.len() != explicit
+                            || rest.is_some() && explicit > fields.len()
+                        {
                             self.report(
                                 2201,
                                 p.span,
@@ -304,10 +304,32 @@ impl Checker<'_> {
                                 annotation,
                             );
                         }
-                        if rest {
-                            fields.truncate(explicit);
-                            fields.push(Type::Unit);
-                            field_annotations.truncate(explicit);
+                        if let Some(prefix) = rest {
+                            let original_fields = fields;
+                            fields = Vec::with_capacity(p.children.len());
+                            let mut annotations = Vec::with_capacity(p.children.len());
+                            pattern_children.clear();
+                            for (at, &child) in p.children.iter().enumerate() {
+                                if at == prefix {
+                                    fields.push(Type::Unit);
+                                    annotations.push(None);
+                                    continue;
+                                }
+                                let index = if at < prefix {
+                                    at
+                                } else {
+                                    original_fields.len().saturating_sub(explicit) + at - 1
+                                };
+                                pattern_children.push(child);
+                                field_indices.push(index);
+                                fields.push(
+                                    original_fields.get(index).copied().unwrap_or(Type::Error),
+                                );
+                                annotations.push(field_annotations.get(index).copied());
+                            }
+                            tuple_annotations = Some(annotations);
+                        } else {
+                            field_indices = (0..explicit).collect();
                         }
                         RecursivePatternKind::Tuple(tuple)
                     } else {
@@ -458,6 +480,8 @@ impl Checker<'_> {
                     fields.get(at).copied().unwrap_or(Type::Error),
                     if kind == RecursivePatternKind::NamedField {
                         annotation
+                    } else if let Some(annotations) = &tuple_annotations {
+                        annotations[at].map(|s| self.module.nodes()[s.0].span)
                     } else {
                         field_annotations
                             .get(at)

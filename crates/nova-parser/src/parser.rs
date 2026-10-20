@@ -438,8 +438,7 @@ impl<'a> Parser<'a> {
         result
     }
 
-    /// Products and payloads retain the original marker Span and product diagnostics.
-    fn trailing_pattern_rest(&mut self, subject: &str) -> AstNodeId {
+    fn pattern_rest(&mut self, subject: &str) -> AstNodeId {
         let first = self.bump().span;
         if self.kind() != TokenKind::Dot || first.end() != self.current().span.start() {
             self.report(
@@ -450,7 +449,15 @@ impl<'a> Parser<'a> {
             return self.node(NodeKind::Error, first.start(), vec![]);
         }
         self.bump();
-        let rest = self.node(NodeKind::PatternRest, first.start(), vec![]);
+        self.node(NodeKind::PatternRest, first.start(), vec![])
+    }
+
+    /// Struct and variant payloads retain their trailing-only policy and diagnostics.
+    fn trailing_pattern_rest(&mut self, subject: &str) -> AstNodeId {
+        let rest = self.pattern_rest(subject);
+        if self.arena.get(rest).expect("rest marker").kind == NodeKind::Error {
+            return rest;
+        }
         self.eat(TokenKind::Comma);
         if self.kind() != TokenKind::RightParen {
             self.report(
@@ -507,23 +514,26 @@ impl<'a> Parser<'a> {
                 self.close(TokenKind::RightParen);
                 return self.node(NodeKind::PatternUnit, start, vec![]);
             }
-            if self.kind() == TokenKind::Dot {
-                let rest = self.trailing_pattern_rest("tuple");
+            let mut has_rest = self.kind() == TokenKind::Dot;
+            let first = if has_rest {
+                self.pattern_rest("tuple")
+            } else {
+                self.pattern()
+            };
+            if !self.eat(TokenKind::Comma) {
                 let closed = self.kind() == TokenKind::RightParen;
                 self.close(TokenKind::RightParen);
-                return self.node(
-                    if closed {
-                        NodeKind::PatternTuple
-                    } else {
-                        NodeKind::Error
-                    },
-                    start,
-                    vec![rest],
-                );
-            }
-            let first = self.pattern();
-            if !self.eat(TokenKind::Comma) {
-                self.close(TokenKind::RightParen);
+                if has_rest {
+                    return self.node(
+                        if closed {
+                            NodeKind::PatternTuple
+                        } else {
+                            NodeKind::Error
+                        },
+                        start,
+                        vec![first],
+                    );
+                }
                 let id = self.node(NodeKind::Error, start, vec![first]);
                 self.report(
                     1102,
@@ -540,12 +550,32 @@ impl<'a> Parser<'a> {
                     | TokenKind::Eof
                     | TokenKind::Symbol(Symbol::FatArrow)
             ) {
-                if self.kind() == TokenKind::Dot {
-                    children.push(self.trailing_pattern_rest("tuple"));
-                    break;
-                }
                 let before = self.cursor;
-                children.push(self.pattern());
+                if self.kind() == TokenKind::Dot {
+                    if has_rest {
+                        self.report(
+                            1102,
+                            self.current().span,
+                            "tuple pattern permits only one rest",
+                        );
+                    }
+                    has_rest = true;
+                    children.push(self.pattern_rest("tuple"));
+                } else {
+                    if self.kind() == TokenKind::Identifier
+                        && self
+                            .tokens
+                            .get(self.cursor + 1)
+                            .is_some_and(|t| t.kind == TokenKind::Colon)
+                    {
+                        self.report(
+                            1102,
+                            self.current().span,
+                            "named tuple patterns are unsupported",
+                        );
+                    }
+                    children.push(self.pattern());
+                }
                 if !self.eat(TokenKind::Comma) || before == self.cursor {
                     break;
                 }

@@ -1,0 +1,2 @@
+const(..,N):(bool,char,float)=(true,'가',1.5)
+func main(){let(..,n)=(false,'🙂',N);print("float={n}")}

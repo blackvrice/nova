@@ -66,6 +66,8 @@
 
 [P37 Copy Enum·sum payload trailing rest 패턴](PAYLOAD_REST_PATTERN_STAGE_B_PROPOSAL.md)·[69-production EBNF](GRAMMAR_STAGE_B_PAYLOAD_REST_PATTERN.ebnf)·[수용 fixture](payload-rest-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](PAYLOAD_REST_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 67개 production·P01~P36 ledger를 보존한다.
 
+[P38 Copy Tuple 중간 rest 패턴](TUPLE_MIDDLE_REST_STAGE_B_PROPOSAL.md)·[70-production EBNF](GRAMMAR_STAGE_B_TUPLE_MIDDLE_REST.ebnf)·[수용 fixture](tuple-middle-rest-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](TUPLE_MIDDLE_REST_IMPLEMENTATION.md)을 제공한다. 기존 68개 production·P01~P37 ledger를 보존한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

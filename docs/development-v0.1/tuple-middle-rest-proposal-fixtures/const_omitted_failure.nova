@@ -1,0 +1,3 @@
+const(B,..,C)=(true,1/0,3)
+const NEXT=C
+func main(){}

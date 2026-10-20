@@ -38,6 +38,8 @@ Copy Tuple trailing rest 패턴·명시 prefix/field_indices·Unit 구분·전�
 
 Copy Enum·sum payload trailing rest 패턴·explicit prefix ordinal·nullary 괄호 금지·tag 보존·전체 initializer 평가·implicit wildcard coverage·const/MIR·Source 검증은 [P37 Accepted](../PAYLOAD_REST_PATTERN_STAGE_B_PROPOSAL.md)·[69-production EBNF](../GRAMMAR_STAGE_B_PAYLOAD_REST_PATTERN.ebnf)·[수용 fixture](../payload-rest-pattern-proposal-fixtures/README.md)·[구현 기록](../PAYLOAD_REST_PATTERN_IMPLEMENTATION.md)을 따른다. 기존 67개 production·P01~P36 ledger·평가 순서/예산을 보존한다. middle rest·named payload·Array·일반 Move/borrow/Drop·전체 D06/D08/D09/D10/D12/D16/D25/D30은 제외한다.
 
+Copy Tuple 중간 rest 패턴·prefix/suffix 실제 field_indices·빈 생략·실제 annotation·전체 initializer 평가·const/MIR·Source 검증은 [P38 Accepted](../TUPLE_MIDDLE_REST_STAGE_B_PROPOSAL.md)·[70-production EBNF](../GRAMMAR_STAGE_B_TUPLE_MIDDLE_REST.ebnf)·[수용 fixture](../tuple-middle-rest-proposal-fixtures/README.md)·[구현 기록](../TUPLE_MIDDLE_REST_IMPLEMENTATION.md)을 따른다. 기존 68개 production·P01~P37 ledger·평가 순서/예산을 보존한다. struct/Enum payload middle rest·rest binder·Array·일반 Move/borrow/Drop·전체 D06/D08/D09/D10/D12/D16/D25/D30은 제외한다.
+
 ## Pattern 초안 — D08
 wildcard _, binding, literal, tuple, qualified enum variant(payload), Some/None/Success/Error를 제안한다. repeated binding names는 오류이며 type checks는 scrutinee type을 따른다.
 

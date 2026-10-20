@@ -1,0 +1,1 @@
+func main(){match(true,'가',2){(true,..,1) if 2147483647+1>0=>{},_=>{print("skipped")}}}

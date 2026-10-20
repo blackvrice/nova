@@ -1,0 +1,1 @@
+func main(){let(..,n)=(8,);print("single={n}");let(x,..,b,)=(1,true);print("full={x}/{b}");const(..,_)=(true,3,'가');match(){()=>{print("unit")}}}

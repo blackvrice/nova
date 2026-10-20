@@ -1,0 +1,7 @@
+func main(){
+    let(..,first)=(true,'가',3)
+    print("first={first}")
+    var(n,..,flag)=(4,'🙂',false);n=n+1;flag=true
+    print("mutable={n}")
+    match(true,'가',7){(true,..,value)=>{print("match={value}")},_=>{print("other")}}
+}
