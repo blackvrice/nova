@@ -1,0 +1,2 @@
+enum E{V(bool,int,bool);End}
+func main(){match E::V(true,1,false){E::V(true,..,true) if 2147483647+1>0=>{},_=>{print("skipped")}}}

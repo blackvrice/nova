@@ -4455,3 +4455,120 @@ fn p38_tuple_middle_rest_single_snapshot_only_real_endpoint_projection() {
     assert_eq!(projections, [0, 2, 2]);
     assert!(validate(&m).is_empty());
 }
+
+#[test]
+fn p39_payload_middle_rest_checked_indices_children_suffix_cache_forgery() {
+    let source="enum E{V(int8,bool,char)}const E::V(N,..,C)=E::V(7,true,'🙂');func main(){match E::V(N,false,C){E::V(n,..,c) if n>0=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternVariant { .. }))
+        .unwrap();
+    let rest = h.nodes()[id].children[1];
+    lower(&h, &r, &check(&h, &r).unwrap(), false).unwrap();
+    for change in 0..4 {
+        let mut c = check(&h, &r).unwrap();
+        match change {
+            0 => c.recursive_patterns[id].as_mut().unwrap().field_indices[1] = 1,
+            1 => c.recursive_patterns[id]
+                .as_mut()
+                .unwrap()
+                .field_indices
+                .clear(),
+            2 => c.recursive_patterns[id]
+                .as_mut()
+                .unwrap()
+                .children
+                .push(rest),
+            _ => {
+                let n = r.definitions.iter().position(|d| d.name == "C").unwrap();
+                let ConstEvaluation::Value { value, .. } = &mut c.const_values[n] else {
+                    panic!()
+                };
+                *value = nova_types::ConstValue::Char('가');
+            }
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p39_payload_middle_rest_mir_same_type_suffix_index_source_and_tag_forgery() {
+    let m=pass("enum E{V(bool,bool,bool);End}func main(){match E::V(true,false,false){E::V(b,..,c) if b=>{},_=>{}}}");
+    for change in 0..3 {
+        let mut bad = m.clone();
+        let body = &mut bad.bodies[0];
+        if change < 2 {
+            let s = body
+                .blocks
+                .iter_mut()
+                .flat_map(|b| &mut b.statements)
+                .find(|s| {
+                    matches!(
+                        s.kind,
+                        StatementKind::Assign(_, Rvalue::EnumPayload(_, _, 2))
+                    )
+                })
+                .unwrap();
+            if change == 0 {
+                let StatementKind::Assign(_, Rvalue::EnumPayload(_, _, index)) = &mut s.kind else {
+                    panic!()
+                };
+                *index = 1;
+            } else {
+                s.source = body.source;
+            }
+        } else {
+            let b = body
+                .blocks
+                .iter_mut()
+                .find(|b| {
+                    matches!(
+                        b.terminator.as_ref().unwrap().kind,
+                        TerminatorKind::Match { .. }
+                    )
+                })
+                .unwrap();
+            let TerminatorKind::Match { arms, .. } = &mut b.terminator.as_mut().unwrap().kind
+            else {
+                panic!()
+            };
+            let first = arms[0].1;
+            arms[0].1 = arms[1].1;
+            arms[1].1 = first;
+        }
+        assert!(!validate(&bad).is_empty());
+    }
+}
+#[test]
+fn p39_payload_middle_rest_single_snapshot_real_endpoint_reads_and_rest_only_tag() {
+    let m=pass("enum E{V(bool,bool,bool)}func make()->E{return E::V(true,false,true)}func main(){let E::V(b,..,c)=make();match make(){E::V(..,last)=>{}}}");
+    let body = body_named(&m, "main");
+    assert_eq!(body.blocks.iter().filter(|b|matches!(&b.terminator.as_ref().unwrap().kind,TerminatorKind::Call{callee,..} if m.callees[callee.0].name=="make")).count(),2);
+    let payloads = body
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .filter_map(|s| match s.kind {
+            StatementKind::Assign(_, Rvalue::EnumPayload(_, _, at)) => Some(at),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(payloads, [0, 2, 2]);
+    assert!(validate(&m).is_empty());
+    let only=pass("enum E{V(bool,bool,bool);End}func main(){match E::V(true,false,false){E::V(..)=>{},E::End=>{}}}");
+    let b = body_named(&only, "main");
+    assert!(b.blocks.iter().all(|b| b
+        .statements
+        .iter()
+        .all(|s| !matches!(s.kind, StatementKind::Assign(_, Rvalue::EnumPayload(..))))));
+    assert!(b.blocks.iter().any(|b|matches!(&b.terminator.as_ref().unwrap().kind,TerminatorKind::Match{arms,..} if arms.len()==2)));
+}

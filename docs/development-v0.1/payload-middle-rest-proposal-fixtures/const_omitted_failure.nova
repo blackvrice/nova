@@ -1,0 +1,4 @@
+enum E{V(bool,int,int)}
+const E::V(B,..,C)=E::V(true,1/0,3)
+const NEXT=C
+func main(){}

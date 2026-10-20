@@ -1,0 +1,3 @@
+enum S{V(int,bool)}
+enum E{End;V(int)}
+func main(){let S::V(n,..,b,)=S::V(8,true);print("full={n}/{b}");const S::V(..)=S::V(1,false);match E::End{E::End=>{print("end")},E::V(..,n)=>{}}let o:int?=none;match o{Option::Some(..,n)=>{},Option::None=>{print("none")}}}

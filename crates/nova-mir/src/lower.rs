@@ -249,7 +249,9 @@ pub fn lower(
         for (at, child) in p.children.iter().enumerate() {
             match p.kind {
                 Kind::Variant(v) => {
-                    result.binder_provenance.insert(child.0, (v, at));
+                    result
+                        .binder_provenance
+                        .insert(child.0, (v, p.field_indices[at]));
                 }
                 Kind::Struct(structure) | Kind::Tuple(structure) => {
                     result.projection_provenance.insert(
@@ -661,7 +663,9 @@ impl Builder<'_> {
                             index: p.field_indices[index],
                         },
                     ),
-                    Kind::Variant(v) => Rvalue::EnumPayload(Operand::Place(value), v, index),
+                    Kind::Variant(v) => {
+                        Rvalue::EnumPayload(Operand::Place(value), v, p.field_indices[index])
+                    }
                     _ => return Err(LoweringError::InvalidAnalysis),
                 };
                 work.push(Step::Project(child, projection));

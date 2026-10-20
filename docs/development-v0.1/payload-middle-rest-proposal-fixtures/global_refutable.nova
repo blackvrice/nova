@@ -1,0 +1,3 @@
+enum E{V(int,int)}
+const E::V(..,1)=E::V(1/0,1)
+func main(){}

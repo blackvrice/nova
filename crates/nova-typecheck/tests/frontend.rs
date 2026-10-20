@@ -5903,7 +5903,8 @@ fn p37_payload_rest_prefix_plan_types_nullary_and_tag_identity() {
         .unwrap();
     let p = c.recursive_patterns[id].as_ref().unwrap();
     assert_eq!(p.children.len(), 1);
-    assert!(p.field_indices.is_empty());
+    // P39 records actual payload indices for Variant plans, including this prefix.
+    assert_eq!(p.field_indices, [0]);
     assert!(p
         .children
         .iter()
@@ -6264,6 +6265,246 @@ fn p38_tuple_middle_rest_10000_10001_source_nodes_without_synthetic_slots() {
             .collect::<Vec<_>>()
             .join(",");
         format!("type T={ty};enum E{{{variants}}}func f(e:E){{match e{{{arms}}}}}")
+    }
+    let good = pass(&source(0));
+    let (h, _, c) = good.semantic.unwrap();
+    assert_eq!(c.recursive_patterns.iter().flatten().count(), 10000);
+    assert_eq!(
+        h.nodes()
+            .iter()
+            .filter(|n| n.kind == HirKind::PatternRest)
+            .count(),
+        10
+    );
+    let bad = frontend(&source(1));
+    assert_eq!(codes(&bad), ["N8901"]);
+    assert_eq!(
+        bad.sources
+            .slice(bad.diagnostics()[0].primary.span)
+            .unwrap(),
+        "_"
+    );
+}
+
+#[test]
+fn p39_payload_middle_rest_indices_combinations_natural_plan_intrinsic_and_nullary() {
+    for arity in 1..=5 {
+        for prefix in 0..=arity {
+            for suffix in 0..=arity - prefix {
+                let mut pieces = (0..prefix).map(|i| format!("p{i}")).collect::<Vec<_>>();
+                pieces.push("..".into());
+                pieces.extend((0..suffix).map(|i| format!("s{i}")));
+                let fields = vec!["int"; arity].join(",");
+                let r = pass(&format!(
+                    "enum E{{V({fields})}}func f(e:E){{let E::V({})=e}}",
+                    pieces.join(",")
+                ));
+                let (h, _, c) = r.semantic.unwrap();
+                let id = h
+                    .nodes()
+                    .iter()
+                    .position(|n| matches!(n.kind, HirKind::PatternVariant { .. }))
+                    .unwrap();
+                let expected = (0..prefix).chain(arity - suffix..arity).collect::<Vec<_>>();
+                assert_eq!(
+                    c.recursive_patterns[id].as_ref().unwrap().field_indices,
+                    expected,
+                    "{arity}/{prefix}/{suffix}"
+                );
+            }
+        }
+    }
+    pass(include_str!("../../../examples/payload_middle_rest.nova"));
+    let r = pass("enum E{V(int8,bool,char);End}func f(e:E){match e{E::V(n,..,c)=>{},E::End=>{}}}");
+    let (h, _, c) = r.semantic.unwrap();
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternVariant { .. }) && !n.children.is_empty())
+        .unwrap();
+    assert_eq!(
+        c.recursive_patterns[id].as_ref().unwrap().field_indices,
+        [0, 2]
+    );
+    let r = pass("enum E{V(int,bool)}func f(e:E){match e{E::V(n,b) if b=>{},_=>{}}}");
+    let (h, _, c) = r.semantic.unwrap();
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternVariant { .. }))
+        .unwrap();
+    assert_eq!(
+        c.recursive_patterns[id].as_ref().unwrap().field_indices,
+        [0, 1]
+    );
+    pass("func f(o:int?,r:Result<int,bool>){match o{Option::Some(..,v)=>{},none=>{}}match r{Result::Success(..,v)=>{},Result::Error(..,e)=>{}}}");
+    for s in [
+        "enum E{End}func f(){let E::End(..,n)=E::End}",
+        "enum E{End}func f(){let E::End()=E::End}",
+        "func f(o:int?){match o{Option::None(..)=>{},Option::Some(..,n)=>{}}}",
+        "enum E{V(int,bool)}func f(){let E::V(a,..,b,c)=E::V(1,true)}",
+    ] {
+        assert_eq!(codes(&frontend(s)), ["N2201"], "{s}");
+    }
+    assert_eq!(
+        codes(&frontend(
+            "enum E{V(int,bool);End}func f(e:E){match e{E::V(..,b)=>{}}}"
+        )),
+        ["N3101"]
+    );
+}
+#[test]
+fn p39_payload_middle_rest_coverage_independent_endpoint_oracle() {
+    let regions = [3u8, 5, 8, 15];
+    let patterns = [
+        "E::V(false,..)",
+        "E::V(..,false)",
+        "E::V(true,..,true)",
+        "E::V(..)",
+    ];
+    for mask in 0..16 {
+        let mut covered = 0;
+        let mut unreachable = false;
+        let mut arms = String::new();
+        for i in 0..4 {
+            if mask & (1 << i) != 0 {
+                unreachable |= regions[i] & !covered == 0;
+                covered |= regions[i];
+                arms.push_str(&format!("{}=>{{}},", patterns[i]));
+            }
+        }
+        let r = frontend(&format!(
+            "enum E{{V(bool,int,bool);End}}func f(e:E){{match e{{{arms}E::End=>{{}}}}}}"
+        ));
+        let expected = if unreachable {
+            vec!["N3102".to_string()]
+        } else if covered == 15 {
+            vec![]
+        } else {
+            vec!["N3101".to_string()]
+        };
+        assert_eq!(codes(&r), expected, "mask {mask}");
+    }
+    pass(
+        "func f(o:int?){match o{Option::Some(..,n) if false=>{},Option::Some(..,n)=>{},none=>{}}}",
+    );
+}
+#[test]
+fn p39_payload_middle_rest_const_actual_suffix_cache_forward_cycles_and_refutability() {
+    let r=pass("enum E{V(int8,bool,char)}type T=E;const E::V(N,..,C):T=E::V(NEXT,true,'🙂');const NEXT:int8=7;func f(){const E::V(n,..,c):T=E::V(N,false,C);var E::V(v,..,ch)=E::V(n,true,c);v=v+1}");
+    let (_, r, c) = r.semantic.unwrap();
+    for name in ["N", "n"] {
+        let at = r.definitions.iter().position(|d| d.name == name).unwrap();
+        assert!(
+            matches!(&c.const_values[at],ConstEvaluation::Value{value:ConstValue::Integer(v),..} if v.value()==7&&v.kind()==IntKind::I8)
+        );
+    }
+    for name in ["C", "c"] {
+        let at = r.definitions.iter().position(|d| d.name == name).unwrap();
+        assert!(matches!(
+            &c.const_values[at],
+            ConstEvaluation::Value {
+                value: ConstValue::Char('🙂'),
+                ..
+            }
+        ));
+    }
+    for kw in ["let", "var", "const"] {
+        let r = frontend(&format!(
+            "enum E{{V(int,int)}}func f(){{{kw} E::V(..,1)=E::V(1/0,1)}}"
+        ));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "1"
+        );
+    }
+    assert_eq!(
+        codes(&frontend(
+            "enum E{V(bool,int,int)}const E::V(B,..,C)=E::V(true,1/0,3);const NEXT=C;func f(){}"
+        )),
+        ["N3201"]
+    );
+    assert_eq!(
+        codes(&frontend(
+            "enum E{V(bool,int)}const E::V(..,N)=E::V(true,NEXT);const NEXT=N+1;func f(){}"
+        )),
+        ["N3202"]
+    );
+    for s in [
+        "func f(){let Option::Some(..,n)=Option::Some(1)}",
+        "enum E{V(int,int);End}func f(){const E::V(..,n)=E::V(1/0,1)}",
+    ] {
+        assert_eq!(codes(&frontend(s)), ["N3103"], "{s}");
+    }
+}
+#[test]
+fn p39_payload_middle_rest_variant_suffix_annotation_range_scope_family_and_try() {
+    for (source, code) in [
+        (
+            "enum E{V(bool,char,int8)}func f(){match E::V(true,'가',1){E::V(..,128)=>{},_=>{}}}",
+            "N2102",
+        ),
+        (
+            "enum E{V(bool,int,bool)}func f(){match E::V(true,1,false){E::V(..,1)=>{},_=>{}}}",
+            "N2101",
+        ),
+        (
+            "enum E{V(int,bool,int)}func f(){let E::V(n,..,n)=E::V(1,true,2)}",
+            "N2002",
+        ),
+        (
+            "enum E{V(bool,int)}func f(){let E::V(..,n)=E::V(true,n)}",
+            "N2001",
+        ),
+        (
+            "enum E{V(bool,int)}func f(){let E::V(..,n)=E::V(true,1);n=2}",
+            "N3004",
+        ),
+        (
+            "func f(o:int?){match o{Result::Success(..,n)=>{},_=>{}}}",
+            "N2101",
+        ),
+        (
+            "enum E{V(int,bool)}type T=E;func f(e:T){match e{T::V(..,n)=>{},_=>{}}}",
+            "N1102",
+        ),
+        (
+            "enum E{V(int,bool)}func f(e:E){match e{E::Missing(..,n)=>{},_=>{}}}",
+            "N2001",
+        ),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code], "{source}");
+    }
+    let r =
+        frontend("enum E{A(bool);V(bool,char,int8)}func f(e:E){match e{E::V(..,128)=>{},_=>{}}}");
+    assert_eq!(codes(&r), ["N2102"]);
+    assert_eq!(
+        r.sources
+            .slice(r.diagnostics()[0].secondary[0].span)
+            .unwrap(),
+        "int8"
+    );
+    pass("enum E{V(bool,char,int)}func f(e:E,r:Result<int,bool>)->Result<int,bool>{match e{E::V(true,..,n) if (try r)>n=>{},_=>{}}return Result::Success(1)}");
+}
+#[test]
+fn p39_payload_middle_rest_10000_10001_source_nodes_without_synthetic_payloads() {
+    fn source(extra: usize) -> String {
+        let fields = vec!["()"; 1024].join(",");
+        let variants = (0..10)
+            .map(|i| format!("V{i}({fields})"))
+            .collect::<Vec<_>>()
+            .join(";");
+        let arms = (0..10)
+            .map(|i| {
+                let count = if i == 9 { 989 + extra } else { 999 };
+                format!("E::V{i}({},..,_)=>{{}}", vec!["_"; count - 1].join(","))
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("enum E{{{variants}}}func f(e:E){{match e{{{arms}}}}}")
     }
     let good = pass(&source(0));
     let (h, _, c) = good.semantic.unwrap();

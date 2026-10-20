@@ -1,0 +1,325 @@
+{
+  "proposal": "P39",
+  "status": "Accepted",
+  "implementation_verified": true,
+  "approval_date": "2026-10-20",
+  "approval_evidence": "다음 작업 승인할태니 개발 해줘",
+  "grammar": "GRAMMAR_STAGE_B_PAYLOAD_MIDDLE_REST.ebnf",
+  "grammar_change": true,
+  "grammar_productions": 70,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "values"
+  ],
+  "source_sha256": {
+    "values.nova": "c26dbe2de2a5f3e892e1b51ed383a7e62a2d63094fb8a3cb4f1abbf92fbff491",
+    "main.nova": "44d9f5c8b5d3e52160a1f607450cc4cefeb747b020f8f9732d1896b08fece1ab",
+    "full_and_nullary.nova": "21ff93df3509479e378b5735c243c4fe5650ae8e3138b842e2ad66d44e038fe4",
+    "float_copy.nova": "4898eb36fe2c9be4b2cb8f8489fbabd2ded27eac4835252a92d5e590f59be57e",
+    "guard_skipped.nova": "0dcb0662b00063adeb8feeb219935806bc261592c945b6cfc297fb10874f6a16",
+    "incomplete.nova": "18ed8935a0e99c6a7290b7b88904a194b020244051963b81e8c13d2a149a36cb",
+    "duplicate.nova": "8d18c509e88808f57b92ac85a2f4d57231ed7d66c6da4c3cd6891d56e9af72c9",
+    "too_many.nova": "33581bbc5807e4018d726659c8d164e763ae69462248ae0706a5f9732d795c71",
+    "missing_no_rest.nova": "2f418d7bb0264cd47b32d436023793fcf40e7b0496db7935f768f90cd4e86aa0",
+    "nullary_rest.nova": "f1708e872acdd244633b3b11495e5240ac574e2cb082bde22460fd2eeada83c9",
+    "nullary_parens.nova": "ac8df22c2b9c64c74394e2f8bb854ec0c6def491ddaadc9f39fa022e1c180a45",
+    "none_rest.nova": "7b7479a7348bd638030c0772d05af2066141f59192753c1987a6cd899bdd4144",
+    "component_type.nova": "4a1d6ec9f56a537b2d3e91a48b3f9fe2449017000d374a62712f2fe3f28153ee",
+    "too_large.nova": "08b9bbb40ac6d2d12c56277c452b2f8faab584912df9d06efb86e4446bd53fe1",
+    "immutable.nova": "871d55f01f41267d355a4b46fe8b78088e91e9516e8252edea023427e2c27dfb",
+    "let_refutable.nova": "78d74fb30f3862f0dedaa8e5c53cdf91a3ab3150e126e3883f267d436add9a79",
+    "const_refutable.nova": "27515adac8e7623351447f9f795fa19e4c573d075e8115ee24e24a217de66644",
+    "global_refutable.nova": "cacfecfd82eaf00f427a0fffe8f1aa10d593ee6e517671f997e1bbbba77eaa7f",
+    "const_omitted_failure.nova": "5ef92ccafcd2169a9103911a8d5a069427cec25dca169eb5d791e5923553bfcf",
+    "const_cycle.nova": "739fe85c7d2f0174b44d69ad03eeb5fda9312ff927a11a667e0e11de5aa37869",
+    "duplicate_binder.nova": "710e28870e1af143ad8eee1b4e3ff32178a3d5b406ea87cbb899277e59b27610",
+    "initializer_scope.nova": "bb008921b60ac667816dd7f44843d3437a263d828ce45c301f61c8fb084e7bc1",
+    "double_rest.nova": "d48221cc29412810b3ab61ba63211bf59ac7075536d91809b2505dc89b90ba61",
+    "spaced_dots.nova": "6fdeab7ad9f0456097bb81d30c7e3ca27ac3311052a932d55bdb1ee95f6a434e",
+    "struct_middle.nova": "de82d21c2a812dc6497858054a299c160a53616b4844385779f2de694dda5bdb",
+    "payload_label.nova": "7cf6b981097db7fc5740689786ead8094652a519de324d07e3aa128f4a6e02a3",
+    "guard_abort.nova": "009781543e7628224733583e782b0322eda6bb38a6b12ac726d7b975083ff971",
+    "omitted_abort.nova": "d32e42830625e136a130bc17550e831b38e3af6c38b98e1b34df2a266753437b"
+  },
+  "positive_cases": [
+    {
+      "source": "full_and_nullary.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "full=8/true\nend\nnone\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "float_copy.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "float=1.5\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "guard_skipped.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "skipped\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "source": "incomplete.nova",
+      "expected_diagnostic": "N3101",
+      "check_exit": 1,
+      "primary": {
+        "start": 41,
+        "end": 46
+      }
+    },
+    {
+      "source": "duplicate.nova",
+      "expected_diagnostic": "N3102",
+      "check_exit": 1,
+      "primary": {
+        "start": 75,
+        "end": 89
+      }
+    },
+    {
+      "source": "too_many.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 36,
+        "end": 50
+      }
+    },
+    {
+      "source": "missing_no_rest.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 36,
+        "end": 43
+      }
+    },
+    {
+      "source": "nullary_rest.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 28,
+        "end": 38
+      }
+    },
+    {
+      "source": "nullary_parens.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 28,
+        "end": 36
+      }
+    },
+    {
+      "source": "none_rest.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 36,
+        "end": 52
+      }
+    },
+    {
+      "source": "component_type.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 70,
+        "end": 71
+      }
+    },
+    {
+      "source": "too_large.nova",
+      "expected_diagnostic": "N2102",
+      "check_exit": 1,
+      "primary": {
+        "start": 71,
+        "end": 74
+      }
+    },
+    {
+      "source": "immutable.nova",
+      "expected_diagnostic": "N3004",
+      "check_exit": 1,
+      "primary": {
+        "start": 60,
+        "end": 61
+      }
+    },
+    {
+      "source": "let_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 36,
+        "end": 46
+      }
+    },
+    {
+      "source": "const_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 37,
+        "end": 47
+      }
+    },
+    {
+      "source": "global_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 25,
+        "end": 35
+      }
+    },
+    {
+      "source": "const_omitted_failure.nova",
+      "expected_diagnostic": "N3201",
+      "check_exit": 1,
+      "primary": {
+        "start": 53,
+        "end": 56
+      }
+    },
+    {
+      "source": "const_cycle.nova",
+      "expected_diagnostic": "N3202",
+      "check_exit": 1,
+      "primary": {
+        "start": 64,
+        "end": 65
+      }
+    },
+    {
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "check_exit": 1,
+      "primary": {
+        "start": 50,
+        "end": 51
+      }
+    },
+    {
+      "source": "initializer_scope.nova",
+      "expected_diagnostic": "N2001",
+      "check_exit": 1,
+      "primary": {
+        "start": 57,
+        "end": 58
+      }
+    },
+    {
+      "source": "double_rest.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 46,
+        "end": 47
+      }
+    },
+    {
+      "source": "spaced_dots.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 41,
+        "end": 42
+      }
+    },
+    {
+      "source": "struct_middle.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 54,
+        "end": 55
+      }
+    },
+    {
+      "source": "payload_label.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 44,
+        "end": 45
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "source": "guard_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 111,
+        "end": 123
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:111..123"
+      }
+    },
+    {
+      "source": "omitted_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 81,
+        "end": 93
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:81..93"
+      }
+    }
+  ],
+  "historical_overrides": [
+    {
+      "proposal": "P37",
+      "source": "../payload-rest-pattern-proposal-fixtures/middle_rest.nova",
+      "source_sha256": "e93f3f2b413c364b7b3b4ddabcc52cfbdec83ac5dfafe7699cb82fbbd20810c4",
+      "original_diagnostic": "N1102",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "proposal": "P38",
+      "source": "../tuple-middle-rest-proposal-fixtures/payload_middle.nova",
+      "source_sha256": "e93f3f2b413c364b7b3b4ddabcc52cfbdec83ac5dfafe7699cb82fbbd20810c4",
+      "original_diagnostic": "N1102",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "validation_date": "2026-10-20",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "scrutinee\nfirst\nsecond\nnested=-7\ninitializer\nomitted\nlet=3\nvar=5/true\nconst=9/-7\none\nrest-only\ncomplete=3\nstruct=5\noption=6\ntry-ok\nresult=1\nerror=4\nloop=1\n",
+    "stderr": ""
+  }
+}

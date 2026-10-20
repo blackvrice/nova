@@ -1,0 +1,2 @@
+enum E{V(int,bool,int)}
+func main(){let E::V(n,..,n)=E::V(1,true,2)}

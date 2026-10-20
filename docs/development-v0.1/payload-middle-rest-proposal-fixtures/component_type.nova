@@ -1,0 +1,2 @@
+enum E{V(bool,int,bool)}
+func main(){match E::V(true,1,false){E::V(..,1)=>{},_=>{}}}

@@ -86,6 +86,7 @@ impl Checker<'_> {
                             typed.kind,
                             crate::RecursivePatternKind::Struct(_)
                                 | crate::RecursivePatternKind::Tuple(_)
+                                | crate::RecursivePatternKind::Variant(_)
                         ) {
                             typed.field_indices[at]
                         } else {

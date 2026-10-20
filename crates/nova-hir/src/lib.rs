@@ -1985,9 +1985,14 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         NodeKind::PatternField { .. } => kinds.len() == 1 && pattern(kinds[0]),
         NodeKind::PatternVariant { arguments, .. } => {
             (arguments || kinds.is_empty())
-                && kinds.iter().enumerate().all(|(at, k)| {
-                    pattern(*k) || (*k == NodeKind::PatternRest && at + 1 == kinds.len())
-                })
+                && kinds
+                    .iter()
+                    .filter(|k| **k == NodeKind::PatternRest)
+                    .count()
+                    <= 1
+                && kinds
+                    .iter()
+                    .all(|k| pattern(*k) || *k == NodeKind::PatternRest)
         }
         NodeKind::Match { .. } => {
             !kinds.is_empty()

@@ -1896,3 +1896,65 @@ fn p38_tuple_middle_rest_duplicate_marker_ast_is_rejected() {
             == 2));
     assert!(lower(&db, &p.arena, p.root).is_err());
 }
+
+#[test]
+fn p39_payload_middle_rest_source_spelling_shape_order_forgery() {
+    let source = "func f(){match x{E::V(n,..,c)=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    assert!(lower(&db, &p.arena, p.root).is_ok());
+    for change in 0..4 {
+        let mut arena = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let mut span = n.span;
+            let mut children = n
+                .children
+                .iter()
+                .map(|id| ids[id.index()])
+                .collect::<Vec<_>>();
+            if kind == NodeKind::PatternRest {
+                match change {
+                    0 => span = Span::new(f, span.start(), span.end() - 1).unwrap(),
+                    1 => kind = NodeKind::Wildcard,
+                    2 => {
+                        let child = arena.insert(NodeKind::Wildcard, n.span, vec![]).unwrap();
+                        children.push(child);
+                    }
+                    _ => {}
+                }
+            }
+            if change == 3 && matches!(kind, NodeKind::PatternVariant { .. }) {
+                children.reverse();
+            }
+            ids.push(arena.insert(kind, span, children).unwrap());
+        }
+        assert!(
+            lower(&db, &arena, ids[p.root.index()]).is_err(),
+            "change {change}"
+        );
+    }
+}
+
+#[test]
+fn p39_payload_middle_rest_duplicate_marker_ast_is_rejected() {
+    let source = "func f(){match x{E::V(..,..)=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    assert!(p.has_errors());
+    assert!(p
+        .arena
+        .iter()
+        .any(|(_, n)| matches!(n.kind, NodeKind::PatternVariant { .. })
+            && n.children
+                .iter()
+                .filter(|c| p.arena.get(**c).unwrap().kind == NodeKind::PatternRest)
+                .count()
+                == 2));
+    assert!(lower(&db, &p.arena, p.root).is_err());
+}

@@ -286,3 +286,8 @@ Enum/Option/Result payload trailing rest·명시 prefix·tag/전체 initializer 
 현재 구현은 **P38 Copy Tuple 중간 rest 패턴까지 완료**다.
 [P38 계약](docs/development-v0.1/TUPLE_MIDDLE_REST_STAGE_B_PROPOSAL.md)·[70-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_TUPLE_MIDDLE_REST.ebnf)·[수용 fixture](docs/development-v0.1/tuple-middle-rest-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/TUPLE_MIDDLE_REST_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
 Tuple middle rest·prefix/suffix·실제 field_indices/annotation·전체 initializer 평가·const/coverage/MIR를 지원한다. struct/Enum middle rest·rest binder·Array·일반 Move/Drop은 후속 계약이다.
+
+
+현재 구현은 **P39 Copy Enum·sum payload 중간 rest 패턴까지 완료**다.
+[P39 계약](docs/development-v0.1/PAYLOAD_MIDDLE_REST_STAGE_B_PROPOSAL.md)·[70-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_PAYLOAD_MIDDLE_REST.ebnf)·[수용 fixture](docs/development-v0.1/payload-middle-rest-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/PAYLOAD_MIDDLE_REST_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
+Enum·sum payload middle rest·prefix/suffix·실제 field_indices/annotation·전체 initializer 평가·const/coverage/MIR를 지원한다. struct middle rest·rest binder·Array·일반 Move/Drop은 후속 계약이다.

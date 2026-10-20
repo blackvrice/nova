@@ -1,0 +1,2 @@
+enum E{V(bool,char,int8)}
+func main(){match E::V(true,'가',1){E::V(..,128)=>{},_=>{}}}

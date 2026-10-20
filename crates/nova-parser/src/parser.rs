@@ -658,6 +658,7 @@ impl<'a> Parser<'a> {
             let mut closed = true;
             if arguments {
                 self.open(TokenKind::LeftParen);
+                let mut has_rest = false;
                 while !matches!(
                     self.kind(),
                     TokenKind::RightParen
@@ -666,24 +667,35 @@ impl<'a> Parser<'a> {
                         | TokenKind::Symbol(Symbol::FatArrow)
                 ) {
                     if self.kind() == TokenKind::Dot {
-                        children.push(self.trailing_pattern_rest("payload"));
-                        break;
+                        if has_rest {
+                            self.report(
+                                1102,
+                                self.current().span,
+                                "payload pattern permits only one rest",
+                            );
+                        }
+                        has_rest = true;
+                        children.push(self.pattern_rest("payload"));
+                    } else {
+                        if self.kind() == TokenKind::Identifier
+                            && self
+                                .tokens
+                                .get(self.cursor + 1)
+                                .is_some_and(|t| t.kind == TokenKind::Colon)
+                        {
+                            self.report(
+                                1102,
+                                self.current().span,
+                                "named payload patterns are unsupported",
+                            );
+                        }
+                        let before = self.cursor;
+                        children.push(self.pattern());
+                        if before == self.cursor {
+                            break;
+                        }
                     }
-                    if self.kind() == TokenKind::Identifier
-                        && self
-                            .tokens
-                            .get(self.cursor + 1)
-                            .is_some_and(|t| t.kind == TokenKind::Colon)
-                    {
-                        self.report(
-                            1102,
-                            self.current().span,
-                            "named payload patterns are unsupported",
-                        );
-                    }
-                    let before = self.cursor;
-                    children.push(self.pattern());
-                    if !self.eat(TokenKind::Comma) || before == self.cursor {
+                    if !self.eat(TokenKind::Comma) {
                         break;
                     }
                 }

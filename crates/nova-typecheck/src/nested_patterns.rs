@@ -27,8 +27,49 @@ pub struct RecursivePattern {
     pub ty: Type,
     pub kind: RecursivePatternKind,
     pub children: Vec<HirId>,
-    /// P36 explicit product field indices, aligned with canonical children; empty for non-product kinds.
+    /// Explicit Struct/Tuple/Variant component indices, aligned with checked children.
     pub field_indices: Vec<usize>,
+}
+
+// Source children include the marker; checked children select real declaration slots.
+struct RestComponents {
+    children: Vec<HirId>,
+    indices: Vec<usize>,
+    types: Vec<Type>,
+    annotations: Vec<Option<HirId>>,
+}
+fn rest_components(
+    children: &[HirId],
+    rest: usize,
+    fields: &[Type],
+    annotations: &[HirId],
+) -> RestComponents {
+    let explicit = children.len() - 1;
+    let mut result = RestComponents {
+        children: Vec::with_capacity(explicit),
+        indices: Vec::with_capacity(explicit),
+        types: Vec::with_capacity(children.len()),
+        annotations: Vec::with_capacity(children.len()),
+    };
+    for (at, &child) in children.iter().enumerate() {
+        if at == rest {
+            result.types.push(Type::Unit);
+            result.annotations.push(None);
+            continue;
+        }
+        let index = if at < rest {
+            at
+        } else {
+            fields.len().saturating_sub(explicit) + at - 1
+        };
+        result.children.push(child);
+        result.indices.push(index);
+        result
+            .types
+            .push(fields.get(index).copied().unwrap_or(Type::Error));
+        result.annotations.push(annotations.get(index).copied());
+    }
+    result
 }
 
 impl Checker<'_> {
@@ -87,7 +128,7 @@ impl Checker<'_> {
             let mut field_indices = vec![];
             let mut fields = vec![];
             let mut field_annotations = vec![];
-            let mut tuple_annotations: Option<Vec<Option<HirId>>> = None;
+            let mut component_annotations: Option<Vec<Option<HirId>>> = None;
             let kind = match p.kind {
                 HirKind::Binder { name, .. } => {
                     if !names.insert(name.0) || self.resolved.declaration_ids[pattern.0].is_none() {
@@ -304,30 +345,13 @@ impl Checker<'_> {
                                 annotation,
                             );
                         }
-                        if let Some(prefix) = rest {
-                            let original_fields = fields;
-                            fields = Vec::with_capacity(p.children.len());
-                            let mut annotations = Vec::with_capacity(p.children.len());
-                            pattern_children.clear();
-                            for (at, &child) in p.children.iter().enumerate() {
-                                if at == prefix {
-                                    fields.push(Type::Unit);
-                                    annotations.push(None);
-                                    continue;
-                                }
-                                let index = if at < prefix {
-                                    at
-                                } else {
-                                    original_fields.len().saturating_sub(explicit) + at - 1
-                                };
-                                pattern_children.push(child);
-                                field_indices.push(index);
-                                fields.push(
-                                    original_fields.get(index).copied().unwrap_or(Type::Error),
-                                );
-                                annotations.push(field_annotations.get(index).copied());
-                            }
-                            tuple_annotations = Some(annotations);
+                        if let Some(rest) = rest {
+                            let selected =
+                                rest_components(&p.children, rest, &fields, &field_annotations);
+                            pattern_children = selected.children;
+                            field_indices = selected.indices;
+                            fields = selected.types;
+                            component_annotations = Some(selected.annotations);
                         } else {
                             field_indices = (0..explicit).collect();
                         }
@@ -431,12 +455,12 @@ impl Checker<'_> {
                                     s.iter().skip(offset).take(fields.len()).copied().collect()
                                 })
                                 .unwrap_or_default();
-                            let rest = p.children.last().is_some_and(|id| {
+                            let rest = p.children.iter().position(|id| {
                                 self.module.nodes()[id.0].kind == HirKind::PatternRest
                             });
-                            let explicit = p.children.len() - usize::from(rest);
-                            if (!rest && fields.len() != explicit)
-                                || (rest && explicit > fields.len())
+                            let explicit = p.children.len() - usize::from(rest.is_some());
+                            if (rest.is_none() && fields.len() != explicit)
+                                || (rest.is_some() && explicit > fields.len())
                                 || arguments == fields.is_empty()
                             {
                                 self.report(
@@ -446,11 +470,15 @@ impl Checker<'_> {
                                     annotation,
                                 );
                             }
-                            if rest {
-                                pattern_children.truncate(explicit);
-                                fields.truncate(explicit);
-                                fields.push(Type::Unit);
-                                field_annotations.truncate(explicit);
+                            if let Some(rest) = rest {
+                                let selected =
+                                    rest_components(&p.children, rest, &fields, &field_annotations);
+                                pattern_children = selected.children;
+                                field_indices = selected.indices;
+                                fields = selected.types;
+                                component_annotations = Some(selected.annotations);
+                            } else {
+                                field_indices = (0..explicit).collect();
                             }
                         }
                         RecursivePatternKind::Variant(v)
@@ -480,7 +508,7 @@ impl Checker<'_> {
                     fields.get(at).copied().unwrap_or(Type::Error),
                     if kind == RecursivePatternKind::NamedField {
                         annotation
-                    } else if let Some(annotations) = &tuple_annotations {
+                    } else if let Some(annotations) = &component_annotations {
                         annotations[at].map(|s| self.module.nodes()[s.0].span)
                     } else {
                         field_annotations
@@ -1300,7 +1328,7 @@ fn analyze(
             children
         } else if let RecursivePatternKind::Variant(v) = p.kind {
             let mut children = vec![0; registries.1[&v.enumeration].variants[v.index].fields.len()];
-            for (at, child) in p.children.iter().enumerate() {
+            for (&at, child) in p.field_indices.iter().zip(&p.children) {
                 children[at] = mapped[&child.0];
             }
             children

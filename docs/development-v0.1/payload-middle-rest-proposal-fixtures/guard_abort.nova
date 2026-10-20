@@ -1,0 +1,2 @@
+enum E{V(bool,int,bool);End}
+func main(){print("before");let n=1;match E::V(true,1,true){E::V(true,..,true) if 2147483647+n>0=>{},_=>{}}}
