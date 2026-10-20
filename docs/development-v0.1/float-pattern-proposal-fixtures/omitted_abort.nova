@@ -1,0 +1,2 @@
+struct S{let n:double;let ignored:int}
+func main(){print("before");let n=1;match S(1.5,2147483647+n){S(1.5,..)=>{},_=>{}}}

@@ -131,6 +131,10 @@ pub enum NodeKind {
         digits: Span,
         minus: Option<Span>,
     },
+    PatternFloat {
+        digits: Span,
+        minus: Option<Span>,
+    },
     PatternTuple,
     PatternUnit,
     Wildcard,

@@ -1,5 +1,13 @@
 # 문서 변경 기록
 
+## 2026-10-20 — P41 float literal 패턴
+
+- 다음 단계 사용자 승인으로 제한 계약·71-production EBNF를 구현 전에 기록했다.
+- Float32/64 literal pattern·직접 반올림·zero alias/complement coverage·ordered equality·Source 검증.
+- 새 테스트 22개, 기본 636·LLVM 37·Native 90 PASS, fmt/check/Clippy·문서 검증 완료.
+- P01~P40 ledger·원본/기존 fixture/grammar bytes·D01~D30 및 사용자 변경을 보존했다.
+
+
 ## 2026-10-20 — P40 Copy struct 중간 rest 패턴
 
 - 다음 단계 사용자 승인으로 제한 계약·70-production EBNF를 구현 전에 기록했다.

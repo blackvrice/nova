@@ -17,6 +17,7 @@ pub enum RecursivePatternKind {
     Bool(bool),
     Char(char),
     Integer(nova_types::IntegerValue),
+    Float(nova_types::FloatValue),
     Unit,
     Struct(StructId),
     Tuple(StructId),
@@ -164,6 +165,40 @@ impl Checker<'_> {
                                 2101,
                                 p.span,
                                 "integer pattern requires integer component",
+                                annotation,
+                            );
+                        }
+                        RecursivePatternKind::Wildcard
+                    }
+                }
+                HirKind::PatternFloat {
+                    ref spelling,
+                    digits,
+                    minus,
+                } => {
+                    if let Some(kind) = expected.float() {
+                        match nova_types::FloatValue::parse_decimal(kind, spelling) {
+                            Ok(value) => RecursivePatternKind::Float(if minus.is_some() {
+                                value.negated()
+                            } else {
+                                value
+                            }),
+                            Err(_) => {
+                                self.report(
+                                    2102,
+                                    digits,
+                                    "float pattern is outside component finite range",
+                                    annotation,
+                                );
+                                RecursivePatternKind::Wildcard
+                            }
+                        }
+                    } else {
+                        if expected != Type::Error {
+                            self.report(
+                                2101,
+                                p.span,
+                                "float pattern requires Float32 or Float64 component",
                                 annotation,
                             );
                         }
@@ -604,7 +639,8 @@ impl Checker<'_> {
                     {
                         RecursivePatternKind::Bool(_)
                         | RecursivePatternKind::Char(_)
-                        | RecursivePatternKind::Integer(_) => true,
+                        | RecursivePatternKind::Integer(_)
+                        | RecursivePatternKind::Float(_) => true,
                         RecursivePatternKind::Variant(v) => {
                             self.result.enums[&v.enumeration].variants.len() > 1
                         }
@@ -785,6 +821,7 @@ enum Constructor {
     Bool(bool),
     Char(char),
     Integer(nova_types::IntKind, i128),
+    Float(nova_types::FloatKind, u64),
     Unit,
     Struct(StructId),
     Tuple(StructId),
@@ -934,6 +971,24 @@ impl<'a> Engine<'a> {
                 return observed
                     .into_iter()
                     .map(|v| Constructor::Integer(kind, v))
+                    .collect();
+            }
+        }
+        // Finite equality classes plus one nonempty complement, including all NaNs.
+        if let Some(kind) = key.types[0].float() {
+            let observed = key
+                .rows
+                .iter()
+                .filter_map(|row| match self.patterns[row[0]].constructor {
+                    Some(Constructor::Float(k, bits)) if k == kind => Some(bits),
+                    _ => None,
+                })
+                .collect::<BTreeSet<_>>();
+            if !observed.is_empty() {
+                return observed
+                    .into_iter()
+                    .map(|bits| Constructor::Float(kind, bits))
+                    .chain(std::iter::once(Constructor::Opaque))
                     .collect();
             }
         }
@@ -1231,6 +1286,15 @@ impl<'a> Engine<'a> {
                             out.push_str(&v.to_string());
                             continue;
                         }
+                        Some(Constructor::Float(kind, bits)) => {
+                            out.push_str(&match kind {
+                                nova_types::FloatKind::F32 => {
+                                    format!("{:?}", f32::from_bits(bits as u32))
+                                }
+                                nova_types::FloatKind::F64 => format!("{:?}", f64::from_bits(bits)),
+                            });
+                            continue;
+                        }
                         Some(Constructor::Char(c)) => {
                             out.push('\'');
                             out.extend(c.escape_default());
@@ -1326,6 +1390,13 @@ fn analyze(
             RecursivePatternKind::NamedField => unreachable!("transparent field wrapper"),
             RecursivePatternKind::Bool(b) => Some(Constructor::Bool(b)),
             RecursivePatternKind::Char(c) => Some(Constructor::Char(c)),
+            RecursivePatternKind::Float(v) => {
+                let magnitude = v.bits() & ((1u64 << (v.kind().bits() - 1)) - 1);
+                Some(Constructor::Float(
+                    v.kind(),
+                    if magnitude == 0 { 0 } else { v.bits() },
+                ))
+            }
             RecursivePatternKind::Integer(v) => Some(Constructor::Integer(v.kind(), v.value())),
             RecursivePatternKind::Unit => Some(Constructor::Unit),
             RecursivePatternKind::Struct(id) => Some(Constructor::Struct(id)),
@@ -1647,6 +1718,42 @@ mod specialization_tests {
             let witness = engine.witness(task);
             assert_eq!(engine.render(witness[0]), (kind.min() + 1).to_string());
             assert!(engine.tasks.len() < 10);
+        }
+    }
+    #[test]
+    fn p41_float_partition_observed_bits_nonempty_complement_and_roundtrip_witness() {
+        for kind in [nova_types::FloatKind::F32, nova_types::FloatKind::F64] {
+            let structs = StructRegistry::new();
+            let enums = EnumRegistry::new();
+            let sums = SumRegistry::new();
+            let mut engine = Engine::new(&structs, &enums, &sums);
+            let mut key = Key {
+                types: vec![kind.ty()],
+                rows: vec![],
+                candidate: vec![0],
+            };
+            assert_eq!(engine.constructors(&key), [Constructor::Opaque]);
+            for spelling in ["0.0", "1.5", "-2.5", "1e-40"] {
+                let v = nova_types::FloatValue::parse_decimal(kind, spelling).unwrap();
+                let id = engine.pattern(Pattern {
+                    constructor: Some(Constructor::Float(kind, v.bits())),
+                    children: vec![],
+                });
+                key.rows.push(vec![id]);
+                let printed = engine.render(id);
+                assert_eq!(
+                    nova_types::FloatValue::parse_decimal(kind, &printed).unwrap(),
+                    v
+                );
+            }
+            let constructors = engine.constructors(&key);
+            assert_eq!(constructors.len(), 5);
+            assert_eq!(constructors.last(), Some(&Constructor::Opaque));
+            let task = engine.useful(key.clone()).unwrap();
+            assert!(engine.tasks[task].answer.unwrap().useful);
+            key.rows.push(vec![0]);
+            let task = engine.useful(key).unwrap();
+            assert!(!engine.tasks[task].answer.unwrap().useful);
         }
     }
 }

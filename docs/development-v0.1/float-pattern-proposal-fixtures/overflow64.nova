@@ -1,0 +1,1 @@
+func main(){let d:double=1.5;match d{1e309=>{},_=>{}}}

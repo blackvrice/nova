@@ -72,6 +72,8 @@
 
 [P40 Copy struct 중간 rest 패턴](STRUCT_MIDDLE_REST_STAGE_B_PROPOSAL.md)·[70-production EBNF](GRAMMAR_STAGE_B_STRUCT_MIDDLE_REST.ebnf)·[수용 fixture](struct-middle-rest-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](STRUCT_MIDDLE_REST_IMPLEMENTATION.md)을 제공한다. 기존 69개 production·P01~P39 ledger를 보존한다.
 
+[P41 float literal 패턴](FLOAT_PATTERN_STAGE_B_PROPOSAL.md)·[71-production EBNF](GRAMMAR_STAGE_B_FLOAT_PATTERN.ebnf)·[수용 fixture](float-pattern-proposal-fixtures/README.md)은 Accepted / 구현·검증 완료다. [구현 기록](FLOAT_PATTERN_IMPLEMENTATION.md)을 제공한다. 기존 69개 production·P01~P40 ledger를 보존한다.
+
 [시작 문서](README.md) · [결정](DECISIONS.md) · [문법](GRAMMAR.ebnf) · [검증 사례](CONFORMANCE.md)
 
 | ID | 분야 | 작성 문서 | Stage | 상태 |

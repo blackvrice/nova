@@ -1,7 +1,41 @@
 # 직접 실행하는 Nova 테스트
 
 명령은 저장소 root의 PowerShell에서 실행한다. Rust/MSVC와 Native용 LLVM 21.1.8이 필요하다.
-현재 개발 완료 기능은 P40 Copy struct 중간 rest 패턴까지다.
+현재 개발 완료 기능은 P41 float literal 패턴까지다.
+
+## P41 float literal 패턴
+
+```powershell
+$env:CARGO_INCREMENTAL='0'
+cargo fmt --check
+cargo test --workspace --offline
+cargo run -p nova-cli --offline -- check examples/float_patterns.nova
+$env:NOVA_CLANG=(Resolve-Path target/toolchains/llvm-21.1.8/bin/clang.exe).Path
+cargo run -p nova-cli --offline -- run examples/float_patterns.nova --profile debug
+cargo run -p nova-cli --offline -- run examples/float_patterns.nova --profile release
+```
+
+check exit 0. 두 profile의 출력은 아래 세 줄/LF·빈 stderr·exit 0이다.
+
+```text
+literal=1
+zero=2
+nan=3
+```
+
+[두 파일 fixture](docs/development-v0.1/float-pattern-proposal-fixtures/README.md)는 float 직접 반올림·signed zero·NaN/Infinity·nested/guard/try·single snapshot·checked Abort를 추가 관측한다.
+[승인 계약](docs/development-v0.1/FLOAT_PATTERN_STAGE_B_PROPOSAL.md)·[구현 기록](docs/development-v0.1/FLOAT_PATTERN_IMPLEMENTATION.md)을 제공한다.
+
+```powershell
+cargo test --workspace --offline p41_
+cargo test -p nova-codegen-llvm --test emission --offline p41_ -- --ignored --test-threads=1
+cargo test -p nova-cli --test native --offline p41_ -- --ignored --test-threads=1
+cargo run -p nova-cli --offline -- check docs/development-v0.1/float-pattern-proposal-fixtures/duplicate_zero.nova
+node tools/docs/validate-pack.mjs
+```
+
+새 기본 18·실제 LLVM 1·Native 3개다. duplicate_zero check는 N3102·exit 1이다.
+P40 이하 계약은 당시 기록이며 float literal pattern의 현재 의미는 P41이 우선한다. P32 float_pattern.nova의 당시 거부 metadata는 P41 historical override로 보완한다.
 
 ## P40 Copy struct 중간 rest 패턴
 

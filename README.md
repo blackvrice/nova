@@ -296,3 +296,8 @@ Enum·sum payload middle rest·prefix/suffix·실제 field_indices/annotation·�
 현재 구현은 **P40 Copy struct 중간 rest 패턴까지 완료**다.
 [P40 계약](docs/development-v0.1/STRUCT_MIDDLE_REST_STAGE_B_PROPOSAL.md)·[70-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_STRUCT_MIDDLE_REST.ebnf)·[수용 fixture](docs/development-v0.1/struct-middle-rest-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/STRUCT_MIDDLE_REST_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
 struct middle rest·prefix/suffix·실제 field_indices/annotation·전체 initializer 평가·const/coverage/MIR를 지원한다. shorthand·rest binder·Array·일반 Move/Drop은 후속 계약이다.
+
+
+현재 구현은 **P41 float literal 패턴까지 완료**다.
+[P41 계약](docs/development-v0.1/FLOAT_PATTERN_STAGE_B_PROPOSAL.md)·[71-production EBNF](docs/development-v0.1/GRAMMAR_STAGE_B_FLOAT_PATTERN.ebnf)·[수용 fixture](docs/development-v0.1/float-pattern-proposal-fixtures/README.md)·[구현 기록](docs/development-v0.1/FLOAT_PATTERN_IMPLEMENTATION.md)·[직접 테스트](TESTING.md).
+Float32/64 literal pattern·직접 반올림·signed-zero/NaN IEEE 비교·finite/complement coverage·nested/guard/try를 지원한다. range/or·string literal·Array·일반 Move/Drop은 후속 계약이다.

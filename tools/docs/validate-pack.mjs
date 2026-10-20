@@ -1752,6 +1752,45 @@ for(const [proposal,directory,oldName,original] of [
 }
 checks.push('P40 Accepted/next-step 승인 ledger·70-production EBNF/기존 69개 보존·32개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 25 code별 byte Span/Runtime 2·P35/P38/P39 고정 source/당시 거부 metadata/current overrides (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const floatPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P41');
+assert(floatPatternProposal?.status==='Accepted' && floatPatternProposal.implementation_verified===true && floatPatternProposal.approval_date==='2026-10-20'
+  && floatPatternProposal.approval_evidence==='다음 작업 승인할태니 개발 해줘' && floatPatternProposal.document==='FLOAT_PATTERN_STAGE_B_PROPOSAL.md'
+  && floatPatternProposal.grammar==='GRAMMAR_STAGE_B_FLOAT_PATTERN.ebnf' && floatPatternProposal.grammar_change===true && !manifest.draft_proposals?.some(p=>p.id==='P41'),'P41 approval ledger');
+const floatPatternText=fs.readFileSync(path.join(pack,floatPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','71개 production','69개 보존','Float32','Float64','N2102','N2101','N3101','N3102','N3103','1,025','10,000','100,000','1,000,000','signed-zero','Opaque','128','전체 D07','Move/borrow/Drop'])assert(floatPatternText.includes(phrase),'P41 missing boundary '+phrase);
+validateGrammar(floatPatternProposal.grammar);const floatPatternGrammar=fs.readFileSync(path.join(pack,floatPatternProposal.grammar),'utf8');const floatPatternProductions=productions(floatPatternGrammar);
+assert(floatPatternProductions.size===71 && floatPatternGrammar.includes('Accepted 2026-10-20; implemented and verified'),'P41 grammar status/count');
+for(const [name,value]of structMiddleRestPatternProductions)if(name!=='pattern')assert(floatPatternProductions.get(name)===value,'P41 changed approved production '+name);
+assert(floatPatternProductions.get('pattern')===structMiddleRestPatternProductions.get('pattern').replace('|integer_pattern|struct_pattern','|integer_pattern|float_pattern|struct_pattern')
+  && floatPatternProductions.get('float_pattern')==='["-"],"FLOAT"','P41 finite signed FLOAT grammar production');
+const floatPatternRoot=path.join(pack,'float-pattern-proposal-fixtures');const floatPatternFixture=JSON.parse(fs.readFileSync(path.join(floatPatternRoot,'expected.json'),'utf8'));const floatPatternLF=String.fromCharCode(10);
+assert(floatPatternFixture.proposal==='P41' && floatPatternFixture.status==='Accepted' && floatPatternFixture.implementation_verified===true && floatPatternFixture.validation_date==='2026-10-20'
+  && floatPatternFixture.approval_date===floatPatternProposal.approval_date && floatPatternFixture.approval_evidence===floatPatternProposal.approval_evidence
+  && floatPatternFixture.grammar===floatPatternProposal.grammar && floatPatternFixture.grammar_change===true && floatPatternFixture.grammar_productions===71
+  && floatPatternFixture.entry==='main.nova' && floatPatternFixture.source_root==='.' && JSON.stringify(floatPatternFixture.reachable_modules)==='["main","values"]'
+  && floatPatternFixture.validated_result?.check_exit===0 && floatPatternFixture.validated_result?.native_exit===0
+  && floatPatternFixture.validated_result?.stdout===["scrutinee","first","second","double","zero","nan","infinity","subnormal","underflow","rounded","tuple","struct","option","try-ok","result=1","error=4","loop=1","const=1.5",""].join(floatPatternLF)
+  && floatPatternFixture.validated_result?.stderr==='','P41 validated result');
+const floatPatternSources=Object.keys(floatPatternFixture.source_sha256??{});assert(floatPatternSources.length===28 && fs.readdirSync(floatPatternRoot).filter(n=>n.endsWith('.nova')).length===28,'P41 source count');
+for(const name of floatPatternSources){const bytes=fs.readFileSync(path.join(floatPatternRoot,name));assert(hash(bytes)===floatPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P41 source hash/UTF8/LF '+name);}
+assert(floatPatternFixture.negative_cases?.length===21 && floatPatternFixture.positive_cases?.length===3 && floatPatternFixture.runtime_cases?.length===2,'P41 fixture counts');
+for(const c of floatPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(floatPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && (c.primary.start<c.primary.end || c.expected_diagnostic==='N1101' && c.primary_kind==='insertion' && c.primary.start===c.primary.end) && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(0,c.primary.start).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.start)) && Buffer.from(bytes.subarray(0,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.end)) && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P41 negative byte Span '+c.source);}
+for(const c of floatPatternFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0 && c.validated_result?.stdout.endsWith(floatPatternLF) && c.validated_result?.stderr==='','P41 positive '+c.source);
+for(const floatPatternAbort of floatPatternFixture.runtime_cases){const floatPatternAbortBytes=fs.readFileSync(path.join(floatPatternRoot,floatPatternAbort.source));
+assert(floatPatternAbort.validated_result?.check_exit===0 && floatPatternAbort.validated_result?.native_exit===1 && floatPatternAbort.validated_result?.stdout==='before'+floatPatternLF
+  && floatPatternAbortBytes.subarray(floatPatternAbort.primary.start,floatPatternAbort.primary.end).toString('utf8')===floatPatternAbort.primary_text
+  && floatPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${floatPatternAbort.primary.start}..${floatPatternAbort.primary.end}`,'P41 runtime Source/result');
+}
+const floatPatternHistory=floatPatternFixture.historical_overrides;
+assert(floatPatternHistory?.length===1,'P41 historical override count');
+for(const c of floatPatternHistory){const name='float_pattern.nova';
+  assert(c.proposal==='P32' && c.source==='../integer-pattern-proposal-fixtures/'+name
+    && hash(fs.readFileSync(path.join(pack,'integer-pattern-proposal-fixtures',name)))===c.source_sha256 && c.source_sha256===integerPatternFixture.source_sha256[name]
+    && c.original_diagnostic==='N1102' && integerPatternFixture.negative_cases.some(n=>n.source===name && n.expected_diagnostic===c.original_diagnostic)
+    && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P41 frozen P32 rejection/current success override');
+}
+checks.push('P41 Accepted/next-step 승인 ledger·71-production EBNF/기존 69개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2·P32 고정 source/당시 거부 metadata/current override (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

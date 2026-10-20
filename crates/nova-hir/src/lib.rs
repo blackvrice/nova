@@ -122,6 +122,11 @@ pub enum HirKind {
         digits: Span,
         minus: Option<Span>,
     },
+    PatternFloat {
+        spelling: String,
+        digits: Span,
+        minus: Option<Span>,
+    },
     PatternTuple,
     PatternUnit,
     Wildcard,
@@ -1004,7 +1009,9 @@ pub fn lower(
         if node.kind == NodeKind::Wildcard && sources.slice(node.span)? != "_" {
             return Err(LoweringError::MalformedAst);
         }
-        if let NodeKind::PatternInteger { digits, minus } = node.kind {
+        if let NodeKind::PatternInteger { digits, minus }
+        | NodeKind::PatternFloat { digits, minus } = node.kind
+        {
             let text = sources.file(node.span.file())?.text();
             let signed = if let Some(sign) = minus {
                 inside(node.span, sign)
@@ -1024,7 +1031,11 @@ pub fn lower(
                 || !inside(node.span, digits)
                 || digits.end() != node.span.end()
                 || !token_boundary(text, digits)
-                || !integer_pattern_spelling(sources.slice(digits)?)
+                || !if matches!(node.kind, NodeKind::PatternFloat { .. }) {
+                    float_spelling(sources.slice(digits)?)
+                } else {
+                    integer_pattern_spelling(sources.slice(digits)?)
+                }
             {
                 return Err(LoweringError::MalformedAst);
             }
@@ -1292,6 +1303,11 @@ pub fn lower(
             NodeKind::PatternRest => HirKind::PatternRest,
             NodeKind::PatternBoolean(b) => HirKind::PatternBoolean(b),
             NodeKind::PatternInteger { digits, minus } => HirKind::PatternInteger {
+                spelling: sources.slice(digits)?.into(),
+                digits,
+                minus,
+            },
+            NodeKind::PatternFloat { digits, minus } => HirKind::PatternFloat {
                 spelling: sources.slice(digits)?.into(),
                 digits,
                 minus,
@@ -1828,6 +1844,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
                 | NodeKind::PatternBoolean(_)
                 | NodeKind::PatternCharacter
                 | NodeKind::PatternInteger { .. }
+                | NodeKind::PatternFloat { .. }
                 | NodeKind::Error
         )
     }
@@ -1974,6 +1991,7 @@ fn valid_shape(arena: &Arena, node: &AstNode) -> bool {
         | NodeKind::PatternBoolean(_)
         | NodeKind::PatternCharacter
         | NodeKind::PatternInteger { .. }
+        | NodeKind::PatternFloat { .. }
         | NodeKind::PatternUnit
         | NodeKind::PatternRest
         | NodeKind::Wildcard => kinds.is_empty(),

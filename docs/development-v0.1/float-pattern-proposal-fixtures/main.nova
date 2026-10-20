@@ -1,0 +1,23 @@
+use values::Real
+use values::Record
+use values::Event
+use values::source
+use values::default_value
+func gate(label:string,result:bool)->bool{print(label);return result}
+func propagate(r:Result<int,int>)->Result<int,int>{match 1.5{1.5 if (try r)>0=>{print("try-ok")},_=>{}}return Result::Success(1)}
+func main(){
+    match source(){1.50 if gate("first",false)=>{},1_5e-1 if gate("second",true)=>{print("double")},_=>{}}
+    match -0.0{0.0=>{print("zero")},_=>{}}
+    match 0.0/0.0{0.0=>{},_=>{print("nan")}}
+    match 1.0/0.0{1.5=>{},_=>{print("infinity")}}
+    let tiny:double=5e-324;match tiny{5e-324=>{print("subnormal")},_=>{}}
+    match -0.0{-1e-100=>{print("underflow")},_=>{}}
+    let rounded:float32=16777216.0;match rounded{16777217.0=>{print("rounded")},_=>{}}
+    match(1.5 as double,true){(1.5,flag)=>{print("tuple")},_=>{}}
+    match Record(1.5,true){Record(flag:true,..,n:1.5)=>{print("struct")},_=>{}}
+    match Option::Some(Event::Value(1.5,1.5)){Option::Some(Event::Value(1.5,..,1.5))=>{print("option")},_=>{}}
+    match propagate(Result::Success(3)){Result::Success(v)=>{print("result={v}")},Result::Error(_)=>{}}
+    match propagate(Result::Error(4)){Result::Success(_)=>{},Result::Error(e)=>{print("error={e}")}}
+    for i in 0 until 3{match i as double{0.0=>{continue},2.0=>{break},_=>{print("loop={i}")}}}
+    print("const={default_value()}")
+}

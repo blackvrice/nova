@@ -82,6 +82,8 @@ Copy Enum·sum payload 중간 rest 패턴·prefix/suffix 실제 field_indices·�
 
 Copy struct 중간 rest 패턴·prefix/suffix 실제 field_indices·빈 생략·실제 annotation·전체 initializer 평가·const/MIR·Source 검증은 [P40 Accepted](../STRUCT_MIDDLE_REST_STAGE_B_PROPOSAL.md)·[70-production EBNF](../GRAMMAR_STAGE_B_STRUCT_MIDDLE_REST.ebnf)·[수용 fixture](../struct-middle-rest-proposal-fixtures/README.md)·[구현 기록](../STRUCT_MIDDLE_REST_IMPLEMENTATION.md)을 따른다. 기존 69개 production·P01~P39 ledger·평가 순서/예산을 보존한다. shorthand·rest binder·Array·일반 Move/borrow/Drop·전체 D06/D08/D09/D10/D12/D16/D25/D30은 제외한다.
 
+float literal 패턴·Float32/64 직접 반올림·signed-zero equality·관측 finite/complement coverage·N3101/N3102/N3103·ordered MIR equality·Source 검증은 [P41 Accepted](../FLOAT_PATTERN_STAGE_B_PROPOSAL.md)·[71-production EBNF](../GRAMMAR_STAGE_B_FLOAT_PATTERN.ebnf)·[수용 fixture](../float-pattern-proposal-fixtures/README.md)·[구현 기록](../FLOAT_PATTERN_IMPLEMENTATION.md)을 따른다. 기존 69개 production·P01~P40 ledger·IEEE/평가 순서/예산을 보존한다. range/or·string literal·NaN/Infinity literal·Array·일반 Move/borrow/Drop·전체 D07/D08/D09/D10/D12/D16/D25/D30은 제외한다.
+
 ## 비SSA 결정
 MVP MIR은 Place 기반 비SSA다. Move/Borrow/Drop 분석은 SSA 이전에 수행한다. phi node 요구 때문에 source ownership 모델을 바꾸지 않는다.
 

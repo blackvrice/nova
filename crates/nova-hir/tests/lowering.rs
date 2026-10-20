@@ -2020,3 +2020,74 @@ fn p40_struct_middle_rest_duplicate_marker_ast_is_rejected() {
                 == 2));
     assert!(lower(&db, &p.arena, p.root).is_err());
 }
+
+#[test]
+fn p41_public_float_pattern_sign_digits_and_expression_kind_forgery() {
+    let source = "func f(n:int8){match n{- /* note */ 1.5=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    assert!(lower(&db, &p.arena, p.root).is_ok());
+    for change in 0..4 {
+        let mut arena = Arena::default();
+        let mut ids = vec![];
+        for (_, n) in p.arena.iter() {
+            let mut kind = n.kind;
+            let span = n.span;
+            let mut children = n
+                .children
+                .iter()
+                .map(|id| ids[id.index()])
+                .collect::<Vec<_>>();
+            if let NodeKind::PatternFloat { digits, minus } = &mut kind {
+                match change {
+                    0 => *minus = None,
+                    1 => *digits = Span::new(f, digits.start() + 2, digits.end()).unwrap(),
+                    2 => kind = NodeKind::Float,
+                    _ => {
+                        let child = arena.insert(NodeKind::Float, n.span, vec![]).unwrap();
+                        children.push(child);
+                    }
+                }
+            }
+            ids.push(arena.insert(kind, span, children).unwrap());
+        }
+        assert!(
+            lower(&db, &arena, ids[p.root.index()]).is_err(),
+            "change {change}"
+        );
+    }
+}
+
+#[test]
+fn p41_float_pattern_hir_spelling_minus_and_expression_are_distinct() {
+    let source = "func f(){match 1.5{- /*🙂*/ 1_5e-1=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = lower(&db, &p.arena, p.root).unwrap();
+    let mut patterns = 0;
+    for n in h.nodes() {
+        if let HirKind::PatternFloat {
+            spelling,
+            digits,
+            minus,
+        } = &n.kind
+        {
+            patterns += 1;
+            assert_eq!(spelling, "1_5e-1");
+            assert_eq!(db.slice(*digits).unwrap(), spelling);
+            assert_eq!(db.slice(minus.unwrap()).unwrap(), "-");
+        }
+    }
+    assert_eq!(patterns, 1);
+    assert_eq!(
+        h.nodes()
+            .iter()
+            .filter(|n| matches!(n.kind, HirKind::Float(_)))
+            .count(),
+        1
+    );
+}

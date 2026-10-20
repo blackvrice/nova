@@ -68,6 +68,8 @@
 
 2026-10-20 사용자 “다음 작업 승인할태니 개발 해줘”에 따라 [P40 Copy struct 중간 rest 패턴](STRUCT_MIDDLE_REST_STAGE_B_PROPOSAL.md)을 구현 전에 기록했다. Accepted / 구현·검증 완료이며 [구현 기록](STRUCT_MIDDLE_REST_IMPLEMENTATION.md)·[70-production EBNF](GRAMMAR_STAGE_B_STRUCT_MIDDLE_REST.ebnf)를 따른다. struct middle rest·prefix/suffix 실제 field_indices·빈 생략·실제 annotation·전체 initializer 평가·const/MIR·Source subset이며 기존 69개 production·P01~P39 ledger·평가 순서·예산을 보존한다. 전체 D06/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.
 
+2026-10-20 사용자 “다음 작업 승인할태니 개발 해줘”에 따라 [P41 float literal 패턴](FLOAT_PATTERN_STAGE_B_PROPOSAL.md)을 구현 전에 기록했다. Accepted / 구현·검증 완료이며 [구현 기록](FLOAT_PATTERN_IMPLEMENTATION.md)·[71-production EBNF](GRAMMAR_STAGE_B_FLOAT_PATTERN.ebnf)를 따른다. Float32/64 literal pattern·직접 반올림·signed zero·finite/complement coverage·ordered equality·Source subset이며 기존 69개 production·P01~P40 ledger·평가 순서·예산을 보존한다. 전체 D07/D08/D09/D10/D12/D16/D25/D30 승인이 아니다.
+
 ## 공통 승인 계약
 
 원본 Canonical 변경은 제안하지 않는다. 제안은 구체 정의 누락/충돌을 보완한다. 최종 승인 시 실제 승인 날짜/증거/선택 대안을 기록하고 영향 NOVA 원본·grammar·fixture를 동시 갱신한다. Backward compatibility는 아래 각 항목에 공통으로: 현재 미완성 compiler에 지원이 없더라도 새로운 표기/의미를 공식 API로 동결하는 변경이다. 기존 확정 의미와 충돌하면 기존 의미가 우선이며 재제안한다.

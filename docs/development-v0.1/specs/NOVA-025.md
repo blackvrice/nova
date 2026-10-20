@@ -40,6 +40,8 @@ structural Copy Tuple·numeric selector subspan·혼합 가변 경로·const·pr
 
 Copy struct Read instance method·contextual self·member scope/visibility·receiver-first snapshot·named/default·Source/MIR 검증은 [P22 Accepted](../METHOD_STAGE_B_PROPOSAL.md), [58-production EBNF](../GRAMMAR_STAGE_B_METHOD.ebnf), [수용 fixture](../method-proposal-fixtures/README.md)와 [구현 기록](../METHOD_IMPLEMENTATION.md)을 따른다. 구현·검증 완료다. change/take·Move/borrow/Drop·init·overload·bound method·Enum method·Array와 전체 D06/D09/D10/D11/D12/D16/D25/D30은 승인하지 않았다.
 
+float literal 패턴·Float32/64 직접 반올림·signed-zero equality·관측 finite/complement coverage·N3101/N3102/N3103·ordered MIR equality·Source 검증은 [P41 Accepted](../FLOAT_PATTERN_STAGE_B_PROPOSAL.md)·[71-production EBNF](../GRAMMAR_STAGE_B_FLOAT_PATTERN.ebnf)·[수용 fixture](../float-pattern-proposal-fixtures/README.md)·[구현 기록](../FLOAT_PATTERN_IMPLEMENTATION.md)을 따른다. 기존 69개 production·P01~P40 ledger·IEEE/평가 순서/예산을 보존한다. range/or·string literal·NaN/Infinity literal·Array·일반 Move/borrow/Drop·전체 D07/D08/D09/D10/D12/D16/D25/D30은 제외한다.
+
 ## 타입 검사
 양방향 검사: 기대 타입이 있으면 check, 없으면 synthesize. TypeInterner는 Unit/Never/Primitive/Named/Tuple/Array/Function/GenericParam/Error를 구분한다. alias와 nullable 정규화는 unification 전에 수행한다.
 

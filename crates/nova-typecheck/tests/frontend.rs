@@ -6714,3 +6714,198 @@ fn p40_middle_rest_marker_counts_at_10000_10001_without_synthetic_omitted_nodes(
         "_"
     );
 }
+
+#[test]
+fn p41_float_pattern_direct_rounding_bits_sign_underflow_and_no_expression_cache() {
+    for (ty, spelling, bits) in [
+        ("float32", "0.1", 0x3dcccccdu64),
+        ("float64", "0.1", 0x3fb999999999999a),
+        ("float32", "16777217.0", 0x4b800000),
+        ("float64", "16777217.0", 0x4170000010000000),
+        ("float32", "1.000000059604644775390625", 0x3f800000),
+        ("float32", "1.000000059604644775390626", 0x3f800001),
+        ("float64", "1.000000059604644775390625", 0x3ff0000010000000),
+        ("float32", "1e-45", 1),
+        ("float64", "5e-324", 1),
+        ("float32", "-0.0", 0x80000000),
+        ("float64", "-0.0", 0x8000000000000000),
+        ("float32", "-1e-100", 0x80000000),
+        ("float64", "-1e-999", 0x8000000000000000),
+        ("float32", "3.4028234663852886e38", 0x7f7fffff),
+        ("float64", "1.7976931348623157e308", 0x7fefffffffffffff),
+    ] {
+        let r = pass(&format!(
+            "func f(x:{ty}){{match x{{{spelling}=>{{}},_=>{{}}}}}}"
+        ));
+        let (h, _, c) = r.semantic.unwrap();
+        let id = h
+            .nodes()
+            .iter()
+            .position(|n| matches!(n.kind, HirKind::PatternFloat { .. }))
+            .unwrap();
+        let nova_typecheck::RecursivePatternKind::Float(v) =
+            c.recursive_patterns[id].as_ref().unwrap().kind
+        else {
+            panic!()
+        };
+        assert_eq!(v.bits(), bits, "{ty}/{spelling}");
+        assert_eq!(
+            v.kind().ty(),
+            if ty == "float32" {
+                Type::Float32
+            } else {
+                Type::Float64
+            }
+        );
+        assert!(c.float_literals[id].is_none());
+    }
+    pass(include_str!("../../../examples/float_patterns.nova"));
+}
+#[test]
+fn p41_float_pattern_zero_rounding_alias_complement_and_guard_coverage() {
+    for ty in ["float32", "float64"] {
+        for (a, b) in [("0.0", "-0.0"), ("1.5", "1_5e-1"), ("0.0", "-1e-999")] {
+            assert_eq!(
+                codes(&frontend(&format!(
+                    "func f(x:{ty}){{match x{{{a}=>{{}},{b}=>{{}},_=>{{}}}}}}"
+                ))),
+                ["N3102"]
+            );
+        }
+        assert_eq!(
+            codes(&frontend(&format!(
+                "func f(x:{ty}){{match x{{0.0=>{{}},1.5=>{{}},-2.5=>{{}}}}}}"
+            ))),
+            ["N3101"]
+        );
+        assert_eq!(
+            codes(&frontend(&format!(
+                "func f(x:{ty}){{match x{{_ if true=>{{}}}}}}"
+            ))),
+            ["N3101"]
+        );
+        pass(&format!(
+            "func f(x:{ty}){{match x{{1.5 if false=>{{}},1.5=>{{}},_=>{{}}}}}}"
+        ));
+    }
+    assert_eq!(
+        codes(&frontend(
+            "func f(x:float32){match x{16777216.0=>{},16777217.0=>{},_=>{}}}"
+        )),
+        ["N3102"]
+    );
+    pass("func f(x:float64){match x{16777216.0=>{},16777217.0=>{},_=>{}}}");
+}
+#[test]
+fn p41_float_pattern_product_coverage_independent_six_region_oracle() {
+    let patterns = ["(1.5,_)", "(0.0,true)", "(_,false)", "(_,true)"];
+    let regions = [3u8, 8, 21, 42];
+    for mask in 0..16 {
+        let mut covered = 0;
+        let mut unreachable = false;
+        let mut arms = String::new();
+        for i in 0..4 {
+            if mask & (1 << i) != 0 {
+                unreachable |= regions[i] & !covered == 0;
+                covered |= regions[i];
+                arms.push_str(&format!("{}=>{{}},", patterns[i]));
+            }
+        }
+        let r = frontend(&format!("func f(t:(double,bool)){{match t{{{arms}}}}}"));
+        let expected = if unreachable {
+            vec!["N3102".to_string()]
+        } else if covered == 63 {
+            vec![]
+        } else {
+            vec!["N3101".to_string()]
+        };
+        assert_eq!(codes(&r), expected, "mask={mask}");
+    }
+}
+#[test]
+fn p41_float_pattern_refutable_bindings_const_cascade_and_source_order() {
+    for kw in ["let", "var", "const"] {
+        let r=frontend(&format!("struct S{{let a:double;let b:double}}func f(){{{kw} S(b:- /*🙂*/ 1.5,..,a:2.5)=S(1.0/0.0,2.5)}}"));
+        assert_eq!(codes(&r), ["N3103"]);
+        assert_eq!(
+            r.sources
+                .slice(r.diagnostics()[0].secondary[0].span)
+                .unwrap(),
+            "- /*🙂*/ 1.5"
+        );
+    }
+    for source in [
+        "func f(){const(1.5,n)=(1.5,1/0)}",
+        "const(1.5,N)=(1.5,1/0);const NEXT=N;func f(){}",
+    ] {
+        let r = frontend(source);
+        assert_eq!(codes(&r), ["N3103"]);
+    }
+}
+#[test]
+fn p41_float_pattern_type_range_real_field_secondary_and_error_suppression() {
+    for (source, code) in [
+        ("func f(){match 1{1.5=>{},_=>{}}}", "N2101"),
+        ("func f(){match true{1.5=>{},_=>{}}}", "N2101"),
+        ("func f(){match '가'{1.5=>{},_=>{}}}", "N2101"),
+        ("func f(){match 1.5{1=>{},_=>{}}}", "N2101"),
+        ("func f(){match 1.5{- /*🙂*/ 3.5e38=>{},_=>{}}}", "N2102"),
+        ("func f(d:double){match d{1e309=>{},_=>{}}}", "N2102"),
+        ("func f(){match missing{1.5=>{},_=>{}}}", "N2001"),
+    ] {
+        assert_eq!(codes(&frontend(source)), [code], "{source}");
+    }
+    let r=frontend("struct S{let n:float32;let b:bool}func f(s:S){match s{S(b:true,..,n:- /*🙂*/ 3.5e38)=>{},_=>{}}}");
+    assert_eq!(codes(&r), ["N2102"]);
+    let d = &r.diagnostics()[0];
+    assert_eq!(r.sources.slice(d.primary.span).unwrap(), "3.5e38");
+    assert_eq!(
+        r.sources.slice(d.secondary[0].span).unwrap(),
+        "let n:float32"
+    );
+    pass("enum E{V(double,bool)}func f(s:E,r:Result<int,bool>)->Result<int,bool>{match s{E::V(1.5,..) if (try r)>0=>{},_=>{}}return Result::Success(1)}");
+}
+#[test]
+fn p41_float_pattern_10000_10001_source_nodes_and_float_complement_budget() {
+    fn source(extra: usize, dense: bool) -> String {
+        let fields = (0..1024)
+            .map(|i| format!("let f{i}:float32;"))
+            .collect::<String>();
+        let variants = (0..10)
+            .map(|i| format!("V{i}(S)"))
+            .collect::<Vec<_>>()
+            .join(";");
+        let arms = (0..10)
+            .map(|i| {
+                let n = if i == 9 {
+                    (if dense { 978 } else { 988 }) + extra
+                } else {
+                    999
+                };
+                let mut patterns = vec![if dense { "1.5" } else { "_" }; n];
+                patterns[n - 1] = "1.5";
+                if dense {
+                    format!("E::V{i}(S({},..))=>{{}}", patterns.join(","))
+                } else {
+                    format!("S(..,{}) if false=>{{}}", patterns.join(","))
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(",");
+        if dense {
+            format!(
+                "struct S{{{fields}}}enum E{{{variants}}}func f(e:E){{match e{{{arms},_=>{{}}}}}}"
+            )
+        } else {
+            format!("struct S{{{fields}}}func f(s:S){{match s{{{arms},_=>{{}}}}}}")
+        }
+    }
+    let good = pass(&source(0, false));
+    let (_, _, c) = good.semantic.unwrap();
+    assert_eq!(c.recursive_patterns.iter().flatten().count(), 10000);
+    let bad = frontend(&source(1, false));
+    assert_eq!(codes(&bad), ["N8901"]);
+    let dense = frontend(&source(0, true));
+    assert_eq!(codes(&dense), ["N8901"]);
+    assert!(dense.diagnostics()[0].message.contains("matrix cell limit"));
+}

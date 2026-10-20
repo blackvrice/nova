@@ -1,0 +1,6 @@
+public type Real=double
+public const VALUE:Real=1.5
+public struct Record{public let n:Real;public let flag:bool}
+public enum Event{Value(float32,double);End}
+public func source()->Real{print("scrutinee");return VALUE}
+public func default_value(n:Real=VALUE)->Real{return n}

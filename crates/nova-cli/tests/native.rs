@@ -3049,3 +3049,139 @@ fn p40_native_struct_middle_rest_guard_and_omitted_abort_exact_source_o0_o2() {
         }
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p41_native_float_pattern_bindings_nested_guards_and_try_o0_o2() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/float-pattern-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="scrutinee\nfirst\nsecond\ndouble\nzero\nnan\ninfinity\nsubnormal\nunderflow\nrounded\ntuple\nstruct\noption\ntry-ok\nresult=1\nerror=4\nloop=1\nconst=1.5\n";
+    for profile in ["debug", "release"] {
+        for (name, output) in [
+            ("main.nova", expected),
+            ("zero_alias.nova", "zero\n"),
+            ("finite_alias.nova", "direct\nalias\n"),
+            ("guard_skipped.nova", "skipped\n"),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(root.join(name))
+                .arg("--source-root")
+                .arg(&root)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(
+                r.status.success(),
+                "{name}: {}",
+                String::from_utf8_lossy(&r.stderr)
+            );
+            assert_eq!(r.stdout, output.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        let r=program_profile(include_str!("../../../docs/development-v0.1/integer-pattern-proposal-fixtures/float_pattern.nova"),profile);
+        assert!(r.status.success());
+        assert!(r.stdout.is_empty() && r.stderr.is_empty());
+        let r = program_profile(
+            include_str!("../../../examples/float_patterns.nova"),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"literal=1\nzero=2\nnan=3\n");
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p41_native_float_pattern_guard_and_omitted_abort_exact_source_o0_o2() {
+    for source in [
+        include_str!(
+            "../../../docs/development-v0.1/float-pattern-proposal-fixtures/guard_abort.nova"
+        ),
+        include_str!(
+            "../../../docs/development-v0.1/float-pattern-proposal-fixtures/omitted_abort.nova"
+        ),
+    ] {
+        let start = source.find("2147483647+n").unwrap();
+        for profile in ["debug", "release"] {
+            let r = program_profile(source, profile);
+            assert_eq!(r.status.code(), Some(1));
+            assert_eq!(r.stdout, b"before\n");
+            assert_eq!(
+                String::from_utf8(r.stderr).unwrap().lines().next(),
+                Some(
+                    format!(
+                        "Nova panic: Int32 overflow at file#0:{start}..{}",
+                        start + 12
+                    )
+                    .as_str()
+                )
+            );
+        }
+    }
+}
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p41_native_float_pattern_independent_ieee_bits_bank_o0_o2() {
+    for wide in [false, true] {
+        let ty = if wide { "double" } else { "float32" };
+        let patterns = if wide {
+            [0x3ff8000000000000u64, 0, 0x4170000010000000, 1]
+        } else {
+            [0x3fc00000, 0, 0x4b800000, 1]
+        };
+        let cases = if wide {
+            vec![
+                ("1.5", 0x3ff8000000000000),
+                ("0.0", 0),
+                ("-0.0", 0x8000000000000000),
+                ("16777217.0", 0x4170000010000000),
+                ("16777216.0", 0x4170000000000000),
+                ("5e-324", 1),
+                ("1.0/0.0", 0x7ff0000000000000),
+                ("-1.0/0.0", 0xfff0000000000000),
+                ("0.0/0.0", 0x7ff8000000000000),
+            ]
+        } else {
+            vec![
+                ("1.5", 0x3fc00000),
+                ("0.0", 0),
+                ("-0.0", 0x80000000),
+                ("16777217.0", 0x4b800000),
+                ("16777218.0", 0x4b800001),
+                ("1e-45", 1),
+                ("1.0/0.0", 0x7f800000),
+                ("-1.0/0.0", 0xff800000),
+                ("0.0/0.0", 0x7fc00000),
+            ]
+        };
+        let tiny = if wide { "5e-324" } else { "1e-45" };
+        let mut source=format!("func classify(x:{ty})->int{{match x{{1.5=>{{return 1}},0.0=>{{return 2}},16777217.0=>{{return 3}},{tiny}=>{{return 4}},_=>{{return 0}}}}}}func main(){{");
+        let mut expected = String::new();
+        for (expr, bits) in cases {
+            source.push_str(&format!("print(\"{{classify({expr})}}\");"));
+            let class = patterns
+                .iter()
+                .position(|&p| {
+                    if wide {
+                        f64::from_bits(bits) == f64::from_bits(p)
+                    } else {
+                        f32::from_bits(bits as u32) == f32::from_bits(p as u32)
+                    }
+                })
+                .map_or(0, |i| i + 1);
+            expected.push_str(&format!("{class}\n"));
+        }
+        source.push('}');
+        for profile in ["debug", "release"] {
+            let r = program_profile(&source, profile);
+            assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+            assert_eq!(r.stdout, expected.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+    }
+}

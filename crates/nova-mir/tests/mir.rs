@@ -4689,3 +4689,119 @@ fn p40_struct_middle_rest_single_snapshot_only_real_endpoint_projection() {
     assert_eq!(projections, [0, 2, 2]);
     assert!(validate(&m).is_empty());
 }
+
+#[test]
+fn p41_float_checked_bits_zero_sign_kind_type_and_expression_cache_forgery() {
+    let source = "func main(){let d:double=-0.0;match d{-0.0=>{},_=>{}}}";
+    let mut db = SourceDatabase::default();
+    let f = db.add("api", source.into()).unwrap();
+    let l = lex(&db, f).unwrap();
+    let p = parse(&db, f, &normalize_ends(&l.tokens)).unwrap();
+    let h = nova_hir::lower(&db, &p.arena, p.root).unwrap();
+    let r = resolve(&h);
+    let id = h
+        .nodes()
+        .iter()
+        .position(|n| matches!(n.kind, HirKind::PatternFloat { .. }))
+        .unwrap();
+    for change in 0..4 {
+        let mut c = check(&h, &r).unwrap();
+        match change {
+            0 => {
+                c.recursive_patterns[id].as_mut().unwrap().kind =
+                    nova_typecheck::RecursivePatternKind::Float(nova_types::FloatValue::from_f64(
+                        0.0,
+                    ))
+            }
+            1 => {
+                c.recursive_patterns[id].as_mut().unwrap().kind =
+                    nova_typecheck::RecursivePatternKind::Float(nova_types::FloatValue::from_f32(
+                        -0.0,
+                    ))
+            }
+            2 => c.recursive_patterns[id].as_mut().unwrap().ty = Type::Float32,
+            _ => c.float_literals[id] = Some(nova_types::FloatValue::from_f64(-0.0)),
+        }
+        assert_eq!(
+            lower(&h, &r, &c, false),
+            Err(LoweringError::InvalidAnalysis)
+        );
+    }
+}
+#[test]
+fn p41_float_mir_same_type_constant_source_and_failure_branch_forgery() {
+    let m = pass("func main(){let d:double=1.5;match d{1.5=>{},_=>{}}}");
+    for change in 0..3 {
+        let mut bad = m.clone();
+        let body = &mut bad.bodies[0];
+        if change < 2 {
+            let s = body
+                .blocks
+                .iter_mut()
+                .flat_map(|b| &mut b.statements)
+                .find(|s| {
+                    matches!(
+                        s.kind,
+                        StatementKind::Assign(
+                            _,
+                            Rvalue::Binary(
+                                Symbol::EqualEqual,
+                                _,
+                                Operand::Constant(Constant::Float(_))
+                            )
+                        )
+                    )
+                })
+                .unwrap();
+            if change == 0 {
+                let StatementKind::Assign(_, Rvalue::Binary(_, _, value)) = &mut s.kind else {
+                    panic!()
+                };
+                *value = Operand::Constant(Constant::Float(nova_types::FloatValue::from_f64(2.5)));
+            } else {
+                s.source = body.source;
+            }
+        } else {
+            let b = body
+                .blocks
+                .iter_mut()
+                .find(|b| {
+                    matches!(
+                        b.terminator.as_ref().unwrap().kind,
+                        TerminatorKind::Branch { .. }
+                    )
+                })
+                .unwrap();
+            let TerminatorKind::Branch {
+                then_block,
+                else_block,
+                ..
+            } = &mut b.terminator.as_mut().unwrap().kind
+            else {
+                panic!()
+            };
+            std::mem::swap(then_block, else_block);
+        }
+        assert!(!validate(&bad).is_empty());
+    }
+}
+#[test]
+fn p41_float_pattern_one_scrutinee_snapshot_and_raw_negative_zero_constant() {
+    let m = pass("func make()->double{return -0.0}func main(){match make(){-0.0=>{},_=>{}}}");
+    let b = body_named(&m, "main");
+    assert_eq!(b.blocks.iter().filter(|b|matches!(&b.terminator.as_ref().unwrap().kind,TerminatorKind::Call{callee,..}if m.callees[callee.0].name=="make")).count(),1);
+    let literals = b
+        .blocks
+        .iter()
+        .flat_map(|b| &b.statements)
+        .filter_map(|s| match s.kind {
+            StatementKind::Assign(
+                _,
+                Rvalue::Binary(Symbol::EqualEqual, _, Operand::Constant(Constant::Float(v))),
+            ) => Some(v.bits()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(literals, [0x8000000000000000]);
+    assert!(validate(&m).is_empty());
+}

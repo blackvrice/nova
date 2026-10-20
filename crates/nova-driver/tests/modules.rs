@@ -1854,6 +1854,11 @@ fn p32_integer_pattern_fixed_bundle_boundaries_full_domain_and_errors() {
         ("minus_without_int.nova", "N1102"),
     ] {
         let l = load(&root.join(name), Some(&root)).unwrap();
+        // P41 preserves the original P32 rejection source/metadata and checks current acceptance.
+        if name == "float_pattern.nova" {
+            unit(&l);
+            continue;
+        }
         let mut diagnostics = l.diagnostics.clone();
         if l.module.is_some() {
             let (_, c) = analyzed(&l);
@@ -2650,4 +2655,120 @@ fn p40_struct_middle_rest_imported_alias_exports_private_and_sources() {
     ]);
     let (_, c) = analyzed(&bad);
     assert_eq!(codes(&c), ["N2004"]);
+}
+
+#[test]
+fn p41_float_pattern_bundle_code_specific_spans_and_frozen_history() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/float-pattern-proposal-fixtures");
+    for name in [
+        "main.nova",
+        "zero_alias.nova",
+        "finite_alias.nova",
+        "guard_skipped.nova",
+        "guard_abort.nova",
+        "omitted_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+    let old = root.join("../integer-pattern-proposal-fixtures");
+    unit(&load(&old.join("float_pattern.nova"), Some(&old)).unwrap());
+    for (name, code, expected) in [
+        ("incomplete.nova", "N3101", (12, 17)),
+        ("duplicate_zero.nova", "N3102", (30, 34)),
+        ("duplicate_decimal.nova", "N3102", (30, 36)),
+        ("duplicate_round32.nova", "N3102", (60, 70)),
+        ("after_wildcard.nova", "N3102", (28, 31)),
+        ("wrong_int.nova", "N2101", (20, 23)),
+        ("wrong_bool.nova", "N2101", (23, 26)),
+        ("wrong_char.nova", "N2101", (24, 27)),
+        ("integer_on_float.nova", "N2101", (22, 23)),
+        ("overflow32.nova", "N2102", (22, 28)),
+        ("negative_overflow32.nova", "N2102", (33, 39)),
+        ("overflow64.nova", "N2102", (37, 42)),
+        ("guard_only.nova", "N3101", (12, 17)),
+        ("non_bool_guard.nova", "N2101", (29, 30)),
+        ("let_refutable.nova", "N3103", (15, 22)),
+        ("var_refutable.nova", "N3103", (15, 22)),
+        ("const_refutable.nova", "N3103", (17, 24)),
+        ("global_refutable.nova", "N3103", (5, 12)),
+        ("plus_pattern.nova", "N1102", (22, 23)),
+        ("minus_nonnumeric.nova", "N1102", (23, 27)),
+        ("string_pattern.nova", "N1102", (22, 27)),
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = l.diagnostics.clone();
+        if l.module.is_some() {
+            let (_, c) = analyzed(&l);
+            diagnostics.extend(c.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && (d.primary.span.start(), d.primary.span.end()) == expected),
+            "{name}: {diagnostics:?}"
+        );
+        if matches!(name, "const_refutable.nova" | "global_refutable.nova") {
+            assert!(!diagnostics
+                .iter()
+                .any(|d| matches!(d.code.to_string().as_str(), "N3201" | "N3202")));
+        }
+        for d in diagnostics {
+            l.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                l.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+
+#[test]
+fn p41_float_pattern_imported_alias_real_width_and_cross_file_annotation() {
+    let l = fixture(&[
+        (
+            "main.nova",
+            "use values::Real;use values::S;func f(s:S){match s{S(n:16777217.0,..)=>{},_=>{}}}",
+        ),
+        (
+            "values.nova",
+            "public type Real=double;public struct S{public let n:Real;public let b:bool}",
+        ),
+    ]);
+    unit(&l);
+    let (_, c) = analyzed(&l);
+    let values = c
+        .recursive_patterns
+        .iter()
+        .flatten()
+        .filter_map(|p| {
+            if let nova_typecheck::RecursivePatternKind::Float(v) = p.kind {
+                Some(v)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(values.len(), 1);
+    assert_eq!(values[0].bits(), 0x4170000010000000);
+    let bad = fixture(&[
+        (
+            "main.nova",
+            "use values::S;func f(s:S){match s{S(n:- /*🙂*/ 3.5e38,..)=>{},_=>{}}}",
+        ),
+        (
+            "values.nova",
+            "public struct S{public let n:float32;public let b:bool}",
+        ),
+    ]);
+    let (_, c) = analyzed(&bad);
+    let d = c
+        .diagnostics
+        .iter()
+        .find(|d| d.code.to_string() == "N2102")
+        .unwrap();
+    assert_ne!(d.primary.span.file(), d.secondary[0].span.file());
+    assert_eq!(bad.sources.slice(d.primary.span).unwrap(), "3.5e38");
+    assert_eq!(
+        bad.sources.slice(d.secondary[0].span).unwrap(),
+        "public let n:float32"
+    );
 }

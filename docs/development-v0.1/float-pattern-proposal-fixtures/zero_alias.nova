@@ -1,0 +1,1 @@
+func main(){let z:double=-0.0;match z{0.0=>{print("zero")},_=>{}}}

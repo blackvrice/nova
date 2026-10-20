@@ -274,7 +274,7 @@ enum Work {
 }
 
 pub fn check(module: &Module, resolved: &Resolved) -> Result<Checked, CheckError> {
-    if !float_host_supported() && module.nodes().iter().any(|node| matches!(node.kind, HirKind::Float(_)) || matches!(node.kind, HirKind::TypeName(name) if matches!(module.symbol(name), Some("float32" | "float64")))) {
+    if !float_host_supported() && module.nodes().iter().any(|node| matches!(node.kind, HirKind::Float(_) | HirKind::PatternFloat { .. }) || matches!(node.kind, HirKind::TypeName(name) if matches!(module.symbol(name), Some("float32" | "float64")))) {
         return Err(CheckError::UnsupportedFloatHost);
     }
     // Names, scopes and declaration kinds are public tables; verify their exact provenance.

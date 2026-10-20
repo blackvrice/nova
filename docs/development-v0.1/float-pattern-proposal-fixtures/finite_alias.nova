@@ -1,0 +1,1 @@
+func main(){let d:double=16777217.0;match d{16777216.0=>{print("bad")},1.6777217e7=>{print("direct")},_=>{}}let f:float32=1.5;match f{1_5e-1=>{print("alias")},_=>{}}}

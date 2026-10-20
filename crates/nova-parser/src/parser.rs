@@ -457,23 +457,32 @@ impl<'a> Parser<'a> {
         let start = token.span.start();
         if matches!(
             token.kind,
-            TokenKind::Integer | TokenKind::Symbol(Symbol::Minus)
+            TokenKind::Integer | TokenKind::Float | TokenKind::Symbol(Symbol::Minus)
         ) {
             let minus = if token.kind == TokenKind::Symbol(Symbol::Minus) {
                 Some(self.bump().span)
             } else {
                 None
             };
-            if self.kind() != TokenKind::Integer {
+            let floating = self.kind() == TokenKind::Float;
+            if !matches!(self.kind(), TokenKind::Integer | TokenKind::Float) {
                 self.report(
                     1102,
                     self.current().span,
-                    "integer pattern requires INT after minus",
+                    "numeric pattern requires INT or FLOAT after minus",
                 );
                 return self.node(NodeKind::Error, start, vec![]);
             }
             let digits = self.bump().span;
-            return self.node(NodeKind::PatternInteger { digits, minus }, start, vec![]);
+            return self.node(
+                if floating {
+                    NodeKind::PatternFloat { digits, minus }
+                } else {
+                    NodeKind::PatternInteger { digits, minus }
+                },
+                start,
+                vec![],
+            );
         }
         if token.kind == TokenKind::Character {
             self.bump();

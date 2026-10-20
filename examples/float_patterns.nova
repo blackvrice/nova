@@ -1,0 +1,8 @@
+func classify(value:double)->int{
+    match value{1.5=>{return 1},0.0=>{return 2},_=>{return 3}}
+}
+func main(){
+    print("literal={classify(1.5)}")
+    print("zero={classify(-0.0)}")
+    print("nan={classify(0.0/0.0)}")
+}
