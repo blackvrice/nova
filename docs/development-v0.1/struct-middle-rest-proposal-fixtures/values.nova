@@ -1,0 +1,7 @@
+public struct Data{public let n:int8;public let flag:bool;public let ch:char}
+public type Alias=Data
+public struct Mutable{public let n:int8;public let ch:char;public let flag:bool}
+public struct Hidden{public let n:int;private let flag:bool}
+public const Data(ch:CHARACTER,..,n:NUMBER):Alias=Data(-7,true,'가')
+public func source()->Data{print("scrutinee");return Data(NUMBER,true,'🙂')}
+public func default_value(n:int8=NUMBER)->int8{return n}

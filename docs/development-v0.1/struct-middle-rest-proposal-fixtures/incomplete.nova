@@ -1,0 +1,2 @@
+struct S{let a:bool;let n:int8;let b:bool}
+func main(){match S(true,1,true){S(..,true)=>{}}}

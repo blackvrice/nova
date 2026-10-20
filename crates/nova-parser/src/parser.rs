@@ -452,23 +452,6 @@ impl<'a> Parser<'a> {
         self.node(NodeKind::PatternRest, first.start(), vec![])
     }
 
-    /// Struct and variant payloads retain their trailing-only policy and diagnostics.
-    fn trailing_pattern_rest(&mut self, subject: &str) -> AstNodeId {
-        let rest = self.pattern_rest(subject);
-        if self.arena.get(rest).expect("rest marker").kind == NodeKind::Error {
-            return rest;
-        }
-        self.eat(TokenKind::Comma);
-        if self.kind() != TokenKind::RightParen {
-            self.report(
-                1102,
-                self.current().span,
-                &format!("{subject} rest must be the last argument"),
-            );
-        }
-        rest
-    }
-
     fn pattern_inner(&mut self) -> AstNodeId {
         let token = self.current();
         let start = token.span.start();
@@ -600,6 +583,7 @@ impl<'a> Parser<'a> {
             if self.kind() == TokenKind::LeftParen {
                 self.open(TokenKind::LeftParen);
                 let mut children = vec![];
+                let mut has_rest = false;
                 while !matches!(
                     self.kind(),
                     TokenKind::RightParen
@@ -607,12 +591,25 @@ impl<'a> Parser<'a> {
                         | TokenKind::Eof
                         | TokenKind::Symbol(Symbol::FatArrow)
                 ) {
-                    if self.kind() == TokenKind::Dot {
-                        children.push(self.trailing_pattern_rest("struct"));
-                        break;
-                    }
                     let before = self.cursor;
-                    if self.kind() == TokenKind::Identifier
+                    if self.kind() == TokenKind::Dot {
+                        if has_rest {
+                            self.report(
+                                1102,
+                                self.current().span,
+                                "struct pattern permits only one rest",
+                            );
+                        }
+                        has_rest = true;
+                        children.push(self.pattern_rest("struct"));
+                        if !matches!(self.kind(), TokenKind::Comma | TokenKind::RightParen) {
+                            self.report(
+                                1102,
+                                self.current().span,
+                                "struct rest does not bind a value",
+                            );
+                        }
+                    } else if self.kind() == TokenKind::Identifier
                         && self
                             .tokens
                             .get(self.cursor + 1)

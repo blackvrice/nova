@@ -1,0 +1,2 @@
+struct S{let a:bool;let n:int8;let b:bool}
+func main(){let S(..,missing:n)=S(true,1,false)}

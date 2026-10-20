@@ -18,6 +18,21 @@ impl Checker<'_> {
             .collect::<BTreeMap<_, _>>();
         let mut filled: Vec<Option<HirId>> = vec![None; names.len()];
         let mut mapping = vec![];
+        let rest = node
+            .children
+            .iter()
+            .position(|c| self.module.nodes()[c.0].kind == HirKind::PatternRest);
+        let suffix = rest.map_or(0, |at| {
+            node.children[at + 1..]
+                .iter()
+                .filter(|c| {
+                    !matches!(
+                        self.module.nodes()[c.0].kind,
+                        HirKind::PatternField { .. } | HirKind::PatternRest
+                    )
+                })
+                .count()
+        });
         let mut first_label = None;
         let mut valid = true;
         for (ordinal, &child) in node.children.iter().enumerate() {
@@ -47,12 +62,20 @@ impl Checker<'_> {
                 );
                 valid = false;
                 None
-            } else if ordinal >= filled.len() {
-                self.report(2201, arg.span, "too many positional struct patterns", None);
-                valid = false;
-                None
             } else {
-                Some(ordinal)
+                let index = match rest {
+                    Some(at) if ordinal > at => {
+                        filled.len().saturating_sub(suffix) + ordinal - at - 1
+                    }
+                    _ => ordinal,
+                };
+                if index >= filled.len() {
+                    self.report(2201, arg.span, "too many positional struct patterns", None);
+                    valid = false;
+                    None
+                } else {
+                    Some(index)
+                }
             };
             if let Some(at) = at {
                 if let Some(first) = filled[at] {

@@ -1,0 +1,3 @@
+struct S{let a:bool;let n:int8;let b:bool}
+const S(..,true)=S(true,1/0,true)
+func main(){}

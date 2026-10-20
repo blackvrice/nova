@@ -2969,3 +2969,83 @@ fn p39_native_payload_middle_rest_guard_and_omitted_abort_exact_source_o0_o2() {
         }
     }
 }
+
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p40_native_struct_middle_rest_bindings_nested_guards_and_try_o0_o2() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/struct-middle-rest-proposal-fixtures")
+        .canonicalize()
+        .unwrap();
+    let expected="scrutinee\nfirst\nsecond\nnested=-7\ninitializer\nomitted\nlet=3\nvar=5/true\nconst=9/-7\none\nrest-only\ncomplete=3\nstruct=5\noption=6\ntry-ok\nresult=1\nerror=4\nloop=1\n";
+    for profile in ["debug", "release"] {
+        for (name, output) in [
+            ("main.nova", expected),
+            ("full_and_empty.nova", "full=8/true\nempty\nnamed=1/false\n"),
+            ("float_copy.nova", "float=1.5\n"),
+            ("guard_skipped.nova", "skipped\n"),
+        ] {
+            let r = Command::new(env!("CARGO_BIN_EXE_nova"))
+                .arg("run")
+                .arg(root.join(name))
+                .arg("--source-root")
+                .arg(&root)
+                .args(["--profile", profile])
+                .current_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."))
+                .output()
+                .unwrap();
+            assert!(
+                r.status.success(),
+                "{name}: {}",
+                String::from_utf8_lossy(&r.stderr)
+            );
+            assert_eq!(r.stdout, output.as_bytes());
+            assert!(r.stderr.is_empty());
+        }
+        for source in [
+            include_str!("../../../docs/development-v0.1/struct-rest-pattern-proposal-fixtures/middle_rest.nova"),
+            include_str!("../../../docs/development-v0.1/tuple-middle-rest-proposal-fixtures/struct_middle.nova"),
+            include_str!("../../../docs/development-v0.1/payload-middle-rest-proposal-fixtures/struct_middle.nova"),
+        ] {
+            let r=program_profile(source,profile);
+            assert!(r.status.success());
+            assert!(r.stdout.is_empty()&&r.stderr.is_empty());
+        }
+        let r = program_profile(
+            include_str!("../../../examples/struct_middle_rest.nova"),
+            profile,
+        );
+        assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
+        assert_eq!(r.stdout, b"first=3/true\nmutable=5/true\nmatch=7\n");
+        assert!(r.stderr.is_empty());
+    }
+}
+#[test]
+#[ignore = "requires LLVM 21.1.8 and Windows x64 MSVC"]
+fn p40_native_struct_middle_rest_guard_and_omitted_abort_exact_source_o0_o2() {
+    for source in [
+        include_str!(
+            "../../../docs/development-v0.1/struct-middle-rest-proposal-fixtures/guard_abort.nova"
+        ),
+        include_str!(
+            "../../../docs/development-v0.1/struct-middle-rest-proposal-fixtures/omitted_abort.nova"
+        ),
+    ] {
+        let start = source.find("2147483647+n").unwrap();
+        for profile in ["debug", "release"] {
+            let r = program_profile(source, profile);
+            assert_eq!(r.status.code(), Some(1));
+            assert_eq!(r.stdout, b"before\n");
+            assert_eq!(
+                String::from_utf8(r.stderr).unwrap().lines().next(),
+                Some(
+                    format!(
+                        "Nova panic: Int32 overflow at file#0:{start}..{}",
+                        start + 12
+                    )
+                    .as_str()
+                )
+            );
+        }
+    }
+}

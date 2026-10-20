@@ -2126,6 +2126,11 @@ fn p35_rest_struct_bundle_source_origins_and_exact_diagnostics() {
             unit(&l);
             continue;
         }
+        // P40 preserves the historical rejection bytes and checks current acceptance.
+        if name == "middle_rest.nova" {
+            unit(&l);
+            continue;
+        }
         let mut diagnostics = l.diagnostics.clone();
         if l.module.is_some() {
             let (_, c) = analyzed(&l);
@@ -2410,6 +2415,11 @@ fn p38_tuple_middle_rest_bundle_code_specific_spans_and_history() {
             unit(&l);
             continue;
         }
+        // P40 preserves the historical rejection bytes and checks current acceptance.
+        if name == "struct_middle.nova" {
+            unit(&l);
+            continue;
+        }
         let mut diagnostics = l.diagnostics.clone();
         if l.module.is_some() {
             let (_, c) = analyzed(&l);
@@ -2499,6 +2509,11 @@ fn p39_payload_middle_rest_bundle_code_specific_spans_and_two_histories() {
         ("payload_label.nova", "N1102", (44, 45)),
     ] {
         let l = load(&root.join(name), Some(&root)).unwrap();
+        // P40 preserves the historical rejection bytes and checks current acceptance.
+        if name == "struct_middle.nova" {
+            unit(&l);
+            continue;
+        }
         let mut diagnostics = l.diagnostics.clone();
         if l.module.is_some() {
             let (_, c) = analyzed(&l);
@@ -2538,4 +2553,101 @@ fn p39_payload_middle_rest_imported_alias_suffix_exports_visibility_and_source()
     ]);
     let (_, c) = analyzed(&bad);
     assert!(codes(&c).contains(&"N2004".to_string()));
+}
+
+#[test]
+fn p40_struct_middle_rest_bundle_code_specific_spans_and_three_histories() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/development-v0.1/struct-middle-rest-proposal-fixtures");
+    for name in [
+        "main.nova",
+        "full_and_empty.nova",
+        "float_copy.nova",
+        "guard_skipped.nova",
+        "guard_abort.nova",
+        "omitted_abort.nova",
+    ] {
+        unit(&load(&root.join(name), Some(&root)).unwrap());
+    }
+    for (folder, name) in [
+        ("struct-rest-pattern-proposal-fixtures", "middle_rest.nova"),
+        ("tuple-middle-rest-proposal-fixtures", "struct_middle.nova"),
+        (
+            "payload-middle-rest-proposal-fixtures",
+            "struct_middle.nova",
+        ),
+    ] {
+        let old = root.join("..").join(folder);
+        unit(&load(&old.join(name), Some(&old)).unwrap());
+    }
+    for (name, code, expected) in [
+        ("incomplete.nova", "N3101", (55, 60)),
+        ("duplicate.nova", "N3102", (86, 96)),
+        ("missing_no_rest.nova", "N2201", (59, 63)),
+        ("unknown_label.nova", "N2201", (64, 71)),
+        ("duplicate_label.nova", "N2201", (68, 69)),
+        ("after_named.nova", "N2201", (68, 69)),
+        ("overlap.nova", "N2201", (68, 69)),
+        ("suffix_overlap.nova", "N2201", (66, 67)),
+        ("excessive.nova", "N2201", (68, 69)),
+        ("component_type.nova", "N2101", (82, 83)),
+        ("annotation_range.nova", "N2102", (84, 87)),
+        ("immutable.nova", "N3004", (83, 84)),
+        ("let_refutable.nova", "N3103", (59, 69)),
+        ("const_refutable.nova", "N3103", (61, 71)),
+        ("global_refutable.nova", "N3103", (49, 59)),
+        ("const_omitted_failure.nova", "N3201", (67, 70)),
+        ("const_cycle.nova", "N3202", (83, 84)),
+        ("duplicate_binder.nova", "N2002", (66, 67)),
+        ("initializer_scope.nova", "N2001", (76, 77)),
+        ("double_rest.nova", "N1102", (66, 67)),
+        ("spaced_dots.nova", "N1102", (61, 62)),
+        ("rest_value.nova", "N1102", (63, 64)),
+        ("alias_head.nova", "N1102", (68, 69)),
+        ("private.nova", "N2004", (50, 64)),
+        ("rest_binder.nova", "N1102", (63, 67)),
+    ] {
+        let l = load(&root.join(name), Some(&root)).unwrap();
+        let mut diagnostics = l.diagnostics.clone();
+        if l.module.is_some() {
+            let (_, c) = analyzed(&l);
+            diagnostics.extend(c.diagnostics);
+        }
+        assert!(
+            diagnostics.iter().any(|d| d.code.to_string() == code
+                && (d.primary.span.start(), d.primary.span.end()) == expected),
+            "{name}: {diagnostics:?}"
+        );
+        if matches!(name, "const_refutable.nova" | "global_refutable.nova") {
+            assert!(!diagnostics
+                .iter()
+                .any(|d| matches!(d.code.to_string().as_str(), "N3201" | "N3202")));
+        }
+        for d in diagnostics {
+            l.sources.slice(d.primary.span).unwrap();
+            for label in d.secondary {
+                l.sources.slice(label.span).unwrap();
+            }
+        }
+    }
+}
+
+#[test]
+fn p40_struct_middle_rest_imported_alias_exports_private_and_sources() {
+    let l=fixture(&[("main.nova","use values::Data;use values::S as Imported;use values::C;func main(){let Imported(..,c):Data=Imported(8,true,C)}"),("values.nova","public struct S{public let n:int8;public let b:bool;public let c:char}public type Data=S;public const S(c:C,..,n:N):Data=S(8,true,'가')")]);
+    unit(&l);
+    let (_, c) = analyzed(&l);
+    assert!(!c.has_errors());
+    for n in l.module.as_ref().unwrap().nodes() {
+        l.sources.slice(n.span).unwrap();
+    }
+    let bad = fixture(&[
+        ("main.nova", "use values::S;func f(s:S){let S(..,n:n)=s}"),
+        (
+            "values.nova",
+            "public struct S{public let n:int;private let hidden:bool}",
+        ),
+    ]);
+    let (_, c) = analyzed(&bad);
+    assert_eq!(codes(&c), ["N2004"]);
 }

@@ -260,15 +260,29 @@ impl Checker<'_> {
                                                     .collect();
                                                 field_indices =
                                                     canonical.iter().map(|(_, at)| *at).collect();
-                                                fields =
-                                                    mapping.iter().map(|&at| fields[at]).collect();
-                                                field_annotations = mapping
-                                                    .iter()
-                                                    .map(|&at| field_annotations[at])
-                                                    .collect();
-                                                if explicit.len() != p.children.len() {
-                                                    fields.push(Type::Unit);
+                                                // Keep Source slots aligned independently of canonical checked order.
+                                                let original_fields = fields;
+                                                let mut selected = mapping.iter();
+                                                fields = Vec::with_capacity(p.children.len());
+                                                let mut annotations =
+                                                    Vec::with_capacity(p.children.len());
+                                                for &child in &p.children {
+                                                    if self.module.nodes()[child.0].kind
+                                                        == HirKind::PatternRest
+                                                    {
+                                                        fields.push(Type::Unit);
+                                                        annotations.push(None);
+                                                    } else {
+                                                        let &index = selected
+                                                            .next()
+                                                            .expect("mapped explicit struct field");
+                                                        fields.push(original_fields[index]);
+                                                        annotations.push(
+                                                            field_annotations.get(index).copied(),
+                                                        );
+                                                    }
                                                 }
+                                                component_annotations = Some(annotations);
                                             } else {
                                                 valid = false;
                                                 fields.clear();

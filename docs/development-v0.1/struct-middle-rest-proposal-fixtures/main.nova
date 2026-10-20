@@ -1,0 +1,25 @@
+use values::Data
+use values::Alias
+use values::Mutable
+use values::source
+use values::default_value
+struct Holder{let data:Data;let ignored:int}
+func gate(label:string,result:bool)->bool{print(label);return result}
+func mark()->bool{print("omitted");return true}
+func binding()->Data{print("initializer");return Data(3,mark(),'가')}
+func propagate(r:Result<int8,int8>)->Result<int8,int8>{match Data(-7,true,'가'){Data(-7,..,'가') if (try r)>0=>{print("try-ok")},_=>{}}return Result::Success(1)}
+func complete(p:Mutable)->int8{match p{Mutable(..,false)=>{return 2},Mutable(..,true)=>{return 3}}}
+func main(){
+    match source(){Data(-7,..,'🙂') if gate("first",false)=>{},Data(ch:ch,..,n:n) if gate("second",true)=>{print("nested={n}")},_=>{}}
+    let Data(n,..,character):Alias=binding();print("let={n}")
+    var Mutable(a,..,b)=Mutable(4 as int8,'가',false);a=a+1;b=true;print("var={a}/{b}")
+    const Data(ch:last,..,n:c):Alias=Data(9,true,'가');print("const={c}/{default_value()}")
+    match Option::Some(Data(1,true,'가')){Option::Some(Data(..,ch:ch))=>{print("one")},none=>{}}
+    match Data(1,true,'가'){Data(..,)=>{print("rest-only")}}
+    let full=complete(Mutable(2,'가',true));print("complete={full}")
+    match Holder(Data(5,true,'가'),7){Holder(Data(v,..,'가'),..)=>{print("struct={v}")},_=>{}}
+    match Option::Some(Data(6,true,'🙂')){Option::Some(Data(v,..,'🙂'))=>{print("option={v}")},_=>{}}
+    match propagate(Result::Success(3)){Result::Success(v)=>{print("result={v}")},Result::Error(_)=>{}}
+    match propagate(Result::Error(4)){Result::Success(_)=>{},Result::Error(e)=>{print("error={e}")}}
+    for i in 0 until 3{match Mutable(i as int8,'가',true){Mutable(0,..,true)=>{continue},Mutable(2,..,true)=>{break},Mutable(v,..)=>{print("loop={v}")}}}
+}

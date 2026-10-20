@@ -1882,7 +1882,6 @@ fn p35_struct_rest_adjacent_tokens_trailing_comma_and_parent_context() {
     }
     assert!(!run("func f(){match P(1){P(..)=>{}}}").2.has_errors());
     for source in [
-        "func f(){let P(..,x)=p}",
         "func f(){let P(..,..)=p}",
         "func f(){let P(. .)=p}",
         "func f(){let P(x:..)=p}",
@@ -2043,7 +2042,6 @@ fn p38_tuple_middle_rest_spelling_comma_context_history_and_trailing_only_others
         "func f(){let(n,..,..)=x}",
         "func f(){let(. .,n)=x}",
         "func f(){let(..,n:x)=x}",
-        "func f(){let P(a,..,b)=x}",
         "func f(){let(..n)=x}",
     ] {
         assert!(run(s).2.has_errors(), "{s}");
@@ -2099,7 +2097,6 @@ fn p39_payload_middle_rest_spelling_context_history_and_struct_trailing_policy()
         "func f(){let E::V(n,..,..)=x}",
         "func f(){let E::V(. .,n)=x}",
         "func f(){let E::V(..,n:x)=x}",
-        "func f(){let S(a,..,b)=x}",
         "func f(){let E::V(..n)=x}",
     ] {
         assert!(run(s).2.has_errors(), "{s}");
@@ -2130,6 +2127,69 @@ fn p39_payload_middle_rest_nesting_128_129_is_bounded() {
         );
         if depth == 128 {
             assert!(!p.has_errors(), "{:?}", p.diagnostics);
+        }
+    }
+}
+
+#[test]
+fn p40_struct_middle_rest_spelling_context_and_history() {
+    let source="const S(..,n:N)=x;func f(){let S(n,..,ch,)=x;var S(c:ch,..,n:n)=x;match x{S(/*🙂*/..,n:n)=>{}}}";
+    let (db, l, p) = run(source);
+    assert!(!l.has_errors() && !p.has_errors(), "{:?}", p.diagnostics);
+    let rest = p
+        .arena
+        .iter()
+        .filter(|(_, n)| n.kind == NodeKind::PatternRest)
+        .collect::<Vec<_>>();
+    assert_eq!(rest.len(), 4);
+    for (_, n) in rest {
+        assert_eq!(db.slice(n.span).unwrap(), "..");
+        assert!(n.children.is_empty());
+    }
+    for s in [
+        "func f(){let P(..,x)=p}",
+        "func f(){let P(a,..,b)=x}",
+        "func f(){let S(a,..,b)=x}",
+    ] {
+        assert!(!run(s).2.has_errors());
+    }
+    for s in [
+        "func f(){let S(..,n,..)=x}",
+        "func f(){let S(. .,n)=x}",
+        "func f(){let S(n:..)=x}",
+        "func f(){let S(..n)=x}",
+    ] {
+        let p = run(s).2;
+        assert!(
+            p.diagnostics.iter().any(|d| d.code.to_string() == "N1102"),
+            "{s}"
+        );
+    }
+}
+#[test]
+fn p40_struct_middle_rest_utf8_prefix_recovery_deterministic() {
+    let source="func f(){let S(..,(n,..,'🙂'))=x;match x{S(a:x,..,c:Option::Some(..,y),)=>{}}}func later(){}";
+    for end in (0..=source.len()).filter(|i| source.is_char_boundary(*i)) {
+        let (_, _, a) = run(&source[..end]);
+        let (_, _, b) = run(&source[..end]);
+        assert_eq!(a.arena.dump(), b.arena.dump());
+        assert_eq!(a.diagnostics, b.diagnostics);
+    }
+}
+#[test]
+fn p40_struct_middle_rest_nesting_128_129() {
+    for depth in [128, 129] {
+        let mut pattern = "n".to_string();
+        for _ in 0..depth {
+            pattern = format!("S(..,{pattern})");
+        }
+        let (_, _, p) = run(&format!("func f(){{match x{{{pattern}=>{{}}}}}}"));
+        assert_eq!(
+            p.diagnostics.iter().any(|d| d.code.to_string() == "N8901"),
+            depth == 129
+        );
+        if depth == 128 {
+            assert!(!p.has_errors());
         }
     }
 }

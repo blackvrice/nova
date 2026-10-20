@@ -1,0 +1,2 @@
+use values::Hidden
+func main(){let Hidden(..,n:n)=Hidden(1,true)}

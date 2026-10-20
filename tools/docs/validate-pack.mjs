@@ -1710,6 +1710,48 @@ for(const [proposal,directory,oldName,original] of [
 }
 checks.push('P39 Accepted/next-step 승인 ledger·70-production EBNF/기존 69개 보존·28개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 21 code별 byte Span/Runtime 2·P37/P38 고정 source/당시 거부 metadata/current overrides (문서 검사 자체는 Compiler/Native 실행 아님)');
 
+const structMiddleRestPatternProposal=manifest.accepted_proposals.find(p=>p.id==='P40');
+assert(structMiddleRestPatternProposal?.status==='Accepted' && structMiddleRestPatternProposal.implementation_verified===true && structMiddleRestPatternProposal.approval_date==='2026-10-20'
+  && structMiddleRestPatternProposal.approval_evidence==='다음 작업 승인할태니 개발 해줘' && structMiddleRestPatternProposal.document==='STRUCT_MIDDLE_REST_STAGE_B_PROPOSAL.md'
+  && structMiddleRestPatternProposal.grammar==='GRAMMAR_STAGE_B_STRUCT_MIDDLE_REST.ebnf' && structMiddleRestPatternProposal.grammar_change===true && !manifest.draft_proposals?.some(p=>p.id==='P40'),'P40 approval ledger');
+const structMiddleRestPatternText=fs.readFileSync(path.join(pack,structMiddleRestPatternProposal.document),'utf8');
+for(const phrase of ['Accepted / 구현·검증 완료','70개 production','69개 보존','Point(first,..,last)','Point(..,last)','N2201','N2004','N2101','N3101','N3102','N3103','1,025','10,000','100,000','1,000,000','field_indices','128','전체 D06','Move/borrow/Drop'])assert(structMiddleRestPatternText.includes(phrase),'P40 missing boundary '+phrase);
+validateGrammar(structMiddleRestPatternProposal.grammar);const structMiddleRestPatternGrammar=fs.readFileSync(path.join(pack,structMiddleRestPatternProposal.grammar),'utf8');const structMiddleRestPatternProductions=productions(structMiddleRestPatternGrammar);
+assert(structMiddleRestPatternProductions.size===70 && structMiddleRestPatternGrammar.includes('Accepted 2026-10-20; implemented and verified'),'P40 grammar status/count');
+for(const [name,value]of payloadMiddleRestPatternProductions)if(name!=='struct_pattern_arguments')assert(structMiddleRestPatternProductions.get(name)===value,'P40 changed approved production '+name);
+assert(structMiddleRestPatternProductions.get('struct_pattern_arguments')==='struct_pattern_rest,[",",struct_pattern_argument,{",",struct_pattern_argument}],[","]|struct_pattern_argument,[",",[struct_pattern_arguments]]','P40 single middle struct rest production');
+const structMiddleRestPatternRoot=path.join(pack,'struct-middle-rest-proposal-fixtures');const structMiddleRestPatternFixture=JSON.parse(fs.readFileSync(path.join(structMiddleRestPatternRoot,'expected.json'),'utf8'));const structMiddleRestPatternLF=String.fromCharCode(10);
+assert(structMiddleRestPatternFixture.proposal==='P40' && structMiddleRestPatternFixture.status==='Accepted' && structMiddleRestPatternFixture.implementation_verified===true && structMiddleRestPatternFixture.validation_date==='2026-10-20'
+  && structMiddleRestPatternFixture.approval_date===structMiddleRestPatternProposal.approval_date && structMiddleRestPatternFixture.approval_evidence===structMiddleRestPatternProposal.approval_evidence
+  && structMiddleRestPatternFixture.grammar===structMiddleRestPatternProposal.grammar && structMiddleRestPatternFixture.grammar_change===true && structMiddleRestPatternFixture.grammar_productions===70
+  && structMiddleRestPatternFixture.entry==='main.nova' && structMiddleRestPatternFixture.source_root==='.' && JSON.stringify(structMiddleRestPatternFixture.reachable_modules)==='["main","values"]'
+  && structMiddleRestPatternFixture.validated_result?.check_exit===0 && structMiddleRestPatternFixture.validated_result?.native_exit===0
+  && structMiddleRestPatternFixture.validated_result?.stdout===['scrutinee','first','second','nested=-7','initializer','omitted','let=3','var=5/true','const=9/-7','one','rest-only','complete=3','struct=5','option=6','try-ok','result=1','error=4','loop=1',''].join(structMiddleRestPatternLF)
+  && structMiddleRestPatternFixture.validated_result?.stderr==='','P40 validated result');
+const structMiddleRestPatternSources=Object.keys(structMiddleRestPatternFixture.source_sha256??{});assert(structMiddleRestPatternSources.length===32 && fs.readdirSync(structMiddleRestPatternRoot).filter(n=>n.endsWith('.nova')).length===32,'P40 source count');
+for(const name of structMiddleRestPatternSources){const bytes=fs.readFileSync(path.join(structMiddleRestPatternRoot,name));assert(hash(bytes)===structMiddleRestPatternFixture.source_sha256[name] && !bytes.includes(13) && Buffer.from(bytes.toString('utf8'),'utf8').equals(bytes),'P40 source hash/UTF8/LF '+name);}
+assert(structMiddleRestPatternFixture.negative_cases?.length===25 && structMiddleRestPatternFixture.positive_cases?.length===3 && structMiddleRestPatternFixture.runtime_cases?.length===2,'P40 fixture counts');
+for(const c of structMiddleRestPatternFixture.negative_cases){const bytes=fs.readFileSync(path.join(structMiddleRestPatternRoot,c.source));assert(c.check_exit===1 && knownCodes.has(c.expected_diagnostic) && c.primary.start>=0 && (c.primary.start<c.primary.end || c.expected_diagnostic==='N1101' && c.primary_kind==='insertion' && c.primary.start===c.primary.end) && c.primary.end<=bytes.length && Buffer.from(bytes.subarray(0,c.primary.start).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.start)) && Buffer.from(bytes.subarray(0,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(0,c.primary.end)) && Buffer.from(bytes.subarray(c.primary.start,c.primary.end).toString('utf8'),'utf8').equals(bytes.subarray(c.primary.start,c.primary.end)),'P40 negative byte Span '+c.source);}
+for(const c of structMiddleRestPatternFixture.positive_cases)assert(c.validated_result?.check_exit===0 && c.validated_result?.native_exit===0 && c.validated_result?.stdout.endsWith(structMiddleRestPatternLF) && c.validated_result?.stderr==='','P40 positive '+c.source);
+for(const structMiddleRestPatternAbort of structMiddleRestPatternFixture.runtime_cases){const structMiddleRestPatternAbortBytes=fs.readFileSync(path.join(structMiddleRestPatternRoot,structMiddleRestPatternAbort.source));
+assert(structMiddleRestPatternAbort.validated_result?.check_exit===0 && structMiddleRestPatternAbort.validated_result?.native_exit===1 && structMiddleRestPatternAbort.validated_result?.stdout==='before'+structMiddleRestPatternLF
+  && structMiddleRestPatternAbortBytes.subarray(structMiddleRestPatternAbort.primary.start,structMiddleRestPatternAbort.primary.end).toString('utf8')===structMiddleRestPatternAbort.primary_text
+  && structMiddleRestPatternAbort.validated_result?.stderr_first_line===`Nova panic: Int32 overflow at file#0:${structMiddleRestPatternAbort.primary.start}..${structMiddleRestPatternAbort.primary.end}`,'P40 runtime Source/result');
+}
+const structMiddleRestHistory=structMiddleRestPatternFixture.historical_overrides;
+assert(structMiddleRestHistory?.length===3,'P40 historical override count');
+for(const [proposal,directory,oldName,original] of [
+  ['P35','struct-rest-pattern-proposal-fixtures','middle_rest.nova',structRestPatternFixture],
+  ['P38','tuple-middle-rest-proposal-fixtures','struct_middle.nova',tupleMiddleRestPatternFixture],
+  ['P39','payload-middle-rest-proposal-fixtures','struct_middle.nova',payloadMiddleRestPatternFixture]]){
+  const c=structMiddleRestHistory.find(c=>c.proposal===proposal);
+  assert(c?.source==='../'+directory+'/'+oldName
+    && hash(fs.readFileSync(path.join(pack,directory,oldName)))===c.source_sha256 && c.source_sha256===original.source_sha256[oldName]
+    && c.original_diagnostic==='N1102' && original.negative_cases.some(n=>n.source===oldName && n.expected_diagnostic===c.original_diagnostic)
+    && c.check_exit===0 && c.native_exit===0 && c.stdout==='' && c.stderr==='','P40 frozen '+proposal+' rejection/current success override');
+}
+checks.push('P40 Accepted/next-step 승인 ledger·70-production EBNF/기존 69개 보존·32개 UTF-8/LF source hash·두 파일 출력/정상 3/부정 25 code별 byte Span/Runtime 2·P35/P38/P39 고정 source/당시 거부 metadata/current overrides (문서 검사 자체는 Compiler/Native 실행 아님)');
+
 const fixtureManifest = JSON.parse(fs.readFileSync(path.join(pack, 'fixtures/CASE_MANIFEST.json'), 'utf8'));
 for (const fixture of fixtureManifest.fixtures) {
   const source = fs.readFileSync(path.join(pack, 'fixtures', fixture.source));

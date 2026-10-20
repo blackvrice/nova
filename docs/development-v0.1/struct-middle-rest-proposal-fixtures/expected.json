@@ -1,0 +1,375 @@
+{
+  "proposal": "P40",
+  "status": "Accepted",
+  "implementation_verified": true,
+  "approval_date": "2026-10-20",
+  "approval_evidence": "다음 작업 승인할태니 개발 해줘",
+  "grammar": "GRAMMAR_STAGE_B_STRUCT_MIDDLE_REST.ebnf",
+  "grammar_change": true,
+  "grammar_productions": 70,
+  "entry": "main.nova",
+  "source_root": ".",
+  "reachable_modules": [
+    "main",
+    "values"
+  ],
+  "source_sha256": {
+    "values.nova": "686dfccd058a1d07c41c78bca36b36f5e7fabdecf16a21756df015ab431142b5",
+    "main.nova": "dbcbe833b4215eb4a015444e88489b514eac837957fecf545165aedda983e1e0",
+    "full_and_empty.nova": "92591d609103309cd3362724a7112e6d42f422416c2133436f4f4720389d6776",
+    "float_copy.nova": "b08f2ead5958753d12f4cd2c342cbbf971950d114aa444222fdd62cba6276686",
+    "guard_skipped.nova": "e4f9c49a87bbf05552bc1bc615c4e1acbe6c30e5676f60f994797c1816328b33",
+    "incomplete.nova": "aa6d56daa91e81421b0317da3d7f150ea18620f34ad5f414db51725fd77b3301",
+    "duplicate.nova": "fe76104dc1b5f213532491de7e98e6f6a205ffef12ccb407a352ec2b5926334c",
+    "missing_no_rest.nova": "eca78b9da543ab290a65e82e12308bf90faf7ff5d4dab46f18b1879463be2c09",
+    "unknown_label.nova": "213e829d652cf0908c1ce7537510a1c4519116abe5eb32fe37dc2436bd60040d",
+    "duplicate_label.nova": "0e046994dd749d22f76d3762d45dc925abce7501362910756036bb319625804d",
+    "after_named.nova": "28a1985eab3bbc5331ca9834724b7982ae836cc1ca270f4f8f9ab624dba4e525",
+    "overlap.nova": "3fbb7eae8d1f40389c6317b0c4bb3a6c63efca5df5073dbe7b58d2845c3aa86b",
+    "suffix_overlap.nova": "bcf406551af2465c0db98846108416338b232fe47ffb3f6add216bd1857c6ba2",
+    "excessive.nova": "a99ab87d3a3b02b74dc6d72051d9ed49f1d118ddb95d54ad4ec77d120b800c6e",
+    "component_type.nova": "6a217e1aa13823d5f950106afb20ed0d2211855fe18b378d7b5d3db103642194",
+    "annotation_range.nova": "59c44f9af1cd0103a29a9a7cb4d93e1f55a6e857078c6eab006bf3b6eb9bda73",
+    "immutable.nova": "cf3de71a25d2e9d892a7d9e7be6a0ed780a2467a94576c6f8e77d3d7e7e746cd",
+    "let_refutable.nova": "538a519d8cae0ac7e355cf6f92d62be10f7318a3fc3989cc9a2a40aea5b8b5b1",
+    "const_refutable.nova": "b1cad8c9838b62de2d313d5e79fc4f453af943e1f2c1a04e0c6790f2f16df5f8",
+    "global_refutable.nova": "963631b6e4a345c01a124acbd3cde92e8afb19a7defd43cd4e89b8ab9bcdfc3c",
+    "const_omitted_failure.nova": "a2c530ec19a9c335c0ac8142f68eed7cc7b91dafc797ad6cda7500645276ecbb",
+    "const_cycle.nova": "195172df175633c96359210774ff4fccb8d56e34d1f59cc1241696287e05410b",
+    "duplicate_binder.nova": "1ccedc4fc6e8b840a34f6bc127deb557e329b0da9f43b98826225b40de3725ae",
+    "initializer_scope.nova": "d641866e3dd92265df5cb6b92945bed1d34a9c18caeac86355b156f2e48b0bbf",
+    "double_rest.nova": "5b3429f7577e2af7a73ae8ee70e4c65d407a58728b93adebf36eca18c8e6df60",
+    "spaced_dots.nova": "b42e3b80768c546c18a480b471f862a4604649fd636d6c81a226dfa4295ef03a",
+    "rest_value.nova": "926b2e55d11b4b3a5332f3f0b0a0332d61432e7cd70919ca1d3bdc744ea29aff",
+    "alias_head.nova": "8a3543578cbc8ef175fce72917128dcf4c9bd6bcac012764ee10ca693f75e4bb",
+    "private.nova": "81489349d382e55e9b73d0219c4cd1848cdd40ddb56e0524581a7526df692df8",
+    "rest_binder.nova": "f2be7d0a4534a13912b9cd4a1c58ec9e3b912a52a9c1c749036db58d45dec8d7",
+    "guard_abort.nova": "060cd8f193e454c93987ad106d1ddcdfbf178ebff3b5096fd7b4cfd6fde80877",
+    "omitted_abort.nova": "67ded494811cb7d59dd332465fac1672d7fc4212312a3d7d738db0b5ec9078e0"
+  },
+  "positive_cases": [
+    {
+      "source": "full_and_empty.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "full=8/true\nempty\nnamed=1/false\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "float_copy.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "float=1.5\n",
+        "stderr": ""
+      }
+    },
+    {
+      "source": "guard_skipped.nova",
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 0,
+        "stdout": "skipped\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "negative_cases": [
+    {
+      "source": "incomplete.nova",
+      "expected_diagnostic": "N3101",
+      "check_exit": 1,
+      "primary": {
+        "start": 55,
+        "end": 60
+      }
+    },
+    {
+      "source": "duplicate.nova",
+      "expected_diagnostic": "N3102",
+      "check_exit": 1,
+      "primary": {
+        "start": 86,
+        "end": 96
+      }
+    },
+    {
+      "source": "missing_no_rest.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 59,
+        "end": 63
+      }
+    },
+    {
+      "source": "unknown_label.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 64,
+        "end": 71
+      }
+    },
+    {
+      "source": "duplicate_label.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 68,
+        "end": 69
+      }
+    },
+    {
+      "source": "after_named.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 68,
+        "end": 69
+      }
+    },
+    {
+      "source": "overlap.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 68,
+        "end": 69
+      }
+    },
+    {
+      "source": "suffix_overlap.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 66,
+        "end": 67
+      }
+    },
+    {
+      "source": "excessive.nova",
+      "expected_diagnostic": "N2201",
+      "check_exit": 1,
+      "primary": {
+        "start": 68,
+        "end": 69
+      }
+    },
+    {
+      "source": "component_type.nova",
+      "expected_diagnostic": "N2101",
+      "check_exit": 1,
+      "primary": {
+        "start": 82,
+        "end": 83
+      }
+    },
+    {
+      "source": "annotation_range.nova",
+      "expected_diagnostic": "N2102",
+      "check_exit": 1,
+      "primary": {
+        "start": 84,
+        "end": 87
+      }
+    },
+    {
+      "source": "immutable.nova",
+      "expected_diagnostic": "N3004",
+      "check_exit": 1,
+      "primary": {
+        "start": 83,
+        "end": 84
+      }
+    },
+    {
+      "source": "let_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 59,
+        "end": 69
+      }
+    },
+    {
+      "source": "const_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 61,
+        "end": 71
+      }
+    },
+    {
+      "source": "global_refutable.nova",
+      "expected_diagnostic": "N3103",
+      "check_exit": 1,
+      "primary": {
+        "start": 49,
+        "end": 59
+      }
+    },
+    {
+      "source": "const_omitted_failure.nova",
+      "expected_diagnostic": "N3201",
+      "check_exit": 1,
+      "primary": {
+        "start": 67,
+        "end": 70
+      }
+    },
+    {
+      "source": "const_cycle.nova",
+      "expected_diagnostic": "N3202",
+      "check_exit": 1,
+      "primary": {
+        "start": 83,
+        "end": 84
+      }
+    },
+    {
+      "source": "duplicate_binder.nova",
+      "expected_diagnostic": "N2002",
+      "check_exit": 1,
+      "primary": {
+        "start": 66,
+        "end": 67
+      }
+    },
+    {
+      "source": "initializer_scope.nova",
+      "expected_diagnostic": "N2001",
+      "check_exit": 1,
+      "primary": {
+        "start": 76,
+        "end": 77
+      }
+    },
+    {
+      "source": "double_rest.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 66,
+        "end": 67
+      }
+    },
+    {
+      "source": "spaced_dots.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 61,
+        "end": 62
+      }
+    },
+    {
+      "source": "rest_value.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 63,
+        "end": 64
+      }
+    },
+    {
+      "source": "alias_head.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 68,
+        "end": 69
+      }
+    },
+    {
+      "source": "private.nova",
+      "expected_diagnostic": "N2004",
+      "check_exit": 1,
+      "primary": {
+        "start": 50,
+        "end": 64
+      }
+    },
+    {
+      "source": "rest_binder.nova",
+      "expected_diagnostic": "N1102",
+      "check_exit": 1,
+      "primary": {
+        "start": 63,
+        "end": 67
+      }
+    }
+  ],
+  "runtime_cases": [
+    {
+      "source": "guard_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 118,
+        "end": 130
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:118..130"
+      }
+    },
+    {
+      "source": "omitted_abort.nova",
+      "primary_text": "2147483647+n",
+      "primary": {
+        "start": 91,
+        "end": 103
+      },
+      "validated_result": {
+        "check_exit": 0,
+        "native_exit": 1,
+        "stdout": "before\n",
+        "stderr_first_line": "Nova panic: Int32 overflow at file#0:91..103"
+      }
+    }
+  ],
+  "historical_overrides": [
+    {
+      "proposal": "P35",
+      "source": "../struct-rest-pattern-proposal-fixtures/middle_rest.nova",
+      "source_sha256": "d7f040eedb1a464c38d0735b6b6bce7271d47eadd9121a7e0b0cdde8655b47bd",
+      "original_diagnostic": "N1102",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "proposal": "P38",
+      "source": "../tuple-middle-rest-proposal-fixtures/struct_middle.nova",
+      "source_sha256": "de82d21c2a812dc6497858054a299c160a53616b4844385779f2de694dda5bdb",
+      "original_diagnostic": "N1102",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "proposal": "P39",
+      "source": "../payload-middle-rest-proposal-fixtures/struct_middle.nova",
+      "source_sha256": "de82d21c2a812dc6497858054a299c160a53616b4844385779f2de694dda5bdb",
+      "original_diagnostic": "N1102",
+      "check_exit": 0,
+      "native_exit": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "validation_date": "2026-10-20",
+  "validated_result": {
+    "check_exit": 0,
+    "native_exit": 0,
+    "stdout": "scrutinee\nfirst\nsecond\nnested=-7\ninitializer\nomitted\nlet=3\nvar=5/true\nconst=9/-7\none\nrest-only\ncomplete=3\nstruct=5\noption=6\ntry-ok\nresult=1\nerror=4\nloop=1\n",
+    "stderr": ""
+  }
+}

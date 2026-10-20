@@ -1,0 +1,4 @@
+struct S{let a:bool;let n:int8;let b:bool}
+const S(..,B)=S(true,1,NEXT)
+const NEXT=B
+func main(){}

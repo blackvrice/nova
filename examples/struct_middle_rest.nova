@@ -1,0 +1,8 @@
+struct Data{let n:int;let middle:char;let flag:bool}
+func main(){
+    let Data(first,..,flag)=Data(3,'가',true)
+    print("first={first}/{flag}")
+    var Data(..,flag:b,n:n)=Data(4,'🙂',false);n=n+1;b=true
+    print("mutable={n}/{b}")
+    match Option::Some(Data(7,'가',true)){Option::Some(Data(value,..,true))=>{print("match={value}")},_=>{}}
+}

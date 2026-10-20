@@ -1,0 +1,2 @@
+struct S{let a:bool;let n:int;let b:bool}
+func main(){match S(true,1,false){S(true,..,true) if 2147483647+1>0=>{},_=>{print("skipped")}}}

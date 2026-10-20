@@ -1,0 +1,2 @@
+struct S{let a:bool;let n:int;let b:bool}
+func main(){print("before");let n=1;match S(true,1,true){S(true,..,true) if 2147483647+n>0=>{},_=>{}}}
